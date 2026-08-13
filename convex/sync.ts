@@ -1,0 +1,459 @@
+// Two-tier Canvas sync.
+//
+// Tier 1 (tripwire, every 5 min): GET /users/self/activity_stream/summary —
+// a tiny payload. Only when it changes do we run a real sync.
+// Tier 2 (delta): submitted_since/graded_since submission deltas plus
+// recent announcements and planner notes.
+// Nightly: full sync of everything.
+//
+// Dispatch rules (Convex-specific, deliberate):
+// - Crons must not loop over users: overlapping cron runs are skipped, so
+//   a slow loop silently drops cycles. Crons call a dispatcher mutation
+//   that fans out one Workpool job per user.
+// - Fan-out happens in MUTATIONS (exactly-once, atomic); actions only talk
+//   to Canvas. Actions are at-most-once, so the Workpool retries them.
+// - One CanvasClient per user per job, strictly sequential requests —
+//   Canvas throttles on concurrency (~12 in-flight per token), not rate.
+
+import { v } from "convex/values";
+import { Workpool } from "@convex-dev/workpool";
+import {
+  internalAction,
+  internalMutation,
+  mutation,
+  type ActionCtx,
+} from "./_generated/server";
+import { components, internal } from "./_generated/api";
+import { requireUserId } from "./lib/auth";
+import { getCanvasClient, type CanvasSession } from "./credentials";
+import { CanvasAuthError, type CanvasClient } from "./canvas/client";
+import {
+  toMillis,
+  type CanvasActivityStreamSummaryItem,
+  type CanvasAnnouncement,
+  type CanvasAssignment,
+  type CanvasCalendarEvent,
+  type CanvasCourse,
+  type CanvasPlannerNote,
+  type CanvasSubmission,
+} from "./canvas/types";
+import type {
+  AnnouncementUpsert,
+  AssignmentUpsert,
+  CalendarEventUpsert,
+  CourseUpsert,
+  PlannerNoteUpsert,
+} from "./syncStore";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+// The calendar_events endpoint silently ignores context codes past the
+// first 10 — chunking is mandatory, not an optimization.
+const CONTEXT_CODE_CHUNK = 10;
+
+export const syncPool = new Workpool(components.syncWorkpool, {
+  maxParallelism: 5,
+  retryActionsByDefault: true,
+  defaultRetryBehavior: { maxAttempts: 3, initialBackoffMs: 2000, base: 2 },
+});
+
+// ---------------------------------------------------------------------------
+// Dispatch
+
+export const dispatchTripwire = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const userIds: string[] = await ctx.runQuery(
+      internal.syncStore.listActiveUserIds,
+      {},
+    );
+    for (const userId of userIds) {
+      await syncPool.enqueueAction(ctx, internal.sync.tripwireUser, { userId });
+    }
+    return null;
+  },
+});
+
+export const dispatchFullSync = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const userIds: string[] = await ctx.runQuery(
+      internal.syncStore.listActiveUserIds,
+      {},
+    );
+    for (const userId of userIds) {
+      await syncPool.enqueueAction(ctx, internal.sync.fullSyncUser, { userId });
+    }
+    return null;
+  },
+});
+
+export const enqueueFullSync = internalMutation({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await syncPool.enqueueAction(ctx, internal.sync.fullSyncUser, {
+      userId: args.userId,
+    });
+    return null;
+  },
+});
+
+/** "Sync now" button in settings. */
+export const requestSync = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const userId = await requireUserId(ctx);
+    await syncPool.enqueueAction(ctx, internal.sync.fullSyncUser, { userId });
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Actions
+
+export const tripwireUser = internalAction({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      const session = await getCanvasClient(ctx, args.userId);
+      const summary = await session.client.get<CanvasActivityStreamSummaryItem[]>(
+        "/users/self/activity_stream/summary",
+      );
+      const snapshot = JSON.stringify(summary);
+      const state = await ctx.runQuery(internal.syncStore.getSyncState, {
+        userId: args.userId,
+      });
+      const changed = snapshot !== state?.tripwireSnapshot;
+      await ctx.runMutation(internal.syncStore.recordSyncResult, {
+        userId: args.userId,
+        kind: "tripwire",
+        tripwireSnapshot: snapshot,
+        rateLimitRemaining: session.rateLimitRemaining(),
+      });
+      if (changed) {
+        await runDeltaSync(ctx, args.userId, session);
+      }
+    } catch (error) {
+      await handleSyncError(ctx, args.userId, error);
+    }
+    return null;
+  },
+});
+
+export const fullSyncUser = internalAction({
+  args: { userId: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    try {
+      const session = await getCanvasClient(ctx, args.userId);
+      await runFullSync(ctx, args.userId, session);
+    } catch (error) {
+      await handleSyncError(ctx, args.userId, error);
+    }
+    return null;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Sync implementations
+
+async function runFullSync(
+  ctx: ActionCtx,
+  userId: string,
+  session: CanvasSession,
+): Promise<void> {
+  const { client } = session;
+  await ctx.runMutation(internal.syncStore.setSyncStatus, {
+    userId,
+    status: "syncing",
+  });
+
+  const rawCourses = await client.getPaginated<CanvasCourse>("/courses", {
+    enrollment_state: "active",
+    "include[]": ["term", "favorites"],
+  });
+  const courses = rawCourses.filter(
+    (course) => course.name !== undefined && !course.access_restricted_by_date,
+  );
+  const courseUpserts: CourseUpsert[] = courses.map((course) => ({
+    canvasId: course.id,
+    name: course.name ?? "Untitled course",
+    courseCode: course.course_code ?? "",
+    term: course.term?.name,
+    startAt: toMillis(course.start_at),
+    endAt: toMillis(course.end_at),
+    isFavorite: course.is_favorite,
+  }));
+  await ctx.runMutation(internal.syncStore.upsertCourses, {
+    userId,
+    courses: courseUpserts,
+  });
+
+  // include[]=submission returns the calling student's own submission
+  // inline — no separate submissions pass needed.
+  for (const course of courses) {
+    const assignments = await client.getPaginated<CanvasAssignment>(
+      `/courses/${course.id}/assignments`,
+      { "include[]": ["submission"], order_by: "due_at" },
+    );
+    const upserts: AssignmentUpsert[] = assignments.map((assignment) =>
+      mapAssignment(course.id, assignment),
+    );
+    await ctx.runMutation(internal.syncStore.upsertAssignments, {
+      userId,
+      assignments: upserts,
+    });
+  }
+
+  const courseIds = courses.map((course) => course.id);
+  await syncAnnouncements(ctx, userId, client, courseIds, Date.now() - 30 * DAY_MS);
+  await syncCalendarEvents(ctx, userId, client, session, courseIds);
+  await syncPlannerNotes(ctx, userId, client);
+
+  await ctx.runMutation(internal.syncStore.recordSyncResult, {
+    userId,
+    kind: "full",
+    rateLimitRemaining: session.rateLimitRemaining(),
+  });
+}
+
+async function runDeltaSync(
+  ctx: ActionCtx,
+  userId: string,
+  session: CanvasSession,
+): Promise<void> {
+  const { client } = session;
+  await ctx.runMutation(internal.syncStore.setSyncStatus, {
+    userId,
+    status: "syncing",
+  });
+
+  const state = await ctx.runQuery(internal.syncStore.getSyncState, { userId });
+  const sinceMs =
+    state?.lastDeltaSyncAt ?? state?.lastFullSyncAt ?? Date.now() - 7 * DAY_MS;
+  const sinceIso = new Date(sinceMs).toISOString();
+
+  const courseIds: number[] = await ctx.runQuery(
+    internal.syncStore.getCourseCanvasIds,
+    { userId },
+  );
+
+  // Grade and submission deltas per course. Two filtered calls (submitted
+  // vs graded) are far cheaper than refetching every assignment.
+  for (const courseId of courseIds) {
+    const [submitted, graded] = [
+      await client.getPaginated<CanvasSubmission>(
+        `/courses/${courseId}/students/submissions`,
+        { "student_ids[]": ["self"], submitted_since: sinceIso },
+      ),
+      await client.getPaginated<CanvasSubmission>(
+        `/courses/${courseId}/students/submissions`,
+        { "student_ids[]": ["self"], graded_since: sinceIso },
+      ),
+    ];
+    const byAssignment = new Map<number, CanvasSubmission>();
+    for (const submission of [...submitted, ...graded]) {
+      byAssignment.set(submission.assignment_id, submission);
+    }
+    if (byAssignment.size > 0) {
+      await ctx.runMutation(internal.syncStore.applySubmissionUpdates, {
+        userId,
+        updates: [...byAssignment.entries()].map(([assignmentCanvasId, s]) => ({
+          assignmentCanvasId,
+          submission: mapSubmission(s),
+        })),
+      });
+    }
+  }
+
+  await syncAnnouncements(ctx, userId, client, courseIds, sinceMs);
+  await syncPlannerNotes(ctx, userId, client);
+
+  await ctx.runMutation(internal.syncStore.recordSyncResult, {
+    userId,
+    kind: "delta",
+    rateLimitRemaining: session.rateLimitRemaining(),
+  });
+}
+
+async function syncAnnouncements(
+  ctx: ActionCtx,
+  userId: string,
+  client: CanvasClient,
+  courseIds: number[],
+  sinceMs: number,
+): Promise<void> {
+  for (const chunk of chunked(courseIds, CONTEXT_CODE_CHUNK)) {
+    const announcements = await client.getPaginated<CanvasAnnouncement>(
+      "/announcements",
+      {
+        "context_codes[]": chunk.map((id) => `course_${id}`),
+        start_date: new Date(sinceMs).toISOString(),
+        end_date: new Date(Date.now() + DAY_MS).toISOString(),
+      },
+    );
+    const upserts: AnnouncementUpsert[] = announcements.map((a) => ({
+      courseCanvasId: parseContextCourseId(a.context_code),
+      canvasId: a.id,
+      title: a.title,
+      message: a.message ?? "",
+      postedAt: toMillis(a.posted_at),
+      htmlUrl: a.html_url,
+    }));
+    if (upserts.length > 0) {
+      await ctx.runMutation(internal.syncStore.upsertAnnouncements, {
+        userId,
+        announcements: upserts,
+      });
+    }
+  }
+}
+
+async function syncCalendarEvents(
+  ctx: ActionCtx,
+  userId: string,
+  client: CanvasClient,
+  session: CanvasSession,
+  courseIds: number[],
+): Promise<void> {
+  const contextCodes = courseIds.map((id) => `course_${id}`);
+  if (session.credential.canvasUserId !== undefined) {
+    contextCodes.push(`user_${session.credential.canvasUserId}`);
+  }
+  const startDate = new Date(Date.now() - 7 * DAY_MS).toISOString();
+  const endDate = new Date(Date.now() + 120 * DAY_MS).toISOString();
+
+  for (const chunk of chunked(contextCodes, CONTEXT_CODE_CHUNK)) {
+    const events = await client.getPaginated<CanvasCalendarEvent>(
+      "/calendar_events",
+      {
+        type: "event",
+        "context_codes[]": chunk,
+        start_date: startDate,
+        end_date: endDate,
+      },
+    );
+    const upserts: CalendarEventUpsert[] = events.flatMap((event) => {
+      const startAt = toMillis(event.start_at);
+      if (startAt === undefined) return [];
+      return [
+        {
+          canvasId: event.id,
+          contextCode: event.context_code,
+          title: event.title,
+          description: event.description ?? undefined,
+          startAt,
+          endAt: toMillis(event.end_at),
+          allDay: event.all_day,
+          location: event.location_name ?? undefined,
+        },
+      ];
+    });
+    if (upserts.length > 0) {
+      await ctx.runMutation(internal.syncStore.upsertCalendarEvents, {
+        userId,
+        events: upserts,
+      });
+    }
+  }
+}
+
+async function syncPlannerNotes(
+  ctx: ActionCtx,
+  userId: string,
+  client: CanvasClient,
+): Promise<void> {
+  const notes = await client.getPaginated<CanvasPlannerNote>("/planner_notes", {
+    start_date: new Date(Date.now() - 30 * DAY_MS).toISOString(),
+  });
+  const upserts: PlannerNoteUpsert[] = notes.map((note) => ({
+    canvasPlannerNoteId: note.id,
+    title: note.title,
+    details: note.details ?? undefined,
+    dueAt: toMillis(note.todo_date),
+    courseCanvasId: note.course_id ?? undefined,
+  }));
+  if (upserts.length > 0) {
+    await ctx.runMutation(internal.syncStore.upsertPlannerTasks, {
+      userId,
+      notes: upserts,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+
+async function handleSyncError(
+  ctx: ActionCtx,
+  userId: string,
+  error: unknown,
+): Promise<void> {
+  if (error instanceof CanvasAuthError) {
+    // Token revoked or expired (UW-issued manual tokens live max 120 days).
+    // Mark invalid so dispatchers skip this user until reconnect; do not
+    // rethrow, retrying an invalid token is pointless.
+    await ctx.runMutation(internal.credentials.markInvalid, { userId });
+    await ctx.runMutation(internal.syncStore.setSyncStatus, {
+      userId,
+      status: "error",
+      lastError: "Canvas rejected the token. Reconnect in Settings.",
+    });
+    return;
+  }
+  await ctx.runMutation(internal.syncStore.setSyncStatus, {
+    userId,
+    status: "error",
+    lastError: error instanceof Error ? error.message : String(error),
+  });
+  // Rethrow so the Workpool retries with backoff (covers transient Canvas
+  // 5xx and rate-limit errors).
+  throw error;
+}
+
+function mapAssignment(
+  courseCanvasId: number,
+  assignment: CanvasAssignment,
+): AssignmentUpsert {
+  return {
+    courseCanvasId,
+    canvasId: assignment.id,
+    name: assignment.name,
+    dueAt: toMillis(assignment.due_at),
+    pointsPossible: assignment.points_possible ?? undefined,
+    htmlUrl: assignment.html_url,
+    submissionTypes: assignment.submission_types ?? [],
+    submission: assignment.submission
+      ? mapSubmission(assignment.submission)
+      : undefined,
+  };
+}
+
+function mapSubmission(submission: CanvasSubmission) {
+  return {
+    submittedAt: toMillis(submission.submitted_at),
+    workflowState: submission.workflow_state,
+    score: submission.score ?? undefined,
+    grade: submission.grade ?? undefined,
+    late: submission.late,
+    missing: submission.missing,
+    postedAt: toMillis(submission.posted_at),
+  };
+}
+
+function parseContextCourseId(contextCode: string): number {
+  const id = Number.parseInt(contextCode.replace("course_", ""), 10);
+  return Number.isNaN(id) ? 0 : id;
+}
+
+function chunked<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
