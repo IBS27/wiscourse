@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>wiscourse — logo designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@600&family=Instrument+Sans:wght@600&family=Inter:wght@600&family=Manrope:wght@600&family=Space+Grotesk:wght@600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --board: #f6f6f7;
+    --ink: #101114;
+    --muted: #6b6f76;
+    --line: #e3e4e7;
+    --accent: #c5050c;      /* UW–Madison Badger Red */
+    --invert-bg: #0d0e11;
+    --invert-ink: #ffffff;
+    --invert-accent: #ff4b54;
+    /* The chosen mark's ink. On a dark background it stops short of white,
+       which would bloom next to the red and unbalance the two halves. Text
+       ink is unaffected — this is a logo correction only. */
+    --mark-ink: var(--ink);
+    --invert-mark-ink: #e8e8ec;
+  }
+  html.dark {
+    --paper: #0d0e11;
+    --board: #16181d;
+    --ink: #f4f5f7;
+    --muted: #8d939c;
+    --line: #24272e;
+    --accent: #ff4b54;      /* lifted red, keeps contrast on dark */
+    --invert-bg: #ffffff;
+    --invert-ink: #101114;
+    --invert-accent: #c5050c;
+    --mark-ink: #e8e8ec;
+    --invert-mark-ink: #101114;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 24px 96px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 40px; }
+  h1 { font-size: 1.5rem; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 0.95rem; max-width: 60ch; margin: 0; }
+  button {
+    font: inherit; font-size: 0.85rem; color: var(--ink); background: var(--board);
+    border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px; cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover { border-color: var(--muted); }
+
+  h2 { font-size: 0.8rem; font-weight: 650; letter-spacing: 0.09em; text-transform: uppercase;
+       color: var(--muted); margin: 56px 0 18px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+
+  .card {
+    border: 1px solid var(--line); border-radius: 16px; background: var(--paper);
+    overflow: hidden; display: flex; flex-direction: column;
+  }
+  .stage {
+    background: var(--board); height: 168px;
+    display: flex; align-items: center; justify-content: center;
+    border-bottom: 1px solid var(--line);
+  }
+  .meta { padding: 16px 18px 18px; }
+  .name { font-size: 0.95rem; font-weight: 620; letter-spacing: -0.01em; margin: 0; }
+  .num { color: var(--muted); font-weight: 500; margin-right: 7px; }
+  .why { color: var(--muted); font-size: 0.85rem; margin: 4px 0 0; }
+
+  .sizes {
+    display: flex; align-items: center; gap: 18px;
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  /* The chip flips the theme for the mark inside it — the custom properties inherit
+     through <use>, so no second copy of any mark is needed. */
+  .chip {
+    --ink: var(--invert-ink);
+    --mark-ink: var(--invert-mark-ink);
+    --paper: var(--invert-bg);
+    --accent: var(--invert-accent);
+    background: var(--invert-bg);
+    border-radius: 9px; padding: 7px; display: inline-flex; margin-left: auto;
+  }
+
+  .lock { display: inline-flex; align-items: center; gap: 10px; }
+  .wordmark {
+    font-size: 24px; font-weight: 600; letter-spacing: -0.035em; color: var(--ink);
+  }
+  .wordmark .hi { color: var(--accent); }
+
+  /* Document CSS selectors do not reach inside a <use> shadow tree, so each mark sets its
+     own colours as presentation attributes. Inherited properties — including custom
+     properties — DO cross that boundary, so these defaults and the theme still apply. */
+  svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ── selected direction ── */
+  /* The hero lockup is aligned, not eyeballed: #m2t is trimmed to its ink bounds, so
+     align-items:baseline puts the foot of the mark exactly on the text baseline, and
+     height:0.72em matches the cap height of the word. Both hold at any size, in any
+     font, at any line-height. */
+  .lock-hero { display: inline-flex; align-items: baseline; gap: 0.34em; line-height: 1; }
+  .lock-hero svg { height: 0.72em; width: 1.119em; }
+  .lock-hero .wordmark { font-size: inherit; }
+
+  .pick { display: grid; gap: 20px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 780px) { .two { grid-template-columns: 1fr; } }
+
+  .panel {
+    border: 1px solid var(--line); border-radius: 16px; background: var(--board);
+    padding: 34px 28px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 22px; min-height: 150px;
+  }
+  .panel.invert {
+    --ink: var(--invert-ink); --paper: var(--invert-bg); --accent: var(--invert-accent);
+    --mark-ink: var(--invert-mark-ink);
+    --line: transparent;
+    background: var(--invert-bg); color: var(--invert-ink);
+  }
+  .caption { font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase;
+             color: var(--muted); margin: 0; }
+  .panel.invert .caption { color: #8d939c; }
+
+  .tiles { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .tile { width: 84px; height: 84px; border-radius: 21px;
+          display: flex; align-items: center; justify-content: center; }
+  .tile.on-light { background: #fff; border: 1px solid #e3e4e7; --ink: #101114; --mark-ink: #101114; --accent: #c5050c; }
+  .tile.on-dark  { background: #0d0e11; --ink: #ffffff; --mark-ink: #e8e8ec; --accent: #ff4b54; }
+  .tile.on-red   { background: #c5050c; --ink: #ffffff; --accent: rgba(255,255,255,0.5); }
+
+  .steps { display: flex; align-items: flex-end; gap: 20px; }
+  .step { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .step span { font-size: 0.7rem; color: var(--muted); }
+
+  .tabbar { background: var(--board); border: 1px solid var(--line); border-radius: 12px;
+            padding: 9px 9px 0; width: 100%; max-width: 380px; }
+  .tab { background: var(--paper); border: 1px solid var(--line); border-bottom: none;
+         border-radius: 9px 9px 0 0; padding: 9px 14px; display: inline-flex;
+         align-items: center; gap: 9px; font-size: 0.82rem; }
+
+  .notes { border: 1px solid var(--line); border-radius: 16px; padding: 20px 24px; }
+  .notes ul { margin: 0; padding-left: 1.15em; }
+  .notes li { margin-bottom: 6px; color: var(--muted); font-size: 0.92rem; }
+  .notes li b { color: var(--ink); font-weight: 600; }
+  code { background: var(--board); border: 1px solid var(--line); border-radius: 5px;
+         padding: 1px 5px; font-size: 0.85em; }
+</style>
+</head>
+<body>
+
+<!-- ── mark library ─────────────────────────────────────────────────────── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"
+     fill="none" stroke-linecap="round" stroke-linejoin="round">
+
+  <!-- 1. Velocity W -->
+  <symbol id="m1" viewBox="0 0 64 64">
+    <g transform="translate(5 0) skewX(-10)">
+      <path stroke="var(--ink)" stroke-width="6" d="M13 16 L23 46 L32 28 L41 46 L51 16"/>
+    </g>
+  </symbol>
+
+  <!-- The W is one continuous stroke drawn twice, each copy clipped to half.
+       Two separate chevrons would put a round cap on each side of the shared
+       apex, and whichever was painted second would bury the other's terminal,
+       making that half look half a stroke shorter. Clipping at the apex gives
+       each colour exactly half of the join. -->
+  <clipPath id="half-l"><rect x="0" y="0" width="32" height="64"/></clipPath>
+  <clipPath id="half-r"><rect x="32" y="0" width="32" height="64"/></clipPath>
+  <clipPath id="half-lt"><rect x="0" y="0" width="25.25" height="32.5"/></clipPath>
+  <clipPath id="half-rt"><rect x="25.25" y="0" width="25.25" height="32.5"/></clipPath>
+
+  <!-- 2. Fast Forward -->
+  <symbol id="m2" viewBox="0 0 64 64">
+    <path stroke="var(--mark-ink)"    stroke-width="6.5" clip-path="url(#half-l)" d="M10 19 L21 45 L32 19 L43 45 L54 19"/>
+    <path stroke="var(--accent)" stroke-width="6.5" clip-path="url(#half-r)" d="M10 19 L21 45 L32 19 L43 45 L54 19"/>
+  </symbol>
+
+  <!-- 2i. Fast Forward, inverted — the chosen app mark, exactly as public/favicon.svg
+       ships it: the base geometry scaled 1.15x about the centre of the box, so the
+       ink fills 90.7% of the width. Card 2 above keeps the unscaled version, since
+       that grid compares silhouettes, not icon padding. -->
+  <symbol id="m2i" viewBox="0 0 64 64">
+    <path stroke="var(--accent)"   stroke-width="7.475" clip-path="url(#half-l)" d="M6.7 17.05 L19.35 46.95 L32 17.05 L44.65 46.95 L57.3 17.05"/>
+    <path stroke="var(--mark-ink)" stroke-width="7.475" clip-path="url(#half-r)" d="M6.7 17.05 L19.35 46.95 L32 17.05 L44.65 46.95 L57.3 17.05"/>
+  </symbol>
+
+  <!-- 2t. Fast Forward, inverted, trimmed to its exact ink bounds.
+       Stroke half-width is 3.25, so the drawn shape touches all four edges of the
+       viewBox with nothing left over. That is what lets the lockup sit the mark on
+       the text baseline instead of guessing at it. -->
+  <symbol id="m2t" viewBox="0 0 50.5 32.5">
+    <path stroke="var(--accent)" stroke-width="6.5" clip-path="url(#half-lt)" d="M3.25 3.25 L14.25 29.25 L25.25 3.25 L36.25 29.25 L47.25 3.25"/>
+    <path stroke="var(--mark-ink)"    stroke-width="6.5" clip-path="url(#half-rt)" d="M3.25 3.25 L14.25 29.25 L25.25 3.25 L36.25 29.25 L47.25 3.25"/>
+  </symbol>
+
+  <!-- 3. Instant Stack -->
+  <symbol id="m3" viewBox="0 0 64 64">
+    <rect fill="var(--ink)"    x="11" y="15" width="42" height="9" rx="4.5"/>
+    <rect fill="var(--ink)"    x="11" y="28" width="42" height="9" rx="4.5"/>
+    <rect fill="var(--accent)" x="11" y="41" width="23" height="9" rx="4.5"/>
+  </symbol>
+
+  <!-- 4. Mirror -->
+  <symbol id="m4" viewBox="0 0 64 64">
+    <path stroke="var(--ink)" stroke-width="6.5" opacity="0.28" d="M11 19 L24 45 L37 19"/>
+    <path stroke="var(--ink)" stroke-width="6.5" d="M27 19 L40 45 L53 19"/>
+  </symbol>
+
+  <!-- 5. Bolt Frame -->
+  <symbol id="m5" viewBox="0 0 64 64">
+    <rect stroke="var(--ink)" stroke-width="5.5" x="8" y="8" width="48" height="48" rx="14"/>
+    <path fill="var(--accent)" d="M36 15 L22 36 H31 L28 49 L42 28 H33 Z"/>
+  </symbol>
+
+  <!-- 6. Course Check -->
+  <symbol id="m6" viewBox="0 0 64 64">
+    <path stroke="var(--ink)"    stroke-width="6.5" d="M10 23 L20 45 L30 23"/>
+    <path stroke="var(--accent)" stroke-width="6.5" d="M30 23 L40 45 L55 13"/>
+  </symbol>
+
+  <!-- 7. Term -->
+  <symbol id="m7" viewBox="0 0 64 64">
+    <rect stroke="var(--ink)" stroke-width="5.5" x="8" y="14" width="48" height="42" rx="10"/>
+    <path stroke="var(--ink)" stroke-width="5.5" d="M8 28 H56"/>
+    <path stroke="var(--ink)" stroke-width="5.5" d="M21 8 V19 M43 8 V19"/>
+    <path stroke="var(--accent)" stroke-width="5" d="M19 38 L26 48 L32 40 L38 48 L45 38"/>
+  </symbol>
+
+  <!-- 8. Cache Ring -->
+  <symbol id="m8" viewBox="0 0 64 64">
+    <circle stroke="var(--ink)" stroke-width="6.5" cx="32" cy="32" r="21"
+            stroke-dasharray="97 35" transform="rotate(-52 32 32)"/>
+    <circle fill="var(--accent)" cx="32" cy="32" r="8"/>
+  </symbol>
+
+  <!-- 9. Ascender -->
+  <symbol id="m9" viewBox="0 0 64 64">
+    <path stroke="var(--ink)" stroke-width="6.5" d="M10 47 L23 29 L33 39 L48 17"/>
+    <circle fill="var(--accent)" cx="49" cy="16" r="7"/>
+  </symbol>
+
+  <!-- 10. Badger Tile -->
+  <symbol id="m10" viewBox="0 0 64 64">
+    <rect fill="var(--accent)" x="4" y="4" width="56" height="56" rx="15"/>
+    <path stroke="var(--paper)" stroke-width="5.5" d="M17 21 L24.5 44 L32 29 L39.5 44 L47 21"/>
+  </symbol>
+
+  <!-- 11. Underline W -->
+  <symbol id="m11" viewBox="0 0 64 64">
+    <path stroke="var(--ink)"    stroke-width="6.5" d="M11 13 L21 39 L32 19 L43 39 L53 13"/>
+    <path stroke="var(--accent)" stroke-width="6.5" d="M14 51 H50"/>
+  </symbol>
+
+  <!-- 12. Sync Layers -->
+  <symbol id="m12" viewBox="0 0 64 64">
+    <path stroke="var(--ink)"    stroke-width="6.5" d="M13 21 L32 34 L51 21"/>
+    <path stroke="var(--accent)" stroke-width="6.5" d="M13 34 L32 47 L51 34"/>
+  </symbol>
+
+</svg>
+
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>wiscourse — logo designs</h1>
+    <p class="sub">Twelve marks for a fast Canvas replacement at UW–Madison. Every mark is one
+    idea in one weight: speed, a local mirror, or the Wisconsin <b>W</b>. All are pure SVG,
+    two colors maximum, and readable at 16&nbsp;px.</p>
+  </div>
+  <button id="toggle">Dark</button>
+</header>
+
+<h2>Marks</h2>
+<div class="grid" id="grid"></div>
+
+<h2>Lockups</h2>
+<div class="grid" id="locks"></div>
+
+<h2>Wordmark only</h2>
+<div class="grid">
+  <div class="card">
+    <div class="stage"><span class="wordmark" style="font-size:32px">wiscourse</span></div>
+    <div class="meta">
+      <p class="name"><span class="num">13</span>Plain</p>
+      <p class="why">Lowercase, tight tracking, no mark. The safest option and the easiest to keep.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stage"><span class="wordmark" style="font-size:32px"><span class="hi">wis</span>course</span></div>
+    <div class="meta">
+      <p class="name"><span class="num">14</span>Split — wis</p>
+      <p class="why">Colour splits the name into its two parts: <b>wis</b>consin + <b>course</b>.
+      The break is clean, but it leaves "course" to carry the <b>c</b>.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stage"><span class="wordmark" style="font-size:32px"><span class="hi">wisc</span>ourse</span></div>
+    <div class="meta">
+      <p class="name"><span class="num">15</span>Split — wisc</p>
+      <p class="why">The red holds the full <b>wisc</b> — the same stem as <code>wisc.edu</code>.
+      The two halves share the <b>c</b>, so the name reads as one word, not two.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="stage"><span class="wordmark" style="font-size:32px">wiscourse<span class="hi">.</span></span></div>
+    <div class="meta">
+      <p class="name"><span class="num">16</span>Stop</p>
+      <p class="why">One red dot as the only mark. Works as a favicon on its own.</p>
+    </div>
+  </div>
+</div>
+
+<h2>Selected direction</h2>
+<p class="sub" style="margin:-6px 0 18px">Wordmark <b>15 — Split (wisc)</b> as the main logo.
+Mark <b>2 — Fast Forward</b> as the app icon and favicon, with the colours reversed so the
+red chevron leads and hands off into the word.</p>
+
+<div class="pick">
+
+  <div class="two">
+    <div class="panel">
+      <span class="lock-hero" style="font-size:36px">
+        <svg><use href="#m2t"/></svg>
+        <span class="wordmark"><span class="hi">wisc</span>ourse</span>
+      </span>
+      <p class="caption">Full lockup — light</p>
+    </div>
+    <div class="panel invert">
+      <span class="lock-hero" style="font-size:36px">
+        <svg><use href="#m2t"/></svg>
+        <span class="wordmark"><span class="hi">wisc</span>ourse</span>
+      </span>
+      <p class="caption">Full lockup — dark</p>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <span class="wordmark" style="font-size:44px"><span class="hi">wisc</span>ourse</span>
+      <p class="caption">Main logo — wordmark alone</p>
+    </div>
+    <div class="panel">
+      <div class="tiles">
+        <span class="tile on-light"><svg width="52" height="52"><use href="#m2i"/></svg></span>
+        <span class="tile on-dark"><svg width="52" height="52"><use href="#m2i"/></svg></span>
+        <span class="tile on-red"><svg width="52" height="52"><use href="#m2i"/></svg></span>
+      </div>
+      <p class="caption">App icon — three tile treatments</p>
+    </div>
+  </div>
+
+  <div class="two">
+    <div class="panel">
+      <div class="steps">
+        <span class="step"><svg width="64" height="64"><use href="#m2i"/></svg><span>64</span></span>
+        <span class="step"><svg width="32" height="32"><use href="#m2i"/></svg><span>32</span></span>
+        <span class="step"><svg width="24" height="24"><use href="#m2i"/></svg><span>24</span></span>
+        <span class="step"><svg width="16" height="16"><use href="#m2i"/></svg><span>16</span></span>
+      </div>
+      <p class="caption">Favicon sizes</p>
+    </div>
+    <div class="panel">
+      <div class="tabbar">
+        <span class="tab">
+          <svg width="16" height="16"><use href="#m2i"/></svg>
+          wiscourse — Dashboard
+        </span>
+      </div>
+      <p class="caption">In a browser tab</p>
+    </div>
+  </div>
+
+</div>
+
+<h2>Wordmark typeface</h2>
+<p class="sub" style="margin:-6px 0 18px">The wordmark will be converted to SVG outlines, so it
+renders the same on every machine. That means picking one typeface and freezing it. Every tile
+below uses the same weight (600) and the same tracking (−3.5%); the tracking gets tuned to
+whichever one wins. The first tile is the reference only — it is what you have been looking at,
+and it is the one option that cannot ship.</p>
+<div class="grid" id="fonts"></div>
+
+<h2>Apex balance</h2>
+<p class="sub" style="margin:-6px 0 18px">The mark is geometrically symmetric — measured on a real
+screenshot, both halves span 13&nbsp;px wide and y38–53, and all three peaks sit on the same row.
+What is left is optical, and only in dark mode: pure white blooms against a dark background and red
+does not, so the white half reads heavier and the red half looks like it sits higher. In light mode
+the ink is near-black, so there is nothing to correct. Each option below is shown large, then at
+20&nbsp;px and 16&nbsp;px, on both backgrounds.</p>
+<div class="grid" id="apex"></div>
+
+<h2>Notes</h2>
+<div class="notes">
+  <ul>
+    <li><b>Colour.</b> Red is UW–Madison Badger Red <code>#C5050C</code>. On dark backgrounds it
+        moves to <code>#FF4B54</code> for contrast. The rest of each mark is text colour, so the
+        logo inherits the theme and never needs a second file.</li>
+    <li><b>Best for a favicon.</b> 2, 3, 5, 8, 10 and 12 stay clear at 16&nbsp;px. 7 (Term) has the
+        most detail and is the weakest small.</li>
+    <li><b>Best fit to the product idea.</b> 4 (Mirror) and 12 (Sync Layers) say "local copy of
+        Canvas". 1, 2 and 9 say "fast". 10 says "Wisconsin" the loudest.</li>
+    <li><b>Chosen.</b> Wordmark 15 (Split — wisc) plus mark 2 (Fast Forward), inverted. Red leads
+        on the left, so the mark reads left to right into the red <b>wisc</b> of the word. See
+        "Selected direction" above.</li>
+    <li><b>Pairing rule.</b> Use the mark alone for the icon, favicon and any square slot. Use the
+        wordmark alone in the app header. Use the full lockup only where there is room for both —
+        marketing pages, the sign-in screen, the README.</li>
+    <li><b>Dark-mode ink: #e8e8ec</b>, not white — see <b>Apex balance</b>. The mark is
+        geometrically symmetric; the correction is purely optical, and it applies to the logo
+        only. Text stays at full <code>--foreground</code>.</li>
+    <li><b>Typeface: B, Inter SemiBold</b> at −3.5% tracking, converted to outlines. The logo is
+        no longer live text, so it is identical on every platform and needs no webfont.</li>
+    <li><b>Shipped.</b> <code>public/favicon.svg</code> and
+        <code>src/components/logo.tsx</code> (<code>LogoMark</code>, <code>Wordmark</code>,
+        <code>Logo</code>), wired into <code>index.html</code>, <code>src/index.css</code>
+        (the <code>--brand</code> token) and the app shell. App-icon PNGs and a web manifest are
+        deliberately not included — they are only needed for a home-screen or PWA install, and can
+        be added later without changing any of this.</li>
+  </ul>
+</div>
+
+</div>
+
+<script>
+  const marks = [
+    ["Velocity W",   "The Wisconsin W set in italic. Motion with nothing added."],
+    ["Fast Forward", "Two chevrons: a W, and the fast-forward control. Speed and place in one."],
+    ["Instant Stack","Course rows, already loaded. The short red row is the one that just synced."],
+    ["Mirror",       "The same shape twice — Canvas and its local copy. The product in one mark."],
+    ["Bolt Frame",   "A bolt held in an app tile. The most direct read of “this is fast”."],
+    ["Course Check", "A W whose last stroke keeps rising into a check. Work, then done."],
+    ["Term",         "A calendar holding a small W. Best if the calendar is the lead feature."],
+    ["Cache Ring",   "An open ring around a solid core: Canvas outside, your data inside."],
+    ["Ascender",     "A progress line that ends on a live point. Grades and terms, trending up."],
+    ["Badger Tile",  "Solid Badger Red with a knocked-out W. The strongest school signal."],
+    ["Underline W",  "A W over a rule — a page, a header, a course title."],
+    ["Sync Layers",  "Two stacked chevrons: data coming down and landing. Quiet and neutral."],
+  ];
+
+  const grid = document.getElementById("grid");
+  const locks = document.getElementById("locks");
+
+  marks.forEach(([name, why], i) => {
+    const n = i + 1;
+    grid.insertAdjacentHTML("beforeend", `
+      <div class="card">
+        <div class="stage"><svg width="76" height="76"><use href="#m${n}"/></svg></div>
+        <div class="meta">
+          <p class="name"><span class="num">${n}</span>${name}</p>
+          <p class="why">${why}</p>
+          <div class="sizes">
+            <svg width="32" height="32"><use href="#m${n}"/></svg>
+            <svg width="20" height="20"><use href="#m${n}"/></svg>
+            <svg width="16" height="16"><use href="#m${n}"/></svg>
+            <span class="chip"><svg width="24" height="24"><use href="#m${n}"/></svg></span>
+          </div>
+        </div>
+      </div>`);
+
+    locks.insertAdjacentHTML("beforeend", `
+      <div class="card">
+        <div class="stage">
+          <span class="lock">
+            <svg width="34" height="34"><use href="#m${n}"/></svg>
+            <span class="wordmark">wiscourse</span>
+          </span>
+        </div>
+        <div class="meta">
+          <p class="name"><span class="num">${n}</span>${name}</p>
+          <p class="why">Rough pairing only — every mark is set at one size beside the word so the
+          twelve can be compared. Baseline and cap-height alignment is done properly for the
+          chosen mark in <b>Selected direction</b>.</p>
+        </div>
+      </div>`);
+  });
+
+  const fonts = [
+    ["System", "ui-sans-serif, -apple-system, system-ui, sans-serif",
+     "SF Pro here, Segoe UI on Windows, Roboto on Android, anything on Linux. Reference only — the logo would change shape per visitor."],
+    ["Inter", "'Inter', sans-serif",
+     "The neutral choice, and the closest to what you already approved. Says nothing on its own, which for a logo carried by colour is a feature."],
+    ["Geist", "'Geist', sans-serif",
+     "Slightly tighter and more mechanical than Inter. Pairs with GeistMono, which you already have installed."],
+    ["Manrope", "'Manrope', sans-serif",
+     "Semi-geometric and rounder. Warmer and more distinctive; the round o and c soften the two-tone split."],
+    ["Instrument Sans", "'Instrument Sans', sans-serif",
+     "A touch narrower with sharper terminals. More editorial, and the most compact lockup of the set."],
+    ["Space Grotesk", "'Space Grotesk', sans-serif",
+     "The most character — note the r and the flat-sided s. Strongest personality, and the one most likely to date."],
+  ];
+
+  const fontGrid = document.getElementById("fonts");
+  fonts.forEach(([name, stack, why], i) => {
+    fontGrid.insertAdjacentHTML("beforeend", `
+      <div class="card">
+        <div class="stage" style="flex-direction:column;gap:16px;height:180px">
+          <span class="wordmark" style="font-family:${stack};font-size:38px">
+            <span class="hi">wisc</span>ourse
+          </span>
+          <span class="lock-hero" style="font-family:${stack};font-size:19px">
+            <svg><use href="#m2t"/></svg>
+            <span class="wordmark"><span class="hi">wisc</span>ourse</span>
+          </span>
+        </div>
+        <div class="meta">
+          <p class="name"><span class="num">${String.fromCharCode(65 + i)}</span>${name}</p>
+          <p class="why">${why}</p>
+        </div>
+      </div>`);
+  });
+
+  // Apex-balance candidates. Each is the same W path; only the dark-mode ink
+  // colour, the two stroke weights, and the apex height differ.
+  const apexOpts = [
+    ["A — current", "Pure white ink, equal weights, apex level with the outer terminals.",
+     { ink: "#ffffff", wInk: 6.5, wRed: 6.5, apex: 19 }],
+    ["B — dimmed ink ✓ chosen", "Ink drops off pure white so it stops blooming. Nothing else changes — no geometry, one value. This is what ships: <code>#e8e8ec</code> in the favicon, <code>--brand-ink</code> in the app.",
+     { ink: "#e8e8ec", wInk: 6.5, wRed: 6.5, apex: 19 }],
+    ["C — dimmed + weight", "Also gives the red 0.3 more stroke, so the two halves match in apparent weight rather than in numbers.",
+     { ink: "#e8e8ec", wInk: 6.4, wRed: 6.7, apex: 19 }],
+    ["D — dimmed + overshoot", "Also lifts the apex 1 unit. A point reads lower than a blunt end at the same height; this is the type-design fix.",
+     { ink: "#e8e8ec", wInk: 6.5, wRed: 6.5, apex: 18 }],
+  ];
+
+  const apexGrid = document.getElementById("apex");
+  apexOpts.forEach(([name, why, o], i) => {
+    const d = `M10 19 L21 45 L32 ${o.apex} L43 45 L54 19`;
+    const mark = (px, ink, dark) => `
+      <svg width="${px}" height="${px}" viewBox="0 0 64 64">
+        <defs><clipPath id="ax${i}${px}${dark ? "d" : "l"}">
+          <rect x="0" y="0" width="32.25" height="64"/></clipPath></defs>
+        <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="${ink}" stroke-width="${o.wInk}" d="${d}"/>
+          <path stroke="${dark ? "#ff4b54" : "#c5050c"}" stroke-width="${o.wRed}" d="${d}"
+                clip-path="url(#ax${i}${px}${dark ? "d" : "l"})"/>
+        </g></svg>`;
+    const strip = (ink, dark) => `
+      <div style="display:flex;align-items:center;gap:16px;justify-content:center;
+                  padding:18px;border-radius:12px;background:${dark ? "#0d0e11" : "#ffffff"};
+                  border:1px solid ${dark ? "transparent" : "var(--line)"}">
+        ${mark(96, ink, dark)}${mark(20, ink, dark)}${mark(16, ink, dark)}
+      </div>`;
+    apexGrid.insertAdjacentHTML("beforeend", `
+      <div class="card">
+        <div class="stage" style="flex-direction:column;gap:10px;height:auto;padding:14px">
+          ${strip(o.ink, true)}${strip("#101114", false)}
+        </div>
+        <div class="meta">
+          <p class="name">${name}</p>
+          <p class="why">${why}</p>
+        </div>
+      </div>`);
+  });
+
+  const btn = document.getElementById("toggle");
+  btn.onclick = () => {
+    const dark = document.documentElement.classList.toggle("dark");
+    btn.textContent = dark ? "Light" : "Dark";
+  };
+</script>
+
+</body>
+</html>

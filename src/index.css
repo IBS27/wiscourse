@@ -36,6 +36,9 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* UW–Madison Badger Red, #c5050c. Logo only — not a UI accent. */
+  --brand: oklch(0.518 0.21 28.3);
+  --brand-ink: var(--foreground);
 }
 
 .dark {
@@ -70,6 +73,13 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* Lifted to #ff4b54 — Badger Red does not hold contrast on a dark background. */
+  --brand: oklch(0.672 0.216 22.6);
+  /* #e8e8ec, dimmer than --foreground. White blooms against a dark background
+     and the red does not, so the logo's two halves read as unequal weight even
+     though they are geometrically identical. Logo only; text stays at
+     --foreground. */
+  --brand-ink: oklch(0.932 0.005 280);
 }
 
 @theme inline {
@@ -108,6 +118,7 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-brand: var(--brand);
 }
 
 @layer base {

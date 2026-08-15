@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .brand { stroke: #c5050c }
+    .ink   { stroke: #101114 }
+    /* A tab bar can be dark, and a near-black chevron would vanish there. The ink
+       stops short of pure white on purpose: white blooms against a dark
+       background and the red does not, which makes the two halves read as
+       unequal weight even though they are geometrically identical. */
+    @media (prefers-color-scheme: dark) {
+      .brand { stroke: #ff4b54 }
+      .ink   { stroke: #e8e8ec }
+    }
+  </style>
+  <!-- One continuous W drawn twice, each copy clipped to its own half. Drawing it
+       as two separate chevrons instead would put a round cap on each side of the
+       shared apex, and whichever was painted second would bury the other's
+       terminal — making that half look half a stroke shorter. Splitting at the
+       apex (x=32) gives each colour exactly half of the join.
+
+       The geometry is the base mark scaled 1.15x about the centre of the box, so
+       the ink fills 90.7% of the width instead of 78.9%. A favicon is read at
+       16px and does not need the padding a lockup does. Scaling about x=32 leaves
+       the apex — and therefore the clip boundary — exactly where it was. The
+       component in src/components/logo.tsx is unaffected: it carries its own
+       viewBox trimmed to the ink. -->
+  <defs>
+    <clipPath id="wc-left"><rect x="0" y="0" width="32" height="64"/></clipPath>
+    <clipPath id="wc-right"><rect x="32" y="0" width="32" height="64"/></clipPath>
+  </defs>
+  <g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+    <path class="brand" d="M6.7 17.05 L19.35 46.95 L32 17.05 L44.65 46.95 L57.3 17.05" clip-path="url(#wc-left)"/>
+    <path class="ink"   d="M6.7 17.05 L19.35 46.95 L32 17.05 L44.65 46.95 L57.3 17.05" clip-path="url(#wc-right)"/>
+  </g>
+</svg>

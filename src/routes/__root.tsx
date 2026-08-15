@@ -9,6 +9,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo, Wordmark } from "@/components/logo";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -34,7 +35,9 @@ function RootLayout() {
       <Unauthenticated>
         <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-8 text-center">
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">wiscourse</h1>
+            <h1>
+              <Logo className="text-4xl" />
+            </h1>
             <p className="max-w-md text-muted-foreground">
               A fast, reliable interface for Canvas at UW–Madison. Your
               courses, assignments, calendar, and tasks in one place.
@@ -50,8 +53,8 @@ function RootLayout() {
         <div className="flex min-h-screen">
           <aside className="flex w-60 flex-col border-r bg-sidebar">
             <div className="px-5 py-5">
-              <Link to="/" className="text-xl font-bold tracking-tight">
-                wiscourse
+              <Link to="/" className="text-xl">
+                <Wordmark />
               </Link>
             </div>
             <nav className="flex flex-1 flex-col gap-1 px-3">
