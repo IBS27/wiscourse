@@ -18,7 +18,7 @@
 <body>
 
 <h1>wiscourse — project overview</h1>
-<p><em>Last updated: 2026-08-13</em></p>
+<p><em>Last updated: 2026-08-17</em></p>
 
 <h2>What this is</h2>
 <p>A replacement UI for Canvas at UW–Madison. The official Canvas UI is slow and
@@ -30,6 +30,51 @@ management, a real calendar, and task management on top.</p>
 <p><strong>The UI never waits on Canvas.</strong> Background jobs pull Canvas
 data into Convex. The UI reads only from Convex. This one decision is what
 makes the app fast.</p>
+
+<h2>Product design (decided 2026-08-17)</h2>
+<p><strong>Shape:</strong> an agenda-first planner that mirrors Canvas. Designed
+generic for many students, built for one user now. Responsive PWA: sidebar on
+desktop, bottom tabs on mobile; light + dark; calm, dense, keyboard-friendly.</p>
+
+<p><strong>Unified todos.</strong> One <code>todos</code> concept. Canvas
+assignments (incl. graded discussions and quizzes) are non-deletable todos;
+personal tasks are local only — no Canvas Planner round-trip. Each todo has a
+planned date, embedded subtasks, and notes. Done = manual <em>or</em> auto on
+submission; un-done is allowed. Quick-add parses natural language
+("read ch 4 fri #cs537"). Todos and notes are kept forever.</p>
+
+<p><strong>Agenda rules.</strong> A todo shows on its planned day, and on its
+due day only if not done. A missed planned date rolls to today unless the
+Canvas due date has passed — then it is Overdue.</p>
+
+<table>
+  <tr><th>Route</th><th>What it does</th></tr>
+  <tr><td>Home</td><td>Sync status line · Overdue · Today · Tomorrow · This week · Later. Side (desktop) / collapsible (mobile) "New" panel: unread announcements, grade postings, new or changed assignments. Shows first-sync progress.</td></tr>
+  <tr><td>Inbox</td><td>One chronological feed of announcements, grade postings, new/changed assignments; type + course chips; per-item <code>seenAt</code>; mark all read; nav badges.</td></tr>
+  <tr><td>Courses/:id</td><td>Modules (read-only state; LTI items deep-link to Canvas) · pages rendered in-app (sanitized, internal links rewritten) · files browser + preview · syllabus · announcements (full HTML) · grades tab. Local-only colour, nickname, order, hide.</td></tr>
+  <tr><td>Assignment</td><td>Header · plan (planned date, subtasks, notes) · description · submission panel (status, submit, grader comments, rubric) · Canvas link.</td></tr>
+  <tr><td>Tasks</td><td>All todos: undated, done archive, filters.</td></tr>
+  <tr><td>Grades</td><td>Course cards → weighted table by assignment group; inline what-if edits, reset, "needed on remaining for X%". Canvas score is the truth; local math only for hypotheticals; never show unposted scores.</td></tr>
+  <tr><td>Calendar</td><td>Week / Month / Day (Day default on mobile): Canvas events, due times, planned todos, local events. ICS export via secret URL with per-type toggles and regenerate. Time zone: browser, with override.</td></tr>
+  <tr><td>Settings</td><td>Connect Canvas (token now, OAuth later, same screen); expiry banners at 14/7/1 days; freeze sync and show reconnect on 401; sync status + errors; disconnect deletes Canvas data but keeps todos; separate delete-all.</td></tr>
+  <tr><td>⌘K</td><td>Search courses, assignments, pages, files, announcements + quick actions.</td></tr>
+</table>
+
+<p><strong>Files:</strong> client never holds the token. Prefer Canvas per-file
+<code>verifier</code> URLs fetched fresh by an action; fall back to a Convex HTTP
+proxy if CORS blocks preview.</p>
+
+<p><strong>Sync:</strong> active courses = active enrollments in the current or
+open-ended term; only those sync (past courses show from existing data). Tripwire
+every 2 min while the user is active (5-min client heartbeat), else 15 min; delta
+on trip; full nightly. Manual refresh + "last synced" everywhere.</p>
+
+<p><strong>Writes in v1:</strong> todos (optimistic) and assignment submission
+(file / text / URL through a confirmed outbox, last milestone). Everything else
+links out.</p>
+
+<p><strong>Deferred:</strong> discussions, Canvas Inbox messages, quiz taking,
+push notifications (plumbing only), Sentry, ICS import, Planner sync.</p>
 
 <h2>Tech stack</h2>
 <table>
@@ -77,18 +122,20 @@ makes the app fast.</p>
 
 <h2>Current state</h2>
 <ul>
-  <li>Scaffold works end to end: Clerk sign-in → Convex → UI shell with Dashboard, Courses, Calendar, Tasks, Settings.</li>
-  <li>All UI pages and query functions are placeholders — free to redesign.</li>
-  <li>Schema covers the sync spine only. Known gaps: modules/pages/files, discussions, course grade rollup, submission detail, New Quizzes, a write outbox, read/unread state, user preferences.</li>
+  <li>Scaffold works end to end: Clerk sign-in → Convex → placeholder UI shell (Dashboard, Courses, Calendar, Tasks, Settings). M2 replaces it with the decided routes above.</li>
+  <li>All UI pages, query functions, and the schema are placeholders — free to redesign.</li>
+  <li>Schema covers the sync spine only. To add in M1: unified todos (Canvas assignments stay a pure mirror; plan/subtasks/notes/done live in a <code>todos</code> row beside them, no Planner fields), modules/pages/files, grades, seen-state, submission detail, the write outbox, user preferences. Discussions and quizzes are deferred, not gaps.</li>
   <li>Sync code is typechecked but not yet tested against real Canvas data — waiting on my token from DoIT.</li>
 </ul>
 
-<h2>Next steps</h2>
+<h2>Milestones</h2>
 <ol>
-  <li>Connect my token in Settings; validate the full sync against real data.</li>
-  <li>Email Learn@UW about the developer key (critical path — start now).</li>
-  <li>Extend schema: modules/pages/files first, then course grades, then the write outbox for submissions.</li>
-  <li>Design the real UI on top of the placeholder pages.</li>
+  <li><strong>M1</strong> — connect my token; validate the sync spine on real data; extend schema (unified todos, modules/pages/files, grades, seen-state). Email Learn@UW about the developer key (critical path).</li>
+  <li><strong>M2</strong> — app shell (sidebar / bottom tabs, dark mode) + Home agenda + todos + quick-add.</li>
+  <li><strong>M3</strong> — course hub (modules, pages, files, syllabus, announcements) + Inbox + ⌘K.</li>
+  <li><strong>M4</strong> — Calendar views + ICS export + Grades / what-if.</li>
+  <li><strong>M5</strong> — adaptive sync + heartbeat, token-expiry UX, notification plumbing.</li>
+  <li><strong>M6</strong> — submission outbox (file / text / URL, confirmed writes).</li>
 </ol>
 
 <h2>Commands</h2>
