@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { PageHeader } from "@/components/app/page-header";
 import { useQuery } from "convex/react";
 import { Star } from "lucide-react";
 import { api } from "../../convex/_generated/api";
@@ -18,8 +19,9 @@ function Courses() {
   const courses = useQuery(api.courses.list);
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Courses</h1>
+    <div className="flex flex-1 flex-col">
+      <PageHeader title="Courses" />
+      <div className="space-y-6 p-4 md:p-6">
 
       {courses === undefined ? (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -54,6 +56,7 @@ function Courses() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

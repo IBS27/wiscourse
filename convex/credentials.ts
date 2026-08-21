@@ -118,6 +118,7 @@ export const status = query({
       kind: credential.kind,
       canvasUserName: credential.canvasUserName,
       credentialStatus: credential.status,
+      expiresAt: credential.expiresAt,
       sync: syncState
         ? {
             status: syncState.status,

@@ -63,8 +63,42 @@ export const entityKind = v.union(
   v.literal("file"),
   v.literal("moduleItem"),
   v.literal("calendarEvent"),
-  v.literal("task"),
 );
+
+// Canvas sources a todo can mirror.
+export const todoCanvasKind = v.union(
+  v.literal("assignment"),
+  v.literal("quiz"),
+  v.literal("discussion"),
+);
+
+export const subtask = v.object({
+  id: v.string(),
+  title: v.string(),
+  done: v.boolean(),
+});
+
+// Palette keys; the light/dark values live in src/index.css.
+export const courseColor = v.union(
+  v.literal("indigo"),
+  v.literal("amber"),
+  v.literal("teal"),
+  v.literal("sky"),
+  v.literal("rose"),
+  v.literal("emerald"),
+  v.literal("violet"),
+  v.literal("orange"),
+);
+export const COURSE_COLORS = [
+  "indigo",
+  "amber",
+  "teal",
+  "sky",
+  "rose",
+  "emerald",
+  "violet",
+  "orange",
+] as const;
 
 // Shared column set for per-course synced content.
 const synced = {
@@ -181,6 +215,10 @@ export default defineSchema({
     lockedForUser: v.optional(v.boolean()),
     omitFromFinalGrade: v.optional(v.boolean()),
     submission: v.optional(submissionFields),
+    // Canvas-side timestamps: "new assignment" means created in Canvas
+    // recently, not synced recently.
+    canvasCreatedAt: v.optional(v.number()),
+    canvasUpdatedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
     .index("by_user_canvasId", ["userId", "canvasId"])
@@ -335,35 +373,42 @@ export default defineSchema({
     .index("by_user_startAt", ["userId", "startAt"])
     .index("by_user_canvasId", ["userId", "canvasId"]),
 
-  // The only local-write table for todos. Canvas-sourced items (assignments,
-  // quizzes, graded discussions) are never copied here; the unified todo
-  // list is a query over those tables plus `tasks` plus `overrides`.
-  tasks: defineTable({
+  // The one local-write table for todos. A Canvas item (assignment,
+  // quiz, graded discussion) stays a pure mirror in its own table; the
+  // student's plan for it — planned day, subtasks, notes, done — lives in
+  // a row here keyed by (canvasKind, canvasId). Personal tasks are rows
+  // with `source: "local"` and carry their own title / due date / course.
+  // Nothing here round-trips to the Canvas Planner.
+  todos: defineTable({
     userId: v.string(),
-    title: v.string(),
-    details: v.optional(v.string()),
-    dueAt: v.optional(v.number()),
-    completedAt: v.optional(v.number()),
+    source: v.union(v.literal("canvas"), v.literal("local")),
+    canvasKind: v.optional(todoCanvasKind),
+    canvasId: v.optional(v.number()),
     courseCanvasId: v.optional(v.number()),
-    source: v.union(v.literal("local"), v.literal("canvas")),
-    canvasPlannerNoteId: v.optional(v.number()),
-    syncedAt: v.optional(v.number()),
+    // Local tasks only; Canvas items take these from the mirror row.
+    title: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+    // Calendar day in the user's zone, "YYYY-MM-DD". Day-keyed on purpose:
+    // a plan is "Friday", not an instant, and must not shift with DST.
+    plannedDay: v.optional(v.string()),
+    subtasks: v.array(subtask),
+    notes: v.optional(v.string()),
+    doneAt: v.optional(v.number()),
+    // Set when the sync marked it done on submission, so the UI can say so.
+    doneBySubmission: v.optional(v.boolean()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_plannerNote", ["userId", "canvasPlannerNoteId"]),
+    .index("by_user_canvas", ["userId", "canvasKind", "canvasId"]),
 
-  // Local state layered over synced rows so a resync never clobbers it.
-  // Mirrors Canvas planner_overrides semantics (marked_complete / dismissed).
-  overrides: defineTable({
+  // Local-only course presentation: colour, nickname, order, hidden.
+  coursePrefs: defineTable({
     userId: v.string(),
-    kind: entityKind,
-    canvasId: v.number(),
-    completedAt: v.optional(v.number()),
-    dismissedAt: v.optional(v.number()),
-    canvasPlannerOverrideId: v.optional(v.number()),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
+    courseCanvasId: v.number(),
+    color: v.optional(courseColor),
+    nickname: v.optional(v.string()),
+    position: v.optional(v.number()),
+    hidden: v.optional(v.boolean()),
+  }).index("by_user_course", ["userId", "courseCanvasId"]),
 
   // "Have I looked at this yet" for announcements, pages, files, module
   // items, grade changes. Keyed by kind + canvasId; one row per entity.

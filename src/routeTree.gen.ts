@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CoursesRouteImport } from './routes/courses'
+import { Route as GradesRouteImport } from './routes/grades'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TodoKeyRouteImport } from './routes/todo.$key'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -30,6 +33,16 @@ const CoursesRoute = CoursesRouteImport.update({
   path: '/courses',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GradesRoute = GradesRouteImport.update({
+  id: '/grades',
+  path: '/grades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -40,43 +53,85 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TodoKeyRoute = TodoKeyRouteImport.update({
+  id: '/todo/$key',
+  path: '/todo/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courses': typeof CoursesRoute
+  '/grades': typeof GradesRoute
+  '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/todo/$key': typeof TodoKeyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courses': typeof CoursesRoute
+  '/grades': typeof GradesRoute
+  '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/todo/$key': typeof TodoKeyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courses': typeof CoursesRoute
+  '/grades': typeof GradesRoute
+  '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/todo/$key': typeof TodoKeyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/courses' | '/settings' | '/tasks'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/courses'
+    | '/grades'
+    | '/inbox'
+    | '/settings'
+    | '/tasks'
+    | '/todo/$key'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/courses' | '/settings' | '/tasks'
-  id: '__root__' | '/' | '/calendar' | '/courses' | '/settings' | '/tasks'
+  to:
+    | '/'
+    | '/calendar'
+    | '/courses'
+    | '/grades'
+    | '/inbox'
+    | '/settings'
+    | '/tasks'
+    | '/todo/$key'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/courses'
+    | '/grades'
+    | '/inbox'
+    | '/settings'
+    | '/tasks'
+    | '/todo/$key'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   CoursesRoute: typeof CoursesRoute
+  GradesRoute: typeof GradesRoute
+  InboxRoute: typeof InboxRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  TodoKeyRoute: typeof TodoKeyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -102,6 +157,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CoursesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/grades': {
+      id: '/grades'
+      path: '/grades'
+      fullPath: '/grades'
+      preLoaderRoute: typeof GradesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -116,6 +185,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/todo/$key': {
+      id: '/todo/$key'
+      path: '/todo/$key'
+      fullPath: '/todo/$key'
+      preLoaderRoute: typeof TodoKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -123,8 +199,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   CoursesRoute: CoursesRoute,
+  GradesRoute: GradesRoute,
+  InboxRoute: InboxRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  TodoKeyRoute: TodoKeyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

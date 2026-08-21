@@ -7,7 +7,6 @@
 import { v, type Infer } from "convex/values";
 import {
   mutation,
-  query,
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
@@ -17,15 +16,12 @@ import { requireUserId } from "./lib/auth";
 
 type EntityKind = Infer<typeof entityKind>;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const ANNOUNCEMENT_WINDOW_MS = 30 * DAY_MS;
-
 /** The grade "version" a student has seen: the posted-at timestamp. */
 export function gradeVersion(postedAt: number): string {
   return String(postedAt);
 }
 
-async function upsertSeen(
+export async function upsertSeen(
   ctx: MutationCtx,
   userId: string,
   kind: EntityKind,
@@ -38,11 +34,16 @@ async function upsertSeen(
       q.eq("userId", userId).eq("kind", kind).eq("canvasId", canvasId),
     )
     .unique();
-  const row = { userId, kind, canvasId, seenAt: Date.now(), seenVersion };
+  // A grade and a "new assignment" feed item share one row, so an update
+  // without a version must not clear the grade version already acknowledged.
+  const row = { userId, kind, canvasId, seenAt: Date.now() };
   if (existing === null) {
-    await ctx.db.insert("seenState", row);
+    await ctx.db.insert("seenState", { ...row, seenVersion });
   } else {
-    await ctx.db.patch(existing._id, row);
+    await ctx.db.patch(
+      existing._id,
+      seenVersion === undefined ? row : { ...row, seenVersion },
+    );
   }
 }
 
@@ -93,40 +94,3 @@ export async function getSeenSet(
   return new Map(rows.map((row) => [row.canvasId, row]));
 }
 
-export const unseenCounts = query({
-  args: {},
-  returns: v.object({ announcements: v.number(), grades: v.number() }),
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) return { announcements: 0, grades: 0 };
-    const userId = identity.subject;
-    const since = Date.now() - ANNOUNCEMENT_WINDOW_MS;
-
-    const announcementRows = await ctx.db
-      .query("discussions")
-      .withIndex("by_user_announcement_postedAt", (q) =>
-        q.eq("userId", userId).eq("isAnnouncement", true).gte("postedAt", since),
-      )
-      .collect();
-    const seenDiscussions = await getSeenSet(ctx, userId, "discussion");
-    const announcements = announcementRows.filter(
-      (row) => !seenDiscussions.has(row.canvasId),
-    ).length;
-
-    // A grade counts as unseen once it is *posted*; an unposted grade is
-    // not shown at all, so it can never be pending.
-    const assignments = await ctx.db
-      .query("assignments")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-    const seenAssignments = await getSeenSet(ctx, userId, "assignment");
-    const grades = assignments.filter((assignment) => {
-      const postedAt = assignment.submission?.postedAt;
-      if (postedAt === undefined) return false;
-      const seen = seenAssignments.get(assignment.canvasId);
-      return seen === undefined || seen.seenVersion !== gradeVersion(postedAt);
-    }).length;
-
-    return { announcements, grades };
-  },
-});

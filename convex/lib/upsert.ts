@@ -37,7 +37,7 @@ export type UpsertRow<T extends SyncedTableNames> = Omit<
 /**
  * Insert or patch rows keyed by (userId, canvasId). Patches replace the
  * provided fields only, so columns that live outside the sync payload
- * (none today, by design — local state lives in `overrides`/`seenState`)
+ * (none today, by design — local state lives in `todos`/`seenState`)
  * survive untouched.
  */
 export async function upsertByCanvasId<T extends SyncedTableNames>(

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { PageHeader } from "@/components/app/page-header";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +29,9 @@ function Calendar() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
+    <div className="flex flex-1 flex-col">
+      <PageHeader title="Calendar" />
+      <div className="space-y-6 p-4 md:p-6">
       <p className="text-sm text-muted-foreground">Next 30 days</p>
 
       {events === undefined ? (
@@ -72,6 +74,7 @@ function Calendar() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }

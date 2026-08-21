@@ -194,6 +194,8 @@ export interface CanvasSubmission {
 }
 
 export interface CanvasAssignment {
+  created_at: string;
+  updated_at: string;
   id: number;
   course_id: number;
   name: string;
@@ -223,14 +225,6 @@ export interface CanvasCalendarEvent {
   all_day: boolean;
   location_name: string | null;
   context_code: string;
-}
-
-export interface CanvasPlannerNote {
-  id: number;
-  title: string;
-  details: string | null;
-  todo_date: string | null;
-  course_id: number | null;
 }
 
 export interface CanvasActivityStreamSummaryItem {

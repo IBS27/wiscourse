@@ -7,9 +7,15 @@
 // pages, files) in storeContent.ts.
 
 import { v, type Infer } from "convex/values";
-import { internalMutation, internalQuery } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import {
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+} from "./_generated/server";
 import { submissionFields, courseDefaultView } from "./schema";
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
+import { findCanvasTodo } from "./todos";
 
 const courseUpsert = v.object({
   canvasId: v.number(),
@@ -51,6 +57,8 @@ const assignmentUpsert = v.object({
   lockedForUser: v.optional(v.boolean()),
   omitFromFinalGrade: v.optional(v.boolean()),
   submission: v.optional(submissionFields),
+  canvasCreatedAt: v.optional(v.number()),
+  canvasUpdatedAt: v.optional(v.number()),
 });
 
 const calendarEventUpsert = v.object({
@@ -64,18 +72,9 @@ const calendarEventUpsert = v.object({
   location: v.optional(v.string()),
 });
 
-const plannerNoteUpsert = v.object({
-  canvasPlannerNoteId: v.number(),
-  title: v.string(),
-  details: v.optional(v.string()),
-  dueAt: v.optional(v.number()),
-  courseCanvasId: v.optional(v.number()),
-});
-
 export type CourseUpsert = Infer<typeof courseUpsert>;
 export type AssignmentUpsert = Infer<typeof assignmentUpsert>;
 export type CalendarEventUpsert = Infer<typeof calendarEventUpsert>;
-export type PlannerNoteUpsert = Infer<typeof plannerNoteUpsert>;
 
 export const getSyncState = internalQuery({
   args: { userId: v.string() },
@@ -188,6 +187,40 @@ export const upsertCourses = internalMutation({
   },
 });
 
+/**
+ * Auto-done on submission. Must run before the assignment row is written so
+ * `existing` still carries the previous `submittedAt`: only a *new*
+ * submission marks the todo done, so a student who un-dones a submitted
+ * item is not re-done by every later sync. Rows we have never seen are
+ * skipped too — on a first sync that would seed a done row for every
+ * assignment the student ever submitted.
+ */
+async function markDoneIfNewlySubmitted(
+  ctx: MutationCtx,
+  userId: string,
+  existing: Doc<"assignments"> | null,
+  submission: Infer<typeof submissionFields> | undefined,
+): Promise<void> {
+  const submittedAt = submission?.submittedAt;
+  if (existing === null || submittedAt === undefined) return;
+  if (existing.submission?.submittedAt === submittedAt) return;
+  const todo = await findCanvasTodo(ctx, userId, "assignment", existing.canvasId);
+  if (todo === null) {
+    await ctx.db.insert("todos", {
+      userId,
+      source: "canvas",
+      canvasKind: "assignment",
+      canvasId: existing.canvasId,
+      courseCanvasId: existing.courseCanvasId,
+      subtasks: [],
+      doneAt: submittedAt,
+      doneBySubmission: true,
+    });
+  } else if (todo.doneAt === undefined) {
+    await ctx.db.patch(todo._id, { doneAt: submittedAt, doneBySubmission: true });
+  }
+}
+
 export const upsertAssignments = internalMutation({
   args: {
     userId: v.string(),
@@ -203,6 +236,15 @@ export const upsertAssignments = internalMutation({
       ...assignment,
       courseCanvasId: args.courseCanvasId,
     }));
+    for (const row of rows) {
+      const existing = await ctx.db
+        .query("assignments")
+        .withIndex("by_user_canvasId", (q) =>
+          q.eq("userId", args.userId).eq("canvasId", row.canvasId),
+        )
+        .unique();
+      await markDoneIfNewlySubmitted(ctx, args.userId, existing, row.submission);
+    }
     await upsertByCanvasId(ctx, "assignments", args.userId, rows);
     if (args.prune) {
       await pruneCourseRows(
@@ -237,6 +279,7 @@ export const applySubmissionUpdates = internalMutation({
           q.eq("userId", args.userId).eq("canvasId", update.assignmentCanvasId),
         )
         .unique();
+      await markDoneIfNewlySubmitted(ctx, args.userId, existing, update.submission);
       if (existing) {
         await ctx.db.patch(existing._id, {
           submission: update.submission,
@@ -261,39 +304,6 @@ export const upsertCalendarEvents = internalMutation({
       source: "canvas" as const,
     }));
     await upsertByCanvasId(ctx, "calendarEvents", args.userId, rows);
-    return null;
-  },
-});
-
-export const upsertPlannerTasks = internalMutation({
-  args: { userId: v.string(), notes: v.array(plannerNoteUpsert) },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    // Keyed by canvasPlannerNoteId rather than canvasId: `tasks` is the
-    // local-write table and Canvas notes are only one of its sources.
-    const now = Date.now();
-    for (const note of args.notes) {
-      const existing = await ctx.db
-        .query("tasks")
-        .withIndex("by_user_plannerNote", (q) =>
-          q
-            .eq("userId", args.userId)
-            .eq("canvasPlannerNoteId", note.canvasPlannerNoteId),
-        )
-        .unique();
-      const { canvasPlannerNoteId, ...fields } = note;
-      if (existing) {
-        await ctx.db.patch(existing._id, { ...fields, syncedAt: now });
-      } else {
-        await ctx.db.insert("tasks", {
-          userId: args.userId,
-          source: "canvas",
-          canvasPlannerNoteId,
-          ...fields,
-          syncedAt: now,
-        });
-      }
-    }
     return null;
   },
 });

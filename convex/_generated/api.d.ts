@@ -20,11 +20,11 @@ import type * as crons from "../crons.js";
 import type * as discussions from "../discussions.js";
 import type * as files from "../files.js";
 import type * as grades from "../grades.js";
+import type * as inbox from "../inbox.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_upsert from "../lib/upsert.js";
 import type * as modules from "../modules.js";
-import type * as overrides from "../overrides.js";
 import type * as pages from "../pages.js";
 import type * as quizzes from "../quizzes.js";
 import type * as seenState from "../seenState.js";
@@ -32,7 +32,6 @@ import type * as storeContent from "../storeContent.js";
 import type * as storeCourseMeta from "../storeCourseMeta.js";
 import type * as sync from "../sync.js";
 import type * as syncStore from "../syncStore.js";
-import type * as tasks from "../tasks.js";
 import type * as todos from "../todos.js";
 
 import type {
@@ -54,11 +53,11 @@ declare const fullApi: ApiFromModules<{
   discussions: typeof discussions;
   files: typeof files;
   grades: typeof grades;
+  inbox: typeof inbox;
   "lib/auth": typeof lib_auth;
   "lib/crypto": typeof lib_crypto;
   "lib/upsert": typeof lib_upsert;
   modules: typeof modules;
-  overrides: typeof overrides;
   pages: typeof pages;
   quizzes: typeof quizzes;
   seenState: typeof seenState;
@@ -66,7 +65,6 @@ declare const fullApi: ApiFromModules<{
   storeCourseMeta: typeof storeCourseMeta;
   sync: typeof sync;
   syncStore: typeof syncStore;
-  tasks: typeof tasks;
   todos: typeof todos;
 }>;
 

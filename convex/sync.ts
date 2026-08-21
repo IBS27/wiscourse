@@ -5,7 +5,7 @@
 // Tier 2 (delta): the cheap, frequently-changing slice. Per course, two
 // filtered submission calls (submitted_since / graded_since) plus recently
 // active discussion topics and the content refresh; globally, one
-// /announcements call per 10 courses and planner notes.
+// /announcements call per 10 courses.
 // Tier 3 (nightly full): everything, and the only tier allowed to prune —
 // courses (with tabs, syllabus and enrollment totals), assignments,
 // per-course metadata (assignment groups, grading periods, quizzes,
@@ -14,9 +14,8 @@
 //
 // Request budget, unpaginated: per course ~11 on a full sync (1 assignments,
 // up to 1 tabs, 5 metadata, 4 content) and 4 on a delta (2 submissions, 1
-// discussions, 1 modules). Per user on top of that: 1 courses list, 1
-// planner notes, and one calendar (full) or announcements (delta) call per
-// 10 courses. A 6-course student therefore costs ~70 requests nightly and
+// discussions, 1 modules). Per user on top of that: 1 courses list and one
+// calendar (full) or announcements (delta) call per 10 courses. A 6-course student therefore costs ~70 requests nightly and
 // ~26 per delta — well inside a single token's budget.
 //
 // Dispatch rules (Convex-specific, deliberate):
@@ -51,7 +50,6 @@ import {
   type CanvasCalendarEvent,
   type CanvasCourse,
   type CanvasDiscussionTopic,
-  type CanvasPlannerNote,
   type CanvasSubmission,
   type CanvasTab,
 } from "./canvas/types";
@@ -61,11 +59,10 @@ import type {
   AssignmentUpsert,
   CalendarEventUpsert,
   CourseUpsert,
-  PlannerNoteUpsert,
 } from "./syncStore";
 import type { DiscussionUpsert } from "./storeCourseMeta";
+import { DAY_MS } from "./lib/time";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 // The calendar_events endpoint silently ignores context codes past the
 // first 10 — chunking is mandatory, not an optimization.
 const CONTEXT_CODE_CHUNK = 10;
@@ -238,7 +235,6 @@ async function runFullSync(
   // the genuinely cross-course endpoints are left here.
   const courseIds = courses.map((course) => course.id);
   await syncCalendarEvents(ctx, userId, client, session, courseIds);
-  await syncPlannerNotes(ctx, userId, client);
 
   await ctx.runMutation(internal.syncStore.recordSyncResult, {
     userId,
@@ -301,7 +297,6 @@ async function runDeltaSync(
   }
 
   await syncAnnouncements(ctx, userId, client, courseIds, sinceMs);
-  await syncPlannerNotes(ctx, userId, client);
 
   await ctx.runMutation(internal.syncStore.recordSyncResult, {
     userId,
@@ -392,29 +387,6 @@ async function syncCalendarEvents(
         events: upserts,
       });
     }
-  }
-}
-
-async function syncPlannerNotes(
-  ctx: ActionCtx,
-  userId: string,
-  client: CanvasClient,
-): Promise<void> {
-  const notes = await client.getPaginated<CanvasPlannerNote>("/planner_notes", {
-    start_date: new Date(Date.now() - 30 * DAY_MS).toISOString(),
-  });
-  const upserts: PlannerNoteUpsert[] = notes.map((note) => ({
-    canvasPlannerNoteId: note.id,
-    title: note.title,
-    details: note.details ?? undefined,
-    dueAt: toMillis(note.todo_date),
-    courseCanvasId: note.course_id ?? undefined,
-  }));
-  if (upserts.length > 0) {
-    await ctx.runMutation(internal.syncStore.upsertPlannerTasks, {
-      userId,
-      notes: upserts,
-    });
   }
 }
 
@@ -532,6 +504,8 @@ function mapAssignment(assignment: CanvasAssignment): AssignmentUpsert {
     submission: assignment.submission
       ? mapSubmission(assignment.submission)
       : undefined,
+    canvasCreatedAt: toMillis(assignment.created_at),
+    canvasUpdatedAt: toMillis(assignment.updated_at),
   };
 }
 

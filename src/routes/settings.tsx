@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { PageHeader } from "@/components/app/page-header";
+import { setTheme, useTheme, type Theme } from "@/lib/theme";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Badge } from "@/components/ui/badge";
@@ -48,8 +50,17 @@ function Settings() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+    <div className="flex flex-1 flex-col">
+      <PageHeader title="Settings" />
+      <div className="mx-auto w-full max-w-3xl space-y-6 p-4 md:p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ThemePicker />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -151,6 +162,33 @@ function Settings() {
           )}
         </CardContent>
       </Card>
+      </div>
+    </div>
+  );
+}
+
+function ThemePicker() {
+  const theme = useTheme();
+  const options: { id: Theme; label: string }[] = [
+    { id: "system", label: "System" },
+    { id: "light", label: "Light" },
+    { id: "dark", label: "Dark" },
+  ];
+  return (
+    <div className="flex h-8 w-fit items-center rounded-lg bg-chip p-[2px]">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => setTheme(o.id)}
+          className={
+            "h-full rounded-[6px] px-3 text-xs font-medium text-ink-2" +
+            (theme === o.id ? " bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "")
+          }
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
