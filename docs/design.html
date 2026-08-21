@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en" data-t="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>wiscourse — UI design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── tokens ─────────────────────────────────────────────────────────────── */
+[data-t="light"]{
+  --page:#ececee; --surface:#ffffff; --sunken:#f4f4f5; --raised:#ffffff;
+  --hover:#f4f4f5; --line:#e5e5e8; --line-2:#d6d6db; --chip:#f4f4f5;
+  --ink:#18181b; --ink-2:#55555f; --ink-3:#8a8a93;
+  --red:#c5050c; --red-bg:#fdf1f1; --brand-ink:#101114;
+  --today-bg:#18181b; --today-fg:#ffffff;
+  --shadow:0 8px 24px rgba(16,17,20,.12);
+  --c-cs:#4f46e5; --c-math:#b45309; --c-econ:#0f766e; --c-stat:#0369a1; --c-me:#71717a;
+}
+[data-t="dark"]{
+  --page:#0b0b0b; --surface:#181818; --sunken:#0f0f0f; --raised:#1e1e1e;
+  --hover:#242424; --line:#2b2b2b; --line-2:#3c3c3c; --chip:#242424;
+  --ink:#e8e8e8; --ink-2:#a3a3a3; --ink-3:#737373;
+  --red:#ff4b54; --red-bg:#2b1417; --brand-ink:#e8e8e8;
+  --today-bg:#e8e8e8; --today-fg:#181818;
+  --shadow:0 12px 32px rgba(0,0,0,.55);
+  --c-cs:#818cf8; --c-math:#f0a13a; --c-econ:#2dd4bf; --c-stat:#4cb4ec; --c-me:#8c8c8c;
+}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;padding:44px 28px 110px;font-family:Inter,system-ui,sans-serif;font-size:14px;
+  line-height:1.45;color:var(--ink);-webkit-font-smoothing:antialiased}
+svg{display:block}
+.ico{width:16px;height:16px;stroke:currentColor;stroke-width:1.5;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico-14{width:14px;height:14px}
+.ico-13{width:13px;height:13px}
+
+/* ── page chrome ────────────────────────────────────────────────────────── */
+.page{max-width:1344px;margin:0 auto}
+.mark{width:26px;height:26px;flex:none}
+.wm{font-size:19px;font-weight:600;letter-spacing:-.035em;color:var(--ink)}
+.wm b{color:var(--red);font-weight:600}
+.lockup{display:flex;align-items:center;gap:9px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:34px}
+.head h1{margin:16px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.head p{margin:0;color:var(--ink-2);max-width:64ch}
+.tog{position:fixed;top:18px;right:18px;z-index:20;display:flex;align-items:center;gap:7px;
+  padding:7px 12px;font:500 12px Inter,sans-serif;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:999px;cursor:pointer;box-shadow:var(--shadow)}
+.cap{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.note{margin:11px 0 0;font-size:12.5px;color:var(--ink-3)}
+section{margin-bottom:52px}
+.scroll{overflow-x:auto;padding-bottom:4px}
+.row2{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+
+/* ── frames ─────────────────────────────────────────────────────────────── */
+.frame{width:1280px;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  overflow:hidden;color:var(--ink)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.shell{display:flex;min-height:772px}
+
+/* sidebar */
+.sb{width:238px;flex:none;background:var(--sunken);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:14px 10px 12px}
+.sb-top{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 16px}
+.sb-top .lockup{gap:8px}.sb-top .mark{width:22px;height:22px}.sb-top .wm{font-size:16px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:8px;
+  color:var(--ink-2);text-decoration:none;font-weight:500;font-size:13.5px}
+.nav a.on{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.nav a .n{margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-3);
+  background:var(--chip);border-radius:999px;padding:1px 6px}
+.nav a.on .n{background:var(--hover)}
+.sb-sec{display:flex;align-items:center;justify-content:space-between;padding:22px 8px 7px;
+  font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.crs{display:flex;align-items:center;gap:9px;height:29px;padding:0 8px;border-radius:8px;
+  color:var(--ink-2);font-size:13px;text-decoration:none}
+.crs:hover{background:var(--hover)}
+.crs .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crs .code{margin-left:auto;font-size:11px;color:var(--ink-3);letter-spacing:.01em}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--c,var(--ink-3));flex:none}
+.sb-foot{margin-top:auto;position:relative}
+.me{position:relative;display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;border-radius:8px;
+  color:var(--ink-2);font-size:13px;font-weight:500;cursor:pointer}
+.me:hover,.me.open{background:var(--hover);color:var(--ink)}
+.me .ico{margin-left:auto;color:var(--ink-3)}
+.av{position:relative;width:22px;height:22px;border-radius:50%;background:var(--chip);border:1px solid var(--line);
+  display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--ink-2);flex:none}
+.av.attn::after{content:"";position:absolute;right:-2px;top:-2px;width:8px;height:8px;border-radius:50%;
+  background:var(--red);border:2px solid var(--sunken)}
+/* profile menu — standard dropdown, anchored above the trigger */
+.pmenu[hidden]{display:none}
+.pmenu{position:absolute;left:0;bottom:calc(100% + 6px);width:232px;background:var(--raised);
+  border:1px solid var(--line);border-radius:8px;padding:4px;font-size:13px;z-index:5;
+  box-shadow:0 4px 16px -2px rgba(0,0,0,.1),0 1px 3px rgba(0,0,0,.06)}
+[data-t="dark"] .pmenu{box-shadow:0 8px 24px -4px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.03)}
+.me.open{background:var(--hover);color:var(--ink)}
+.pmenu .hd{padding:6px 8px 7px}
+.pmenu .hd .t{font-weight:500;color:var(--ink)}.pmenu .hd .s{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.pmenu .row{display:flex;align-items:center;gap:9px;height:32px;padding:0 8px;border-radius:6px;color:var(--ink);cursor:pointer;white-space:nowrap}
+.pmenu .row:hover{background:var(--hover)}
+.pmenu .row .ico{color:var(--ink-3);flex:none}
+.pmenu .row .kbd,.pmenu .row .val{margin-left:auto}
+.pmenu .row .val{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--ink-3)}
+.pmenu .row .val .ico{width:12px;height:12px}
+.pmenu .row.attn .ico{color:var(--red)}
+.pmenu .row.attn .val{color:var(--red)}
+.pmenu .div{height:1px;background:var(--line);margin:4px 0}
+
+/* main column */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:14px 20px;border-bottom:1px solid var(--line)}
+.tb-date{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.sync{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--ink-3)}
+.sync .sep{opacity:.5}
+.qa{display:flex;align-items:center;gap:9px;width:352px;height:34px;padding:0 11px;
+  background:var(--sunken);border:1px solid var(--line);border-radius:8px;color:var(--ink-3);font-size:13px}
+.kbd{margin-left:auto;font:500 11px Inter,sans-serif;color:var(--ink-3);background:var(--surface);
+  border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.content{display:flex;flex:1;min-height:0}
+.center{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* week strip */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:12px 16px 13px;
+  border-bottom:1px solid var(--line)}
+.d{border:1px solid transparent;border-radius:8px;padding:7px 4px 8px;text-align:center;cursor:default}
+.d:hover{background:var(--hover)}
+.dow{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.num{margin:3px auto 0;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;
+  font-size:14px;font-weight:600;letter-spacing:-.02em}
+.dots{display:flex;justify-content:center;align-items:center;gap:3px;height:11px;margin-top:5px}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--c);display:block}
+.dots .more{font-size:10px;font-weight:600;color:var(--ink-3);letter-spacing:-.02em;margin-left:1px}
+.d.past .dow,.d.past .num{color:var(--ink-3)}
+.d.past .dots i{opacity:.45}
+.d.today{background:var(--hover);border-color:var(--line-2)}
+.d.today .num{background:var(--today-bg);color:var(--today-fg)}
+.d.today .dow{color:var(--ink-2)}
+
+/* agenda */
+.agenda{padding:6px 0 26px}
+.sec-h{display:flex;align-items:center;gap:8px;padding:16px 20px 7px}
+.sec-t{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase}
+.sec-d{font-size:11.5px;color:var(--ink-3);letter-spacing:.01em}
+.sec-n{margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-3)}
+.sec-t.od{color:var(--red)}
+.item{display:flex;align-items:flex-start;gap:11px;padding:9px 20px 10px 16px;
+  border-left:4px solid var(--c);border-bottom:1px solid var(--line);background:var(--surface)}
+.item:hover{background:var(--hover)}
+.item.first{border-top:1px solid var(--line)}
+.chk{width:17px;height:17px;margin-top:1px;padding:0;border:1.5px solid var(--line-2);border-radius:50%;
+  flex:none;background:transparent;display:grid;place-items:center;cursor:pointer}
+.chk svg{opacity:0;width:11px;height:11px;stroke:var(--today-fg);stroke-width:2.2;fill:none;
+  stroke-linecap:round;stroke-linejoin:round}
+.item:hover .chk{border-color:var(--ink-3)}
+.chk.on{background:var(--ink-3);border-color:var(--ink-3)}
+.chk.on svg{opacity:1}
+.it-main{min-width:0;flex:1}
+.it-t{font-size:13.5px;font-weight:500;letter-spacing:-.005em}
+.it-m{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--ink-3)}
+.it-m .code{color:var(--c);font-weight:500}
+.it-m .sep{opacity:.55}
+.it-m .sub{display:flex;align-items:center;gap:4px}
+.it-r{display:flex;align-items:center;gap:8px;margin-top:1px;flex:none}
+.done .it-t{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.done .it-m{opacity:.75}
+.pill{display:inline-flex;align-items:center;gap:5px;height:21px;padding:0 8px;border-radius:6px;
+  font-size:11.5px;font-weight:500;color:var(--ink-2);background:var(--chip)}
+.pill.red{color:var(--red);background:var(--red-bg)}
+.pill.out{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-3)}
+.more-l{display:flex;align-items:center;gap:6px;padding:11px 20px;font-size:12.5px;color:var(--ink-3)}
+
+/* new rail */
+.rail{width:308px;flex:none;border-left:1px solid var(--line);background:var(--sunken);
+  display:flex;flex-direction:column}
+.rail-h{display:flex;align-items:center;gap:8px;padding:14px 14px 12px}
+.rail-h .t{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.rail-h .n{font-size:11px;font-weight:600;color:var(--ink-3);background:var(--chip);
+  border-radius:999px;padding:1px 6px}
+.rail-h .a{margin-left:auto;font-size:11.5px;color:var(--ink-3);cursor:pointer}
+.rail-g{padding:6px 14px 4px;font-size:10.5px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--ink-3)}
+.nc{position:relative;display:block;color:inherit;text-decoration:none;margin:0 14px 8px;padding:10px 11px;background:var(--raised);
+  border:1px solid var(--line);border-radius:8px}
+.nc:hover{border-color:var(--line-2)}
+.nc-h{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3)}
+.nc-h .code{color:var(--c);font-weight:500}
+.nc-h .ago{margin-left:auto}
+.nc-t{margin-top:5px;font-size:13px;font-weight:500;letter-spacing:-.005em;line-height:1.35}
+.nc-s{margin-top:3px;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nc.unread::before{content:"";position:absolute;left:-1px;top:11px;width:3px;height:15px;
+  border-radius:0 3px 3px 0;background:var(--c)}
+.score{font-variant-numeric:tabular-nums;font-weight:600}
+.rail-f{margin-top:auto;padding:12px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3)}
+
+/* quick add + first sync */
+.pad{padding:16px}
+.qa-live{display:flex;align-items:center;gap:9px;height:38px;padding:0 11px;background:var(--sunken);
+  border:1px solid var(--line-2);border-radius:8px;font-size:14px}
+.tk{border-bottom:1.5px solid var(--c);padding-bottom:1px}
+.car{width:1.5px;height:17px;background:var(--ink);margin-left:1px}
+.chips{display:flex;align-items:center;gap:7px;padding:12px 2px 2px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 9px;border-radius:6px;
+  font-size:12px;font-weight:500;background:var(--chip);color:var(--ink-2)}
+.chip.solid{background:var(--today-bg);color:var(--today-fg)}
+.hint{display:flex;gap:14px;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3)}
+.bar{height:4px;border-radius:999px;background:var(--chip);overflow:hidden;margin:14px 0 16px}
+.bar i{display:block;height:100%;background:var(--ink);border-radius:999px}
+.step{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px;color:var(--ink-2);
+  border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step .r{margin-left:auto;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.step.wait{color:var(--ink-3)}
+.h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.sub{margin-top:3px;font-size:12.5px;color:var(--ink-3)}
+
+/* detail panels */
+.det{flex:1;min-width:420px}
+.det-h{padding:16px 18px 14px;border-left:4px solid var(--c);border-bottom:1px solid var(--line)}
+.eyebrow{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--ink-3)}
+.eyebrow .code{color:var(--c);font-weight:500}
+.det-t{margin:7px 0 11px;font-size:17px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+.det-h .chips{padding:0}
+.blk{padding:14px 18px;border-bottom:1px solid var(--line)}
+.blk:last-child{border-bottom:0}
+.blk-t{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.fld{display:flex;align-items:center;gap:9px;height:32px;padding:0 10px;border:1px solid var(--line);
+  border-radius:8px;font-size:13px;color:var(--ink-2);background:var(--surface)}
+.st{display:flex;align-items:center;gap:9px;padding:7px 0;font-size:13px}
+.st .cb{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--line-2);flex:none;
+  display:grid;place-items:center}
+.st .cb svg{opacity:0;width:10px;height:10px;stroke:var(--today-fg);stroke-width:2.4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.st .cb.on{background:var(--ink-3);border-color:var(--ink-3)}
+.st .cb.on svg{opacity:1}
+.st.on span{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.add-st{display:flex;align-items:center;gap:8px;padding:8px 0 0;font-size:12.5px;color:var(--ink-3)}
+.notes{font-size:13px;color:var(--ink-2);line-height:1.55}
+.notes code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--chip);border-radius:4px;padding:1px 4px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:31px;padding:0 12px;border-radius:8px;
+  font-size:12.5px;font-weight:500;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn.pri{background:var(--today-bg);color:var(--today-fg);border-color:transparent}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3);padding:0 6px}
+.stat{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 12px;
+  border:1px solid var(--line);border-radius:8px;background:var(--sunken)}
+.stat .l{font-size:13px;font-weight:500}
+.stat .s{margin-top:2px;font-size:12px;color:var(--ink-3)}
+
+/* mobile */
+.phone{width:390px;flex:none;background:var(--surface);border:1px solid var(--line-2);
+  border-radius:30px;overflow:hidden;display:flex;flex-direction:column;min-height:812px;color:var(--ink)}
+.status{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 2px;
+  font-size:12px;font-weight:600;color:var(--ink)}
+.status .rt{display:flex;align-items:center;gap:5px;color:var(--ink-2)}
+.m-head{display:flex;align-items:flex-end;justify-content:space-between;padding:10px 16px 12px}
+.m-body{flex:1;overflow:hidden}
+.phone .week{padding:2px 12px 12px;gap:4px;border-bottom:1px solid var(--line)}
+.phone .num{width:26px;height:26px;font-size:14px}
+.phone .item{padding:9px 14px 10px 12px}
+.collapse{display:flex;align-items:center;gap:9px;padding:11px 16px;background:var(--sunken);
+  border-bottom:1px solid var(--line);font-size:13px;font-weight:500}
+.collapse .n{font-size:11px;font-weight:600;color:var(--ink-3);background:var(--chip);border-radius:999px;padding:1px 7px}
+.collapse .c{margin-left:auto;color:var(--ink-3)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);
+  padding:8px 6px 16px;background:var(--surface)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-3)}
+.tab.on{color:var(--ink);font-weight:500}
+.tab .b{position:relative}
+.tab .b em{position:absolute;top:-2px;right:-4px;width:6px;height:6px;border-radius:50%;
+  background:var(--c-cs);border:1.5px solid var(--surface)}
+.fab{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;
+  background:var(--today-bg);color:var(--today-fg)}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+  padding:44px 40px;text-align:center;color:var(--ink-3)}
+.empty .t{font-size:14px;font-weight:500;color:var(--ink-2)}
+.empty .s{font-size:12.5px;line-height:1.5}
+
+/* tokens strip */
+.tok{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);
+  border-radius:10px;background:var(--surface);overflow:hidden}
+.tok>div{padding:16px 18px;border-right:1px solid var(--line)}
+.tok>div:last-child{border-right:0}
+.tok h4{margin:0 0 12px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.ts{display:flex;align-items:baseline;gap:10px;margin-bottom:7px}
+.ts b{font-weight:600;letter-spacing:-.02em}
+.ts em{font-style:normal;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.sp{display:flex;align-items:flex-end;gap:8px;margin-bottom:12px}
+.sp span{display:block;background:var(--line-2);border-radius:2px}
+.sw{display:flex;align-items:center;gap:9px;margin-bottom:7px;font-size:12px;color:var(--ink-2)}
+.sw i{width:16px;height:16px;border-radius:5px;border:1px solid var(--line);display:block}
+.sw em{margin-left:auto;font-style:normal;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.rad{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px;color:var(--ink-2)}
+.rad i{width:34px;height:24px;background:var(--chip);border:1px solid var(--line-2);display:block}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<clipPath id="l"><rect x="0" y="0" width="32" height="64"/></clipPath>
+<clipPath id="r"><rect x="32" y="0" width="32" height="64"/></clipPath>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.4 5h13.2l2.4 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z"/><path d="M4 17.5h15"/></symbol>
+<symbol id="i-task" viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11"/><path d="m3 5 1.6 1.6L7.4 3.8M3 18.6 4.6 20l2.8-2.8"/></symbol>
+<symbol id="i-grade" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="i-set" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 0 1-4 0v-.2A1.6 1.6 0 0 0 7 19.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3 14a2 2 0 0 1 0-4h.2A1.6 1.6 0 0 0 4.6 7l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 10 3.2V3a2 2 0 0 1 4 0v.2A1.6 1.6 0 0 0 17 4.6l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 0 1 0 4h-.2a1.6 1.6 0 0 0-1.4 1z"/></symbol>
+<symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-13.7-5.3L3 9M4 13a8 8 0 0 0 13.7 5.3L21 15"/><path d="M3 4v5h5M21 20v-5h-5"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></symbol>
+<symbol id="i-sub" viewBox="0 0 24 24"><path d="M4 6h4v4H4zM4 15h4v4H4zM11 8h9M11 17h9"/></symbol>
+<symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5z"/><path d="M19 15h-5v5"/></symbol>
+<symbol id="i-ann" viewBox="0 0 24 24"><path d="M4 9v6h3l7 4V5L7 9z"/><path d="M18 9.5a4 4 0 0 1 0 5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.5 14.6 9l6 .9-4.3 4.2 1 6-5.3-2.8L6.7 20l1-6L3.4 9.9 9.4 9z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5.4l3.4 2"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+<symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="14" r="4"/><path d="m10.8 11.2 9.2-9.2M17 5l2.5 2.5M14 8l2.5 2.5"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4"/><path d="M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-updown" viewBox="0 0 24 24"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h10a5 5 0 0 1 0 10h-3"/><path d="M8 5 4 9l4 4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".6" fill="currentColor"/></symbol>
+</defs></svg>
+
+<button class="tog" onclick="var h=document.documentElement;h.dataset.t=h.dataset.t==='dark'?'light':'dark'">
+  <svg class="ico ico-14" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5"/></svg>
+  Light / dark
+</button>
+
+<div class="page">
+<header class="head">
+  <div>
+    <div class="lockup">
+      <svg class="mark" viewBox="0 0 64 64" aria-label="wiscourse">
+        <g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+          <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+        </g>
+      </svg>
+      <span class="wm"><b>wisc</b>ourse</span>
+    </div>
+    <h1>wiscourse — UI design</h1>
+    <p>Planning-led: the week reads first as a strip of seven days, the agenda hangs beneath it, and course colour is the
+       one thing carried everywhere — a 4px rail on each row, a dot in the strip and the sidebar.</p>
+  </div>
+</header>
+
+<!-- ── desktop home ─────────────────────────────────────────────────────── -->
+<section>
+  <p class="cap">Desktop · Home</p>
+  <div class="scroll"><div class="frame"><div class="shell">
+
+    <aside class="sb">
+      <div class="sb-top">
+        <div class="lockup">
+          <svg class="mark" viewBox="0 0 64 64"><g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+            <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+          </g></svg>
+          <span class="wm"><b>wisc</b>ourse</span>
+        </div>
+        <svg class="ico ico-14" style="color:var(--ink-3)"><use href="#i-search"/></svg>
+      </div>
+      <nav class="nav">
+        <a href="#" class="on"><svg class="ico"><use href="#i-home"/></svg>Home<span class="n">7</span></a>
+        <a href="#"><svg class="ico"><use href="#i-inbox"/></svg>Inbox<span class="n">5</span></a>
+        <a href="#"><svg class="ico"><use href="#i-book"/></svg>Courses</a>
+        <a href="#"><svg class="ico"><use href="#i-task"/></svg>Tasks</a>
+        <a href="#"><svg class="ico"><use href="#i-grade"/></svg>Grades</a>
+        <a href="#"><svg class="ico"><use href="#i-cal"/></svg>Calendar</a>
+      </nav>
+      <div class="sb-sec"><span>Courses</span><span>Fall 2026</span></div>
+      <a href="#" class="crs" style="--c:var(--c-cs)"><span class="dot"></span><span class="t">Operating Systems</span><span class="code">CS 537</span></a>
+      <a href="#" class="crs" style="--c:var(--c-math)"><span class="dot"></span><span class="t">Linear Algebra</span><span class="code">MATH 340</span></a>
+      <a href="#" class="crs" style="--c:var(--c-econ)"><span class="dot"></span><span class="t">Microeconomics</span><span class="code">ECON 101</span></a>
+      <a href="#" class="crs" style="--c:var(--c-stat)"><span class="dot"></span><span class="t">Intro Statistics</span><span class="code">STAT 324</span></a>
+      <div class="sb-foot">
+        <div class="pmenu" id="pmenu" hidden>
+          <div class="hd"><div class="t">Srinivas B.</div><div class="s">ibsrinivas27@wisc.edu</div></div>
+          <div class="div"></div>
+          <div class="row attn"><svg class="ico ico-14"><use href="#i-key"/></svg>Renew token<span class="val">12 days left</span></div>
+          <div class="div"></div>
+          <div class="row"><svg class="ico ico-14"><use href="#i-set"/></svg>Settings<span class="kbd">⌘ ,</span></div>
+          <div class="row"><svg class="ico ico-14"><use href="#i-sync"/></svg>Sync now<span class="val">2 min ago</span></div>
+          <div class="row"><svg class="ico ico-14"><use href="#i-sun"/></svg>Theme<span class="val">System<svg class="ico"><use href="#i-chev"/></svg></span></div>
+          <div class="div"></div>
+          <div class="row"><svg class="ico ico-14"><use href="#i-out"/></svg>Sign out</div>
+        </div>
+        <div class="me" id="pme" onclick="var m=document.getElementById('pmenu');m.hidden=!m.hidden;this.classList.toggle('open',!m.hidden)"><span class="av attn">SB</span><span class="t">Srinivas B.</span><svg class="ico ico-14"><use href="#i-updown"/></svg></div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="topbar">
+        <div>
+          <div class="tb-date">Friday, August 21</div>
+          <div class="sync"><svg class="ico ico-13"><use href="#i-sync"/></svg>Synced 2 minutes ago
+            <span class="sep">·</span>4 courses<span class="sep">·</span>next check in 2 min</div>
+        </div>
+        <div class="qa"><svg class="ico ico-14"><use href="#i-plus"/></svg>Add a task…<span class="kbd">N</span></div>
+      </div>
+
+      <div class="content">
+        <div class="center">
+          <div class="week">
+            <div class="d past"><div class="dow">Sun</div><div class="num">16</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+            <div class="d past"><div class="dow">Mon</div><div class="num">17</div><div class="dots"><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-stat)"></i></div></div>
+            <div class="d past"><div class="dow">Tue</div><div class="num">18</div><div class="dots"><i style="--c:var(--c-math)"></i></div></div>
+            <div class="d past"><div class="dow">Wed</div><div class="num">19</div><div class="dots"><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-econ)"></i><i style="--c:var(--c-stat)"></i></div></div>
+            <div class="d past"><div class="dow">Thu</div><div class="num">20</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+            <div class="d today"><div class="dow">Fri</div><div class="num">21</div><div class="dots"><i style="--c:var(--c-math)"></i><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-stat)"></i><i style="--c:var(--c-me)"></i><span class="more">+2</span></div></div>
+            <div class="d"><div class="dow">Sat</div><div class="num">22</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+          </div>
+
+          <div class="agenda">
+            <div class="sec-h"><span class="sec-t od">Overdue</span><span class="sec-n">2</span></div>
+            <div class="item first" style="--c:var(--c-cs)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Project 2: Multithreaded Web Server</div>
+                <div class="it-m"><span class="code">CS 537</span><span class="sep">·</span>Due Wed, 11:59 PM
+                  <span class="sep">·</span><span class="sub"><svg class="ico ico-13"><use href="#i-sub"/></svg>2/4</span>
+                  <span class="sep">·</span><svg class="ico ico-13"><use href="#i-note"/></svg></div></div>
+              <div class="it-r"><span class="pill red">2 days late</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-econ)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Problem Set 3 — Elasticity &amp; Consumer Surplus</div>
+                <div class="it-m"><span class="code">ECON 101</span><span class="sep">·</span>Due Thu, 5:00 PM</div></div>
+              <div class="it-r"><span class="pill red">1 day late</span></div>
+            </div>
+
+            <div class="sec-h"><span class="sec-t">Today</span><span class="sec-d">Fri, Aug 21</span><span class="sec-n">5</span></div>
+            <div class="item first" style="--c:var(--c-math)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Homework 5: Eigenvalues and Diagonalization</div>
+                <div class="it-m"><span class="code">MATH 340</span><span class="sep">·</span>Due 11:59 PM
+                  <span class="sep">·</span><span class="sub"><svg class="ico ico-13"><use href="#i-sub"/></svg>1/3</span></div></div>
+              <div class="it-r"><span class="pill out">Not submitted</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-stat)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Quiz 2: Sampling Distributions</div>
+                <div class="it-m"><span class="code">STAT 324</span><span class="sep">·</span>Due 11:59 PM</div></div>
+              <div class="it-r"><span class="pill"><svg class="ico ico-13"><use href="#i-check"/></svg>Submitted 9:12 AM</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-cs)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Read Silberschatz ch. 4 — Threads</div>
+                <div class="it-m"><span class="code">CS 537</span><span class="sep">·</span>Planned today<span class="sep">·</span>Personal</div></div>
+              <div class="it-r"><span class="pill out">No due date</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-me)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Email Prof. Arpaci-Dusseau about Thursday office hours</div>
+                <div class="it-m">Personal<span class="sep">·</span>Planned today</div></div>
+              <div class="it-r"><span class="pill out">No due date</span></div>
+            </div>
+            <div class="item done" style="--c:var(--c-stat)">
+              <button class="chk on"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Lab 3 write-up</div>
+                <div class="it-m"><span class="code">STAT 324</span><span class="sep">·</span>Done 10:04 AM</div></div>
+              <div class="it-r"><span class="pill out"><svg class="ico ico-13"><use href="#i-undo"/></svg>Undo</span></div>
+            </div>
+
+            <div class="sec-h"><span class="sec-t">Tomorrow</span><span class="sec-d">Sat, Aug 22</span><span class="sec-n">1</span></div>
+            <div class="item first" style="--c:var(--c-econ)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Reading quiz — ch. 6, Market Failure</div>
+                <div class="it-m"><span class="code">ECON 101</span><span class="sep">·</span>Due 11:59 PM</div></div>
+              <div class="it-r"><span class="pill out">Not submitted</span></div>
+            </div>
+
+            <div class="sec-h"><span class="sec-t">This week</span><span class="sec-d">through Sun, Aug 30</span><span class="sec-n">3</span></div>
+            <div class="item first" style="--c:var(--c-cs)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Project 3: xv6 Scheduler</div>
+                <div class="it-m"><span class="code">CS 537</span><span class="sep">·</span>Due Mon Aug 24, 11:59 PM
+                  <span class="sep">·</span>Planned Sun</div></div>
+              <div class="it-r"><span class="pill out">Not submitted</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-stat)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Homework 4: Confidence Intervals</div>
+                <div class="it-m"><span class="code">STAT 324</span><span class="sep">·</span>Due Tue Aug 25, 11:59 PM</div></div>
+              <div class="it-r"><span class="pill out">Not submitted</span></div>
+            </div>
+            <div class="item" style="--c:var(--c-math)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Build exam 1 review sheet</div>
+                <div class="it-m"><span class="code">MATH 340</span><span class="sep">·</span>Planned Sun Aug 23<span class="sep">·</span>Personal</div></div>
+              <div class="it-r"><span class="pill out">No due date</span></div>
+            </div>
+
+            <div class="sec-h"><span class="sec-t">Later</span><span class="sec-n">14</span></div>
+            <div class="item first" style="--c:var(--c-econ)">
+              <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+              <div class="it-main"><div class="it-t">Midterm 1 — chapters 1–7</div>
+                <div class="it-m"><span class="code">ECON 101</span><span class="sep">·</span>Thu Sep 3, in class</div></div>
+              <div class="it-r"><span class="pill out">Not planned</span></div>
+            </div>
+            <div class="more-l">Show 13 more<svg class="ico ico-13"><use href="#i-chev"/></svg></div>
+          </div>
+        </div>
+
+        <aside class="rail">
+          <div class="rail-h"><span class="t">New</span><span class="n">5</span><span class="a">Mark all read</span></div>
+          <div class="rail-g">Today</div>
+          <a href="#" class="nc unread" style="--c:var(--c-cs)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-ann"/></svg><span class="code">CS 537</span><span class="ago">2h</span></div>
+            <div class="nc-t">Project 2 deadline extended to Friday</div>
+            <div class="nc-s">Given the discussion-section conflict, we're moving…</div>
+          </a>
+          <a href="#" class="nc unread" style="--c:var(--c-stat)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-star"/></svg><span class="code">STAT 324</span><span class="ago">4h</span></div>
+            <div class="nc-t">Homework 3 graded — <span class="score">47/50</span></div>
+            <div class="nc-s">Posted by Peterson, T. · 2 comments</div>
+          </a>
+          <a href="#" class="nc unread" style="--c:var(--c-econ)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-clock"/></svg><span class="code">ECON 101</span><span class="ago">6h</span></div>
+            <div class="nc-t">Problem Set 4 due date moved</div>
+            <div class="nc-s">Aug 26, 5:00 PM → Aug 28, 5:00 PM</div>
+          </a>
+          <div class="rail-g">Yesterday</div>
+          <a href="#" class="nc unread" style="--c:var(--c-math)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-file"/></svg><span class="code">MATH 340</span><span class="ago">Thu</span></div>
+            <div class="nc-t">New assignment — Homework 6</div>
+            <div class="nc-s">Due Sep 1, 11:59 PM · 40 points</div>
+          </a>
+          <a href="#" class="nc unread" style="--c:var(--c-stat)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-ann"/></svg><span class="code">STAT 324</span><span class="ago">Thu</span></div>
+            <div class="nc-t">Discussion sections begin next week</div>
+            <div class="nc-s">Sections meet in Van Vleck B119 starting Aug 25…</div>
+          </a>
+          <a href="#" class="nc" style="--c:var(--c-cs)">
+            <div class="nc-h"><svg class="ico ico-13"><use href="#i-star"/></svg><span class="code">CS 537</span><span class="ago">Wed</span></div>
+            <div class="nc-t">Project 1 graded — <span class="score">92/100</span></div>
+            <div class="nc-s">Read as of Wed 4:20 PM</div>
+          </a>
+          <div class="rail-f">Grades appear here only once the instructor posts them.</div>
+        </aside>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">The week strip is the only navigation the agenda needs: dots are course colours, the count folds the rest.</p>
+</section>
+
+<!-- ── quick add + first sync ───────────────────────────────────────────── -->
+<section>
+  <p class="cap">Quick add · First sync</p>
+  <div class="row2">
+    <div class="card" style="width:612px">
+      <div class="pad">
+        <div class="qa-live">
+          <svg class="ico ico-14" style="color:var(--ink-3)"><use href="#i-plus"/></svg>
+          <span>read ch 4 <span class="tk" style="--c:var(--c-me)">fri</span> <span class="tk" style="--c:var(--c-cs)">#cs537</span></span>
+          <span class="car"></span>
+        </div>
+        <div class="chips">
+          <span class="chip solid">read ch 4</span>
+          <span class="chip"><span class="dot" style="--c:var(--c-cs)"></span>CS 537</span>
+          <span class="chip"><svg class="ico ico-13"><use href="#i-cal"/></svg>Planned Fri, Aug 21</span>
+          <span class="chip">Personal task</span>
+        </div>
+      </div>
+      <div class="hint"><span><b>↵</b> add</span><span><b>⇥</b> edit chip</span><span><b>⌥↵</b> add and keep open</span><span><b>esc</b> cancel</span></div>
+    </div>
+
+    <div class="card" style="width:612px">
+      <div class="pad">
+        <div class="h3">Setting up wiscourse</div>
+        <div class="sub">First sync from Canvas — start using the app now, items land as they arrive.</div>
+        <div class="bar"><i style="width:68%"></i></div>
+        <div class="step"><svg class="ico ico-14"><use href="#i-check"/></svg>Courses<span class="r">4 active</span></div>
+        <div class="step"><svg class="ico ico-14"><use href="#i-check"/></svg>Assignments<span class="r">128</span></div>
+        <div class="step"><svg class="ico ico-14"><use href="#i-sync"/></svg>Submissions and grades<span class="r">3 of 4 courses</span></div>
+        <div class="step wait"><svg class="ico ico-14"><use href="#i-clock"/></svg>Announcements and modules<span class="r">queued</span></div>
+      </div>
+    </div>
+  </div>
+  <p class="note">The only progress indicator in the product. After this, every screen renders from Convex with no loading state.</p>
+</section>
+
+<!-- ── todo detail ──────────────────────────────────────────────────────── -->
+<section>
+  <p class="cap">Todo detail · Canvas assignment vs. personal task</p>
+  <div class="row2">
+    <div class="card det" style="--c:var(--c-cs)">
+      <div class="det-h">
+        <div class="eyebrow"><span class="dot"></span><span class="code">CS 537</span><span>·</span><span>Assignment · 100 points</span></div>
+        <div class="det-t">Project 2: Multithreaded Web Server</div>
+        <div class="chips">
+          <span class="pill red"><svg class="ico ico-13"><use href="#i-clock"/></svg>Overdue — due Wed Aug 19, 11:59 PM</span>
+          <span class="chip"><svg class="ico ico-13"><use href="#i-cal"/></svg>Planned today</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Plan</div>
+        <div class="fld"><svg class="ico ico-14"><use href="#i-cal"/></svg>Friday, Aug 21<span class="kbd" style="margin-left:auto">P</span></div>
+        <div style="height:12px"></div>
+        <div class="st on"><span class="cb on"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>Read the handout + starter code</span></div>
+        <div class="st on"><span class="cb on"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>Thread pool with condition variables</span></div>
+        <div class="st"><span class="cb"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>SFF scheduling policy</span></div>
+        <div class="st"><span class="cb"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>Run the full test script twice</span></div>
+        <div class="add-st"><svg class="ico ico-13"><use href="#i-plus"/></svg>Add subtask</div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Notes</div>
+        <div class="notes">Deadlock in <code>request_handle</code> when the queue is full — the consumer signals before
+          releasing the lock. Ask in office hours Thursday. Late policy: 10% per day, 3 days max.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Submission</div>
+        <div class="stat">
+          <div><div class="l">Not submitted</div><div class="s">0 of 3 attempts used · file upload (.tar.gz)</div></div>
+          <div style="display:flex;gap:8px"><button class="btn">Attach file</button><button class="btn pri">Submit</button></div>
+        </div>
+        <div class="add-st"><svg class="ico ico-13"><use href="#i-ext"/></svg>Open in Canvas</div>
+      </div>
+    </div>
+
+    <div class="card det" style="--c:var(--c-me)">
+      <div class="det-h">
+        <div class="eyebrow"><span class="dot"></span><span>Personal task</span></div>
+        <div class="det-t">Email Prof. Arpaci-Dusseau about Thursday office hours</div>
+        <div class="chips">
+          <span class="chip"><svg class="ico ico-13"><use href="#i-cal"/></svg>Planned today</span>
+          <span class="chip">No due date</span>
+          <span class="chip">No course</span>
+        </div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Plan</div>
+        <div class="fld"><svg class="ico ico-14"><use href="#i-cal"/></svg>Friday, Aug 21<span class="kbd" style="margin-left:auto">P</span></div>
+        <div style="height:12px"></div>
+        <div class="st on"><span class="cb on"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>Write down the two questions</span></div>
+        <div class="st"><span class="cb"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></span><span>Send before 5 PM</span></div>
+        <div class="add-st"><svg class="ico ico-13"><use href="#i-plus"/></svg>Add subtask</div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Notes</div>
+        <div class="notes">Ask whether the Thursday slot moves to Union South during the CS building work.</div>
+      </div>
+      <div class="blk" style="display:flex;align-items:center;gap:8px">
+        <button class="btn pri"><svg class="ico ico-14"><use href="#i-check"/></svg>Mark done</button>
+        <button class="btn">Move to tomorrow</button>
+        <button class="btn ghost" style="margin-left:auto">Delete</button>
+      </div>
+      <div class="blk" style="color:var(--ink-3);font-size:12.5px">
+        Canvas todos can't be deleted — only re-planned. Personal tasks can.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── mobile ───────────────────────────────────────────────────────────── -->
+<section>
+  <p class="cap">Mobile · Home</p>
+  <div class="row2">
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="rt"><svg class="ico ico-13"><use href="#i-wifi"/></svg>100%</span></div>
+      <div class="m-head">
+        <div><div class="tb-date">Friday, Aug 21</div>
+          <div class="sync"><svg class="ico ico-13"><use href="#i-sync"/></svg>Synced 2 min ago</div></div>
+        <div class="fab"><svg class="ico ico-14"><use href="#i-plus"/></svg></div>
+      </div>
+      <div class="week">
+        <div class="d past"><div class="dow">S</div><div class="num">16</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+        <div class="d past"><div class="dow">M</div><div class="num">17</div><div class="dots"><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-stat)"></i></div></div>
+        <div class="d past"><div class="dow">T</div><div class="num">18</div><div class="dots"><i style="--c:var(--c-math)"></i></div></div>
+        <div class="d past"><div class="dow">W</div><div class="num">19</div><div class="dots"><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-econ)"></i></div></div>
+        <div class="d past"><div class="dow">T</div><div class="num">20</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+        <div class="d today"><div class="dow">F</div><div class="num">21</div><div class="dots"><i style="--c:var(--c-math)"></i><i style="--c:var(--c-cs)"></i><i style="--c:var(--c-stat)"></i><span class="more">+3</span></div></div>
+        <div class="d"><div class="dow">S</div><div class="num">22</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+      </div>
+      <div class="collapse"><svg class="ico ico-14"><use href="#i-ann"/></svg>New<span class="n">5</span>
+        <svg class="ico ico-14 c"><use href="#i-chev"/></svg></div>
+      <div class="m-body">
+        <div class="sec-h" style="padding:14px 16px 6px"><span class="sec-t od">Overdue</span><span class="sec-n">2</span></div>
+        <div class="item first" style="--c:var(--c-cs)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Project 2: Multithreaded Web Server</div>
+            <div class="it-m"><span class="code">CS 537</span><span class="sep">·</span><span style="color:var(--red)">2 days late</span></div></div>
+        </div>
+        <div class="item" style="--c:var(--c-econ)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Problem Set 3 — Elasticity</div>
+            <div class="it-m"><span class="code">ECON 101</span><span class="sep">·</span><span style="color:var(--red)">1 day late</span></div></div>
+        </div>
+        <div class="sec-h" style="padding:16px 16px 6px"><span class="sec-t">Today</span><span class="sec-n">5</span></div>
+        <div class="item first" style="--c:var(--c-math)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Homework 5: Eigenvalues</div>
+            <div class="it-m"><span class="code">MATH 340</span><span class="sep">·</span>11:59 PM</div></div>
+        </div>
+        <div class="item" style="--c:var(--c-stat)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Quiz 2: Sampling Distributions</div>
+            <div class="it-m"><span class="code">STAT 324</span><span class="sep">·</span>Submitted 9:12 AM</div></div>
+        </div>
+        <div class="item" style="--c:var(--c-cs)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Read Silberschatz ch. 4</div>
+            <div class="it-m"><span class="code">CS 537</span><span class="sep">·</span>Personal</div></div>
+        </div>
+        <div class="item" style="--c:var(--c-me)">
+          <button class="chk"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Email Prof. Arpaci-Dusseau</div>
+            <div class="it-m">Personal<span class="sep">·</span>Planned today</div></div>
+        </div>
+        <div class="item done" style="--c:var(--c-stat)">
+          <button class="chk on"><svg viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></svg></button>
+          <div class="it-main"><div class="it-t">Lab 3 write-up</div>
+            <div class="it-m"><span class="code">STAT 324</span><span class="sep">·</span>Done 10:04 AM</div></div>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><svg class="ico"><use href="#i-home"/></svg>Home</div>
+        <div class="tab"><span class="b"><svg class="ico"><use href="#i-inbox"/></svg><em></em></span>Inbox</div>
+        <div class="tab"><svg class="ico"><use href="#i-book"/></svg>Courses</div>
+        <div class="tab"><svg class="ico"><use href="#i-cal"/></svg>Calendar</div>
+        <div class="tab"><svg class="ico"><use href="#i-task"/></svg>Tasks</div>
+      </div>
+    </div>
+
+    <div class="phone">
+      <div class="status"><span>9:41</span><span class="rt"><svg class="ico ico-13"><use href="#i-wifi"/></svg>100%</span></div>
+      <div class="m-head">
+        <div><div class="tb-date">New</div><div class="sync">5 unread · 4 courses</div></div>
+        <div style="font-size:12px;color:var(--ink-3)">Mark all read</div>
+      </div>
+      <div class="collapse"><svg class="ico ico-14"><use href="#i-ann"/></svg>New<span class="n">5</span>
+        <svg class="ico ico-14 c" style="transform:rotate(90deg)"><use href="#i-chev"/></svg></div>
+      <div class="m-body" style="padding-top:12px">
+        <div class="rail-g">Today</div>
+        <a href="#" class="nc unread" style="--c:var(--c-cs)">
+          <div class="nc-h"><svg class="ico ico-13"><use href="#i-ann"/></svg><span class="code">CS 537</span><span class="ago">2h</span></div>
+          <div class="nc-t">Project 2 deadline extended to Friday</div>
+          <div class="nc-s">Given the discussion-section conflict, we're…</div>
+        </a>
+        <a href="#" class="nc unread" style="--c:var(--c-stat)">
+          <div class="nc-h"><svg class="ico ico-13"><use href="#i-star"/></svg><span class="code">STAT 324</span><span class="ago">4h</span></div>
+          <div class="nc-t">Homework 3 graded — <span class="score">47/50</span></div>
+          <div class="nc-s">Posted by Peterson, T. · 2 comments</div>
+        </a>
+        <a href="#" class="nc unread" style="--c:var(--c-econ)">
+          <div class="nc-h"><svg class="ico ico-13"><use href="#i-clock"/></svg><span class="code">ECON 101</span><span class="ago">6h</span></div>
+          <div class="nc-t">Problem Set 4 due date moved</div>
+          <div class="nc-s">Aug 26, 5:00 PM → Aug 28, 5:00 PM</div>
+        </a>
+        <div class="rail-g">Yesterday</div>
+        <a href="#" class="nc unread" style="--c:var(--c-math)">
+          <div class="nc-h"><svg class="ico ico-13"><use href="#i-file"/></svg><span class="code">MATH 340</span><span class="ago">Thu</span></div>
+          <div class="nc-t">New assignment — Homework 6</div>
+          <div class="nc-s">Due Sep 1, 11:59 PM · 40 points</div>
+        </a>
+        <div class="empty">
+          <svg class="ico" style="width:20px;height:20px"><use href="#i-check"/></svg>
+          <span class="t">That's everything</span>
+          <span class="s">Older items live in Inbox. Checked Canvas 2 minutes ago.</span>
+        </div>
+      </div>
+      <div class="tabs">
+        <div class="tab on"><svg class="ico"><use href="#i-home"/></svg>Home</div>
+        <div class="tab"><span class="b"><svg class="ico"><use href="#i-inbox"/></svg><em></em></span>Inbox</div>
+        <div class="tab"><svg class="ico"><use href="#i-book"/></svg>Courses</div>
+        <div class="tab"><svg class="ico"><use href="#i-cal"/></svg>Calendar</div>
+        <div class="tab"><svg class="ico"><use href="#i-task"/></svg>Tasks</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">"New" collapses to one line on mobile and expands in place; the week strip survives the narrow width by dropping to single-letter days.</p>
+</section>
+
+<!-- ── tokens ───────────────────────────────────────────────────────────── -->
+<section style="margin-bottom:0">
+  <p class="cap">Tokens</p>
+  <div class="tok">
+    <div>
+      <h4>Type — Inter</h4>
+      <div class="ts"><b style="font-size:22px">Aa</b><em>22 / 600 / -.02em · page title</em></div>
+      <div class="ts"><b style="font-size:17px">Aa</b><em>17 / 600 · detail title</em></div>
+      <div class="ts"><b style="font-size:15px">Aa</b><em>15 / 600 · route header</em></div>
+      <div class="ts"><b style="font-size:14px;font-weight:500">Aa</b><em>14 / 500 · base, body</em></div>
+      <div class="ts"><b style="font-size:12px;font-weight:500">Aa</b><em>12 / 500 · meta, pills</em></div>
+      <div class="ts"><b style="font-size:11px;font-weight:600;letter-spacing:.09em">AA</b><em>11 / 600 / .09em · section</em></div>
+    </div>
+    <div>
+      <h4>Spacing &amp; radius</h4>
+      <div class="sp">
+        <span style="width:4px;height:4px"></span><span style="width:8px;height:8px"></span>
+        <span style="width:12px;height:12px"></span><span style="width:16px;height:16px"></span>
+        <span style="width:20px;height:20px"></span><span style="width:24px;height:24px"></span>
+      </div>
+      <div style="font-size:12px;color:var(--ink-3);margin-bottom:16px">4 · 8 · 12 · 16 · 20 · 24 — rows use 9/11, blocks 14/18</div>
+      <div class="rad"><i style="border-radius:6px"></i>6 — chips, pills, day cells</div>
+      <div class="rad"><i style="border-radius:8px"></i>8 — cards, fields, buttons</div>
+      <div class="rad"><i style="border-radius:999px"></i>999 — counts, avatar</div>
+    </div>
+    <div>
+      <h4>Surfaces</h4>
+      <div class="sw"><i style="background:var(--surface)"></i>surface<em>#fff / #181818</em></div>
+      <div class="sw"><i style="background:var(--sunken)"></i>sunken<em>#f4f4f5 / #0f0f0f</em></div>
+      <div class="sw"><i style="background:var(--raised)"></i>raised<em>cards in rail</em></div>
+      <div class="sw"><i style="background:var(--line)"></i>line<em>1px, everywhere</em></div>
+      <div class="sw"><i style="background:var(--ink)"></i>ink<em>#18181b / #e8e8ec</em></div>
+      <div class="sw"><i style="background:var(--ink-3)"></i>ink-3<em>meta</em></div>
+      <div class="sw"><i style="background:var(--red)"></i>red<em>logo + Overdue only</em></div>
+    </div>
+    <div>
+      <h4>Course colour</h4>
+      <div class="sw"><i style="background:var(--c-cs)"></i>CS 537<em>indigo</em></div>
+      <div class="sw"><i style="background:var(--c-math)"></i>MATH 340<em>amber</em></div>
+      <div class="sw"><i style="background:var(--c-econ)"></i>ECON 101<em>teal</em></div>
+      <div class="sw"><i style="background:var(--c-stat)"></i>STAT 324<em>sky</em></div>
+      <div class="sw"><i style="background:var(--c-me)"></i>Personal<em>zinc</em></div>
+      <div style="font-size:12px;color:var(--ink-3);margin-top:12px;line-height:1.5">
+        Set locally per course. Carried as a 4px row rail, a strip dot, a sidebar dot and a card edge — never as a fill.
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+<script>
+document.addEventListener('click',function(e){
+  var m=document.getElementById('pmenu'),b=document.getElementById('pme');
+  if(!m.hidden&&!b.contains(e.target)&&!m.contains(e.target)){m.hidden=true;b.classList.remove('open')}
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){var m=document.getElementById('pmenu');m.hidden=true;document.getElementById('pme').classList.remove('open')}
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>wiscourse — UI designs</title>
+<style>
+  :root { --paper:#fff; --ink:#101114; --muted:#6b6f76; --line:#e3e4e7; --accent:#c5050c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#0d0e11; --ink:#f4f5f7; --muted:#8d939c; --line:#24272e; --accent:#ff4b54; }
+  }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.5 -apple-system,system-ui,sans-serif; }
+  main { max-width:760px; margin:64px auto; padding:0 24px; }
+  h1 { font-size:22px; font-weight:600; letter-spacing:-.02em; margin:0 0 4px; }
+  h1 b { color:var(--accent); font-weight:600 }
+  .sub { color:var(--muted); margin:0 0 40px; }
+  ol { list-style:none; padding:0; margin:0; border-top:1px solid var(--line); }
+  li a { display:grid; grid-template-columns:40px 1fr auto; gap:16px; align-items:baseline;
+         padding:18px 0; border-bottom:1px solid var(--line); color:inherit; text-decoration:none; }
+  li a:hover .name { text-decoration:underline }
+  .n { color:var(--muted); font-variant-numeric:tabular-nums; font-size:13px }
+  .name { font-weight:600 }
+  .d { color:var(--muted); font-size:14px; display:block; margin-top:2px }
+  .arrow { color:var(--muted) }
+  p.note { color:var(--muted); font-size:13px; margin-top:32px }
+</style>
+</head>
+<body>
+<main>
+  <h1><b>wisc</b>ourse — UI designs</h1>
+  <p class="sub">M2 shell + Home agenda + todos + quick-add. Four directions, one page each.</p>
+  <ol>
+    <li><a href="01-ledger.html"><span class="n">01</span><span><span class="name">Ledger</span><span class="d">Typographic, monochrome, hairline rules. Linear / Things lineage.</span></span><span class="arrow">→</span></a></li>
+    <li><a href="02-paper.html"><span class="n">02</span><span><span class="name">Paper</span><span class="d">Warm off-white, soft surfaces, per-day grouping. A planner, not a dashboard.</span></span><span class="arrow">→</span></a></li>
+    <li><a href="03-console.html"><span class="n">03</span><span><span class="name">Console</span><span class="d">Dark-first, dense, keyboard-led. Raycast / Warp lineage.</span></span><span class="arrow">→</span></a></li>
+    <li><a href="04-timeline.html"><span class="n">04</span><span><span class="name">Timeline</span><span class="d">Week strip over the agenda, strong course colour rails. Sunsama / Notion Calendar lineage.</span></span><span class="arrow">→</span></a></li>
+  </ol>
+  <p class="note">Shared brief: <a href="BRIEF.md" style="color:inherit">design/BRIEF.md</a>. Mockups are static HTML; nothing here is wired to the app.</p>
+</main>
+</body>
+</html>
