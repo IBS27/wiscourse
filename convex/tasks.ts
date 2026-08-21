@@ -2,6 +2,9 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { requireUserId } from "./lib/auth";
 
+// Local + planner tasks only, for the Tasks page. The unified todo list
+// (assignments, quizzes, discussions, and these) lives in `todos.list`;
+// prefer it anywhere the user is looking at "everything I have to do".
 export const list = query({
   args: {},
   handler: async (ctx) => {

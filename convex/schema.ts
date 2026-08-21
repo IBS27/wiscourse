@@ -1,6 +1,14 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Design rule: mirror Canvas's native containers faithfully (modules, pages,
+// files, quizzes, discussions, ...) instead of modelling any one instructor's
+// course structure. `courses.defaultView` + `courses.tabs` record how the
+// instructor set the course up; the UI picks its front door from those.
+//
+// Every synced table carries `userId` (Clerk subject), `canvasId` and
+// `syncedAt`, and has a `by_user_canvasId` index used for upserts.
+
 // A student's own submission state, embedded on the assignment.
 // `postedAt` is null while the teacher withholds grades (manual post
 // policy) — never show `score` unless `postedAt` is set.
@@ -13,6 +21,58 @@ export const submissionFields = v.object({
   missing: v.optional(v.boolean()),
   postedAt: v.optional(v.number()),
 });
+
+export const courseDefaultView = v.union(
+  v.literal("feed"),
+  v.literal("wiki"),
+  v.literal("modules"),
+  v.literal("assignments"),
+  v.literal("syllabus"),
+);
+
+export const moduleState = v.union(
+  v.literal("locked"),
+  v.literal("unlocked"),
+  v.literal("started"),
+  v.literal("completed"),
+);
+
+export const moduleItemType = v.union(
+  v.literal("Assignment"),
+  v.literal("Page"),
+  v.literal("File"),
+  v.literal("Discussion"),
+  v.literal("Quiz"),
+  v.literal("ExternalUrl"),
+  v.literal("ExternalTool"),
+  v.literal("SubHeader"),
+);
+
+export const completionRequirement = v.object({
+  type: v.string(), // must_view | must_submit | must_contribute | min_score | must_mark_done
+  minScore: v.optional(v.number()),
+  completed: v.optional(v.boolean()),
+});
+
+// Kinds of synced entities that can be "seen" or overridden locally.
+export const entityKind = v.union(
+  v.literal("assignment"),
+  v.literal("quiz"),
+  v.literal("discussion"),
+  v.literal("page"),
+  v.literal("file"),
+  v.literal("moduleItem"),
+  v.literal("calendarEvent"),
+  v.literal("task"),
+);
+
+// Shared column set for per-course synced content.
+const synced = {
+  userId: v.string(),
+  courseCanvasId: v.number(),
+  canvasId: v.number(),
+  syncedAt: v.number(),
+};
 
 export default defineSchema({
   // The seam between "who is this user" (Clerk) and "how do we reach
@@ -43,6 +103,9 @@ export default defineSchema({
     lastError: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
+  // -------------------------------------------------------------------------
+  // Courses
+
   courses: defineTable({
     userId: v.string(),
     canvasId: v.number(),
@@ -52,39 +115,209 @@ export default defineSchema({
     startAt: v.optional(v.number()),
     endAt: v.optional(v.number()),
     isFavorite: v.optional(v.boolean()),
+    // How the instructor set the course up. `defaultView` is the landing
+    // tab in Canvas; `tabs` is the ordered list of nav tabs the instructor
+    // left visible (Canvas tab ids: home, modules, pages, files, ...).
+    defaultView: v.optional(courseDefaultView),
+    tabs: v.optional(v.array(v.string())),
+    syllabusBody: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    // Enrollment-level totals. Respect the posting policy: both are
+    // undefined unless Canvas reports them, and `hideFinalGrades` means
+    // the instructor hides totals entirely.
+    currentScore: v.optional(v.number()),
+    currentGrade: v.optional(v.string()),
+    finalScore: v.optional(v.number()),
+    finalGrade: v.optional(v.string()),
+    hideFinalGrades: v.optional(v.boolean()),
+    applyAssignmentGroupWeights: v.optional(v.boolean()),
     syncedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_canvasId", ["userId", "canvasId"]),
 
-  assignments: defineTable({
-    userId: v.string(),
-    courseCanvasId: v.number(),
-    canvasId: v.number(),
+  assignmentGroups: defineTable({
+    ...synced,
     name: v.string(),
+    position: v.number(),
+    groupWeight: v.optional(v.number()), // percent, when weighting is on
+    dropLowest: v.optional(v.number()),
+    dropHighest: v.optional(v.number()),
+    neverDrop: v.optional(v.array(v.number())), // assignment canvasIds
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"]),
+
+  gradingPeriods: defineTable({
+    ...synced,
+    title: v.string(),
+    startAt: v.number(),
+    endAt: v.number(),
+    weight: v.optional(v.number()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"]),
+
+  // -------------------------------------------------------------------------
+  // Gradeable things
+
+  assignments: defineTable({
+    ...synced,
+    name: v.string(),
+    description: v.optional(v.string()),
     dueAt: v.optional(v.number()),
+    unlockAt: v.optional(v.number()),
+    lockAt: v.optional(v.number()),
     pointsPossible: v.optional(v.number()),
+    gradingType: v.optional(v.string()), // points | percent | letter_grade | gpa_scale | pass_fail | not_graded
+    assignmentGroupCanvasId: v.optional(v.number()),
+    position: v.optional(v.number()),
     htmlUrl: v.string(),
     submissionTypes: v.array(v.string()),
+    // Graded quizzes and discussions are also assignments; these link back
+    // so the UI can open the right thing.
+    quizCanvasId: v.optional(v.number()),
+    discussionCanvasId: v.optional(v.number()),
+    lockedForUser: v.optional(v.boolean()),
+    omitFromFinalGrade: v.optional(v.boolean()),
     submission: v.optional(submissionFields),
-    syncedAt: v.number(),
   })
     .index("by_user", ["userId"])
     .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_dueAt", ["userId", "dueAt"]),
 
-  announcements: defineTable({
-    userId: v.string(),
-    courseCanvasId: v.number(),
-    canvasId: v.number(),
+  quizzes: defineTable({
+    ...synced,
     title: v.string(),
-    message: v.string(),
-    postedAt: v.optional(v.number()),
+    description: v.optional(v.string()),
+    quizType: v.string(), // practice_quiz | assignment | graded_survey | survey
+    dueAt: v.optional(v.number()),
+    unlockAt: v.optional(v.number()),
+    lockAt: v.optional(v.number()),
+    pointsPossible: v.optional(v.number()),
+    timeLimitMinutes: v.optional(v.number()),
+    allowedAttempts: v.optional(v.number()), // -1 = unlimited
+    questionCount: v.optional(v.number()),
+    assignmentCanvasId: v.optional(v.number()),
     htmlUrl: v.string(),
-    syncedAt: v.number(),
+    lockedForUser: v.optional(v.boolean()),
   })
     .index("by_user_canvasId", ["userId", "canvasId"])
-    .index("by_user_postedAt", ["userId", "postedAt"]),
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"]),
+
+  // Discussions and announcements share one table: an announcement is a
+  // discussion topic with `isAnnouncement: true`.
+  discussions: defineTable({
+    ...synced,
+    title: v.string(),
+    message: v.optional(v.string()),
+    isAnnouncement: v.boolean(),
+    postedAt: v.optional(v.number()),
+    lastReplyAt: v.optional(v.number()),
+    dueAt: v.optional(v.number()), // graded discussions
+    assignmentCanvasId: v.optional(v.number()),
+    authorName: v.optional(v.string()),
+    unreadCount: v.optional(v.number()),
+    readState: v.optional(v.string()), // read | unread (Canvas-side)
+    locked: v.optional(v.boolean()),
+    pinned: v.optional(v.boolean()),
+    htmlUrl: v.string(),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]),
+
+  // -------------------------------------------------------------------------
+  // Course content containers
+
+  modules: defineTable({
+    ...synced,
+    name: v.string(),
+    position: v.number(),
+    unlockAt: v.optional(v.number()),
+    state: v.optional(moduleState),
+    prerequisiteModuleCanvasIds: v.array(v.number()),
+    requireSequentialProgress: v.boolean(),
+    published: v.optional(v.boolean()),
+    itemCount: v.optional(v.number()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"]),
+
+  // Polymorphic pointer into the native tables: modules are a *view* over
+  // assignments/pages/files/..., never a copy of them.
+  moduleItems: defineTable({
+    ...synced,
+    moduleCanvasId: v.number(),
+    position: v.number(),
+    indent: v.number(),
+    type: moduleItemType,
+    title: v.string(),
+    contentCanvasId: v.optional(v.number()), // assignment/file/discussion/quiz id
+    pageUrl: v.optional(v.string()), // Page items key by slug, not id
+    externalUrl: v.optional(v.string()),
+    htmlUrl: v.optional(v.string()),
+    published: v.optional(v.boolean()),
+    completionRequirement: v.optional(completionRequirement),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_module", ["userId", "moduleCanvasId"]),
+
+  pages: defineTable({
+    ...synced, // canvasId = page_id
+    url: v.string(), // slug; the stable key Canvas uses in links
+    title: v.string(),
+    body: v.optional(v.string()),
+    isFrontPage: v.boolean(),
+    published: v.boolean(),
+    updatedAt: v.optional(v.number()),
+    htmlUrl: v.string(),
+    lockedForUser: v.optional(v.boolean()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_course_url", ["userId", "courseCanvasId", "url"]),
+
+  folders: defineTable({
+    ...synced,
+    parentFolderCanvasId: v.optional(v.number()),
+    name: v.string(),
+    fullName: v.string(), // "course files/Lectures/Week 1"
+    position: v.optional(v.number()),
+    filesCount: v.optional(v.number()),
+    foldersCount: v.optional(v.number()),
+    lockedForUser: v.optional(v.boolean()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_parent", ["userId", "parentFolderCanvasId"]),
+
+  files: defineTable({
+    ...synced,
+    folderCanvasId: v.optional(v.number()),
+    displayName: v.string(),
+    filename: v.string(),
+    contentType: v.string(),
+    size: v.number(),
+    // Download URLs embed a short-lived verifier; refresh via
+    // GET /files/:id when a stored one stops working.
+    url: v.string(),
+    thumbnailUrl: v.optional(v.string()),
+    updatedAt: v.optional(v.number()),
+    modifiedAt: v.optional(v.number()),
+    lockedForUser: v.optional(v.boolean()),
+    hidden: v.optional(v.boolean()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_folder", ["userId", "folderCanvasId"]),
+
+  // -------------------------------------------------------------------------
+  // Calendar + todos
 
   calendarEvents: defineTable({
     userId: v.string(),
@@ -102,6 +335,9 @@ export default defineSchema({
     .index("by_user_startAt", ["userId", "startAt"])
     .index("by_user_canvasId", ["userId", "canvasId"]),
 
+  // The only local-write table for todos. Canvas-sourced items (assignments,
+  // quizzes, graded discussions) are never copied here; the unified todo
+  // list is a query over those tables plus `tasks` plus `overrides`.
   tasks: defineTable({
     userId: v.string(),
     title: v.string(),
@@ -115,4 +351,31 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_plannerNote", ["userId", "canvasPlannerNoteId"]),
+
+  // Local state layered over synced rows so a resync never clobbers it.
+  // Mirrors Canvas planner_overrides semantics (marked_complete / dismissed).
+  overrides: defineTable({
+    userId: v.string(),
+    kind: entityKind,
+    canvasId: v.number(),
+    completedAt: v.optional(v.number()),
+    dismissedAt: v.optional(v.number()),
+    canvasPlannerOverrideId: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
+
+  // "Have I looked at this yet" for announcements, pages, files, module
+  // items, grade changes. Keyed by kind + canvasId; one row per entity.
+  seenState: defineTable({
+    userId: v.string(),
+    kind: entityKind,
+    canvasId: v.number(),
+    seenAt: v.number(),
+    // For grades: the `postedAt`/`score` seen, so a regrade shows as new.
+    seenVersion: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_kind", ["userId", "kind"])
+    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
 });

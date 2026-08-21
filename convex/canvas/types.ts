@@ -11,6 +11,14 @@ export interface CanvasTerm {
   name: string;
 }
 
+export interface CanvasEnrollment {
+  type: string; // student | teacher | ta | observer | designer
+  computed_current_score?: number | null;
+  computed_current_grade?: string | null;
+  computed_final_score?: number | null;
+  computed_final_grade?: string | null;
+}
+
 export interface CanvasCourse {
   id: number;
   name?: string;
@@ -20,6 +28,157 @@ export interface CanvasCourse {
   is_favorite?: boolean;
   term?: CanvasTerm;
   access_restricted_by_date?: boolean;
+  // include[]=syllabus_body,course_image,tabs,total_scores
+  default_view?: "feed" | "wiki" | "modules" | "assignments" | "syllabus";
+  syllabus_body?: string | null;
+  image_download_url?: string | null;
+  hide_final_grades?: boolean;
+  apply_assignment_group_weights?: boolean;
+  enrollments?: CanvasEnrollment[];
+  tabs?: CanvasTab[]; // include[]=tabs (not always honored on the list endpoint)
+}
+
+export interface CanvasTab {
+  id: string; // home | modules | pages | files | assignments | ...
+  label: string;
+  position: number;
+  hidden?: boolean;
+  visibility: string; // public | members | admins | none
+  type: string; // internal | external
+}
+
+export interface CanvasAssignmentGroup {
+  id: number;
+  name: string;
+  position: number;
+  group_weight: number;
+  rules?: {
+    drop_lowest?: number;
+    drop_highest?: number;
+    never_drop?: number[];
+  };
+}
+
+export interface CanvasGradingPeriod {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+  weight?: number | null;
+}
+
+export interface CanvasQuiz {
+  id: number;
+  title: string;
+  description: string | null;
+  quiz_type: string;
+  due_at: string | null;
+  unlock_at: string | null;
+  lock_at: string | null;
+  points_possible: number | null;
+  time_limit: number | null;
+  allowed_attempts: number;
+  question_count?: number;
+  assignment_id?: number | null;
+  html_url: string;
+  locked_for_user?: boolean;
+}
+
+export interface CanvasDiscussionTopic {
+  id: number;
+  title: string;
+  message: string | null;
+  is_announcement?: boolean;
+  posted_at: string | null;
+  last_reply_at: string | null;
+  assignment_id?: number | null;
+  assignment?: { due_at: string | null } | null;
+  user_name?: string | null;
+  author?: { display_name?: string | null } | null;
+  unread_count?: number;
+  read_state?: string;
+  locked?: boolean;
+  pinned?: boolean;
+  html_url: string;
+  context_code?: string; // present on /announcements
+}
+
+export interface CanvasModule {
+  id: number;
+  name: string;
+  position: number;
+  unlock_at: string | null;
+  state?: "locked" | "unlocked" | "started" | "completed";
+  prerequisite_module_ids: number[];
+  require_sequential_progress: boolean;
+  published?: boolean;
+  items_count: number;
+  items?: CanvasModuleItem[]; // include[]=items; omitted for huge modules
+}
+
+export interface CanvasModuleItem {
+  id: number;
+  module_id: number;
+  position: number;
+  indent: number;
+  type:
+    | "Assignment"
+    | "Page"
+    | "File"
+    | "Discussion"
+    | "Quiz"
+    | "ExternalUrl"
+    | "ExternalTool"
+    | "SubHeader";
+  title: string;
+  content_id?: number;
+  page_url?: string;
+  external_url?: string;
+  html_url?: string;
+  published?: boolean;
+  completion_requirement?: {
+    type: string;
+    min_score?: number;
+    completed?: boolean;
+  };
+}
+
+export interface CanvasPage {
+  page_id: number;
+  url: string;
+  title: string;
+  body?: string | null; // only on GET /pages/:url or include[]=body
+  front_page: boolean;
+  published: boolean;
+  updated_at: string | null;
+  html_url: string;
+  locked_for_user?: boolean;
+}
+
+export interface CanvasFolder {
+  id: number;
+  parent_folder_id: number | null;
+  name: string;
+  full_name: string;
+  position: number | null;
+  files_count: number;
+  folders_count: number;
+  locked_for_user?: boolean;
+}
+
+export interface CanvasFile {
+  id: number;
+  folder_id: number | null;
+  display_name: string;
+  filename: string;
+  "content-type": string;
+  size: number;
+  url: string;
+  thumbnail_url?: string | null;
+  updated_at: string | null;
+  modified_at: string | null;
+  locked_for_user?: boolean;
+  hidden?: boolean;
 }
 
 export interface CanvasSubmission {
@@ -38,20 +197,21 @@ export interface CanvasAssignment {
   id: number;
   course_id: number;
   name: string;
+  description?: string | null;
   due_at: string | null;
+  unlock_at?: string | null;
+  lock_at?: string | null;
   points_possible: number | null;
+  grading_type?: string;
+  assignment_group_id?: number;
+  position?: number;
   html_url: string;
   submission_types: string[];
+  quiz_id?: number;
+  discussion_topic?: { id: number } | null;
+  locked_for_user?: boolean;
+  omit_from_final_grade?: boolean;
   submission?: CanvasSubmission;
-}
-
-export interface CanvasAnnouncement {
-  id: number;
-  title: string;
-  message: string | null;
-  posted_at: string | null;
-  html_url: string;
-  context_code: string; // "course_12345"
 }
 
 export interface CanvasCalendarEvent {

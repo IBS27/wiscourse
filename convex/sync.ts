@@ -1,10 +1,23 @@
-// Two-tier Canvas sync.
+// Three-tier Canvas sync.
 //
 // Tier 1 (tripwire, every 5 min): GET /users/self/activity_stream/summary —
-// a tiny payload. Only when it changes do we run a real sync.
-// Tier 2 (delta): submitted_since/graded_since submission deltas plus
-// recent announcements and planner notes.
-// Nightly: full sync of everything.
+// a tiny payload. Only when it changes do we run a delta sync.
+// Tier 2 (delta): the cheap, frequently-changing slice. Per course, two
+// filtered submission calls (submitted_since / graded_since) plus recently
+// active discussion topics and the content refresh; globally, one
+// /announcements call per 10 courses and planner notes.
+// Tier 3 (nightly full): everything, and the only tier allowed to prune —
+// courses (with tabs, syllabus and enrollment totals), assignments,
+// per-course metadata (assignment groups, grading periods, quizzes,
+// discussions) and course content (modules, pages, files), plus the
+// calendar window.
+//
+// Request budget, unpaginated: per course ~11 on a full sync (1 assignments,
+// up to 1 tabs, 5 metadata, 4 content) and 4 on a delta (2 submissions, 1
+// discussions, 1 modules). Per user on top of that: 1 courses list, 1
+// planner notes, and one calendar (full) or announcements (delta) call per
+// 10 courses. A 6-course student therefore costs ~70 requests nightly and
+// ~26 per delta — well inside a single token's budget.
 //
 // Dispatch rules (Convex-specific, deliberate):
 // - Crons must not loop over users: overlapping cron runs are skipped, so
@@ -26,24 +39,31 @@ import {
 import { components, internal } from "./_generated/api";
 import { requireUserId } from "./lib/auth";
 import { getCanvasClient, type CanvasSession } from "./credentials";
-import { CanvasAuthError, type CanvasClient } from "./canvas/client";
+import {
+  CanvasAuthError,
+  tolerateDisabledTab,
+  type CanvasClient,
+} from "./canvas/client";
 import {
   toMillis,
   type CanvasActivityStreamSummaryItem,
-  type CanvasAnnouncement,
   type CanvasAssignment,
   type CanvasCalendarEvent,
   type CanvasCourse,
+  type CanvasDiscussionTopic,
   type CanvasPlannerNote,
   type CanvasSubmission,
+  type CanvasTab,
 } from "./canvas/types";
+import { mapDiscussion, syncCourseMeta } from "./canvas/syncCourseMeta";
+import { syncCourseContent } from "./canvas/syncContent";
 import type {
-  AnnouncementUpsert,
   AssignmentUpsert,
   CalendarEventUpsert,
   CourseUpsert,
   PlannerNoteUpsert,
 } from "./syncStore";
+import type { DiscussionUpsert } from "./storeCourseMeta";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 // The calendar_events endpoint silently ignores context codes past the
@@ -174,43 +194,49 @@ async function runFullSync(
 
   const rawCourses = await client.getPaginated<CanvasCourse>("/courses", {
     enrollment_state: "active",
-    "include[]": ["term", "favorites"],
+    "include[]": [
+      "term",
+      "favorites",
+      "syllabus_body",
+      "course_image",
+      "tabs",
+      "total_scores",
+    ],
   });
   const courses = rawCourses.filter(
     (course) => course.name !== undefined && !course.access_restricted_by_date,
   );
-  const courseUpserts: CourseUpsert[] = courses.map((course) => ({
-    canvasId: course.id,
-    name: course.name ?? "Untitled course",
-    courseCode: course.course_code ?? "",
-    term: course.term?.name,
-    startAt: toMillis(course.start_at),
-    endAt: toMillis(course.end_at),
-    isFavorite: course.is_favorite,
-  }));
+
+  const courseUpserts: CourseUpsert[] = [];
+  for (const course of courses) {
+    courseUpserts.push(mapCourse(course, await courseTabIds(client, course)));
+  }
   await ctx.runMutation(internal.syncStore.upsertCourses, {
     userId,
     courses: courseUpserts,
   });
 
-  // include[]=submission returns the calling student's own submission
-  // inline — no separate submissions pass needed.
   for (const course of courses) {
+    // include[]=submission returns the calling student's own submission
+    // inline — no separate submissions pass needed.
     const assignments = await client.getPaginated<CanvasAssignment>(
       `/courses/${course.id}/assignments`,
       { "include[]": ["submission"], order_by: "due_at" },
     );
-    const upserts: AssignmentUpsert[] = assignments.map((assignment) =>
-      mapAssignment(course.id, assignment),
-    );
     await ctx.runMutation(internal.syncStore.upsertAssignments, {
       userId,
-      assignments: upserts,
+      courseCanvasId: course.id,
+      assignments: assignments.map(mapAssignment),
+      prune: true,
     });
+
+    await syncCourseMeta(ctx, userId, client, course.id, { full: true });
+    await syncCourseContent(ctx, userId, client, course.id, { full: true });
   }
 
+  // Announcements come from the per-course pass above on a full sync; only
+  // the genuinely cross-course endpoints are left here.
   const courseIds = courses.map((course) => course.id);
-  await syncAnnouncements(ctx, userId, client, courseIds, Date.now() - 30 * DAY_MS);
   await syncCalendarEvents(ctx, userId, client, session, courseIds);
   await syncPlannerNotes(ctx, userId, client);
 
@@ -242,19 +268,17 @@ async function runDeltaSync(
     { userId },
   );
 
-  // Grade and submission deltas per course. Two filtered calls (submitted
-  // vs graded) are far cheaper than refetching every assignment.
   for (const courseId of courseIds) {
-    const [submitted, graded] = [
-      await client.getPaginated<CanvasSubmission>(
-        `/courses/${courseId}/students/submissions`,
-        { "student_ids[]": ["self"], submitted_since: sinceIso },
-      ),
-      await client.getPaginated<CanvasSubmission>(
-        `/courses/${courseId}/students/submissions`,
-        { "student_ids[]": ["self"], graded_since: sinceIso },
-      ),
-    ];
+    // Grade and submission deltas. Two filtered calls (submitted vs graded)
+    // are far cheaper than refetching every assignment.
+    const submitted = await client.getPaginated<CanvasSubmission>(
+      `/courses/${courseId}/students/submissions`,
+      { "student_ids[]": ["self"], submitted_since: sinceIso },
+    );
+    const graded = await client.getPaginated<CanvasSubmission>(
+      `/courses/${courseId}/students/submissions`,
+      { "student_ids[]": ["self"], graded_since: sinceIso },
+    );
     const byAssignment = new Map<number, CanvasSubmission>();
     for (const submission of [...submitted, ...graded]) {
       byAssignment.set(submission.assignment_id, submission);
@@ -268,6 +292,12 @@ async function runDeltaSync(
         })),
       });
     }
+
+    await syncCourseMeta(ctx, userId, client, courseId, {
+      full: false,
+      sinceMs,
+    });
+    await syncCourseContent(ctx, userId, client, courseId, { full: false });
   }
 
   await syncAnnouncements(ctx, userId, client, courseIds, sinceMs);
@@ -280,6 +310,10 @@ async function runDeltaSync(
   });
 }
 
+/**
+ * Recent announcements across every course in one call per 10 courses.
+ * Cheap enough for the delta tier, unlike the per-course topic listings.
+ */
 async function syncAnnouncements(
   ctx: ActionCtx,
   userId: string,
@@ -288,7 +322,7 @@ async function syncAnnouncements(
   sinceMs: number,
 ): Promise<void> {
   for (const chunk of chunked(courseIds, CONTEXT_CODE_CHUNK)) {
-    const announcements = await client.getPaginated<CanvasAnnouncement>(
+    const announcements = await client.getPaginated<CanvasDiscussionTopic>(
       "/announcements",
       {
         "context_codes[]": chunk.map((id) => `course_${id}`),
@@ -296,18 +330,17 @@ async function syncAnnouncements(
         end_date: new Date(Date.now() + DAY_MS).toISOString(),
       },
     );
-    const upserts: AnnouncementUpsert[] = announcements.map((a) => ({
-      courseCanvasId: parseContextCourseId(a.context_code),
-      canvasId: a.id,
-      title: a.title,
-      message: a.message ?? "",
-      postedAt: toMillis(a.posted_at),
-      htmlUrl: a.html_url,
-    }));
+    const upserts: DiscussionUpsert[] = announcements.flatMap((announcement) => {
+      const courseCanvasId = parseContextCourseId(announcement.context_code);
+      // A non-course context (a group announcement) has no home in the
+      // course-scoped table; drop it rather than orphan it under course 0.
+      if (courseCanvasId === undefined) return [];
+      return [mapDiscussion(courseCanvasId, announcement, true)];
+    });
     if (upserts.length > 0) {
-      await ctx.runMutation(internal.syncStore.upsertAnnouncements, {
+      await ctx.runMutation(internal.storeCourseMeta.upsertDiscussions, {
         userId,
-        announcements: upserts,
+        discussions: upserts,
       });
     }
   }
@@ -415,18 +448,87 @@ async function handleSyncError(
   throw error;
 }
 
-function mapAssignment(
-  courseCanvasId: number,
-  assignment: CanvasAssignment,
-): AssignmentUpsert {
+/**
+ * The ordered ids of the nav tabs the instructor left visible. Canvas does
+ * not honour `include[]=tabs` on the course *list* endpoint on every
+ * instance, so fall back to the per-course endpoint — it is a small,
+ * uncached-but-cheap request and only runs on a full sync.
+ */
+async function courseTabIds(
+  client: CanvasClient,
+  course: CanvasCourse,
+): Promise<string[] | undefined> {
+  const inline = course.tabs;
+  const tabs = Array.isArray(inline)
+    ? inline
+    : await tolerateDisabledTab<CanvasTab[] | undefined>(
+        () => client.getPaginated<CanvasTab>(`/courses/${course.id}/tabs`),
+        undefined,
+      );
+  if (tabs === undefined) return undefined;
+  return tabs
+    .filter((tab) => tab.hidden !== true)
+    .sort((a, b) => a.position - b.position)
+    .map((tab) => tab.id);
+}
+
+function mapCourse(
+  course: CanvasCourse,
+  tabs: string[] | undefined,
+): CourseUpsert {
+  // Only the student enrollment's totals are ours to show; a TA or designer
+  // enrollment on the same course reports someone else's (or no) scores.
+  const enrollment = course.enrollments?.find(
+    (candidate) => candidate.type === "student",
+  );
+  const hideFinalGrades = course.hide_final_grades === true;
   return {
-    courseCanvasId,
+    canvasId: course.id,
+    name: course.name ?? "Untitled course",
+    courseCode: course.course_code ?? "",
+    term: course.term?.name,
+    startAt: toMillis(course.start_at),
+    endAt: toMillis(course.end_at),
+    isFavorite: course.is_favorite,
+    defaultView: course.default_view,
+    tabs,
+    syllabusBody: course.syllabus_body ?? undefined,
+    imageUrl: course.image_download_url ?? undefined,
+    currentScore: hideFinalGrades
+      ? undefined
+      : (enrollment?.computed_current_score ?? undefined),
+    currentGrade: hideFinalGrades
+      ? undefined
+      : (enrollment?.computed_current_grade ?? undefined),
+    finalScore: hideFinalGrades
+      ? undefined
+      : (enrollment?.computed_final_score ?? undefined),
+    finalGrade: hideFinalGrades
+      ? undefined
+      : (enrollment?.computed_final_grade ?? undefined),
+    hideFinalGrades: course.hide_final_grades,
+    applyAssignmentGroupWeights: course.apply_assignment_group_weights,
+  };
+}
+
+function mapAssignment(assignment: CanvasAssignment): AssignmentUpsert {
+  return {
     canvasId: assignment.id,
     name: assignment.name,
+    description: assignment.description ?? undefined,
     dueAt: toMillis(assignment.due_at),
+    unlockAt: toMillis(assignment.unlock_at),
+    lockAt: toMillis(assignment.lock_at),
     pointsPossible: assignment.points_possible ?? undefined,
+    gradingType: assignment.grading_type,
+    assignmentGroupCanvasId: assignment.assignment_group_id,
+    position: assignment.position,
     htmlUrl: assignment.html_url,
     submissionTypes: assignment.submission_types ?? [],
+    quizCanvasId: assignment.quiz_id,
+    discussionCanvasId: assignment.discussion_topic?.id,
+    lockedForUser: assignment.locked_for_user,
+    omitFromFinalGrade: assignment.omit_from_final_grade,
     submission: assignment.submission
       ? mapSubmission(assignment.submission)
       : undefined,
@@ -445,9 +547,14 @@ function mapSubmission(submission: CanvasSubmission) {
   };
 }
 
-function parseContextCourseId(contextCode: string): number {
-  const id = Number.parseInt(contextCode.replace("course_", ""), 10);
-  return Number.isNaN(id) ? 0 : id;
+function parseContextCourseId(
+  contextCode: string | undefined,
+): number | undefined {
+  if (contextCode === undefined || !contextCode.startsWith("course_")) {
+    return undefined;
+  }
+  const id = Number.parseInt(contextCode.slice("course_".length), 10);
+  return Number.isNaN(id) ? undefined : id;
 }
 
 function chunked<T>(items: T[], size: number): T[][] {

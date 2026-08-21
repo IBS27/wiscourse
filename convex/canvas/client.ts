@@ -37,6 +37,30 @@ export class CanvasRateLimitError extends CanvasApiError {
   }
 }
 
+/**
+ * Run a course-scoped request, treating 401/403/404 as "this course has no
+ * such content" (the instructor hid the tab or the feature is off) and
+ * returning `fallback`. Throttling and a dead token are never swallowed.
+ */
+export async function tolerateDisabledTab<T>(
+  fetch: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await fetch();
+  } catch (error) {
+    if (error instanceof CanvasRateLimitError) throw error;
+    if (error instanceof CanvasAuthError) throw error;
+    if (
+      error instanceof CanvasApiError &&
+      (error.status === 401 || error.status === 403 || error.status === 404)
+    ) {
+      return fallback;
+    }
+    throw error;
+  }
+}
+
 export type QueryParams = Record<
   string,
   string | number | boolean | Array<string | number>
@@ -123,7 +147,16 @@ export class CanvasClient {
     if (response.ok) return response;
 
     const body = await response.text();
-    if (response.status === 401) {
+    // Canvas uses 401 for two different things: a bad/expired token
+    // (body status "unauthenticated", plus a WWW-Authenticate header) and
+    // a per-resource permission denial such as a course tab the instructor
+    // disabled (body status "unauthorized"). Only the former means the
+    // credential is dead.
+    if (
+      response.status === 401 &&
+      (body.includes('"unauthenticated"') ||
+        response.headers.has("WWW-Authenticate"))
+    ) {
       throw new CanvasAuthError();
     }
     if (

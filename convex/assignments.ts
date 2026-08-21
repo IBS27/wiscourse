@@ -49,10 +49,11 @@ export const byCourse = query({
     if (identity === null) return [];
     const assignments = await ctx.db
       .query("assignments")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .withIndex("by_user_course", (q) =>
+        q.eq("userId", identity.subject).eq("courseCanvasId", args.courseCanvasId),
+      )
       .collect();
     return assignments
-      .filter((a) => a.courseCanvasId === args.courseCanvasId)
       .sort((a, b) => (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity))
       .map(sanitize);
   },
