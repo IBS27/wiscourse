@@ -328,6 +328,21 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 .ch.tabbar .ctabs{margin:0;height:100%}
 .ch.tabbar .ctabs a{height:100%;padding:0 10px}
 
+/* course overview (1·A) */
+.ov{display:flex;flex:1;min-height:0}
+.ov-main{flex:1;min-width:0;padding-bottom:24px}
+.ov .mi{padding-left:36px;border-top:0;border-bottom:1px solid var(--line)}
+.ov .ov-main .mi:first-of-type{border-top:1px solid var(--line)}
+.ov .sec-h+.mi{border-top:1px solid var(--line)}
+.ov .rail{width:300px}
+.ov .rail .fact{padding:13px 14px 12px;border-bottom:1px solid var(--line);font-size:13px;color:var(--ink)}
+.ov .rail .fact .l{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
+.ov .rail .fact .s{font-size:12px;color:var(--ink-3);margin-top:2px}
+.ov .rail .mi{padding:7px 14px 7px 30px;font-size:12.5px;border:0}
+.ov .rail .mi .new{margin-left:-14px;margin-right:8px}
+.ov .rail .mi .ty{font-size:11.5px}
+.ov .rail .rail-f{margin-top:auto;color:var(--ink-2);font-weight:500}
+
 /* course sub-rail (variant B) */
 .subrail{width:200px;flex:none;border-right:1px solid var(--line);padding:14px 10px;background:var(--surface)}
 .subrail .back{display:flex;align-items:center;gap:7px;padding:0 8px 12px;font-size:12px;color:var(--ink-3)}
@@ -341,17 +356,66 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 .subrail a .nd{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--c)}
 .subrail .sb-sec{padding:18px 8px 6px}
 
-/* course cards (index) */
-.cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:16px 20px}
-.cc{display:block;color:inherit;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:14px 16px 12px;
-  border-top:3px solid var(--c);background:var(--surface)}
-.cc:hover{border-color:var(--line-2);border-top-color:var(--c)}
-.cc .t{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
-.cc .s{margin-top:2px;font-size:12px;color:var(--ink-3)}
-.cc .s .code{color:var(--c);font-weight:500}
-.cc .f{display:flex;gap:12px;white-space:nowrap;margin-top:12px;font-size:12px;color:var(--ink-2)}
-.cc .f b{font-weight:600}
-.cc .f .nd{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--c);margin-right:5px;vertical-align:1px}
+/* courses index (1b) — a ledger, not a card grid */
+.cx-h,.cx-r{display:grid;grid-template-columns:minmax(0,1fr) 250px 230px;align-items:center;gap:16px;padding:0 20px}
+.cx-h{height:32px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.cx-r{height:58px;border-bottom:1px solid var(--line);color:inherit;text-decoration:none}
+.cx-r:hover{background:var(--hover)}
+.cx-r .id{display:flex;align-items:center;gap:12px;min-width:0}
+.cx-r .id .dot{width:8px;height:8px}
+.cx-r .nm{font-size:14px;font-weight:500;letter-spacing:-.01em;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx-r .mt{margin-top:2px;font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx-r .mt .code{color:var(--c);font-weight:500}
+.cx-r .due{font-size:13px;line-height:1.25;min-width:0}
+.cx-r .due .s{display:block;margin-top:2px;font-size:12px;color:var(--ink-3)}
+.cx-r .due .s.od{color:var(--red)}
+.cx-r .due.none{color:var(--ink-3)}
+.cx-r .nw{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2)}
+.cx-r .nw .dot{width:6px;height:6px}
+.cx-r .nw.none{color:var(--ink-3)}
+.cx-r.past{grid-template-columns:minmax(0,1fr) auto;height:42px;color:var(--ink-2)}
+.cx-r.past .nm{font-size:13.5px;color:var(--ink-2)}
+.cx-r.past .id .dot{opacity:.45}
+.cx-r.past .mt{display:inline;margin:0 0 0 10px}
+.cx-r.past .fin{font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.cx-r.past .fin b{color:var(--ink-2);font-weight:500;margin-left:8px}
+.cx-term{display:flex;align-items:center;gap:9px;padding:20px 20px 8px;font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);cursor:default}
+.cx-term .ico{color:var(--ink-3)}
+.cx-term .ico.open{transform:rotate(90deg)}
+.cx-term .n{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none}
+/* week grid (1b·B) — outlines and rails only, no fills */
+.wk-g{display:grid;grid-template-columns:34px repeat(5,1fr);padding:14px 20px 18px;border-bottom:1px solid var(--line)}
+.wk-g .dh{height:26px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-left:8px}
+.wk-g .dh.today{color:var(--ink)}
+.wk-g .hrs{position:relative;height:234px;font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.wk-g .hrs span{position:absolute;right:8px;transform:translateY(-50%)}
+.wk-g .col{position:relative;height:234px;border-left:1px solid var(--line);
+  background-image:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px 26px)}
+.wk-g .col.today{background-color:var(--sunken)}
+.wk-g .blk{position:absolute;left:4px;right:4px;display:flex;align-items:center;gap:7px;padding:0 7px;border:1px solid var(--line);
+  border-left:2px solid var(--c);border-radius:5px;background:var(--surface);font-size:11px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden}
+.wk-g .blk span{color:var(--ink-3);font-weight:400;font-variant-numeric:tabular-nums}
+.wk-g .now{position:absolute;left:0;right:0;height:1px;background:var(--ink)}
+.wk-g .now::before{content:"";position:absolute;left:-3px;top:-2.5px;width:6px;height:6px;border-radius:50%;background:var(--ink)}
+/* edit mode (1b·C) */
+.cx-r.ed{grid-template-columns:16px 16px minmax(0,1fr) 220px auto;gap:14px;position:relative}
+.cx-r.ed .grip{color:var(--ink-3);cursor:grab}
+.cx-r.ed .swatch{width:14px;height:14px;border-radius:4px;background:var(--c);cursor:pointer}
+.cx-r.ed .swatch.on{outline:2px solid var(--ink);outline-offset:2px}
+.cx-r.ed .fld{height:30px;font-size:12.5px;color:var(--ink)}
+.cx-r.ed .fld .ph{color:var(--ink-3)}
+.tgl{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-2)}
+.tgl i{position:relative;width:28px;height:16px;border-radius:999px;background:var(--line-2);display:block}
+.tgl i::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--surface)}
+.tgl i.on{background:var(--today-bg)}
+.tgl i.on::after{left:14px}
+.pop{position:absolute;left:44px;top:46px;z-index:5;width:252px;padding:12px;background:var(--raised);border:1px solid var(--line);
+  border-radius:10px;box-shadow:var(--shadow);font-size:12.5px}
+.pop .sw8{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-bottom:12px}
+.pop .sw8 i{aspect-ratio:1;border-radius:6px;background:var(--c);display:block}
+.pop .sw8 i.on{outline:2px solid var(--ink);outline-offset:2px}
+.pop .kv{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-top:1px solid var(--line);color:var(--ink-2)}
+.pop .kv b{color:var(--ink);font-weight:500}
 
 /* modules */
 .mods{padding-bottom:24px}
@@ -461,12 +525,18 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 .fpv-h .t{font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fpv-h .s{font-size:11.5px;color:var(--ink-3)}
 .fpv-h .r{margin-left:auto;display:flex;gap:6px}
-.fpv-b{flex:1;display:grid;place-items:center;padding:20px}
-.pdf{width:240px;height:310px;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:28px 26px;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-.pdf i{display:block;height:6px;border-radius:3px;background:var(--line);margin-bottom:8px}
-.pdf i.h{height:10px;width:60%;background:var(--line-2);margin-bottom:16px}
-.pdf i.s{width:82%}.pdf i.x{width:45%;margin-bottom:18px}
-.fpv-f{padding:10px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3)}
+.fpv-b{flex:1;display:grid;place-items:start center;padding:22px 20px}
+.pdf{width:240px;height:310px;overflow:hidden;background:#fff;color:#222;border:1px solid var(--line);border-radius:3px;padding:22px 20px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);font-family:Georgia,"Times New Roman",serif;font-size:6.6px;line-height:1.5}
+[data-t="dark"] .pdf{background:#f2f2f0;border-color:transparent}
+.pdf b{display:block;font-size:12px;font-weight:700;letter-spacing:-.01em;margin-bottom:2px}
+.pdf em{display:block;font-style:normal;font-size:6.2px;color:#666;margin-bottom:9px}
+.pdf p{margin:0 0 6px;text-align:justify;hyphens:auto}
+.pdf i{font-style:italic}
+.pdf code,.pdf pre{font:6.2px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+.pdf pre{margin:0 0 6px;padding:5px 7px;background:#f3f3f1;border-radius:2px}
+.fpv-f{display:flex;align-items:center;padding:9px 14px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.fpv-f .r{margin-left:auto;display:flex;gap:10px;color:var(--ink-2)}
 .fcol{max-width:760px}
 .fcol .fr{grid-template-columns:1fr 80px 190px}
 .fsec{padding:16px 20px 6px;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
@@ -525,13 +595,16 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 .ibd h1{margin:0 0 6px;font-size:19px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
 .ibd .by{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-3);margin-bottom:18px}
 .ibd .acts{display:flex;gap:8px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
-.gcard{display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;margin:0 0 16px;background:var(--sunken)}
-.gcard .big{font-size:26px;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.gcard .big small{font-size:13px;color:var(--ink-3);font-weight:500;margin-left:3px;letter-spacing:0}
-.gcard .s{font-size:12.5px;color:var(--ink-3)}
-.gcard .s b{display:block;color:var(--ink);font-weight:500;font-size:13px;margin-bottom:1px}
-.cmt{padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-size:13px;line-height:1.55;margin-top:8px}
-.cmt .w{font-size:12px;color:var(--ink-3);margin-bottom:3px}
+.frow.two{grid-template-columns:18px 1fr auto;padding:9px 16px;height:auto;min-height:52px}
+.frow.two .tt{flex-direction:column;align-items:flex-start;gap:2px}
+.frow.two .tt .s{font-size:12px}
+.frow.two .tt .code{font-size:12px}
+.fchips .sel{display:inline-flex;align-items:center;gap:5px;color:var(--ink-2);font-weight:500;cursor:pointer}
+.fchips .tgl{font-size:12px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:14px 0;margin:0 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:13px;color:var(--ink);font-variant-numeric:tabular-nums}
+.facts b{display:block;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px}
+.cmt{padding:2px 0 2px 12px;border-left:2px solid var(--line-2);font-size:13px;line-height:1.55;margin-top:10px;color:var(--ink)}
+.cmt .w{font-size:12px;color:var(--ink-3);margin-bottom:2px}
 
 /* ⌘K */
 .ck{width:620px;background:var(--raised);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:13.5px}
@@ -634,6 +707,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 <symbol id="i-updown" viewBox="0 0 24 24"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></symbol>
 <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h10a5 5 0 0 1 0 10h-3"/><path d="M8 5 4 9l4 4"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></g></symbol>
 <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".6" fill="currentColor"/></symbol>
 </defs></svg>
 
@@ -1185,17 +1259,21 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
     </div>
     <h1>M3 — course hub, Inbox, ⌘K</h1>
     <p>Variants per surface, same tokens as the home design. Letters (A/B/C) are alternatives to pick from; they mix —
-       a course-hub shell from one column can take the modules list from another. Course colour stays a rail, a dot,
-       an edge: never a fill.</p>
+       a course-hub shell from one column can take the modules list from another. Two rules throughout: course colour stays
+       a rail, a dot, an edge, never a fill; and nothing is reproduced from Canvas just because Canvas has it — every surface
+       has to answer a question Canvas doesn't (what's due, what's new, where do I have to be).</p>
   </div>
 </header>
 
 <!-- ─────────────────────────────────────────────────────────── course hub shell -->
-<h2 class="m3">1 · Course hub shell</h2>
-<p>How a course frames its five tabs. Decides where Modules / Pages / Files / Syllabus / Announcements live and what the global sidebar does once you're inside a course.</p>
+<h2 class="m3">1 · Course hub</h2>
+<p>Canvas gives a course a dozen tabs and no answer to "what should I do now". Ours lands on an <b>Overview</b> that answers it —
+   what's due, what the instructor released this week, what changed since you last looked — and keeps four content tabs:
+   Modules, Files, Syllabus, Grades. Pages get no tab (they're reached through modules, links and ⌘K); Announcements get
+   no tab (they're feed items, so they live in Inbox and in the overview's "New" column). A–C below differ only in where the tabs sit.</p>
 
 <section>
-  <p class="cap"><span class="v">A</span>Tabs under a course header<span class="ideal">global sidebar unchanged · course highlighted · tabs carry unread dots</span></p>
+  <p class="cap"><span class="v">A</span>Overview under a course header<span class="ideal">global sidebar unchanged · course highlighted · tabs carry unread dots</span></p>
   <div class="scroll"><div class="frame tall"><div class="shell">
     <div data-sb="Courses" data-course="cs"></div>
     <div class="main" style="--c:var(--c-cs)">
@@ -1204,7 +1282,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
           <span class="ch-sw"></span>
           <div>
             <div class="ch-t">Operating Systems</div>
-            <div class="ch-m"><span class="code">CS 537</span><span>·</span><span>Fall 2026</span><span>·</span><span>Arpaci-Dusseau</span><span>·</span><span>Section 001 · MWF 9:55</span></div>
+            <div class="ch-m"><span class="code">CS 537</span><span>·</span><span>Fall 2026</span><span>·</span><span>Arpaci-Dusseau</span><span>·</span><span>MWF 9:55 · CS 1240</span></div>
           </div>
           <div class="ch-r">
             <span class="btn ghost"><svg class="ico ico-14"><use href="#i-set"/></svg></span>
@@ -1212,44 +1290,43 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
           </div>
         </div>
         <div class="ctabs">
-          <a href="#" class="on">Modules<span class="nd"></span></a>
-          <a href="#">Pages</a>
+          <a href="#" class="on">Overview</a>
+          <a href="#">Modules<span class="nd"></span></a>
           <a href="#">Files<span class="n">3 new</span></a>
           <a href="#">Syllabus</a>
-          <a href="#">Announcements<span class="n">2</span></a>
-          <a href="#">Grades</a>
+          <a href="#">Grades<span class="nd"></span></a>
         </div>
       </div>
-      <div class="mods">
-        <div class="mod">
-          <div class="mod-h"><svg class="ico ico-14 open"><use href="#i-chev"/></svg>Week 4 — Threads &amp; Concurrency<span class="done">3 of 6 viewed</span></div>
+      <div class="ov">
+        <div class="ov-main">
+          <div class="sec-h"><span class="sec-t od">Due</span><span class="sec-d">1 overdue · 2 this week</span></div>
+          <a class="mi od"><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Project 2: Multithreaded Web Server</span><span class="ty"><span class="pill red">Overdue · was Fri</span></span></a>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Discussion 4 worksheet</span><span class="ty">Fri Sep 4 · 11:59 PM</span></a>
+          <a class="mi"><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Homework 4: Concurrency</span><span class="ty">Wed Sep 9 · 11:59 PM · 20 pts</span></a>
+          <div class="sec-h" style="padding-top:22px"><span class="sec-t">This week</span><span class="sec-d">Week 4 — Threads &amp; Concurrency · Aug 24 – 28</span><span class="sec-n">3 of 6 viewed</span></div>
           <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-note"/></svg><span class="t">Lecture 10: Threads API</span><span class="ty">Page</span></a>
           <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-file"/></svg><span class="t">threads-api.pdf</span><span class="ty">PDF · 1.2 MB</span></a>
-          <a class="mi"><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Project 2: Multithreaded Web Server</span><span class="ty"><span class="pill red">Overdue</span></span></a>
           <a class="mi"><svg class="ico ico-14"><use href="#i-note"/></svg><span class="t">Lecture 11: Locks</span><span class="ty">Page</span></a>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-file"/></svg><span class="t">locks.pdf</span><span class="ty">PDF · 940 KB</span></a>
           <a class="mi ext"><svg class="ico ico-14"><use href="#i-ext"/></svg><span class="t">Piazza — Week 4 thread</span><span class="ty">Opens in Canvas</span></a>
-          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Discussion 4 worksheet</span><span class="ty">Due Fri Aug 28</span></a>
+          <a class="mi lock"><svg class="ico ico-14"><use href="#i-clock"/></svg><span class="t">Week 5 — Condition Variables</span><span class="ty">Unlocks Mon Aug 31 · 4 items</span></a>
+          <div class="sec-h" style="padding-top:22px"><span class="sec-t" style="color:var(--ink-3)">Earlier</span><span class="sec-d">Weeks 1–3 · all viewed</span><span class="sec-n"><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
         </div>
-        <div class="mod">
-          <div class="mod-h"><svg class="ico ico-14 open"><use href="#i-chev"/></svg>Week 3 — Scheduling<span class="done">All viewed</span></div>
-          <a class="mi"><svg class="ico ico-14"><use href="#i-note"/></svg><span class="t">Lecture 7: Scheduling intro</span><span class="ty">Page</span></a>
-          <a class="mi"><svg class="ico ico-14"><use href="#i-note"/></svg><span class="t">Lecture 8: MLFQ</span><span class="ty">Page</span></a>
-          <a class="mi"><svg class="ico ico-14"><use href="#i-file"/></svg><span class="t">mlfq-homework.pdf</span><span class="ty">PDF · 280 KB</span></a>
-          <a class="mi"><svg class="ico ico-14"><use href="#i-task"/></svg><span class="t">Homework 3: Scheduling</span><span class="ty"><span class="pill"><svg class="ico ico-13"><use href="#i-check"/></svg>Submitted</span></span></a>
-        </div>
-        <div class="mod closed">
-          <div class="mod-h"><svg class="ico ico-14"><use href="#i-chev"/></svg>Week 2 — Processes<span class="done">All viewed</span></div>
-        </div>
-        <div class="mod closed">
-          <div class="mod-h"><svg class="ico ico-14"><use href="#i-chev"/></svg>Week 1 — Introduction<span class="done">All viewed</span></div>
-        </div>
-        <div class="mod locked">
-          <div class="mod-h"><svg class="ico ico-14"><use href="#i-chev"/></svg>Week 5 — Condition Variables<span class="st"><svg class="ico"><use href="#i-clock"/></svg>Unlocks Mon Aug 31</span></div>
+        <div class="rail">
+          <div class="fact"><div class="l">Office hours</div>Tue 2–3 · Thu 10–11<div class="s">CS 7357 · next: Tue 2:00 PM</div></div>
+          <div class="fact"><div class="l">Instructor</div>Remzi Arpaci-Dusseau<div class="s">remzi@cs.wisc.edu · TAs on Piazza</div></div>
+          <div class="fact"><div class="l">Standing</div>91.2% · A<div class="s">4 of 12 graded · Projects weigh 50%</div></div>
+          <div class="rail-h" style="padding-top:16px"><span class="t">New</span><span class="n">4</span><span class="a">Mark read</span></div>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-ann"/></svg><span class="t">Project 2 deadline extended to Friday</span><span class="ty">2h</span></a>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-star"/></svg><span class="t">Project 1 graded · <span class="score">96/100</span></span><span class="ty">Wed</span></a>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-file"/></svg><span class="t">lecture10-demo.c</span><span class="ty">Wed</span></a>
+          <a class="mi unread"><span class="new"></span><svg class="ico ico-14"><use href="#i-ann"/></svg><span class="t">Office hours moved this week</span><span class="ty">Wed</span></a>
+          <div class="rail-f">All announcements <span style="color:var(--ink-2)">→</span></div>
         </div>
       </div>
     </div>
   </div></div></div>
-  <p class="note">Header carries the sidebar's course colour as a 10px square, not a banner. Unread = course-colour dot in the item gutter; "3 of 6 viewed" is our seen-state, not Canvas completion.</p>
+  <p class="note">Everything on the overview already exists elsewhere — the Due list is the course's slice of unified todos, "This week" is the current module (by unlock date, else the newest with unseen items), the rail's facts are parsed from the syllabus and blank when they can't be. What's new is that a student sees all of it on arrival instead of clicking through five tabs. Header carries the course colour as a 10px square, not a banner; unread = course-colour dot in the gutter; "3 of 6 viewed" is our seen-state, not Canvas completion.</p>
 </section>
 
 <section>
@@ -1259,12 +1336,11 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
     <div class="subrail" style="--c:var(--c-cs)">
       <div class="back"><svg class="ico ico-13"><use href="#i-chev"/></svg>All courses</div>
       <div class="ct">Operating Systems<span class="code">CS 537</span></div>
+      <a href="#"><svg class="ico ico-14"><use href="#i-home"/></svg>Overview</a>
       <a href="#" class="on"><svg class="ico ico-14"><use href="#i-sub"/></svg>Modules<span class="nd"></span></a>
-      <a href="#"><svg class="ico ico-14"><use href="#i-note"/></svg>Pages</a>
       <a href="#"><svg class="ico ico-14"><use href="#i-file"/></svg>Files<span class="n">3</span></a>
       <a href="#"><svg class="ico ico-14"><use href="#i-book"/></svg>Syllabus</a>
-      <a href="#"><svg class="ico ico-14"><use href="#i-ann"/></svg>Announcements<span class="n">2</span></a>
-      <a href="#"><svg class="ico ico-14"><use href="#i-grade"/></svg>Grades<span class="n">92%</span></a>
+      <a href="#"><svg class="ico ico-14"><use href="#i-grade"/></svg>Grades<span class="n">91%</span></a>
       <div class="sb-sec"><span>Pinned</span></div>
       <a href="#"><svg class="ico ico-14"><use href="#i-file"/></svg>Project 2 handout</a>
       <a href="#"><svg class="ico ico-14"><use href="#i-note"/></svg>Office hours</a>
@@ -1287,7 +1363,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
       </div>
     </div>
   </div></div></div>
-  <p class="note">Three columns is a lot at 1280 but it makes pages, files and the syllabus one click apart with no header real estate. The rail can also host "pinned" items — a local-only nicety.</p>
+  <p class="note">Three columns is a lot at 1280 but it makes every section one click apart with no header real estate. The rail can also host "pinned" items — a local-only nicety Canvas has no equivalent for.</p>
 </section>
 
 <section>
@@ -1309,8 +1385,8 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
       </div>
       <div class="ch tabbar">
         <div class="ctabs">
-          <a href="#" class="on">Modules<span class="nd"></span></a><a href="#">Pages</a><a href="#">Files<span class="n">3</span></a>
-          <a href="#">Syllabus</a><a href="#">Announcements<span class="n">2</span></a><a href="#">Grades</a>
+          <a href="#">Overview</a><a href="#" class="on">Modules<span class="nd"></span></a><a href="#">Files<span class="n">3</span></a>
+          <a href="#">Syllabus</a><a href="#">Grades<span class="nd"></span></a>
         </div>
       </div>
       <div class="mods">
@@ -1324,53 +1400,163 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
       </div>
     </div>
   </div></div></div>
-  <p class="note">Course-scoped search in the topbar is the same ⌘K with a scope chip pre-set (see §6). Instructor / meeting time move to the Syllabus tab.</p>
+  <p class="note">Course-scoped search in the topbar is the same ⌘K with a scope chip pre-set (see §7). Instructor / meeting time move to the Syllabus tab and the overview rail.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────────── courses index -->
 <h2 class="m3">1b · Courses index</h2>
-<p>What <code>/courses</code> shows. The sidebar already lists courses, so this page earns its place by surfacing what's new per course.</p>
+<p>What <code>/courses</code> shows. Canvas answers this with a grid of coloured tiles that say nothing. The sidebar already lists
+   courses, so this page is the same list with the two things a tile can't hold: what's due next, and what changed since you looked.</p>
+
 <section>
-  <div class="row2">
-    <div class="card" style="width:700px">
-      <p class="cap" style="padding:14px 20px 0"><span class="v">A</span>Cards with unread counts</p>
-      <div class="cgrid">
-        <a href="#" class="cc" style="--c:var(--c-cs)"><div class="t">Operating Systems</div><div class="s"><span class="code">CS 537</span> · Arpaci-Dusseau · MWF 9:55</div>
-          <div class="f"><span><span class="nd"></span><b>2</b> announcements</span><span><b>3</b> new files</span><span><b>1</b> due this week</span></div></a>
-        <a href="#" class="cc" style="--c:var(--c-math)"><div class="t">Linear Algebra</div><div class="s"><span class="code">MATH 340</span> · Ellenberg · TR 11:00</div>
-          <div class="f"><span><span class="nd"></span><b>1</b> new assignment</span><span><b>2</b> due this week</span></div></a>
-        <a href="#" class="cc" style="--c:var(--c-econ)"><div class="t">Microeconomics</div><div class="s"><span class="code">ECON 101</span> · Hansen · MW 1:20</div>
-          <div class="f"><span>Nothing new</span><span><b>1</b> due this week</span></div></a>
-        <a href="#" class="cc" style="--c:var(--c-stat)"><div class="t">Intro Statistics</div><div class="s"><span class="code">STAT 324</span> · Peterson · TR 2:30</div>
-          <div class="f"><span><span class="nd"></span><b>1</b> grade posted</span><span><b>1</b> announcement</span></div></a>
+  <p class="cap"><span class="v">A</span>Term ledger<span class="ideal">one row per course · next due · new since last visit · past terms fold away</span></p>
+  <div class="scroll"><div class="frame short"><div class="shell">
+    <div data-sb="Courses"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date">Courses</div><div class="sync">Fall 2026 · 4 courses · synced 2 min ago</div></div>
+        <span class="btn ghost">Edit</span>
       </div>
-      <div class="sec-h" style="padding-top:4px"><span class="sec-t" style="color:var(--ink-3)">Past</span><span class="sec-d">Spring 2026 · 4 courses</span><span class="sec-n"><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
-      <div style="height:10px"></div>
+      <div class="cx-h"><span>Course</span><span>Next due</span><span>New</span></div>
+      <a href="#" class="cx-r" style="--c:var(--c-cs)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Operating Systems</div><div class="mt"><span class="code">CS 537</span> · Arpaci-Dusseau · MWF 9:55 · CS 1240</div></div></div>
+        <div class="due">Project 2: Multithreaded Web Server<span class="s od">Overdue · was Fri 11:59 PM</span></div>
+        <div class="nw"><span class="dot"></span>2 announcements · 3 files</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-math)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Linear Algebra</div><div class="mt"><span class="code">MATH 340</span> · Ellenberg · TR 11:00 · Van Vleck B102</div></div></div>
+        <div class="due">Homework 6<span class="s">Tue Sep 1 · 11:59 PM</span></div>
+        <div class="nw"><span class="dot"></span>1 assignment</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-econ)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Microeconomics</div><div class="mt"><span class="code">ECON 101</span> · Hansen · MW 1:20 · Soc Sci 6210</div></div></div>
+        <div class="due">Problem Set 4<span class="s">Fri Aug 28 · 5:00 PM · moved from Aug 26</span></div>
+        <div class="nw none">—</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-stat)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Intro Statistics</div><div class="mt"><span class="code">STAT 324</span> · Peterson · TR 2:30 · Van Vleck B239</div></div></div>
+        <div class="due">Quiz 3<span class="s">Thu Sep 3 · in class</span></div>
+        <div class="nw"><span class="dot"></span>1 grade · 1 announcement</div>
+      </a>
+      <div class="cx-term"><svg class="ico ico-13 open"><use href="#i-chev"/></svg>Spring 2026<span class="n">4 courses</span></div>
+      <a href="#" class="cx-r past" style="--c:var(--c-cs)"><div class="id"><span class="dot"></span><div style="min-width:0"><span class="nm">Intro to Algorithms</span><span class="mt">CS 577 · Dieter van Melkebeek</span></div></div><div class="fin">Final<b>A</b></div></a>
+      <a href="#" class="cx-r past" style="--c:var(--c-math)"><div class="id"><span class="dot"></span><div style="min-width:0"><span class="nm">Calculus III</span><span class="mt">MATH 234 · Yang</span></div></div><div class="fin">Final<b>AB</b></div></a>
+      <a href="#" class="cx-r past" style="--c:var(--c-stat)"><div class="id"><span class="dot"></span><div style="min-width:0"><span class="nm">Data Structures</span><span class="mt">CS 400 · Dahl</span></div></div><div class="fin">Final<b>A</b></div></a>
+      <a href="#" class="cx-r past" style="--c:var(--c-econ)"><div class="id"><span class="dot"></span><div style="min-width:0"><span class="nm">Intro Psychology</span><span class="mt">PSYCH 202 · Niedenthal</span></div></div><div class="fin">Final<b>A</b></div></a>
+      <div class="cx-term"><svg class="ico ico-13"><use href="#i-chev"/></svg>Fall 2025<span class="n">5 courses</span></div>
     </div>
-    <div class="card" style="width:560px">
-      <p class="cap" style="padding:14px 20px 0"><span class="v">B</span>Dense rows, drag to reorder, colour picker inline</p>
-      <div style="padding:6px 0">
-        <a href="#" class="crs" style="--c:var(--c-cs);height:44px;padding:0 20px;border-radius:0;border-bottom:1px solid var(--line)"><span class="dot" style="width:10px;height:10px;border-radius:3px"></span><span class="t" style="font-weight:500;color:var(--ink)">Operating Systems</span><span class="code">CS 537</span><span style="margin-left:14px;font-size:11.5px;color:var(--ink-3)">2 new</span><svg class="ico ico-14" style="margin-left:12px;color:var(--ink-3)"><use href="#i-updown"/></svg></a>
-        <a href="#" class="crs" style="--c:var(--c-math);height:44px;padding:0 20px;border-radius:0;border-bottom:1px solid var(--line)"><span class="dot" style="width:10px;height:10px;border-radius:3px"></span><span class="t" style="font-weight:500;color:var(--ink)">Linear Algebra</span><span class="code">MATH 340</span><span style="margin-left:14px;font-size:11.5px;color:var(--ink-3)">1 new</span><svg class="ico ico-14" style="margin-left:12px;color:var(--ink-3)"><use href="#i-updown"/></svg></a>
-        <a href="#" class="crs" style="--c:var(--c-econ);height:44px;padding:0 20px;border-radius:0;border-bottom:1px solid var(--line)"><span class="dot" style="width:10px;height:10px;border-radius:3px"></span><span class="t" style="font-weight:500;color:var(--ink)">Microeconomics</span><span class="code">ECON 101</span><span style="margin-left:14px;font-size:11.5px;color:var(--ink-3)"></span><svg class="ico ico-14" style="margin-left:12px;color:var(--ink-3)"><use href="#i-updown"/></svg></a>
-        <a href="#" class="crs" style="--c:var(--c-stat);height:44px;padding:0 20px;border-radius:0;border-bottom:1px solid var(--line)"><span class="dot" style="width:10px;height:10px;border-radius:3px"></span><span class="t" style="font-weight:500;color:var(--ink)">Intro Statistics</span><span class="code">STAT 324</span><span style="margin-left:14px;font-size:11.5px;color:var(--ink-3)">1 new</span><svg class="ico ico-14" style="margin-left:12px;color:var(--ink-3)"><use href="#i-updown"/></svg></a>
-        <div class="pad" style="padding:14px 20px 8px">
-          <div class="blk-t">Colour · Operating Systems</div>
-          <div style="display:flex;gap:8px">
-            <i style="width:22px;height:22px;border-radius:6px;background:var(--c-cs);outline:2px solid var(--ink);outline-offset:2px"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:var(--c-math)"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:var(--c-econ)"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:var(--c-stat)"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:#be185d"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:#65a30d"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:#7c3aed"></i>
-            <i style="width:22px;height:22px;border-radius:6px;background:var(--c-me)"></i>
-          </div>
-          <div class="fld" style="margin-top:12px;width:260px">Nickname<span style="margin-left:auto;color:var(--ink)">OS</span></div>
+  </div></div></div>
+  <p class="note">"Next due" is the soonest incomplete assignment from our unified todos, so it stays in step with Home and Tasks. "New" counts items without <code>seenAt</code>, and disappears (—) when there are none rather than saying "Nothing new". Past terms keep their colour at 45% and show the final grade Canvas reports, nothing else.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">B</span>Week grid above the ledger<span class="ideal">where you have to be, drawn once · outlines and rails, no fills</span></p>
+  <div class="scroll"><div class="frame short"><div class="shell">
+    <div data-sb="Courses"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date">Courses</div><div class="sync">Fall 2026 · 4 courses · 14 meetings a week</div></div>
+        <span class="btn ghost">Edit</span>
+      </div>
+      <div class="wk-g">
+        <span></span><span class="dh">Mon</span><span class="dh">Tue</span><span class="dh">Wed</span><span class="dh">Thu</span><span class="dh today">Fri 28</span>
+        <div class="hrs"><span style="top:0">8</span><span style="top:52px">10</span><span style="top:104px">12</span><span style="top:156px">2</span><span style="top:208px">4</span></div>
+        <div class="col">
+          <div class="blk" style="--c:var(--c-cs);top:50px;height:21px">CS 537<span>9:55</span></div>
+          <div class="blk" style="--c:var(--c-econ);top:139px;height:21px">ECON 101<span>1:20</span></div>
+        </div>
+        <div class="col">
+          <div class="blk" style="--c:var(--c-math);top:78px;height:32px">MATH 340<span>11:00</span></div>
+          <div class="blk" style="--c:var(--c-stat);top:169px;height:32px">STAT 324<span>2:30</span></div>
+        </div>
+        <div class="col">
+          <div class="blk" style="--c:var(--c-cs);top:50px;height:21px">CS 537<span>9:55</span></div>
+          <div class="blk" style="--c:var(--c-econ);top:139px;height:21px">ECON 101<span>1:20</span></div>
+          <div class="blk" style="--c:var(--c-stat);top:195px;height:21px">STAT 324<span>3:30 · disc</span></div>
+        </div>
+        <div class="col">
+          <div class="blk" style="--c:var(--c-math);top:78px;height:32px">MATH 340<span>11:00</span></div>
+          <div class="blk" style="--c:var(--c-stat);top:169px;height:32px">STAT 324<span>2:30</span></div>
+        </div>
+        <div class="col today">
+          <div class="blk" style="--c:var(--c-cs);top:50px;height:21px">CS 537<span>9:55</span></div>
+          <div class="blk" style="--c:var(--c-cs);top:117px;height:21px">CS 537<span>12:30 · disc</span></div>
+          <div class="now" style="top:66px"></div>
         </div>
       </div>
+      <div class="cx-h"><span>Course</span><span>Next due</span><span>New</span></div>
+      <a href="#" class="cx-r" style="--c:var(--c-cs)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Operating Systems</div><div class="mt"><span class="code">CS 537</span> · Arpaci-Dusseau · CS 1240</div></div></div>
+        <div class="due">Project 2: Multithreaded Web Server<span class="s od">Overdue · was Fri 11:59 PM</span></div>
+        <div class="nw"><span class="dot"></span>2 announcements · 3 files</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-math)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Linear Algebra</div><div class="mt"><span class="code">MATH 340</span> · Ellenberg · Van Vleck B102</div></div></div>
+        <div class="due">Homework 6<span class="s">Tue Sep 1 · 11:59 PM</span></div>
+        <div class="nw"><span class="dot"></span>1 assignment</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-econ)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Microeconomics</div><div class="mt"><span class="code">ECON 101</span> · Hansen · Soc Sci 6210</div></div></div>
+        <div class="due">Problem Set 4<span class="s">Fri Aug 28 · 5:00 PM</span></div>
+        <div class="nw none">—</div>
+      </a>
+      <a href="#" class="cx-r" style="--c:var(--c-stat)">
+        <div class="id"><span class="dot"></span><div style="min-width:0"><div class="nm">Intro Statistics</div><div class="mt"><span class="code">STAT 324</span> · Peterson · Van Vleck B239</div></div></div>
+        <div class="due">Quiz 3<span class="s">Thu Sep 3 · in class</span></div>
+        <div class="nw"><span class="dot"></span>1 grade · 1 announcement</div>
+      </a>
     </div>
-  </div>
+  </div></div></div>
+  <p class="note">The one thing Canvas can't draw: your actual week. Caveat — the Canvas API has no meeting times; they come from section names when UW encodes them, from the syllabus parse, or from Edit mode. Courses without times simply don't appear in the grid, and the grid collapses when none do.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">C</span>Edit mode<span class="ideal">same rows · drag to reorder the sidebar · colour and nickname in a popover · hide without dropping</span></p>
+  <div class="scroll"><div class="frame short"><div class="shell" style="min-height:420px">
+    <div data-sb="Courses"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date">Courses</div><div class="sync">Order, colour and nickname are yours — Canvas never sees them</div></div>
+        <span class="btn pri">Done</span>
+      </div>
+      <div class="cx-h" style="grid-template-columns:16px 16px minmax(0,1fr) 220px auto;gap:14px"><span></span><span></span><span>Course</span><span>Nickname</span><span>Sidebar</span></div>
+      <div class="cx-r ed" style="--c:var(--c-cs)">
+        <svg class="ico ico-14 grip"><use href="#i-grip"/></svg><span class="swatch on"></span>
+        <div style="min-width:0"><div class="nm">Operating Systems</div><div class="mt"><span class="code">CS 537</span> · Arpaci-Dusseau</div></div>
+        <div class="fld">OS</div>
+        <div class="tgl"><i class="on"></i>Shown</div>
+        <div class="pop">
+          <div class="sw8"><i class="on" style="--c:var(--c-cs)"></i><i style="--c:var(--c-math)"></i><i style="--c:var(--c-econ)"></i><i style="--c:var(--c-stat)"></i><i style="--c:#be185d"></i><i style="--c:#65a30d"></i><i style="--c:#7c3aed"></i><i style="--c:var(--c-me)"></i></div>
+          <div class="kv">Reset to Canvas colour<b style="color:var(--ink-3);font-weight:400">#2D3B45</b></div>
+        </div>
+      </div>
+      <div class="cx-r ed" style="--c:var(--c-math)">
+        <svg class="ico ico-14 grip"><use href="#i-grip"/></svg><span class="swatch"></span>
+        <div style="min-width:0"><div class="nm">Linear Algebra</div><div class="mt"><span class="code">MATH 340</span> · Ellenberg</div></div>
+        <div class="fld"><span class="ph">Linear Algebra</span></div>
+        <div class="tgl"><i class="on"></i>Shown</div>
+      </div>
+      <div class="cx-r ed" style="--c:var(--c-econ)">
+        <svg class="ico ico-14 grip"><use href="#i-grip"/></svg><span class="swatch"></span>
+        <div style="min-width:0"><div class="nm">Microeconomics</div><div class="mt"><span class="code">ECON 101</span> · Hansen</div></div>
+        <div class="fld">Econ</div>
+        <div class="tgl"><i class="on"></i>Shown</div>
+      </div>
+      <div class="cx-r ed" style="--c:var(--c-stat)">
+        <svg class="ico ico-14 grip"><use href="#i-grip"/></svg><span class="swatch"></span>
+        <div style="min-width:0"><div class="nm">Intro Statistics</div><div class="mt"><span class="code">STAT 324</span> · Peterson</div></div>
+        <div class="fld">Stats</div>
+        <div class="tgl"><i class="on"></i>Shown</div>
+      </div>
+      <div class="cx-r ed" style="--c:var(--c-me);color:var(--ink-3)">
+        <svg class="ico ico-14 grip"><use href="#i-grip"/></svg><span class="swatch" style="opacity:.5"></span>
+        <div style="min-width:0"><div class="nm" style="color:var(--ink-3)">Wisconsin Experience Seminar</div><div class="mt"><span class="code" style="color:var(--ink-3)">CP 125</span> · no assignments</div></div>
+        <div class="fld"><span class="ph">Wisconsin Experience Seminar</span></div>
+        <div class="tgl"><i></i>Hidden</div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">Hidden courses stay synced and searchable in ⌘K; they just leave the sidebar and Home. The nickname replaces the Canvas name everywhere we render it, which matters when Canvas calls a course "FA26 COMP SCI 537 001". The popover shows what the colour picker in Settings shows — the eight-colour palette from the home tokens — nothing bespoke.</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────────────────── modules -->
@@ -1420,8 +1606,8 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
     <div class="main" style="--c:var(--c-cs)">
       <div class="ch tabbar">
         <div class="ctabs">
-          <a href="#">Modules</a><a href="#" class="on">Pages</a><a href="#">Files<span class="n">3</span></a>
-          <a href="#">Syllabus</a><a href="#">Announcements<span class="n">2</span></a><a href="#">Grades</a>
+          <a href="#">Overview</a><a href="#" class="on">Modules<span class="nd"></span></a><a href="#">Files<span class="n">3</span></a>
+          <a href="#">Syllabus</a><a href="#">Grades</a>
         </div>
         <span class="btn ghost" style="margin-left:auto"><svg class="ico ico-14"><use href="#i-ext"/></svg>Canvas</span>
       </div>
@@ -1429,7 +1615,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
         <div class="nav2"><span class="btn prev"><svg class="ico"><use href="#i-chev"/></svg>Lecture 10</span><span class="btn">threads-api.pdf<svg class="ico"><use href="#i-chev"/></svg></span></div></div>
       <div class="reader">
         <div class="rd">
-          <div class="crumbs"><span class="code">CS 537</span><span>/</span><span>Pages</span></div>
+          <div class="crumbs"><span class="code">CS 537</span><span>/</span><span>Modules</span><span>/</span><span>Week 4</span></div>
           <h1>Project 2: Multithreaded Web Server — Handout</h1>
           <div class="meta">Updated Aug 14 by Arpaci-Dusseau · first viewed today</div>
           <div class="prose">
@@ -1467,8 +1653,8 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
     <div class="main" style="--c:var(--c-cs)">
       <div class="ch tabbar">
         <div class="ctabs">
-          <a href="#">Modules</a><a href="#">Pages</a><a href="#" class="on">Files<span class="n">3</span></a>
-          <a href="#">Syllabus</a><a href="#">Announcements<span class="n">2</span></a><a href="#">Grades</a>
+          <a href="#">Overview</a><a href="#">Modules<span class="nd"></span></a><a href="#" class="on">Files<span class="n">3</span></a>
+          <a href="#">Syllabus</a><a href="#">Grades</a>
         </div>
       </div>
       <div class="files">
@@ -1490,17 +1676,25 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
           <div class="fr unread"><div class="nm"><svg class="ico ico-14"><use href="#i-file"/></svg><span>threads-api.pdf</span></div><span class="sz">1.2 MB</span><span class="dt">Aug 19</span><span class="nd"></span></div>
           <div class="fr on"><div class="nm"><svg class="ico ico-14"><use href="#i-file"/></svg><span>locks.pdf</span></div><span class="sz">940 KB</span><span class="dt">Aug 19</span><span></span></div>
           <div class="fr unread"><div class="nm"><svg class="ico ico-14"><use href="#i-file"/></svg><span>lecture10-demo.c</span></div><span class="sz">3 KB</span><span class="dt">Aug 18</span><span class="nd"></span></div>
-          <div class="empty" style="padding:36px 40px 0"><span class="s">Files sync in the background. Nothing here is downloaded until you open it.</span></div>
         </div>
         <div class="fpv">
-          <div class="fpv-h"><div style="min-width:0"><div class="t">locks.pdf</div><div class="s">940 KB · 24 pages · added Aug 19</div></div>
+          <div class="fpv-h"><div style="min-width:0"><div class="t">locks.pdf</div><div class="s">940 KB · 24 pages · Aug 19</div></div>
             <div class="r"><span class="btn" style="height:27px;padding:0 9px;font-size:12px">Download</span><span class="btn ghost" style="height:27px"><svg class="ico ico-14"><use href="#i-ext"/></svg></span></div></div>
-          <div class="fpv-b"><div class="pdf"><i class="h"></i><i></i><i class="s"></i><i></i><i class="x"></i><i></i><i></i><i class="s"></i><i class="x"></i><i></i><i class="s"></i></div></div>
-          <div class="fpv-f">Preview via fresh Canvas URL · expires in 1h · <span style="color:var(--ink-2)">Falls back to proxy if blocked</span></div>
+          <div class="fpv-b"><div class="pdf">
+            <b>Locks</b><em>CS 537 · Lecture 11 · Remzi Arpaci-Dusseau</em>
+            <p>A lock is just a variable. To use one, you declare a lock variable of some kind (such as <code>pthread_mutex_t</code>). The lock variable holds the state of the lock at any instant: it is either <i>available</i> (no thread holds it) or <i>acquired</i> (exactly one thread holds it and is presumably in a critical section).</p>
+            <p>The semantics of <code>lock()</code> and <code>unlock()</code> are simple. Calling <code>lock()</code> tries to acquire the lock; if no other thread holds it, the thread will acquire it and enter the critical section. Once the owner calls <code>unlock()</code>, the lock is available again.</p>
+            <pre>pthread_mutex_lock(&amp;lock);
+balance = balance + 1;
+pthread_mutex_unlock(&amp;lock);</pre>
+            <p>Building a lock that works needs help from the hardware — a test-and-set, a compare-and-swap, or load-linked / store-conditional — plus a decision about what waiting threads do: spin, yield, or sleep on a queue.</p>
+          </div></div>
+          <div class="fpv-f"><span>Page 1 of 24</span><span class="r"><svg class="ico ico-13" style="transform:rotate(180deg)"><use href="#i-chev"/></svg><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
         </div>
       </div>
     </div>
   </div></div></div>
+  <p class="note">Nothing is downloaded until you open it. The preview is the file itself, fetched through a short-lived Canvas verifier URL minted by a Convex action (falls back to a proxy if the browser blocks it) — never a placeholder. Unread dot = never opened here.</p>
 </section>
 <section>
   <div class="row2">
@@ -1526,14 +1720,14 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
         <div class="fr" style="grid-template-columns:1fr 70px"><div class="nm"><svg class="ico ico-14"><use href="#i-file"/></svg><span><b>lock</b>-free-reading.pdf <span style="color:var(--ink-3);font-size:12px">· Discussion</span></span></div><span class="sz">2.1 MB</span></div>
         <div class="fr" style="grid-template-columns:1fr 70px;border-bottom:0"><div class="nm"><svg class="ico ico-14"><use href="#i-file"/></svg><span>spin<b>lock</b>.c <span style="color:var(--ink-3);font-size:12px">· Lectures / Week 4</span></span></div><span class="sz">1 KB</span></div>
       </div>
-      <div class="hint"><span>Deep folder trees are an instructor habit; search collapses them.</span></div>
     </div>
   </div>
+  <p class="note">Deep folder trees are an instructor habit; search collapses them (C). B is the mobile layout; A is desktop.</p>
 </section>
 
 <!-- ─────────────────────────────────────────────────── syllabus + announcements -->
 <h2 class="m3">5 · Syllabus · Announcements</h2>
-<p>Syllabus is one page plus the facts worth pulling out. Announcements are the same feed card as Inbox, scoped to a course.</p>
+<p>Syllabus is one page plus the facts worth pulling out — the same facts that feed the overview rail. Announcements have no tab of their own: this list is Inbox filtered to one course, reached from the overview's "All announcements".</p>
 <section>
   <div class="row2">
     <div class="card syl" style="width:700px;--c:var(--c-cs)">
@@ -1587,7 +1781,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 <h2 class="m3">6 · Inbox</h2>
 <p>One chronological feed: announcements, grade postings, new and changed assignments. Per-item seen state, filters by type and course, nav badge = unseen count.</p>
 <section>
-  <p class="cap"><span class="v">A</span>Filter chips + dense rows<span class="ideal">one line per item · grouped by day · change rows show before → after</span></p>
+  <p class="cap"><span class="v">A</span>Dense rows<span class="ideal">one line per item · grouped by day · type filter, course scope · change rows show before → after</span></p>
   <div class="scroll"><div class="frame short"><div class="shell">
     <div data-sb="Inbox"></div>
     <div class="main">
@@ -1597,16 +1791,11 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
       </div>
       <div class="fchips">
         <span class="chip on">All<span class="n">5</span></span>
-        <span class="chip"><svg class="ico ico-13"><use href="#i-ann"/></svg>Announcements<span class="n">2</span></span>
-        <span class="chip"><svg class="ico ico-13"><use href="#i-star"/></svg>Grades<span class="n">1</span></span>
-        <span class="chip"><svg class="ico ico-13"><use href="#i-clock"/></svg>Changes<span class="n">1</span></span>
-        <span class="chip"><svg class="ico ico-13"><use href="#i-file"/></svg>New<span class="n">1</span></span>
-        <span class="sp2"></span>
-        <span class="chip"><span class="dot" style="--c:var(--c-cs)"></span>CS 537</span>
-        <span class="chip"><span class="dot" style="--c:var(--c-math)"></span>MATH 340</span>
-        <span class="chip"><span class="dot" style="--c:var(--c-econ)"></span>ECON 101</span>
-        <span class="chip"><span class="dot" style="--c:var(--c-stat)"></span>STAT 324</span>
-        <span class="r">Unread only</span>
+        <span class="chip">Announcements<span class="n">2</span></span>
+        <span class="chip">Grades<span class="n">1</span></span>
+        <span class="chip">Changes<span class="n">1</span></span>
+        <span class="chip">New<span class="n">1</span></span>
+        <span class="r"><span class="sel">All courses<svg class="ico ico-13"><use href="#i-down"/></svg></span><span class="tgl"><i></i>Unread only</span></span>
       </div>
       <div class="fgrp">Today</div>
       <a href="#" class="frow unread" style="--c:var(--c-cs)"><svg class="ico ico-14"><use href="#i-ann"/></svg><span class="code">CS 537</span><span class="tt"><span class="t">Project 2 deadline extended to Friday</span><span class="s">Given the discussion-section conflict, we're moving…</span></span><span class="ago">2h</span></a>
@@ -1622,7 +1811,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
   </div></div></div>
 </section>
 <section>
-  <p class="cap"><span class="v">B</span>Split: list + detail<span class="ideal">read without leaving · grade items show the score card + comments</span></p>
+  <p class="cap"><span class="v">B</span>Split: list + detail<span class="ideal">read without leaving · grade items show score, median and grader comments</span></p>
   <div class="scroll"><div class="frame tall"><div class="shell">
     <div data-sb="Inbox"></div>
     <div class="main">
@@ -1631,30 +1820,30 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
           <div class="topbar" style="padding:14px 16px"><div><div class="tb-date">Inbox</div><div class="sync">5 unread</div></div><span class="btn ghost" style="font-size:12px">Mark all read</span></div>
           <div class="fchips" style="padding:8px 12px"><span class="chip on">All</span><span class="chip">Announcements</span><span class="chip">Grades</span><span class="chip">Changes</span><span class="chip">New</span></div>
           <div class="fgrp" style="padding:12px 16px 4px">Today</div>
-          <a href="#" class="nc unread" style="--c:var(--c-cs);margin:0 10px 6px"><div class="nc-h"><svg class="ico ico-13"><use href="#i-ann"/></svg><span class="code">CS 537</span><span class="ago">2h</span></div><div class="nc-t">Project 2 deadline extended to Friday</div><div class="nc-s">Given the discussion-section conflict, we're…</div></a>
-          <a href="#" class="nc unread" style="--c:var(--c-stat);margin:0 10px 6px;border-color:var(--line-2);background:var(--hover)"><div class="nc-h"><svg class="ico ico-13"><use href="#i-star"/></svg><span class="code">STAT 324</span><span class="ago">4h</span></div><div class="nc-t">Homework 3 graded — <span class="score">47/50</span></div><div class="nc-s">Posted by Peterson, T. · 2 comments</div></a>
-          <a href="#" class="nc unread" style="--c:var(--c-econ);margin:0 10px 6px"><div class="nc-h"><svg class="ico ico-13"><use href="#i-clock"/></svg><span class="code">ECON 101</span><span class="ago">6h</span></div><div class="nc-t">Problem Set 4 due date moved</div><div class="nc-s">Aug 26, 5:00 PM → Aug 28, 5:00 PM</div></a>
+          <a href="#" class="frow two unread" style="--c:var(--c-cs)"><svg class="ico ico-14"><use href="#i-ann"/></svg><span class="tt"><span class="t">Project 2 deadline extended to Friday</span><span class="s"><span class="code">CS 537</span> · Given the discussion-section conflict, we're…</span></span><span class="ago">2h</span></a>
+          <a href="#" class="frow two unread on" style="--c:var(--c-stat)"><svg class="ico ico-14"><use href="#i-star"/></svg><span class="tt"><span class="t">Homework 3 graded — <span class="score">47/50</span></span><span class="s"><span class="code">STAT 324</span> · Peterson, T. · 2 comments</span></span><span class="ago">4h</span></a>
+          <a href="#" class="frow two unread" style="--c:var(--c-econ)"><svg class="ico ico-14"><use href="#i-clock"/></svg><span class="tt"><span class="t">Problem Set 4 due date moved</span><span class="s"><span class="code">ECON 101</span> · Aug 26 → Aug 28, 5:00 PM</span></span><span class="ago">6h</span></a>
           <div class="fgrp" style="padding:12px 16px 4px">Yesterday</div>
-          <a href="#" class="nc unread" style="--c:var(--c-math);margin:0 10px 6px"><div class="nc-h"><svg class="ico ico-13"><use href="#i-file"/></svg><span class="code">MATH 340</span><span class="ago">Thu</span></div><div class="nc-t">New assignment — Homework 6</div><div class="nc-s">Due Sep 1, 11:59 PM · 40 points</div></a>
-          <a href="#" class="nc unread" style="--c:var(--c-stat);margin:0 10px 6px"><div class="nc-h"><svg class="ico ico-13"><use href="#i-ann"/></svg><span class="code">STAT 324</span><span class="ago">Thu</span></div><div class="nc-t">Midterm review session</div><div class="nc-s">Sunday 4–6 PM in Van Vleck B102.</div></a>
-          <a href="#" class="nc" style="--c:var(--c-cs);margin:0 10px 6px"><div class="nc-h"><svg class="ico ico-13"><use href="#i-star"/></svg><span class="code">CS 537</span><span class="ago">Wed</span></div><div class="nc-t">Project 1 graded — <span class="score">96/100</span></div></a>
+          <a href="#" class="frow two unread" style="--c:var(--c-math)"><svg class="ico ico-14"><use href="#i-file"/></svg><span class="tt"><span class="t">New assignment — Homework 6</span><span class="s"><span class="code">MATH 340</span> · Due Sep 1, 11:59 PM · 40 points</span></span><span class="ago">Thu</span></a>
+          <a href="#" class="frow two unread" style="--c:var(--c-stat)"><svg class="ico ico-14"><use href="#i-ann"/></svg><span class="tt"><span class="t">Midterm review session</span><span class="s"><span class="code">STAT 324</span> · Sunday 4–6 PM in Van Vleck B102.</span></span><span class="ago">Thu</span></a>
+          <a href="#" class="frow two" style="--c:var(--c-cs)"><svg class="ico ico-14"><use href="#i-star"/></svg><span class="tt"><span class="t">Project 1 graded — <span class="score">96/100</span></span><span class="s"><span class="code">CS 537</span></span></span><span class="ago">Wed</span></a>
         </div>
         <div class="det2" style="--c:var(--c-stat)">
           <div class="ibd">
             <div class="eyebrow"><span class="dot"></span><span class="code">STAT 324</span><span>·</span><span>Grade posted · Homework 3</span></div>
             <h1>Homework 3 graded</h1>
             <div class="by"><span class="av" style="width:20px;height:20px;font-size:9px">TP</span>Peterson, T. · posted today 9:41 AM</div>
-            <div class="gcard"><div class="big">47<small>/ 50</small></div><div class="s"><b>94% · above the class median (41)</b>Weighted 10% of Homework · course now 91.2%</div><span class="btn" style="margin-left:auto">Open in Grades</span></div>
+            <div class="facts"><div><b>Score</b>47 / 50 · 94%</div><div><b>Class median</b>41 / 50</div><div><b>Weight</b>10% of Homework</div><div><b>Course now</b>91.2% · A</div></div>
             <div class="blk-t">Grader comments</div>
             <div class="cmt"><div class="w">Peterson, T. · Aug 21</div>Nice work on Q3. For Q5, the CI should use the t-distribution since n=18 — see the rubric row.</div>
             <div class="cmt"><div class="w">Peterson, T. · Aug 21</div>Rubric attached to the submission.</div>
-            <div class="acts"><span class="btn pri">Open assignment</span><span class="btn"><svg class="ico ico-14"><use href="#i-ext"/></svg>Submission in Canvas</span><span class="btn ghost" style="margin-left:auto">Mark unread</span></div>
+            <div class="acts"><span class="btn pri">Open assignment</span><span class="btn">Grades</span><span class="btn"><svg class="ico ico-14"><use href="#i-ext"/></svg>Submission in Canvas</span><span class="btn ghost" style="margin-left:auto">Mark unread</span></div>
           </div>
         </div>
       </div>
     </div>
   </div></div></div>
-  <p class="note">Reuses the Home "New" rail card as the list row, so Home and Inbox share one component. Opening an item sets <code>seenAt</code>; the nav badge drops live.</p>
+  <p class="note">The list row is A's row wrapped to two lines — same component, narrower. Class median only appears when Canvas exposes score statistics for the assignment, and never before <code>postedAt</code>. Opening an item sets <code>seenAt</code>; the nav badge drops live.</p>
 </section>
 <section>
   <div class="card" style="width:720px">
@@ -1765,7 +1954,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 
 <!-- ──────────────────────────────────────────────────────────────── mobile -->
 <h2 class="m3">8 · Mobile</h2>
-<p>Same content, 390px. Course tabs scroll; Inbox filters scroll; ⌘K becomes a full-screen search sheet from the Courses tab's search icon.</p>
+<p>Same content, 390px. Five course tabs fit without scrolling; Inbox filters scroll; ⌘K becomes a full-screen search sheet from the Courses tab's search icon.</p>
 <section>
   <div class="row2">
     <div class="phone" style="--c:var(--c-cs)">
@@ -1773,7 +1962,7 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
       <div class="m-tb"><svg class="ico bk"><use href="#i-chev"/></svg><div><div class="ttl">Operating Systems</div><div style="font-size:12px;color:var(--ink-3)"><span style="color:var(--c);font-weight:500">CS 537</span> · Fall 2026</div></div><div class="r"><svg class="ico"><use href="#i-search"/></svg><svg class="ico"><use href="#i-ext"/></svg></div></div>
       <div class="ch" style="padding-top:0">
         <div class="ctabs" style="margin-top:4px">
-          <a href="#" class="on">Modules<span class="nd"></span></a><a href="#">Pages</a><a href="#">Files<span class="n">3</span></a><a href="#">Syllabus</a><a href="#">Announcem…</a>
+          <a href="#">Overview</a><a href="#" class="on">Modules<span class="nd"></span></a><a href="#">Files<span class="n">3</span></a><a href="#">Syllabus</a><a href="#">Grades</a>
         </div>
       </div>
       <div class="m-body">
@@ -1850,10 +2039,11 @@ h2.m3+p{margin:0 0 22px;color:var(--ink-2);max-width:72ch;font-size:13.5px}
 <h2 class="m3">Decisions to make</h2>
 <section style="margin-bottom:0">
   <div class="tok" style="grid-template-columns:repeat(3,1fr)">
-    <div><h4>Course hub shell</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">A tabs+header · B sub-rail · C compact bar.<br>A is the safest; C gives the reader the most room; B makes pinned items possible.</div></div>
+    <div><h4>Course hub</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Overview lands first in every variant. Shell: A tabs+header · B sub-rail · C compact bar.<br>A is the safest; C gives the reader the most room; B makes pinned items possible.</div></div>
+    <div><h4>Courses index</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Ledger (1bA) · ledger + week grid (1bB) · edit mode (1bC).<br>A is the page; C is a mode of it, not a route. B only earns its space once meeting times are reliable.</div></div>
     <div><h4>Modules</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Accordion (1A) · list→page (2B) · timeline (2C).<br>Accordion matches Canvas muscle memory. Timeline needs dated modules.</div></div>
     <div><h4>Files</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Three-pane (4A) · single column (4B) · search-first (4C).<br>4A on desktop, 4B on mobile is the natural pairing.</div></div>
-    <div><h4>Inbox</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Rows (6A) · split (6B) · by course (6C).<br>6B avoids a route per feed item; 6A is denser and keeps one card component with Home.</div></div>
+    <div><h4>Inbox</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Rows (6A) · split (6B) · by course (6C).<br>6B avoids a route per feed item; 6A is denser. Both use the same row.</div></div>
     <div><h4>⌘K</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Grouped (7A) · tabs+recents (7B) · scoped+preview (7C).<br>These layer: B's empty state, A's grouping, C's scope chip.</div></div>
     <div><h4>Shared</h4><div style="font-size:13px;color:var(--ink-2);line-height:1.6">Unread dot in course colour everywhere (module items, file rows, tabs, ⌘K). Link styling: solid = external, dotted = internal, chip = file.</div></div>
   </div>
