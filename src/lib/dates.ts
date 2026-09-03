@@ -41,10 +41,21 @@ export function startOfWeek(key: string): string {
   return addDays(key, -weekday(key));
 }
 
+/** The Monday on or before the given day — the teaching week. */
+export function startOfMondayWeek(key: string): string {
+  return addDays(key, -((weekday(key) + 6) % 7));
+}
+
 const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short" });
 const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { weekday: "long" });
 const MONTH_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
 const MONTH_DAY_LONG = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" });
+const MONTH_DAY_YEAR = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+const DAY_NUM = new Intl.DateTimeFormat("en-US", { day: "numeric" });
 const TIME = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
 
 /** "Fri, Aug 21" */
@@ -69,6 +80,28 @@ export function formatDayMedium(key: string): string {
 /** "Sun", "Mon", ... */
 export function formatWeekday(key: string): string {
   return WEEKDAY.format(startOfDay(key));
+}
+
+/** "Aug 21" — an instant, not a day key; the one month-day label. */
+export function formatMonthDay(ms: number): string {
+  return MONTH_DAY.format(new Date(ms));
+}
+
+/** "Aug 21", carrying the year once the date is from another one. */
+export function formatMonthDayYear(ms: number, now: number = Date.now()): string {
+  const date = new Date(ms);
+  return date.getFullYear() === new Date(now).getFullYear()
+    ? MONTH_DAY.format(date)
+    : MONTH_DAY_YEAR.format(date);
+}
+
+/** "Aug 10 – 14", or "Aug 31 – Sep 4" across a month boundary. */
+export function formatWeekRange(mondayKey: string): string {
+  const start = startOfDay(mondayKey);
+  const end = startOfDay(addDays(mondayKey, 4));
+  const tail =
+    start.getMonth() === end.getMonth() ? DAY_NUM.format(end) : MONTH_DAY.format(end);
+  return `${MONTH_DAY.format(start)} – ${tail}`;
 }
 
 export function formatDayShort(key: string): string {

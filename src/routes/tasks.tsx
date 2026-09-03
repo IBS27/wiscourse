@@ -26,7 +26,7 @@ type Source = "all" | "canvas" | "personal";
 
 function Tasks() {
   const items = useQuery(api.todos.list, {});
-  const { visible, color } = useCourses();
+  const { filterable, color } = useCourses();
   const today = useToday();
   const now = useNow();
   const quickAdd = useQuickAdd();
@@ -86,9 +86,9 @@ function Tasks() {
             { id: "personal", label: "Personal" },
           ]}
         />
-        {visible.length > 0 && (
+        {filterable.length > 0 && (
           <div className="flex flex-wrap items-center gap-1">
-            {visible.map((c) => (
+            {filterable.map((c) => (
               <button
                 key={c.canvasId}
                 type="button"

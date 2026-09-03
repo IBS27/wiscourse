@@ -78,8 +78,9 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
   userId: string,
   courseCanvasId: number,
   keepCanvasIds: ReadonlyArray<number>,
-): Promise<void> {
+): Promise<number[]> {
   const keep = new Set(keepCanvasIds);
+  const deleted: number[] = [];
   const rows = (await ctx.db
     .query(table)
     .withIndex("by_user_course", (q) =>
@@ -89,8 +90,11 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
     )
     .collect()) as Doc<T>[];
   for (const row of rows) {
-    if (!keep.has((row as unknown as SyncedDoc).canvasId)) {
+    const canvasId = (row as unknown as SyncedDoc).canvasId;
+    if (!keep.has(canvasId)) {
       await ctx.db.delete(row._id);
+      deleted.push(canvasId);
     }
   }
+  return deleted;
 }

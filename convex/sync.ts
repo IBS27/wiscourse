@@ -12,11 +12,13 @@
 // discussions) and course content (modules, pages, files), plus the
 // calendar window.
 //
-// Request budget, unpaginated: per course ~11 on a full sync (1 assignments,
-// up to 1 tabs, 5 metadata, 4 content) and 4 on a delta (2 submissions, 1
-// discussions, 1 modules). Per user on top of that: 1 courses list and one
-// calendar (full) or announcements (delta) call per 10 courses. A 6-course student therefore costs ~70 requests nightly and
-// ~26 per delta — well inside a single token's budget.
+// Request budget, unpaginated: per active course ~14 on a full sync (1
+// assignments, 1 submission-comments pass, up to 1 tabs, 1 instructors,
+// 1 syllabus (UW's list endpoint never inlines it), 5 metadata, and content
+// sync is 4 + 1 per oversized module). A completed course costs 1 assignment
+// call. A delta costs 4 per active course. Per user, add 2 course lists and
+// one calendar call on full sync or one announcements call per 10 active
+// courses on delta.
 //
 // Dispatch rules (Convex-specific, deliberate):
 // - Crons must not loop over users: overlapping cron runs are skipped, so
@@ -52,6 +54,7 @@ import {
   type CanvasDiscussionTopic,
   type CanvasSubmission,
   type CanvasTab,
+  type CanvasUser,
 } from "./canvas/types";
 import { mapDiscussion, syncCourseMeta } from "./canvas/syncCourseMeta";
 import { syncCourseContent } from "./canvas/syncContent";
@@ -189,51 +192,100 @@ async function runFullSync(
     status: "syncing",
   });
 
-  const rawCourses = await client.getPaginated<CanvasCourse>("/courses", {
+  const courseIncludes = [
+    "term",
+    "favorites",
+    "syllabus_body",
+    "course_image",
+    "tabs",
+    "total_scores",
+  ];
+  const rawActiveCourses = await client.getPaginated<CanvasCourse>("/courses", {
     enrollment_state: "active",
-    "include[]": [
-      "term",
-      "favorites",
-      "syllabus_body",
-      "course_image",
-      "tabs",
-      "total_scores",
-    ],
+    "include[]": courseIncludes,
   });
-  const courses = rawCourses.filter(
-    (course) => course.name !== undefined && !course.access_restricted_by_date,
+  const rawCompletedCourses = await client.getPaginated<CanvasCourse>("/courses", {
+    enrollment_state: "completed",
+    "include[]": ["term", "total_scores"],
+  });
+  const usable = (course: CanvasCourse) =>
+    course.name !== undefined && !course.access_restricted_by_date;
+  const activeCourses = rawActiveCourses.filter(usable);
+  const activeIds = new Set(activeCourses.map((course) => course.id));
+  const completedCourses = rawCompletedCourses.filter(
+    (course) => usable(course) && !activeIds.has(course.id),
   );
 
   const courseUpserts: CourseUpsert[] = [];
-  for (const course of courses) {
-    courseUpserts.push(mapCourse(course, await courseTabIds(client, course)));
+  for (const course of activeCourses) {
+    const tabs = await courseTabIds(client, course);
+    const instructors = await courseInstructors(client, course.id);
+    const syllabusBody = await courseSyllabus(client, course);
+    courseUpserts.push(
+      mapCourse({ ...course, syllabus_body: syllabusBody }, tabs, "active", instructors),
+    );
+  }
+  for (const course of completedCourses) {
+    courseUpserts.push(
+      mapCourse(course, inlineCourseTabIds(course), "completed", undefined),
+    );
   }
   await ctx.runMutation(internal.syncStore.upsertCourses, {
     userId,
     courses: courseUpserts,
+    prune: true,
   });
 
-  for (const course of courses) {
-    // include[]=submission returns the calling student's own submission
-    // inline — no separate submissions pass needed.
-    const assignments = await client.getPaginated<CanvasAssignment>(
-      `/courses/${course.id}/assignments`,
-      { "include[]": ["submission"], order_by: "due_at" },
+  for (const course of [...activeCourses, ...completedCourses]) {
+    const active = activeIds.has(course.id);
+    const assignments = await tolerateDisabledTab<CanvasAssignment[] | undefined>(
+      () =>
+        client.getPaginated<CanvasAssignment>(
+          `/courses/${course.id}/assignments`,
+          {
+            "include[]": ["submission", "score_statistics"],
+            order_by: "due_at",
+          },
+        ),
+      undefined,
     );
-    await ctx.runMutation(internal.syncStore.upsertAssignments, {
-      userId,
-      courseCanvasId: course.id,
-      assignments: assignments.map(mapAssignment),
-      prune: true,
-    });
+    const submissions = active
+      ? await tolerateDisabledTab(
+          () =>
+            client.getPaginated<CanvasSubmission>(
+              `/courses/${course.id}/students/submissions`,
+              {
+                "student_ids[]": ["self"],
+                "include[]": ["submission_comments"],
+              },
+            ),
+          [],
+        )
+      : [];
+    const submissionByAssignment = new Map(
+      submissions.map((submission) => [submission.assignment_id, submission]),
+    );
+    if (assignments !== undefined) {
+      await ctx.runMutation(internal.syncStore.upsertAssignments, {
+        userId,
+        courseCanvasId: course.id,
+        assignments: assignments.map((assignment) =>
+          mapAssignment(assignment, submissionByAssignment.get(assignment.id)),
+        ),
+        logChanges: active,
+        prune: true,
+      });
+    }
 
-    await syncCourseMeta(ctx, userId, client, course.id, { full: true });
-    await syncCourseContent(ctx, userId, client, course.id, { full: true });
+    if (active) {
+      await syncCourseMeta(ctx, userId, client, course.id, { full: true });
+      await syncCourseContent(ctx, userId, client, course.id, { full: true });
+    }
   }
 
   // Announcements come from the per-course pass above on a full sync; only
   // the genuinely cross-course endpoints are left here.
-  const courseIds = courses.map((course) => course.id);
+  const courseIds = activeCourses.map((course) => course.id);
   await syncCalendarEvents(ctx, userId, client, session, courseIds);
 
   await ctx.runMutation(internal.syncStore.recordSyncResult, {
@@ -267,13 +319,29 @@ async function runDeltaSync(
   for (const courseId of courseIds) {
     // Grade and submission deltas. Two filtered calls (submitted vs graded)
     // are far cheaper than refetching every assignment.
-    const submitted = await client.getPaginated<CanvasSubmission>(
-      `/courses/${courseId}/students/submissions`,
-      { "student_ids[]": ["self"], submitted_since: sinceIso },
+    const submitted = await tolerateDisabledTab(
+      () =>
+        client.getPaginated<CanvasSubmission>(
+          `/courses/${courseId}/students/submissions`,
+          {
+            "student_ids[]": ["self"],
+            "include[]": ["submission_comments"],
+            submitted_since: sinceIso,
+          },
+        ),
+      [],
     );
-    const graded = await client.getPaginated<CanvasSubmission>(
-      `/courses/${courseId}/students/submissions`,
-      { "student_ids[]": ["self"], graded_since: sinceIso },
+    const graded = await tolerateDisabledTab(
+      () =>
+        client.getPaginated<CanvasSubmission>(
+          `/courses/${courseId}/students/submissions`,
+          {
+            "student_ids[]": ["self"],
+            "include[]": ["submission_comments"],
+            graded_since: sinceIso,
+          },
+        ),
+      [],
     );
     const byAssignment = new Map<number, CanvasSubmission>();
     for (const submission of [...submitted, ...graded]) {
@@ -430,23 +498,85 @@ async function courseTabIds(
   client: CanvasClient,
   course: CanvasCourse,
 ): Promise<string[] | undefined> {
-  const inline = course.tabs;
-  const tabs = Array.isArray(inline)
-    ? inline
-    : await tolerateDisabledTab<CanvasTab[] | undefined>(
-        () => client.getPaginated<CanvasTab>(`/courses/${course.id}/tabs`),
-        undefined,
-      );
+  const inline = inlineCourseTabIds(course);
+  if (inline !== undefined) return inline;
+  const tabs = await tolerateDisabledTab<CanvasTab[] | undefined>(
+    () => client.getPaginated<CanvasTab>(`/courses/${course.id}/tabs`),
+    undefined,
+  );
   if (tabs === undefined) return undefined;
+  return visibleTabIds(tabs);
+}
+
+function inlineCourseTabIds(course: CanvasCourse): string[] | undefined {
+  return Array.isArray(course.tabs) ? visibleTabIds(course.tabs) : undefined;
+}
+
+function visibleTabIds(tabs: CanvasTab[]): string[] {
   return tabs
     .filter((tab) => tab.hidden !== true)
     .sort((a, b) => a.position - b.position)
     .map((tab) => tab.id);
 }
 
+/**
+ * The course list endpoint does not reliably honour `include[]=syllabus_body`
+ * (UW's instance returns none), so fall back to the single-course endpoint
+ * when the list left it out. One small request per active course, full
+ * sync only.
+ */
+async function courseSyllabus(
+  client: CanvasClient,
+  course: CanvasCourse,
+): Promise<string | undefined> {
+  if (course.syllabus_body) return course.syllabus_body;
+  const full = await tolerateDisabledTab<CanvasCourse | undefined>(
+    () =>
+      client.get<CanvasCourse>(`/courses/${course.id}`, {
+        "include[]": ["syllabus_body"],
+      }),
+    undefined,
+  );
+  return full?.syllabus_body ?? undefined;
+}
+
+async function courseInstructors(
+  client: CanvasClient,
+  courseCanvasId: number,
+): Promise<NonNullable<CourseUpsert["instructors"]>> {
+  const users = await tolerateDisabledTab(
+    () =>
+      client.getPaginated<CanvasUser>(`/courses/${courseCanvasId}/users`, {
+        "enrollment_type[]": ["teacher", "ta"],
+        "include[]": ["email", "enrollments"],
+      }),
+    [],
+  );
+  // Canvas enrollment types are "TeacherEnrollment" / "TaEnrollment"; a
+  // user with both counts as a teacher.
+  return users
+    .map((user) => {
+      const types = new Set(
+        user.enrollments?.map((enrollment) => enrollment.type),
+      );
+      return {
+        name: user.name,
+        email: user.email ?? undefined,
+        role:
+          !types.has("TeacherEnrollment") && types.has("TaEnrollment")
+            ? ("ta" as const)
+            : ("teacher" as const),
+      };
+    })
+    .sort((a, b) => Number(a.role === "ta") - Number(b.role === "ta"))
+    .slice(0, 8);
+}
+
 function mapCourse(
   course: CanvasCourse,
   tabs: string[] | undefined,
+  enrollmentState: "active" | "completed",
+  instructors: CourseUpsert["instructors"],
 ): CourseUpsert {
   // Only the student enrollment's totals are ours to show; a TA or designer
   // enrollment on the same course reports someone else's (or no) scores.
@@ -459,6 +589,9 @@ function mapCourse(
     name: course.name ?? "Untitled course",
     courseCode: course.course_code ?? "",
     term: course.term?.name,
+    termId: course.term?.id,
+    termStartAt: toMillis(course.term?.start_at),
+    termEndAt: toMillis(course.term?.end_at),
     startAt: toMillis(course.start_at),
     endAt: toMillis(course.end_at),
     isFavorite: course.is_favorite,
@@ -466,6 +599,8 @@ function mapCourse(
     tabs,
     syllabusBody: course.syllabus_body ?? undefined,
     imageUrl: course.image_download_url ?? undefined,
+    enrollmentState,
+    instructors,
     currentScore: hideFinalGrades
       ? undefined
       : (enrollment?.computed_current_score ?? undefined),
@@ -483,7 +618,18 @@ function mapCourse(
   };
 }
 
-function mapAssignment(assignment: CanvasAssignment): AssignmentUpsert {
+function mapAssignment(
+  assignment: CanvasAssignment,
+  supplementalSubmission?: CanvasSubmission,
+): AssignmentUpsert {
+  const submission = assignment.submission
+    ? {
+        ...assignment.submission,
+        submission_comments:
+          supplementalSubmission?.submission_comments ??
+          assignment.submission.submission_comments,
+      }
+    : supplementalSubmission;
   return {
     canvasId: assignment.id,
     name: assignment.name,
@@ -501,8 +647,16 @@ function mapAssignment(assignment: CanvasAssignment): AssignmentUpsert {
     discussionCanvasId: assignment.discussion_topic?.id,
     lockedForUser: assignment.locked_for_user,
     omitFromFinalGrade: assignment.omit_from_final_grade,
-    submission: assignment.submission
-      ? mapSubmission(assignment.submission)
+    submission: submission ? mapSubmission(submission) : undefined,
+    scoreStatistics: assignment.score_statistics
+      ? {
+          min: assignment.score_statistics.min,
+          max: assignment.score_statistics.max,
+          mean: assignment.score_statistics.mean,
+          median: assignment.score_statistics.median ?? undefined,
+          lowerQuartile: assignment.score_statistics.lower_q ?? undefined,
+          upperQuartile: assignment.score_statistics.upper_q ?? undefined,
+        }
       : undefined,
     canvasCreatedAt: toMillis(assignment.created_at),
     canvasUpdatedAt: toMillis(assignment.updated_at),
@@ -518,6 +672,17 @@ function mapSubmission(submission: CanvasSubmission) {
     late: submission.late,
     missing: submission.missing,
     postedAt: toMillis(submission.posted_at),
+    comments: submission.submission_comments?.flatMap((comment) => {
+      const createdAt = toMillis(comment.created_at);
+      if (createdAt === undefined) return [];
+      return [
+        {
+          authorName: comment.author_name,
+          comment: comment.comment,
+          createdAt,
+        },
+      ];
+    }),
   };
 }
 

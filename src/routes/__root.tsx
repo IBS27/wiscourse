@@ -6,6 +6,7 @@ import { Logo } from "@/components/logo";
 import { Sidebar } from "@/components/app/sidebar";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import { QuickAddProvider } from "@/components/app/quick-add";
+import { CommandPalette } from "@/components/search/command-palette";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -44,6 +45,7 @@ function RootLayout() {
             </main>
           </div>
           <BottomTabs />
+          <CommandPalette />
         </QuickAddProvider>
       </Authenticated>
     </>

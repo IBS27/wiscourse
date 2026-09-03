@@ -11,12 +11,20 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as CoursesRouteImport } from './routes/courses'
 import { Route as GradesRouteImport } from './routes/grades'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as CoursesIndexRouteImport } from './routes/courses.index'
+import { Route as CoursesCourseIdRouteImport } from './routes/courses.$courseId'
 import { Route as TodoKeyRouteImport } from './routes/todo.$key'
+import { Route as CoursesCourseIdIndexRouteImport } from './routes/courses.$courseId.index'
+import { Route as CoursesCourseIdAnnouncementsRouteImport } from './routes/courses.$courseId.announcements'
+import { Route as CoursesCourseIdFilesRouteImport } from './routes/courses.$courseId.files'
+import { Route as CoursesCourseIdGradesRouteImport } from './routes/courses.$courseId.grades'
+import { Route as CoursesCourseIdModulesRouteImport } from './routes/courses.$courseId.modules'
+import { Route as CoursesCourseIdSyllabusRouteImport } from './routes/courses.$courseId.syllabus'
+import { Route as CoursesCourseIdPagesSlugRouteImport } from './routes/courses.$courseId.pages.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -26,11 +34,6 @@ const IndexRoute = IndexRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CoursesRoute = CoursesRouteImport.update({
-  id: '/courses',
-  path: '/courses',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GradesRoute = GradesRouteImport.update({
@@ -53,85 +56,179 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoursesIndexRoute = CoursesIndexRouteImport.update({
+  id: '/courses/',
+  path: '/courses/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CoursesCourseIdRoute = CoursesCourseIdRouteImport.update({
+  id: '/courses/$courseId',
+  path: '/courses/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TodoKeyRoute = TodoKeyRouteImport.update({
   id: '/todo/$key',
   path: '/todo/$key',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CoursesCourseIdIndexRoute = CoursesCourseIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CoursesCourseIdRoute,
+} as any)
+const CoursesCourseIdAnnouncementsRoute =
+  CoursesCourseIdAnnouncementsRouteImport.update({
+    id: '/announcements',
+    path: '/announcements',
+    getParentRoute: () => CoursesCourseIdRoute,
+  } as any)
+const CoursesCourseIdFilesRoute = CoursesCourseIdFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => CoursesCourseIdRoute,
+} as any)
+const CoursesCourseIdGradesRoute = CoursesCourseIdGradesRouteImport.update({
+  id: '/grades',
+  path: '/grades',
+  getParentRoute: () => CoursesCourseIdRoute,
+} as any)
+const CoursesCourseIdModulesRoute = CoursesCourseIdModulesRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => CoursesCourseIdRoute,
+} as any)
+const CoursesCourseIdSyllabusRoute = CoursesCourseIdSyllabusRouteImport.update({
+  id: '/syllabus',
+  path: '/syllabus',
+  getParentRoute: () => CoursesCourseIdRoute,
+} as any)
+const CoursesCourseIdPagesSlugRoute =
+  CoursesCourseIdPagesSlugRouteImport.update({
+    id: '/pages/$slug',
+    path: '/pages/$slug',
+    getParentRoute: () => CoursesCourseIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/courses': typeof CoursesRoute
   '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
   '/todo/$key': typeof TodoKeyRoute
+  '/courses/': typeof CoursesIndexRoute
+  '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
+  '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
+  '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
+  '/courses/$courseId/modules': typeof CoursesCourseIdModulesRoute
+  '/courses/$courseId/syllabus': typeof CoursesCourseIdSyllabusRoute
+  '/courses/$courseId/': typeof CoursesCourseIdIndexRoute
+  '/courses/$courseId/pages/$slug': typeof CoursesCourseIdPagesSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/courses': typeof CoursesRoute
   '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/todo/$key': typeof TodoKeyRoute
+  '/courses': typeof CoursesIndexRoute
+  '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
+  '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
+  '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
+  '/courses/$courseId/modules': typeof CoursesCourseIdModulesRoute
+  '/courses/$courseId/syllabus': typeof CoursesCourseIdSyllabusRoute
+  '/courses/$courseId': typeof CoursesCourseIdIndexRoute
+  '/courses/$courseId/pages/$slug': typeof CoursesCourseIdPagesSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/courses': typeof CoursesRoute
   '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
   '/todo/$key': typeof TodoKeyRoute
+  '/courses/': typeof CoursesIndexRoute
+  '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
+  '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
+  '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
+  '/courses/$courseId/modules': typeof CoursesCourseIdModulesRoute
+  '/courses/$courseId/syllabus': typeof CoursesCourseIdSyllabusRoute
+  '/courses/$courseId/': typeof CoursesCourseIdIndexRoute
+  '/courses/$courseId/pages/$slug': typeof CoursesCourseIdPagesSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/calendar'
-    | '/courses'
     | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/courses/$courseId'
     | '/todo/$key'
+    | '/courses/'
+    | '/courses/$courseId/announcements'
+    | '/courses/$courseId/files'
+    | '/courses/$courseId/grades'
+    | '/courses/$courseId/modules'
+    | '/courses/$courseId/syllabus'
+    | '/courses/$courseId/'
+    | '/courses/$courseId/pages/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/calendar'
-    | '/courses'
     | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
     | '/todo/$key'
+    | '/courses'
+    | '/courses/$courseId/announcements'
+    | '/courses/$courseId/files'
+    | '/courses/$courseId/grades'
+    | '/courses/$courseId/modules'
+    | '/courses/$courseId/syllabus'
+    | '/courses/$courseId'
+    | '/courses/$courseId/pages/$slug'
   id:
     | '__root__'
     | '/'
     | '/calendar'
-    | '/courses'
     | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/courses/$courseId'
     | '/todo/$key'
+    | '/courses/'
+    | '/courses/$courseId/announcements'
+    | '/courses/$courseId/files'
+    | '/courses/$courseId/grades'
+    | '/courses/$courseId/modules'
+    | '/courses/$courseId/syllabus'
+    | '/courses/$courseId/'
+    | '/courses/$courseId/pages/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
-  CoursesRoute: typeof CoursesRoute
   GradesRoute: typeof GradesRoute
   InboxRoute: typeof InboxRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  CoursesCourseIdRoute: typeof CoursesCourseIdRouteWithChildren
   TodoKeyRoute: typeof TodoKeyRoute
+  CoursesIndexRoute: typeof CoursesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,13 +245,6 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/courses': {
-      id: '/courses'
-      path: '/courses'
-      fullPath: '/courses'
-      preLoaderRoute: typeof CoursesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grades': {
@@ -185,6 +275,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/courses/': {
+      id: '/courses/'
+      path: '/courses'
+      fullPath: '/courses/'
+      preLoaderRoute: typeof CoursesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/courses/$courseId': {
+      id: '/courses/$courseId'
+      path: '/courses/$courseId'
+      fullPath: '/courses/$courseId'
+      preLoaderRoute: typeof CoursesCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/todo/$key': {
       id: '/todo/$key'
       path: '/todo/$key'
@@ -192,18 +296,92 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TodoKeyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/courses/$courseId/': {
+      id: '/courses/$courseId/'
+      path: '/'
+      fullPath: '/courses/$courseId/'
+      preLoaderRoute: typeof CoursesCourseIdIndexRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/announcements': {
+      id: '/courses/$courseId/announcements'
+      path: '/announcements'
+      fullPath: '/courses/$courseId/announcements'
+      preLoaderRoute: typeof CoursesCourseIdAnnouncementsRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/files': {
+      id: '/courses/$courseId/files'
+      path: '/files'
+      fullPath: '/courses/$courseId/files'
+      preLoaderRoute: typeof CoursesCourseIdFilesRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/grades': {
+      id: '/courses/$courseId/grades'
+      path: '/grades'
+      fullPath: '/courses/$courseId/grades'
+      preLoaderRoute: typeof CoursesCourseIdGradesRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/modules': {
+      id: '/courses/$courseId/modules'
+      path: '/modules'
+      fullPath: '/courses/$courseId/modules'
+      preLoaderRoute: typeof CoursesCourseIdModulesRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/syllabus': {
+      id: '/courses/$courseId/syllabus'
+      path: '/syllabus'
+      fullPath: '/courses/$courseId/syllabus'
+      preLoaderRoute: typeof CoursesCourseIdSyllabusRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
+    '/courses/$courseId/pages/$slug': {
+      id: '/courses/$courseId/pages/$slug'
+      path: '/pages/$slug'
+      fullPath: '/courses/$courseId/pages/$slug'
+      preLoaderRoute: typeof CoursesCourseIdPagesSlugRouteImport
+      parentRoute: typeof CoursesCourseIdRoute
+    }
   }
 }
+
+interface CoursesCourseIdRouteChildren {
+  CoursesCourseIdAnnouncementsRoute: typeof CoursesCourseIdAnnouncementsRoute
+  CoursesCourseIdFilesRoute: typeof CoursesCourseIdFilesRoute
+  CoursesCourseIdGradesRoute: typeof CoursesCourseIdGradesRoute
+  CoursesCourseIdModulesRoute: typeof CoursesCourseIdModulesRoute
+  CoursesCourseIdSyllabusRoute: typeof CoursesCourseIdSyllabusRoute
+  CoursesCourseIdIndexRoute: typeof CoursesCourseIdIndexRoute
+  CoursesCourseIdPagesSlugRoute: typeof CoursesCourseIdPagesSlugRoute
+}
+
+const CoursesCourseIdRouteChildren: CoursesCourseIdRouteChildren = {
+  CoursesCourseIdAnnouncementsRoute: CoursesCourseIdAnnouncementsRoute,
+  CoursesCourseIdFilesRoute: CoursesCourseIdFilesRoute,
+  CoursesCourseIdGradesRoute: CoursesCourseIdGradesRoute,
+  CoursesCourseIdModulesRoute: CoursesCourseIdModulesRoute,
+  CoursesCourseIdSyllabusRoute: CoursesCourseIdSyllabusRoute,
+  CoursesCourseIdIndexRoute: CoursesCourseIdIndexRoute,
+  CoursesCourseIdPagesSlugRoute: CoursesCourseIdPagesSlugRoute,
+}
+
+const CoursesCourseIdRouteWithChildren = CoursesCourseIdRoute._addFileChildren(
+  CoursesCourseIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
-  CoursesRoute: CoursesRoute,
   GradesRoute: GradesRoute,
   InboxRoute: InboxRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  CoursesCourseIdRoute: CoursesCourseIdRouteWithChildren,
   TodoKeyRoute: TodoKeyRoute,
+  CoursesIndexRoute: CoursesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

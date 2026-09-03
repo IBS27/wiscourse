@@ -4,11 +4,17 @@
 export interface CanvasUser {
   id: number;
   name: string;
+  email?: string | null;
+  enrollments?: Array<{ type?: string }>;
 }
 
 export interface CanvasTerm {
   id: number;
   name: string;
+  // Null on administrative terms ("Ongoing", "Supplemental"); set on
+  // academic ones — the only reliable way to tell the two apart.
+  start_at?: string | null;
+  end_at?: string | null;
 }
 
 export interface CanvasEnrollment {
@@ -191,6 +197,23 @@ export interface CanvasSubmission {
   late?: boolean;
   missing?: boolean;
   posted_at: string | null;
+  submission_comments?: CanvasSubmissionComment[];
+}
+
+export interface CanvasSubmissionComment {
+  author_id?: number;
+  author_name: string;
+  comment: string;
+  created_at: string;
+}
+
+export interface CanvasScoreStatistics {
+  min: number;
+  max: number;
+  mean: number;
+  median?: number | null;
+  lower_q?: number | null;
+  upper_q?: number | null;
 }
 
 export interface CanvasAssignment {
@@ -214,6 +237,7 @@ export interface CanvasAssignment {
   locked_for_user?: boolean;
   omit_from_final_grade?: boolean;
   submission?: CanvasSubmission;
+  score_statistics?: CanvasScoreStatistics;
 }
 
 export interface CanvasCalendarEvent {

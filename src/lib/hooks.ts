@@ -2,38 +2,49 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { dayKey, startOfDay, addDays } from "./dates";
+import { classifyCourses, formatTerm } from "./terms";
 
 export type Course = NonNullable<
   ReturnType<typeof useQuery<typeof api.courses.list>>
 >[number];
 
-/** Course list plus a lookup by canvasId and the CSS colour for each. */
+/**
+ * Every consumer says which set it means: `visible` (this term, not hidden),
+ * `other` (active but outside it: orientation, advising, student orgs),
+ * `filterable` (visible + other — what a course picker offers), `past`,
+ * `active` (hidden included) or `courses` for all of them.
+ */
 export function useCourses() {
   const courses = useQuery(api.courses.list);
+  // Term boundaries move by days, so one reading per mount is plenty.
+  const [now] = useState(() => Date.now());
   return useMemo(() => {
     const list = courses ?? [];
     const byId = new Map(list.map((c) => [c.canvasId, c]));
+    const sets = classifyCourses(list, now);
+    const visible = sets.current.filter((c) => !c.hidden);
+    const other = sets.other.filter((c) => !c.hidden);
     return {
       loading: courses === undefined,
       courses: list,
-      visible: list.filter((c) => !c.hidden),
+      active: [...sets.current, ...sets.other],
+      past: sets.past,
+      termName: formatTerm(sets.termName),
+      visible,
+      other,
+      filterable: [...visible, ...other],
       byId,
-      /** Short label: nickname, else a short course code, else the name. */
       label: (canvasId: number | undefined) => {
-        if (canvasId === undefined) return undefined;
-        const c = byId.get(canvasId);
+        const c = canvasId === undefined ? undefined : byId.get(canvasId);
         return c === undefined ? undefined : courseLabel(c);
       },
       color: (canvasId: number | undefined) => courseColorVar(byId.get(canvasId ?? -1)?.color),
     };
-  }, [courses]);
+  }, [courses, now]);
 }
 
-/**
- * UW's Canvas often puts the full title in `courseCode` ("Career Fair
- * Preparation"); only a genuinely short code ("COMP SCI 537") is worth
- * showing beside the name.
- */
+// UW's Canvas often puts the full title in `courseCode` ("Career Fair
+// Preparation"); only a genuinely short code is worth showing beside a name.
 export function shortCode(c: { name: string; courseCode: string }): string | undefined {
   const code = c.courseCode.trim();
   if (code.length === 0 || code.length > 14 || code === c.name.trim()) return undefined;
@@ -64,7 +75,6 @@ export function useToday(): string {
   return key;
 }
 
-/** Current time, ticking once a minute. */
 export function useNow(intervalMs = 60_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {

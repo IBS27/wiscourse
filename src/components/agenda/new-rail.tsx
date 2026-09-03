@@ -1,43 +1,20 @@
 import { useMutation } from "convex/react";
-import { Megaphone, Star, FilePlus2 } from "lucide-react";
+import { Clock, Megaphone, Star, FilePlus2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge } from "@/components/app/bits";
 import { formatAgo } from "@/lib/dates";
-import { groupFeed, useFeed } from "@/lib/feed";
+import { feedSeenKind, feedSubtitle, feedTitle, groupFeed, useFeed } from "@/lib/feed";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-const ICON = { announcement: Megaphone, grade: Star, assignment: FilePlus2 } as const;
+const ICON = { announcement: Megaphone, grade: Star, assignment: FilePlus2, change: Clock } as const;
 
 export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   const { label, color } = useCourses();
   const markSeen = useMutation(api.seenState.markSeen);
   const Icon = ICON[item.type];
-  const title =
-    item.type === "grade" ? (
-      <>
-        {item.title} graded
-        {item.score !== undefined && item.pointsPossible !== undefined && (
-          <>
-            {" — "}
-            <span className="tabular font-semibold">
-              {item.score}/{item.pointsPossible}
-            </span>
-          </>
-        )}
-      </>
-    ) : item.type === "assignment" ? (
-      <>New assignment — {item.title}</>
-    ) : (
-      item.title
-    );
-  const subtitle =
-    item.type === "assignment"
-      ? [item.pointsPossible !== undefined ? `${item.pointsPossible} points` : undefined]
-          .filter(Boolean)
-          .join(" · ")
-      : item.subtitle;
+  const subtitle = feedSubtitle(item);
 
   return (
     <a
@@ -47,7 +24,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
       onClick={() => {
         if (!item.seen) {
           void markSeen({
-            kind: item.type === "announcement" ? "discussion" : "assignment",
+            kind: feedSeenKind(item.type),
             canvasId: item.canvasId,
             seenVersion: item.seenVersion,
           });
@@ -65,7 +42,9 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
         <span className="font-medium text-c">{label(item.courseCanvasId)}</span>
         <span className="ml-auto">{formatAgo(item.at, now)}</span>
       </div>
-      <div className="mt-[5px] text-[13px] leading-[1.35] font-medium tracking-[-0.005em]">{title}</div>
+      <div className="mt-[5px] text-[13px] leading-[1.35] font-medium tracking-[-0.005em]">
+        {feedTitle(item)}
+      </div>
       {subtitle && <div className="mt-[3px] truncate text-xs text-ink-3">{subtitle}</div>}
     </a>
   );

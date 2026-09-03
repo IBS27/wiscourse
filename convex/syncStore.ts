@@ -13,15 +13,24 @@ import {
   internalQuery,
   type MutationCtx,
 } from "./_generated/server";
-import { submissionFields, courseDefaultView } from "./schema";
+import {
+  submissionFields,
+  courseDefaultView,
+  instructorFields,
+  scoreStatisticsFields,
+} from "./schema";
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
 import { findCanvasTodo } from "./todos";
+import { DAY_MS } from "./lib/time";
 
 const courseUpsert = v.object({
   canvasId: v.number(),
   name: v.string(),
   courseCode: v.string(),
   term: v.optional(v.string()),
+  termId: v.optional(v.number()),
+  termStartAt: v.optional(v.number()),
+  termEndAt: v.optional(v.number()),
   startAt: v.optional(v.number()),
   endAt: v.optional(v.number()),
   isFavorite: v.optional(v.boolean()),
@@ -29,6 +38,10 @@ const courseUpsert = v.object({
   tabs: v.optional(v.array(v.string())),
   syllabusBody: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
+  enrollmentState: v.optional(
+    v.union(v.literal("active"), v.literal("completed")),
+  ),
+  instructors: v.optional(v.array(instructorFields)),
   currentScore: v.optional(v.number()),
   currentGrade: v.optional(v.string()),
   finalScore: v.optional(v.number()),
@@ -57,6 +70,7 @@ const assignmentUpsert = v.object({
   lockedForUser: v.optional(v.boolean()),
   omitFromFinalGrade: v.optional(v.boolean()),
   submission: v.optional(submissionFields),
+  scoreStatistics: v.optional(scoreStatisticsFields),
   canvasCreatedAt: v.optional(v.number()),
   canvasUpdatedAt: v.optional(v.number()),
 });
@@ -94,7 +108,9 @@ export const getCourseCanvasIds = internalQuery({
       .query("courses")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .collect();
-    return courses.map((course) => course.canvasId);
+    return courses
+      .filter((course) => (course.enrollmentState ?? "active") === "active")
+      .map((course) => course.canvasId);
   },
 });
 
@@ -179,10 +195,35 @@ export const recordSyncResult = internalMutation({
 });
 
 export const upsertCourses = internalMutation({
-  args: { userId: v.string(), courses: v.array(courseUpsert) },
+  args: {
+    userId: v.string(),
+    courses: v.array(courseUpsert),
+    prune: v.optional(v.boolean()),
+  },
   returns: v.null(),
   handler: async (ctx, args) => {
     await upsertByCanvasId(ctx, "courses", args.userId, args.courses);
+    if (args.prune) {
+      const expiredChanges = await ctx.db
+        .query("assignmentChanges")
+        .withIndex("by_user_changedAt", (q) =>
+          q
+            .eq("userId", args.userId)
+            .lt("changedAt", Date.now() - 30 * DAY_MS),
+        )
+        .collect();
+      for (const change of expiredChanges) await ctx.db.delete(change._id);
+
+      const keep = new Set(args.courses.map((course) => course.canvasId));
+      const existing = await ctx.db
+        .query("courses")
+        .withIndex("by_user", (q) => q.eq("userId", args.userId))
+        .collect();
+      for (const course of existing) {
+        if (keep.has(course.canvasId)) continue;
+        await ctx.db.delete(course._id);
+      }
+    }
     return null;
   },
 });
@@ -226,6 +267,7 @@ export const upsertAssignments = internalMutation({
     userId: v.string(),
     courseCanvasId: v.number(),
     assignments: v.array(assignmentUpsert),
+    logChanges: v.boolean(),
     // Full sync only: the caller has the complete set for this course, so
     // rows Canvas no longer returns (deleted or unpublished) can go.
     prune: v.optional(v.boolean()),
@@ -236,6 +278,7 @@ export const upsertAssignments = internalMutation({
       ...assignment,
       courseCanvasId: args.courseCanvasId,
     }));
+    let changedAt = Date.now();
     for (const row of rows) {
       const existing = await ctx.db
         .query("assignments")
@@ -244,16 +287,40 @@ export const upsertAssignments = internalMutation({
         )
         .unique();
       await markDoneIfNewlySubmitted(ctx, args.userId, existing, row.submission);
+      if (args.logChanges && existing !== null) {
+        for (const field of ["dueAt", "pointsPossible"] as const) {
+          if (existing[field] === row[field]) continue;
+          await ctx.db.insert("assignmentChanges", {
+            userId: args.userId,
+            courseCanvasId: args.courseCanvasId,
+            assignmentCanvasId: row.canvasId,
+            field,
+            before: existing[field],
+            after: row[field],
+            changedAt,
+          });
+          changedAt += 1;
+        }
+      }
     }
     await upsertByCanvasId(ctx, "assignments", args.userId, rows);
     if (args.prune) {
-      await pruneCourseRows(
+      const deleted = await pruneCourseRows(
         ctx,
         "assignments",
         args.userId,
         args.courseCanvasId,
         rows.map((row) => row.canvasId),
       );
+      for (const canvasId of deleted) {
+        const changes = await ctx.db
+          .query("assignmentChanges")
+          .withIndex("by_user_assignment", (q) =>
+            q.eq("userId", args.userId).eq("assignmentCanvasId", canvasId),
+          )
+          .collect();
+        for (const change of changes) await ctx.db.delete(change._id);
+      }
     }
     return null;
   },
@@ -281,8 +348,13 @@ export const applySubmissionUpdates = internalMutation({
         .unique();
       await markDoneIfNewlySubmitted(ctx, args.userId, existing, update.submission);
       if (existing) {
+        const submission = {
+          ...update.submission,
+          comments:
+            update.submission.comments ?? existing.submission?.comments,
+        };
         await ctx.db.patch(existing._id, {
-          submission: update.submission,
+          submission,
           syncedAt: now,
         });
       }

@@ -16,30 +16,32 @@ import { QuickAddContext } from "@/lib/quick-add-context";
 import { parseQuickAdd, type QuickAddResult } from "@/lib/quickAdd";
 import { formatDay, formatTime, dayKeyOf } from "@/lib/dates";
 import { courseLabel, courseStyle, courseColorVar, useCourses, useToday } from "@/lib/hooks";
-import { cn } from "@/lib/utils";
-
-function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  return (
-    target.isContentEditable ||
-    ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)
-  );
-}
+import { cn, isTyping } from "@/lib/utils";
 
 export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const ctx = useMemo(() => ({ open: () => setOpen(true) }), []);
+  const [prefill, setPrefill] = useState("");
+  const ctx = useMemo(
+    () => ({
+      // Tolerant of an event object: `onClick={quickAdd.open}` is a fine caller.
+      open: (text?: unknown) => {
+        setPrefill(typeof text === "string" ? text : "");
+        setOpen(true);
+      },
+    }),
+    [],
+  );
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
       if (e.key.toLowerCase() === "n" && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e.target)) {
         e.preventDefault();
-        setOpen(true);
+        ctx.open();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [ctx]);
 
   return (
     <QuickAddContext.Provider value={ctx}>
@@ -50,18 +52,19 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           <DialogDescription className="sr-only">
             Type a task. Add a day like “fri”, a course like “#cs537”, or “due mon 5pm”.
           </DialogDescription>
-          {open && <QuickAddForm onDone={() => setOpen(false)} />}
+          {/* Remounted per opening, which is how `prefill` seeds the input. */}
+          {open && <QuickAddForm prefill={prefill} onDone={() => setOpen(false)} />}
         </DialogContent>
       </Dialog>
     </QuickAddContext.Provider>
   );
 }
 
-function QuickAddForm({ onDone }: { onDone: () => void }) {
+function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void }) {
   const { courses } = useCourses();
   const today = useToday();
   const createLocal = useMutation(api.todos.createLocal);
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(prefill);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
