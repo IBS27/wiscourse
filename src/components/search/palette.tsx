@@ -54,6 +54,7 @@ const RECENT_TO_KIND: Partial<Record<SeenKind, SearchKind>> = {
   file: "file",
   discussion: "announcement",
   assignment: "assignment",
+  grade: "assignment",
   assignmentChange: "assignment",
 };
 

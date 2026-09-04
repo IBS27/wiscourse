@@ -7,6 +7,7 @@
 // pages, files) in storeContent.ts.
 
 import { v, type Infer } from "convex/values";
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import {
   internalMutation,
@@ -22,6 +23,7 @@ import {
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
 import { findCanvasTodo } from "./todos";
 import { DAY_MS } from "./lib/time";
+import { removeSearchEntry, updateSearchEntry } from "./lib/searchEntries";
 
 const courseUpsert = v.object({
   canvasId: v.number(),
@@ -222,6 +224,10 @@ export const upsertCourses = internalMutation({
       for (const course of existing) {
         if (keep.has(course.canvasId)) continue;
         await ctx.db.delete(course._id);
+        await removeSearchEntry(ctx, "courses", args.userId, course.canvasId);
+        await ctx.scheduler.runAfter(0, internal.search.pruneCourse, {
+          userId: args.userId, courseCanvasId: course.canvasId,
+        });
       }
     }
     return null;
@@ -357,6 +363,7 @@ export const applySubmissionUpdates = internalMutation({
           submission,
           syncedAt: now,
         });
+        await updateSearchEntry(ctx, "assignments", { ...existing, submission });
       }
       // An update for an unknown assignment is dropped here; the nightly
       // full sync will pick the assignment itself up.

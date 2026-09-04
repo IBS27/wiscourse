@@ -36,7 +36,7 @@ function CourseModules() {
     <div className="flex-1" style={courseStyle(courseColorVar(course?.color))}>
       {/* The course row decides the week numbers, and so decides whether the
           timeline is worth showing at all. */}
-      {modules === undefined || coursesLoading ? (
+      {modules === undefined || coursesLoading || ctx.seenLoading ? (
         <ModulesSkeleton />
       ) : modules.length === 0 ? (
         <EmptyModules courseId={courseId} />

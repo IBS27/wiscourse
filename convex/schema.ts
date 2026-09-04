@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { searchFields } from "./lib/searchFields";
 
 // Design rule: mirror Canvas's native containers faithfully (modules, pages,
 // files, quizzes, discussions, ...) instead of modelling any one instructor's
@@ -80,6 +81,7 @@ export const completionRequirement = v.object({
 
 // Kinds of synced entities that can be "seen" or overridden locally.
 export const entityKind = v.union(
+  v.literal("grade"),
   v.literal("assignment"),
   v.literal("quiz"),
   v.literal("discussion"),
@@ -134,6 +136,9 @@ const synced = {
 };
 
 export default defineSchema({
+  searchEntries: defineTable({ userId: v.string(), ...searchFields })
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
   // The seam between "who is this user" (Clerk) and "how do we reach
   // Canvas". Tokens are AES-GCM encrypted; they must never reach a client.
   canvasCredentials: defineTable({

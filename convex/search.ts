@@ -1,126 +1,149 @@
-import { query } from "./_generated/server";
-import { activeCourseIds } from "./lib/courses";
+import { paginationOptsValidator } from "convex/server";
+import { v } from "convex/values";
+import { internalMutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { searchFields } from "./lib/searchFields";
+import { SEARCH_TABLES, updateSearchEntry } from "./lib/searchEntries";
 
-const DEFAULT_INSTANCE = "canvas.wisc.edu";
-
-/** The whole ⌘K corpus for one student: titles only, no bodies. */
 export const index = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { paginationOpts: paginationOptsValidator },
+  returns: v.object({
+    page: v.array(
+      v.object({ ...searchFields, folderPath: v.optional(v.string()) }),
+    ),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      return {
-        courses: [],
-        assignments: [],
-        pages: [],
-        files: [],
-        announcements: [],
-        modules: [],
-      };
-    }
+    if (!identity) return { page: [], isDone: true, continueCursor: "" };
     const userId = identity.subject;
-    const activeIds = await activeCourseIds(ctx, userId);
-
+    const courses = await ctx.db
+      .query("searchEntries")
+      .withIndex("by_user_kind_canvasId", (q) =>
+        q.eq("userId", userId).eq("kind", "course"),
+      )
+      .take(5000);
+    const activeIds = new Set(
+      courses
+        .filter((course) => course.active)
+        .map((course) => course.canvasId),
+    );
+    const result = await ctx.db
+      .query("searchEntries")
+      .withIndex("by_user_course", (q) => q.eq("userId", userId))
+      .paginate({
+        ...args.paginationOpts,
+        numItems: Math.min(args.paginationOpts.numItems, 200),
+      });
     const credential = await ctx.db
       .query("canvasCredentials")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
-    const host = (credential?.instance ?? DEFAULT_INSTANCE)
-      .replace(/^https?:\/\//, "")
-      .replace(/\/+$/, "");
-    const canvas = (path: string) => `https://${host}/${path}`;
-
-    const courseDocs = await ctx.db
-      .query("courses")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
-    const activeCourses = courseDocs.filter((course) =>
-      activeIds.has(course.canvasId),
+    const host = credential?.instance ?? "canvas.wisc.edu";
+    const page = await Promise.all(
+      result.page
+        .filter((row) => activeIds.has(row.courseCanvasId))
+        .map(async (row) => {
+          const { _id, _creationTime, userId: owner, ...entry } = row;
+          void _id;
+          void _creationTime;
+          void owner;
+          const folder =
+            entry.kind === "file" && entry.folderCanvasId !== undefined
+              ? await ctx.db
+                  .query("folders")
+                  .withIndex("by_user_canvasId", (q) =>
+                    q
+                      .eq("userId", userId)
+                      .eq("canvasId", entry.folderCanvasId!),
+                  )
+                  .unique()
+              : null;
+          const path = `courses/${entry.courseCanvasId}`;
+          return {
+            ...entry,
+            folderPath: folder?.fullName,
+            htmlUrl:
+              entry.htmlUrl ||
+              `https://${host}/${path}${
+                entry.kind === "course"
+                  ? ""
+                  : `/${entry.kind === "module" ? "modules" : "files"}/${entry.canvasId}`
+              }`,
+          };
+        }),
     );
-
-    const perCourse = await Promise.all(
-      activeCourses.map(async (course) => {
-        const courseCanvasId = course.canvasId;
-        const mine = <T>(q: {
-          eq: (f: "userId", v: string) => { eq: (f: "courseCanvasId", v: number) => T };
-        }) => q.eq("userId", userId).eq("courseCanvasId", courseCanvasId);
-
-        const [assignments, pages, folders, files, discussions, modules] = await Promise.all([
-          ctx.db.query("assignments").withIndex("by_user_course", mine).collect(),
-          ctx.db.query("pages").withIndex("by_user_course", mine).collect(),
-          ctx.db.query("folders").withIndex("by_user_course", mine).collect(),
-          ctx.db.query("files").withIndex("by_user_course", mine).collect(),
-          ctx.db.query("discussions").withIndex("by_user_course", mine).collect(),
-          ctx.db.query("modules").withIndex("by_user_course", mine).collect(),
-        ]);
-        const folderPaths = new Map(folders.map((folder) => [folder.canvasId, folder.fullName]));
-
-        return {
-          assignments: assignments.map((assignment) => ({
-            canvasId: assignment.canvasId,
-            courseCanvasId,
-            name: assignment.name,
-            dueAt: assignment.dueAt,
-            score:
-              assignment.submission?.postedAt === undefined
-                ? undefined
-                : assignment.submission.score,
-            pointsPossible: assignment.pointsPossible,
-            htmlUrl: assignment.htmlUrl,
-          })),
-          pages: pages.map((page) => ({
-            canvasId: page.canvasId,
-            courseCanvasId,
-            title: page.title,
-            url: page.url,
-            updatedAt: page.updatedAt,
-            htmlUrl: page.htmlUrl,
-          })),
-          files: files.map((file) => ({
-            canvasId: file.canvasId,
-            courseCanvasId,
-            displayName: file.displayName,
-            folderCanvasId: file.folderCanvasId,
-            folderPath:
-              file.folderCanvasId === undefined
-                ? undefined
-                : folderPaths.get(file.folderCanvasId),
-            size: file.size,
-            updatedAt: file.updatedAt,
-            htmlUrl: canvas(`courses/${courseCanvasId}/files/${file.canvasId}`),
-          })),
-          announcements: discussions
-            .filter((discussion) => discussion.isAnnouncement)
-            .map((announcement) => ({
-              canvasId: announcement.canvasId,
-              courseCanvasId,
-              title: announcement.title,
-              postedAt: announcement.postedAt,
-              htmlUrl: announcement.htmlUrl,
-            })),
-          modules: modules.map((module) => ({
-            canvasId: module.canvasId,
-            courseCanvasId,
-            name: module.name,
-            itemCount: module.itemCount,
-            htmlUrl: canvas(`courses/${courseCanvasId}/modules/${module.canvasId}`),
-          })),
-        };
-      }),
-    );
-
     return {
-      courses: activeCourses.map((course) => ({
-        canvasId: course.canvasId,
-        name: course.name,
-        courseCode: course.courseCode,
-        htmlUrl: canvas(`courses/${course.canvasId}`),
-      })),
-      assignments: perCourse.flatMap((c) => c.assignments),
-      pages: perCourse.flatMap((c) => c.pages),
-      files: perCourse.flatMap((c) => c.files),
-      announcements: perCourse.flatMap((c) => c.announcements),
-      modules: perCourse.flatMap((c) => c.modules),
+      page,
+      isDone: result.isDone,
+      continueCursor: result.continueCursor,
     };
+  },
+});
+
+// Run once after deploying: bunx convex run search:backfill '{}'.
+// Normal sync writes maintain the same records transactionally afterward.
+export const backfill = internalMutation({
+  args: {
+    tableIndex: v.optional(v.number()),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tableIndex = args.tableIndex ?? 0;
+    const table = SEARCH_TABLES[tableIndex];
+    if (!table) return null;
+    const batch = await ctx.db.query(table).paginate({
+      cursor: args.cursor ?? null,
+      numItems: 50,
+      maximumBytesRead: 1_000_000,
+    });
+    const courseActivity = new Map<number, boolean>();
+    for (const row of batch.page)
+      await updateSearchEntry(ctx, table, row, courseActivity);
+    if (!batch.isDone || tableIndex + 1 < SEARCH_TABLES.length) {
+      await ctx.scheduler.runAfter(0, internal.search.backfill, {
+        tableIndex: batch.isDone ? tableIndex + 1 : tableIndex,
+        cursor: batch.isDone ? null : batch.continueCursor,
+      });
+    }
+    return null;
+  },
+});
+
+export const pruneCourse = internalMutation({
+  args: {
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const course = await ctx.db
+      .query("searchEntries")
+      .withIndex("by_user_kind_canvasId", (q) =>
+        q
+          .eq("userId", args.userId)
+          .eq("kind", "course")
+          .eq("canvasId", args.courseCanvasId),
+      )
+      .unique();
+    if (course?.active) return null;
+    const batch = await ctx.db
+      .query("searchEntries")
+      .withIndex("by_user_course", (q) =>
+        q.eq("userId", args.userId).eq("courseCanvasId", args.courseCanvasId),
+      )
+      .paginate({ cursor: args.cursor ?? null, numItems: 200 });
+    for (const row of batch.page) {
+      if (row.kind !== "course") await ctx.db.delete(row._id);
+    }
+    if (!batch.isDone)
+      await ctx.scheduler.runAfter(0, internal.search.pruneCourse, {
+        ...args,
+        cursor: batch.continueCursor,
+      });
+    return null;
   },
 });

@@ -2,42 +2,16 @@ import type { FunctionReturnType } from "convex/server";
 import type { api } from "../../convex/_generated/api";
 import { matchCourse, type QuickAddCourse } from "./quickAdd";
 
-export type SearchIndex = FunctionReturnType<typeof api.search.index>;
+export type SearchIndex = FunctionReturnType<typeof api.search.index>["page"];
 
-export type SearchKind =
-  | "assignment"
-  | "page"
-  | "file"
-  | "announcement"
-  | "module"
-  | "course";
+type SearchRecord = SearchIndex[number];
+export type SearchKind = SearchRecord["kind"];
 
-/** One searchable thing, flattened out of the per-kind index arrays. */
-export interface SearchItem {
-  /** Stable across renders; also the listbox option id. */
-  id: string;
-  kind: SearchKind;
-  canvasId: number;
-  /** For a course row this is the course itself. */
-  courseCanvasId: number;
-  title: string;
-  /** `title` folded once, for ranking. */
-  folded: string;
-  htmlUrl: string;
-  /** When this thing last changed; a due date is not recency, see `recencyOf`. */
-  at?: number;
-  // Kind-specific extras, all optional so one row type covers every kind.
-  pageSlug?: string;
-  folderCanvasId?: number;
+export interface SearchItem extends Omit<SearchRecord, "folderPath"> {
   folderPath?: string;
-  size?: number;
-  dueAt?: number;
-  score?: number;
-  pointsPossible?: number;
-  postedAt?: number;
-  updatedAt?: number;
-  itemCount?: number;
-  courseCode?: string;
+  id: string;
+  folded: string;
+  at?: number;
 }
 
 export interface MatchRange {
@@ -157,56 +131,14 @@ export function keyOf(kind: SearchKind, id: string | number): string {
   return `${kind}:${id}`;
 }
 
-function itemOf(
-  kind: SearchKind,
-  row: { canvasId: number; courseCanvasId: number; htmlUrl: string },
-  title: string,
-  extra?: Partial<SearchItem>,
-): SearchItem {
-  return {
-    id: keyOf(kind, row.canvasId),
-    kind,
-    canvasId: row.canvasId,
-    courseCanvasId: row.courseCanvasId,
-    title,
-    folded: fold(title),
-    htmlUrl: row.htmlUrl,
-    ...extra,
-  };
-}
-
-/** Flatten the per-kind arrays into one ranked-over list. */
+/** Add the fields used for client-side ranking to the paginated summaries. */
 export function buildSearchItems(index: SearchIndex): SearchItem[] {
-  return [
-    ...index.courses.map((c) =>
-      itemOf("course", { ...c, courseCanvasId: c.canvasId }, c.name, {
-        courseCode: c.courseCode,
-      }),
-    ),
-    ...index.assignments.map((a) =>
-      itemOf("assignment", a, a.name, {
-        dueAt: a.dueAt,
-        score: a.score,
-        pointsPossible: a.pointsPossible,
-      }),
-    ),
-    ...index.pages.map((p) =>
-      itemOf("page", p, p.title, { at: p.updatedAt, updatedAt: p.updatedAt, pageSlug: p.url }),
-    ),
-    ...index.files.map((f) =>
-      itemOf("file", f, f.displayName, {
-        at: f.updatedAt,
-        updatedAt: f.updatedAt,
-        folderCanvasId: f.folderCanvasId,
-        folderPath: f.folderPath,
-        size: f.size,
-      }),
-    ),
-    ...index.announcements.map((a) =>
-      itemOf("announcement", a, a.title, { at: a.postedAt, postedAt: a.postedAt }),
-    ),
-    ...index.modules.map((m) => itemOf("module", m, m.name, { itemCount: m.itemCount })),
-  ];
+  return index.map((row) => ({
+    ...row,
+    id: keyOf(row.kind, row.canvasId),
+    folded: fold(row.title),
+    at: row.updatedAt ?? row.postedAt,
+  }));
 }
 
 /**

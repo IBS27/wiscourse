@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import {
   Dialog,
@@ -16,20 +16,23 @@ import { cn, isTyping } from "@/lib/utils";
 /** ⌘K, mounted once in the root route. */
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
-  // The index is worth keeping subscribed once opened, but not before.
-  const [armed, setArmed] = useState(false);
   const [scope, setScope] = useState<number | undefined>(undefined);
   const mobile = useIsMobile();
 
   const params = useParams({ strict: false });
   const routeCourseId = Number(params.courseId);
 
-  const index = useQuery(api.search.index, armed ? {} : "skip");
-  const recents = useQuery(api.seenState.recent, armed ? { limit: 24 } : "skip");
+  const { results, status, loadMore } = usePaginatedQuery(
+    api.search.index, open ? {} : "skip", { initialNumItems: 200 },
+  );
+  useEffect(() => {
+    if (open && status === "CanLoadMore") loadMore(200);
+  }, [open, status, loadMore]);
+  const index = status === "LoadingFirstPage" ? undefined : results;
+  const recents = useQuery(api.seenState.recent, open ? { limit: 24 } : "skip");
 
   const openWith = useCallback((courseCanvasId?: number) => {
     setScope(courseCanvasId);
-    setArmed(true);
     setOpen(true);
   }, []);
 

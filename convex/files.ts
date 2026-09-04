@@ -3,8 +3,9 @@ import { action, query } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { requireUserId } from "./lib/auth";
 import { getCanvasClient } from "./credentials";
-import { CanvasApiError } from "./canvas/client";
+import { CanvasApiError, CanvasRateLimitError } from "./canvas/client";
 import type { CanvasFile } from "./canvas/types";
+import { toMillis } from "./canvas/types";
 import { DAY_MS } from "./lib/time";
 
 interface FileTree {
@@ -80,18 +81,26 @@ export const freshUrl = action({
     url: v.string(),
     contentType: v.string(),
     size: v.number(),
+    filename: v.string(),
+    displayName: v.string(),
+    updatedAt: v.optional(v.number()),
   }),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const { client } = await getCanvasClient(ctx, userId);
     try {
       const file = await client.get<CanvasFile>(`/files/${args.fileCanvasId}`);
+      if (file.locked_for_user) throw new Error("File not available");
       return {
         url: file.url,
         contentType: file["content-type"],
         size: file.size,
+        filename: file.filename,
+        displayName: file.display_name,
+        updatedAt: toMillis(file.updated_at),
       };
     } catch (error) {
+      if (error instanceof CanvasRateLimitError) throw error;
       if (
         error instanceof CanvasApiError &&
         (error.status === 401 || error.status === 403 || error.status === 404)

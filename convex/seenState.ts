@@ -89,8 +89,7 @@ export async function upsertSeen(
       q.eq("userId", userId).eq("kind", kind).eq("canvasId", canvasId),
     )
     .unique();
-  // A grade and a "new assignment" feed item share one row, so an update
-  // without a version must not clear the grade version already acknowledged.
+  // Preserve legacy grade versions on assignment rows until they are split.
   const row = { userId, kind, canvasId, seenAt: Date.now() };
   if (existing === null) {
     await ctx.db.insert("seenState", { ...row, seenVersion });
@@ -136,7 +135,22 @@ export const markUnseen = mutation({
         q.eq("userId", userId).eq("kind", args.kind).eq("canvasId", args.canvasId),
       )
       .unique();
-    if (existing) await ctx.db.delete(existing._id);
+    if (args.kind === "grade") {
+      // An explicit empty version overrides any legacy assignment grade history.
+      await upsertSeen(ctx, userId, "grade", args.canvasId, "");
+    } else if (existing) {
+      if (args.kind === "assignment" && existing.seenVersion !== undefined) {
+        const grade = await ctx.db.query("seenState")
+          .withIndex("by_user_kind_canvasId", (q) =>
+            q.eq("userId", userId).eq("kind", "grade").eq("canvasId", args.canvasId))
+          .unique();
+        if (!grade) await ctx.db.insert("seenState", {
+          userId, kind: "grade", canvasId: args.canvasId,
+          seenAt: existing.seenAt, seenVersion: existing.seenVersion,
+        });
+      }
+      await ctx.db.delete(existing._id);
+    }
     return null;
   },
 });

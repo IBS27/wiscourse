@@ -24,6 +24,8 @@ import type * as inbox from "../inbox.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_courses from "../lib/courses.js";
 import type * as lib_crypto from "../lib/crypto.js";
+import type * as lib_searchEntries from "../lib/searchEntries.js";
+import type * as lib_searchFields from "../lib/searchFields.js";
 import type * as lib_syllabusFacts from "../lib/syllabusFacts.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_upsert from "../lib/upsert.js";
@@ -61,6 +63,8 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   "lib/courses": typeof lib_courses;
   "lib/crypto": typeof lib_crypto;
+  "lib/searchEntries": typeof lib_searchEntries;
+  "lib/searchFields": typeof lib_searchFields;
   "lib/syllabusFacts": typeof lib_syllabusFacts;
   "lib/time": typeof lib_time;
   "lib/upsert": typeof lib_upsert;

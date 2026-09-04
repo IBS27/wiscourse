@@ -60,6 +60,7 @@ function CourseFiles() {
   const tree = useMemo(() => buildTree(data?.folders ?? [], data?.files ?? []), [data]);
 
   const selectedFile = search.file === undefined ? undefined : tree.filesById.get(search.file);
+  const previewFile = selectedFile ?? (search.file === undefined ? undefined : { canvasId: search.file });
   // A deep link that names only a file still opens in the folder it lives in.
   const folderId = search.folder ?? selectedFile?.folderCanvasId ?? tree.root?.folder.canvasId;
   const folder = folderId === undefined ? undefined : tree.byId.get(folderId);
@@ -79,7 +80,7 @@ function CourseFiles() {
   const style = courseStyle(color(valid ? courseCanvasId : undefined));
 
   if (data === undefined) return <FilesSkeleton mobile={mobile} />;
-  if (tree.files.length === 0) {
+  if (tree.files.length === 0 && previewFile === undefined) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center p-10 text-[13px] text-ink-3">
         No files yet
@@ -99,23 +100,23 @@ function CourseFiles() {
           onSelectFile={selectFile}
         />
         <Dialog
-          open={selectedFile !== undefined}
+          open={previewFile !== undefined}
           onOpenChange={(open) => {
             if (!open) selectFile(undefined);
           }}
         >
-          {selectedFile !== undefined && (
+          {previewFile !== undefined && (
             <DialogContent
               aria-describedby={undefined}
               className="top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 flex-col rounded-none border-0"
               style={style}
             >
-              <DialogTitle className="sr-only">{selectedFile.displayName}</DialogTitle>
+              <DialogTitle className="sr-only">{selectedFile?.displayName ?? "File"}</DialogTitle>
               {/* The back arrow is the only way out: a full-screen sheet has
                   no overlay left to click. */}
               <FilePreview
-                key={selectedFile.canvasId}
-                file={selectedFile}
+                key={previewFile.canvasId}
+                file={previewFile}
                 courseId={courseId}
                 onClose={() => selectFile(undefined)}
                 className="flex-1"
@@ -145,12 +146,12 @@ function CourseFiles() {
         onSelectFile={selectFile}
         className="min-h-0 flex-1"
       />
-      {selectedFile === undefined ? (
+      {previewFile === undefined ? (
         <PreviewEmpty className={PREVIEW_WIDTH} />
       ) : (
         <FilePreview
-          key={selectedFile.canvasId}
-          file={selectedFile}
+          key={previewFile.canvasId}
+          file={previewFile}
           courseId={courseId}
           className={PREVIEW_WIDTH}
         />

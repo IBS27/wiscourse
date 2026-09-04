@@ -4,7 +4,7 @@ import { ArrowLeft, Download, ExternalLink, Lock } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { FileTypeIcon } from "./file-icon";
 import { previewKind, typeLabel } from "./file-kinds";
-import { fileAddedAt, type FileDoc } from "./file-tree";
+import type { FileDoc } from "./file-tree";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canvasUrl } from "@/lib/course-routes";
 import { formatMonthDayYear } from "@/lib/dates";
@@ -16,10 +16,15 @@ import { cn } from "@/lib/utils";
 /** Above this an inline text preview is a wall of characters — offer the file. */
 const TEXT_MAX_BYTES = 256 * 1024;
 
+type PreviewFile = Pick<FileDoc, "canvasId"> & Partial<Pick<FileDoc,
+  "displayName" | "filename" | "size" | "lockedForUser" | "updatedAt" | "modifiedAt" | "_creationTime"
+>>;
+type FileName = { displayName: string; filename: string };
+
 type Fetched =
   | { status: "loading" }
   | { status: "error" }
-  | { status: "ready"; url: string; contentType: string; size: number };
+  | { status: "ready"; url: string; contentType: string; size: number; filename: string; displayName: string; updatedAt?: number };
 
 /**
  * Canvas download links carry a short-lived verifier, so every selection
@@ -32,7 +37,7 @@ export function FilePreview({
   onClose,
   className,
 }: {
-  file: FileDoc;
+  file: PreviewFile;
   courseId: string;
   /** Rendered as a back arrow on mobile; omitted in the desktop pane. */
   onClose?: () => void;
@@ -44,7 +49,10 @@ export function FilePreview({
 
   const locked = file.lockedForUser === true;
   const canvasHref = canvasUrl(`courses/${courseId}/files/${file.canvasId}`, sync?.instance);
-  useMarkSeenOnMount("file", file.canvasId);
+  useMarkSeenOnMount("file", fetched.status === "ready" ? file.canvasId : undefined);
+  const metadata = fetched.status === "ready" ? fetched : file;
+  const name = { displayName: metadata.displayName ?? "File", filename: metadata.filename ?? "file" };
+  const addedAt = metadata.updatedAt ?? file.modifiedAt ?? file._creationTime;
 
   useEffect(() => {
     if (locked) return;
@@ -77,18 +85,18 @@ export function FilePreview({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {locked && <Lock className="size-[13px] shrink-0 text-ink-3" aria-hidden />}
-            <div className="truncate text-[13px] font-medium">{file.displayName}</div>
+            <div className="truncate text-[13px] font-medium">{name.displayName}</div>
           </div>
           <div className="mt-px truncate text-[11.5px] text-ink-3">
-            {formatBytes(fetched.status === "ready" ? fetched.size : file.size)} ·{" "}
-            {formatMonthDayYear(fileAddedAt(file))}
+            {metadata.size !== undefined && formatBytes(metadata.size)}
+            {addedAt !== undefined && ` · ${formatMonthDayYear(addedAt)}`}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-[6px]">
           {fetched.status === "ready" ? (
             <a
               href={fetched.url}
-              download={file.filename}
+              download={name.filename}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-[27px] items-center gap-[6px] rounded-lg bg-today px-[9px] text-xs font-medium text-today-fg"
@@ -124,13 +132,13 @@ export function FilePreview({
           <p className="text-xs text-ink-3">Your instructor hasn’t released this file yet.</p>
         </Centered>
       ) : (
-        <PreviewBody file={file} fetched={fetched} />
+        <PreviewBody file={name} fetched={fetched} />
       )}
     </div>
   );
 }
 
-function PreviewBody({ file, fetched }: { file: FileDoc; fetched: Fetched }) {
+function PreviewBody({ file, fetched }: { file: FileName; fetched: Fetched }) {
   if (fetched.status === "loading") {
     return (
       <div className="min-h-0 flex-1 space-y-[10px] p-5">
@@ -182,7 +190,7 @@ function TextPreview({
   fetched,
 }: {
   url: string;
-  file: FileDoc;
+  file: FileName;
   fetched: Extract<Fetched, { status: "ready" }>;
 }) {
   const [body, setBody] = useState<string | undefined>(undefined);
@@ -225,7 +233,7 @@ function DownloadCard({
   file,
   fetched,
 }: {
-  file: FileDoc;
+  file: FileName;
   fetched: Extract<Fetched, { status: "ready" }>;
 }) {
   return (

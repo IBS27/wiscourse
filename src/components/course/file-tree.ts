@@ -49,9 +49,9 @@ export function buildTree(folders: FolderDoc[], files: FileDoc[]): FolderTree {
   const filesById = new Map<number, FileDoc>();
   const visible: FileDoc[] = [];
   for (const file of files) {
+    filesById.set(file.canvasId, file);
     if (file.hidden === true) continue;
     visible.push(file);
-    filesById.set(file.canvasId, file);
     const folderId = file.folderCanvasId;
     const holder = (folderId === undefined ? undefined : byId.get(folderId)) ?? root;
     holder?.files.push(file);

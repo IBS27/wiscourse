@@ -15,10 +15,8 @@ export function useFeed() {
   return useQuery(api.inbox.feed);
 }
 
-// Announcements are discussions; grades and new assignments share the
-// assignment row (the version keeps them apart); changes get one row per
-// `changedAt`.
 export function feedSeenKind(type: FeedItem["type"]): SeenKind {
+  if (type === "grade") return "grade";
   if (type === "announcement") return "discussion";
   if (type === "change") return "assignmentChange";
   return "assignment";

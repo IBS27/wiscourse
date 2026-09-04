@@ -53,6 +53,14 @@ for the developer's own account during development.
 
 ## Commands
 
-- `bun run typecheck` — TypeScript across app and convex/
+- `bun run test` — regression tests for the backend and React components
+- `bun run typecheck` — TypeScript across app, convex/, and tests
 - `bun run lint` — ESLint
 - `bun run dev` / `bun run dev:backend` — Vite / Convex dev servers
+
+## Search index migration
+
+After deploying this version to a deployment with existing Canvas data, run
+`bunx convex run search:backfill '{}'` once. Add `--prod` when targeting production.
+It populates search summaries in batches without changing Canvas source records.
+Normal syncs then maintain the summaries. The backfill is safe to rerun.

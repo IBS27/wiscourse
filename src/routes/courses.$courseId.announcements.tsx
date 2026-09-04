@@ -32,7 +32,11 @@ function CourseAnnouncements() {
   // Only the id the page *loaded* with should steal the scroll position;
   // clicking a row further down the list must not yank the view.
   const [initialOpenId] = useState(openId);
-  useMarkSeenOnMount("discussion", openId);
+  const selected = useQuery(api.discussions.get, openId === undefined ? "skip" : { canvasId: openId });
+  const target = selected?.isAnnouncement && selected.courseCanvasId === canvasId ? selected : undefined;
+  const rows = announcements === undefined ? undefined : target && !announcements.some((row) => row.canvasId === target.canvasId)
+    ? [...announcements, target] : announcements;
+  useMarkSeenOnMount("discussion", rows?.some((row) => row.canvasId === openId) ? openId : undefined);
 
   const toggle = (id: number) => {
     void navigate({
@@ -43,10 +47,10 @@ function CourseAnnouncements() {
 
   return (
     <div className="min-w-0 flex-1 pb-8" style={courseStyle(courseColorVar(course?.color))}>
-      {announcements === undefined ? null : announcements.length === 0 ? (
+      {rows === undefined ? null : rows.length === 0 ? (
         <p className="p-4 text-[13px] text-ink-3 md:p-5">No announcements yet.</p>
       ) : (
-        announcements.map((announcement) => (
+        rows.map((announcement) => (
           <AnnouncementRow
             key={announcement.canvasId}
             announcement={announcement}
@@ -54,7 +58,8 @@ function CourseAnnouncements() {
             open={openId === announcement.canvasId}
             unread={!seen.has(announcement.canvasId)}
             now={now}
-            autoScroll={initialOpenId === announcement.canvasId}
+            autoScroll={initialOpenId === announcement.canvasId ||
+              (target?.canvasId === announcement.canvasId && !announcements?.some((row) => row.canvasId === target.canvasId))}
             onToggle={() => toggle(announcement.canvasId)}
           />
         ))

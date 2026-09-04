@@ -26,8 +26,7 @@ export function LedgerRow({
   feed: FeedItem[] | undefined;
   now: number;
 }) {
-  // One row per course, so the only per-row query is the handful of
-  // recently-changed file ids, never the whole listing.
+  // The query returns recent file IDs; it scans this course’s file records.
   const fresh = useQuery(api.files.fresh, { courseCanvasId: course.canvasId });
   const seenFiles = useSeen("file");
 

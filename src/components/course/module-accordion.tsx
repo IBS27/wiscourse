@@ -32,14 +32,15 @@ export function ModuleAccordion({
     () => new Map<number, ModuleDoc>(modules.map((m) => [m.canvasId, m])),
     [modules],
   );
-  const [toggled, setToggled] = useState<Set<number>>();
+  const [toggled, setToggled] = useState<{ focus?: number; ids: Set<number> }>();
   const seed = focusModuleId ?? currentModule(modules, ctx);
-  const open = toggled ?? new Set(seed === undefined ? [] : [seed]);
+  const open = new Set(toggled?.ids ?? (seed === undefined ? [] : [seed]));
+  if (focusModuleId !== undefined && toggled?.focus !== focusModuleId) open.add(focusModuleId);
 
   const toggle = (canvasId: number) => {
     const next = new Set(open);
     if (!next.delete(canvasId)) next.add(canvasId);
-    setToggled(next);
+    setToggled({ focus: focusModuleId, ids: next });
   };
 
   return (
