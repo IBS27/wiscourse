@@ -48,7 +48,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
   rows: ReadonlyArray<UpsertRow<T>>,
 ): Promise<void> {
   const now = Date.now();
-  const courseActivity = new Map<number, boolean>();
+  const courseActivity = new Map<string, boolean>();
   for (const row of rows) {
     const canvasId = (row as unknown as SyncedDoc).canvasId;
     const existing = (await ctx.db

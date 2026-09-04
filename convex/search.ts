@@ -99,7 +99,7 @@ export const backfill = internalMutation({
       numItems: 50,
       maximumBytesRead: 1_000_000,
     });
-    const courseActivity = new Map<number, boolean>();
+    const courseActivity = new Map<string, boolean>();
     for (const row of batch.page)
       await updateSearchEntry(ctx, table, row, courseActivity);
     if (!batch.isDone || tableIndex + 1 < SEARCH_TABLES.length) {

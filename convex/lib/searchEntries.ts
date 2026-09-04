@@ -136,14 +136,15 @@ export async function updateSearchEntry<T extends TableNames>(
   ctx: MutationCtx,
   table: T,
   source: Source<T>,
-  courseActivity = new Map<number, boolean>(),
+  courseActivity = new Map<string, boolean>(),
 ): Promise<void> {
   if (!(table in kinds)) return;
   const document = source as unknown as Source<TableNames>;
   let entry = summarize(table, document);
   if (entry && entry.kind !== "course") {
-    if (!courseActivity.has(entry.courseCanvasId)) {
-      const { userId, courseCanvasId } = entry;
+    const { userId, courseCanvasId } = entry;
+    const key = JSON.stringify([userId, courseCanvasId]);
+    if (!courseActivity.has(key)) {
       const course = await ctx.db
         .query("searchEntries")
         .withIndex("by_user_kind_canvasId", (q) =>
@@ -153,9 +154,9 @@ export async function updateSearchEntry<T extends TableNames>(
             .eq("canvasId", courseCanvasId),
         )
         .unique();
-      courseActivity.set(entry.courseCanvasId, course?.active === true);
+      courseActivity.set(key, course?.active === true);
     }
-    if (!courseActivity.get(entry.courseCanvasId)) entry = undefined;
+    if (!courseActivity.get(key)) entry = undefined;
   }
   if (!entry) {
     const row = document as { userId: string; canvasId: number };

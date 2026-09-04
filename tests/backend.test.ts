@@ -212,6 +212,51 @@ describe("search summaries", () => {
     ).toEqual([]);
   });
 
+  it.each(["active", "completed"] as const)(
+    "isolates enrollment state during backfill when the first student is %s",
+    async (firstState) => {
+      vi.useFakeTimers();
+      const t = convexTest(schema, modules);
+      const students = [
+        { userId: "first", enrollmentState: firstState },
+        {
+          userId: "second",
+          enrollmentState: firstState === "active" ? "completed" : "active",
+        },
+      ] as const;
+      for (const student of students) {
+        await t.mutation(internal.syncStore.upsertCourses, {
+          userId: student.userId,
+          courses: [{ ...course, enrollmentState: student.enrollmentState }],
+        });
+        await t.run((ctx) => ctx.db.insert("pages", {
+          userId: student.userId,
+          courseCanvasId: 1,
+          canvasId: 100,
+          title: "Shared course page",
+          url: "shared-page",
+          published: true,
+          isFrontPage: false,
+          syncedAt: 0,
+          htmlUrl: "/pages/shared-page",
+        }));
+      }
+      // A rerun must preserve the active student's existing summary, too.
+      for (let run = 0; run < 2; run++) {
+        await t.mutation(internal.search.backfill, {});
+        await t.finishAllScheduledFunctions(() => vi.runAllTimers());
+        const pages = await t.run(async (ctx) =>
+          (await ctx.db.query("searchEntries").collect())
+            .filter((row) => row.kind === "page")
+            .map((row) => row.userId),
+        );
+        expect(pages).toEqual([
+          students.find((student) => student.enrollmentState === "active")!.userId,
+        ]);
+      }
+    },
+  );
+
   it("backfills existing data in batches and does not rewrite unchanged summaries", async () => {
     vi.useFakeTimers();
     const { t, student } = await setup();
@@ -319,6 +364,36 @@ describe("feed read state", () => {
         ],
       });
       expect(await state()).toEqual({ grade: false, assignment: true });
+    },
+  );
+
+  it.each([false, true])(
+    "does not promote unread grades in recents with legacy history=%s",
+    async (legacy) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(1000);
+      const { student } = await setup();
+      await student.mutation(api.seenState.markSeen, {
+        kind: legacy ? "assignment" : "grade",
+        canvasId: 10,
+        seenVersion: "123",
+      });
+      vi.setSystemTime(2000);
+      await student.mutation(api.seenState.markSeen, { kind: "page", canvasId: 20 });
+      vi.setSystemTime(3000);
+      await student.mutation(api.seenState.markUnseen, { kind: "grade", canvasId: 10 });
+      expect(await student.query(api.seenState.list, { kind: "grade" })).toEqual([]);
+      expect(await student.query(api.seenState.recent, { limit: 24 })).toEqual([
+        { kind: "page", canvasId: 20, seenAt: 2000 },
+        ...(legacy ? [{ kind: "assignment", canvasId: 10, seenAt: 1000 }] : []),
+      ]);
+      // Clearing the legacy version must survive another assignment read.
+      if (legacy) {
+        await student.mutation(api.seenState.markSeen, { kind: "assignment", canvasId: 10 });
+        expect(await student.query(api.seenState.list, { kind: "assignment" })).toEqual([
+          { canvasId: 10, seenAt: 3000 },
+        ]);
+      }
     },
   );
 

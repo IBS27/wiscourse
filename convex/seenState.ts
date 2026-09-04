@@ -136,21 +136,34 @@ export const markUnseen = mutation({
       )
       .unique();
     if (args.kind === "grade") {
-      // An explicit empty version overrides any legacy assignment grade history.
-      await upsertSeen(ctx, userId, "grade", args.canvasId, "");
-    } else if (existing) {
-      if (args.kind === "assignment" && existing.seenVersion !== undefined) {
-        const grade = await ctx.db.query("seenState")
-          .withIndex("by_user_kind_canvasId", (q) =>
-            q.eq("userId", userId).eq("kind", "grade").eq("canvasId", args.canvasId))
-          .unique();
-        if (!grade) await ctx.db.insert("seenState", {
-          userId, kind: "grade", canvasId: args.canvasId,
-          seenAt: existing.seenAt, seenVersion: existing.seenVersion,
+      // Clear the legacy grade version without changing the assignment's recency.
+      const assignment = await ctx.db
+        .query("seenState")
+        .withIndex("by_user_kind_canvasId", (q) =>
+          q.eq("userId", userId).eq("kind", "assignment").eq("canvasId", args.canvasId),
+        )
+        .unique();
+      if (assignment?.seenVersion !== undefined) {
+        await ctx.db.patch(assignment._id, { seenVersion: undefined });
+      }
+    } else if (args.kind === "assignment" && existing?.seenVersion !== undefined) {
+      const grade = await ctx.db
+        .query("seenState")
+        .withIndex("by_user_kind_canvasId", (q) =>
+          q.eq("userId", userId).eq("kind", "grade").eq("canvasId", args.canvasId),
+        )
+        .unique();
+      if (!grade) {
+        await ctx.db.insert("seenState", {
+          userId,
+          kind: "grade",
+          canvasId: args.canvasId,
+          seenAt: existing.seenAt,
+          seenVersion: existing.seenVersion,
         });
       }
-      await ctx.db.delete(existing._id);
     }
+    if (existing) await ctx.db.delete(existing._id);
     return null;
   },
 });
