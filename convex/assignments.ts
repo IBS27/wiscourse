@@ -7,13 +7,17 @@ import type { Doc } from "./_generated/dataModel";
 // score/grade unless postedAt is set.
 function sanitize(assignment: Doc<"assignments">) {
   const { submission } = assignment;
-  if (submission && submission.postedAt === undefined) {
-    return {
-      ...assignment,
-      submission: { ...submission, score: undefined, grade: undefined },
-    };
-  }
-  return assignment;
+  if (submission?.postedAt !== undefined) return assignment;
+  return {
+    ...assignment,
+    scoreStatistics: undefined,
+    submission: submission && {
+      ...submission,
+      score: undefined,
+      grade: undefined,
+      comments: undefined,
+    },
+  };
 }
 
 export const upcoming = query({

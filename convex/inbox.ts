@@ -1,17 +1,10 @@
-// The "New" feed: announcements, posted grades, and newly appeared
-// assignments, in one chronological list with per-item seen state.
-//
-// Seen semantics reuse `seenState`: an announcement is seen once a row
-// exists; an assignment is seen once a row exists, and becomes unseen
-// again when a grade posts with a `postedAt` the student has not seen
-// (`seenVersion`). "New assignment" therefore means: created in Canvas
-// recently (`canvasCreatedAt`, not our sync time) and no seen row at all.
-
 import { v, type Infer } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { requireUserId } from "./lib/auth";
 import { getSeenSet, gradeVersion, upsertSeen } from "./seenState";
 import { DAY_MS } from "./lib/time";
+import { scoreStatisticsFields } from "./schema";
+import { activeCourseIds } from "./lib/courses";
 
 const ANNOUNCEMENT_WINDOW_MS = 30 * DAY_MS;
 const GRADE_WINDOW_MS = 30 * DAY_MS;
@@ -23,6 +16,7 @@ export const feedItem = v.object({
     v.literal("announcement"),
     v.literal("grade"),
     v.literal("assignment"),
+    v.literal("change"),
   ),
   canvasId: v.number(),
   courseCanvasId: v.number(),
@@ -35,7 +29,15 @@ export const feedItem = v.object({
   htmlUrl: v.string(),
   // Grades only; present only when posted.
   score: v.optional(v.number()),
+  grade: v.optional(v.string()),
   pointsPossible: v.optional(v.number()),
+  change: v.optional(
+    v.object({
+      field: v.union(v.literal("dueAt"), v.literal("pointsPossible")),
+      before: v.optional(v.number()),
+      after: v.optional(v.number()),
+    }),
+  ),
 });
 export type FeedItem = Infer<typeof feedItem>;
 
@@ -50,6 +52,16 @@ function stripHtml(html: string | undefined): string | undefined {
   return text.length === 0 ? undefined : text;
 }
 
+// CanvasClient limits each course listing to 50 pages of 100 assignments.
+// Restrict the database reads before loading rows, including for mark-all.
+async function activeAssignments(ctx: QueryCtx | MutationCtx, userId: string, courseIds: Set<number>) {
+  const courses = await Promise.all([...courseIds].map((courseCanvasId) =>
+    ctx.db.query("assignments").withIndex("by_user_course", (q) =>
+      q.eq("userId", userId).eq("courseCanvasId", courseCanvasId)).take(5000),
+  ));
+  return courses.flat();
+}
+
 export const feed = query({
   args: {},
   returns: v.array(feedItem),
@@ -59,6 +71,7 @@ export const feed = query({
     const userId = identity.subject;
     const now = Date.now();
     const items: FeedItem[] = [];
+    const activeIds = await activeCourseIds(ctx, userId);
 
     const seenDiscussions = await getSeenSet(ctx, userId, "discussion");
     const announcements = await ctx.db
@@ -71,7 +84,9 @@ export const feed = query({
       )
       .collect();
     for (const a of announcements) {
-      if (a.postedAt === undefined) continue;
+      if (a.postedAt === undefined || !activeIds.has(a.courseCanvasId)) {
+        continue;
+      }
       items.push({
         key: `announcement:${a.canvasId}`,
         type: "announcement",
@@ -86,10 +101,8 @@ export const feed = query({
     }
 
     const seenAssignments = await getSeenSet(ctx, userId, "assignment");
-    const assignments = await ctx.db
-      .query("assignments")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const seenGrades = await getSeenSet(ctx, userId, "grade");
+    const assignments = await activeAssignments(ctx, userId, activeIds);
     for (const a of assignments) {
       const postedAt = a.submission?.postedAt;
       const seen = seenAssignments.get(a.canvasId);
@@ -103,10 +116,12 @@ export const feed = query({
           title: a.name,
           subtitle: a.submission?.grade,
           at: postedAt,
-          seen: seen?.seenVersion === version,
+          // Existing assignment rows supply the grade history until first changed.
+          seen: (seenGrades.get(a.canvasId) ?? seen)?.seenVersion === version,
           seenVersion: version,
           htmlUrl: a.htmlUrl,
           score: a.submission?.score,
+          grade: a.submission?.grade,
           pointsPossible: a.pointsPossible,
         });
       }
@@ -128,7 +143,130 @@ export const feed = query({
       }
     }
 
+    const seenChanges = await getSeenSet(ctx, userId, "assignmentChange");
+    const changes = await ctx.db
+      .query("assignmentChanges")
+      .withIndex("by_user_changedAt", (q) =>
+        q.eq("userId", userId).gte("changedAt", now - 30 * DAY_MS),
+      )
+      .collect();
+    const assignmentById = new Map(
+      assignments.map((assignment) => [assignment.canvasId, assignment]),
+    );
+    for (const change of changes) {
+      if (!activeIds.has(change.courseCanvasId)) continue;
+      const assignment = assignmentById.get(change.assignmentCanvasId);
+      if (assignment === undefined) continue;
+      const version = String(change.changedAt);
+      items.push({
+        key: `change:${change.assignmentCanvasId}:${change.changedAt}`,
+        type: "change",
+        canvasId: change.assignmentCanvasId,
+        courseCanvasId: change.courseCanvasId,
+        title: assignment.name,
+        subtitle:
+          change.field === "dueAt" ? "Due date moved" : "Points changed",
+        at: change.changedAt,
+        seen:
+          Number(seenChanges.get(change.assignmentCanvasId)?.seenVersion ?? 0) >=
+          change.changedAt,
+        seenVersion: version,
+        htmlUrl: assignment.htmlUrl,
+        change: {
+          field: change.field,
+          before: change.before,
+          after: change.after,
+        },
+      });
+    }
+
     return items.sort((x, y) => y.at - x.at);
+  },
+});
+
+export const gradeDetail = query({
+  args: { assignmentCanvasId: v.number() },
+  returns: v.union(
+    v.object({
+      score: v.optional(v.number()),
+      pointsPossible: v.optional(v.number()),
+      grade: v.optional(v.string()),
+      postedAt: v.optional(v.number()),
+      scoreStatistics: v.optional(scoreStatisticsFields),
+      comments: v.array(
+        v.object({
+          authorName: v.string(),
+          comment: v.string(),
+          createdAt: v.number(),
+        }),
+      ),
+      group: v.optional(
+        v.object({ name: v.string(), weight: v.optional(v.number()) }),
+      ),
+      course: v.object({
+        currentScore: v.optional(v.number()),
+        currentGrade: v.optional(v.string()),
+      }),
+      todoKey: v.string(),
+      htmlUrl: v.string(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) return null;
+    const userId = identity.subject;
+    const assignment = await ctx.db
+      .query("assignments")
+      .withIndex("by_user_canvasId", (q) =>
+        q
+          .eq("userId", userId)
+          .eq("canvasId", args.assignmentCanvasId),
+      )
+      .unique();
+    if (assignment === null) return null;
+    const course = await ctx.db
+      .query("courses")
+      .withIndex("by_user_canvasId", (q) =>
+        q
+          .eq("userId", userId)
+          .eq("canvasId", assignment.courseCanvasId),
+      )
+      .unique();
+    const assignmentGroupCanvasId = assignment.assignmentGroupCanvasId;
+    const group =
+      assignmentGroupCanvasId === undefined
+        ? null
+        : await ctx.db
+            .query("assignmentGroups")
+            .withIndex("by_user_canvasId", (q) =>
+              q
+                .eq("userId", userId)
+                .eq("canvasId", assignmentGroupCanvasId),
+            )
+            .unique();
+    const posted = assignment.submission?.postedAt !== undefined;
+    const showCourseScore = posted && course?.hideFinalGrades !== true;
+    return {
+      score: posted ? assignment.submission?.score : undefined,
+      pointsPossible: assignment.pointsPossible,
+      grade: posted ? assignment.submission?.grade : undefined,
+      postedAt: assignment.submission?.postedAt,
+      scoreStatistics: posted ? assignment.scoreStatistics : undefined,
+      comments: posted ? (assignment.submission?.comments ?? []) : [],
+      group: group
+        ? {
+            name: group.name,
+            weight: course?.applyAssignmentGroupWeights ? group.groupWeight : undefined,
+          }
+        : undefined,
+      course: {
+        currentScore: showCourseScore ? course?.currentScore : undefined,
+        currentGrade: showCourseScore ? course?.currentGrade : undefined,
+      },
+      todoKey: `assignment:${assignment.canvasId}`,
+      htmlUrl: assignment.htmlUrl,
+    };
   },
 });
 
@@ -139,10 +277,12 @@ export const markAllSeen = mutation({
     const userId = await requireUserId(ctx);
     const now = Date.now();
     const upsert = (
-      kind: "assignment" | "discussion",
+      kind: "assignment" | "grade" | "discussion" | "assignmentChange",
       canvasId: number,
       seenVersion: string | undefined,
     ) => upsertSeen(ctx, userId, kind, canvasId, seenVersion);
+
+    const activeIds = await activeCourseIds(ctx, userId);
 
     const announcements = await ctx.db
       .query("discussions")
@@ -153,22 +293,35 @@ export const markAllSeen = mutation({
           .gte("postedAt", now - ANNOUNCEMENT_WINDOW_MS),
       )
       .collect();
-    for (const a of announcements) await upsert("discussion", a.canvasId, undefined);
+    for (const a of announcements) {
+      if (activeIds.has(a.courseCanvasId)) {
+        await upsert("discussion", a.canvasId, undefined);
+      }
+    }
 
-    const assignments = await ctx.db
-      .query("assignments")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const assignments = await activeAssignments(ctx, userId, activeIds);
     for (const a of assignments) {
       const postedAt = a.submission?.postedAt;
       const isNew =
         a.canvasCreatedAt !== undefined && a.canvasCreatedAt >= now - NEW_ASSIGNMENT_WINDOW_MS;
       const hasGrade = postedAt !== undefined && postedAt >= now - GRADE_WINDOW_MS;
       if (!isNew && !hasGrade) continue;
+      if (isNew) await upsert("assignment", a.canvasId, undefined);
+      if (hasGrade) await upsert("grade", a.canvasId, gradeVersion(postedAt));
+    }
+
+    const changes = await ctx.db
+      .query("assignmentChanges")
+      .withIndex("by_user_changedAt", (q) =>
+        q.eq("userId", userId).gte("changedAt", now - 30 * DAY_MS),
+      )
+      .collect();
+    for (const change of changes) {
+      if (!activeIds.has(change.courseCanvasId)) continue;
       await upsert(
-        "assignment",
-        a.canvasId,
-        postedAt === undefined ? undefined : gradeVersion(postedAt),
+        "assignmentChange",
+        change.assignmentCanvasId,
+        String(change.changedAt),
       );
     }
     return null;

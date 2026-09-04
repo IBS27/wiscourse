@@ -50,7 +50,7 @@ const MONTHS: Record<string, number> = {
   jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
 };
 
-function normalizeCode(s: string): string {
+export function normalizeCode(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
@@ -143,12 +143,18 @@ function codeAliases(code: string): string[] {
   return [...out];
 }
 
-function matchCourse(tag: string, courses: QuickAddCourse[]): QuickAddCourse | undefined {
+export function matchCourse(
+  tag: string,
+  courses: QuickAddCourse[],
+  opts: { exact?: boolean } = {},
+): QuickAddCourse | undefined {
   const q = normalizeCode(tag);
   if (q.length === 0) return undefined;
-  return (
+  const exact =
     courses.find((c) => c.nickname !== undefined && normalizeCode(c.nickname) === q) ??
-    courses.find((c) => codeAliases(c.courseCode).includes(q)) ??
+    courses.find((c) => codeAliases(c.courseCode).includes(q));
+  if (exact !== undefined || opts.exact) return exact;
+  return (
     courses.find((c) => codeAliases(c.courseCode).some((a) => a.startsWith(q))) ??
     courses.find((c) => normalizeCode(c.name).includes(q))
   );

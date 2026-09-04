@@ -6,6 +6,7 @@ import type { TableNames } from "../_generated/dataModel";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { IndexRange, WithoutSystemFields } from "convex/server";
+import { removeSearchEntry, updateSearchEntry } from "./searchEntries";
 
 // Convex's index-builder types don't distribute over a union of table
 // names, so the two shared indexes are typed structurally here. Every
@@ -23,7 +24,7 @@ type UserCourseRange = {
 type SyncedDoc = { _id: unknown; canvasId: number };
 
 type SyncedTableNames = {
-  [T in TableNames]: Doc<T> extends { canvasId?: number; syncedAt?: number }
+  [T in TableNames]: T extends "searchEntries" ? never : Doc<T> extends { canvasId?: number; syncedAt?: number }
     ? T
     : never;
 }[TableNames];
@@ -47,6 +48,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
   rows: ReadonlyArray<UpsertRow<T>>,
 ): Promise<void> {
   const now = Date.now();
+  const courseActivity = new Map<string, boolean>();
   for (const row of rows) {
     const canvasId = (row as unknown as SyncedDoc).canvasId;
     const existing = (await ctx.db
@@ -65,6 +67,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
     } else {
       await ctx.db.insert(table, doc);
     }
+    await updateSearchEntry(ctx, table, doc, courseActivity);
   }
 }
 
@@ -78,8 +81,9 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
   userId: string,
   courseCanvasId: number,
   keepCanvasIds: ReadonlyArray<number>,
-): Promise<void> {
+): Promise<number[]> {
   const keep = new Set(keepCanvasIds);
+  const deleted: number[] = [];
   const rows = (await ctx.db
     .query(table)
     .withIndex("by_user_course", (q) =>
@@ -89,8 +93,12 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
     )
     .collect()) as Doc<T>[];
   for (const row of rows) {
-    if (!keep.has((row as unknown as SyncedDoc).canvasId)) {
+    const canvasId = (row as unknown as SyncedDoc).canvasId;
+    if (!keep.has(canvasId)) {
       await ctx.db.delete(row._id);
+      await removeSearchEntry(ctx, table, userId, canvasId);
+      deleted.push(canvasId);
     }
   }
+  return deleted;
 }

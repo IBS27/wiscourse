@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { searchFields } from "./lib/searchFields";
 
 // Design rule: mirror Canvas's native containers faithfully (modules, pages,
 // files, quizzes, discussions, ...) instead of modelling any one instructor's
@@ -20,6 +21,30 @@ export const submissionFields = v.object({
   late: v.optional(v.boolean()),
   missing: v.optional(v.boolean()),
   postedAt: v.optional(v.number()),
+  comments: v.optional(
+    v.array(
+      v.object({
+        authorName: v.string(),
+        comment: v.string(),
+        createdAt: v.number(),
+      }),
+    ),
+  ),
+});
+
+export const instructorFields = v.object({
+  name: v.string(),
+  email: v.optional(v.string()),
+  role: v.union(v.literal("teacher"), v.literal("ta")),
+});
+
+export const scoreStatisticsFields = v.object({
+  min: v.number(),
+  max: v.number(),
+  mean: v.number(),
+  median: v.optional(v.number()),
+  lowerQuartile: v.optional(v.number()),
+  upperQuartile: v.optional(v.number()),
 });
 
 export const courseDefaultView = v.union(
@@ -56,6 +81,7 @@ export const completionRequirement = v.object({
 
 // Kinds of synced entities that can be "seen" or overridden locally.
 export const entityKind = v.union(
+  v.literal("grade"),
   v.literal("assignment"),
   v.literal("quiz"),
   v.literal("discussion"),
@@ -63,6 +89,7 @@ export const entityKind = v.union(
   v.literal("file"),
   v.literal("moduleItem"),
   v.literal("calendarEvent"),
+  v.literal("assignmentChange"),
 );
 
 // Canvas sources a todo can mirror.
@@ -109,6 +136,9 @@ const synced = {
 };
 
 export default defineSchema({
+  searchEntries: defineTable({ userId: v.string(), ...searchFields })
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
   // The seam between "who is this user" (Clerk) and "how do we reach
   // Canvas". Tokens are AES-GCM encrypted; they must never reach a client.
   canvasCredentials: defineTable({
@@ -146,6 +176,12 @@ export default defineSchema({
     name: v.string(),
     courseCode: v.string(),
     term: v.optional(v.string()),
+    // Enrollment-term id and dates. Academic terms carry dates; the
+    // catch-all terms Canvas admins use for orientation/advising courses
+    // do not, which is how the UI tells "this semester" from "ongoing".
+    termId: v.optional(v.number()),
+    termStartAt: v.optional(v.number()),
+    termEndAt: v.optional(v.number()),
     startAt: v.optional(v.number()),
     endAt: v.optional(v.number()),
     isFavorite: v.optional(v.boolean()),
@@ -156,6 +192,10 @@ export default defineSchema({
     tabs: v.optional(v.array(v.string())),
     syllabusBody: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    enrollmentState: v.optional(
+      v.union(v.literal("active"), v.literal("completed")),
+    ),
+    instructors: v.optional(v.array(instructorFields)),
     // Enrollment-level totals. Respect the posting policy: both are
     // undefined unless Canvas reports them, and `hideFinalGrades` means
     // the instructor hides totals entirely.
@@ -215,6 +255,7 @@ export default defineSchema({
     lockedForUser: v.optional(v.boolean()),
     omitFromFinalGrade: v.optional(v.boolean()),
     submission: v.optional(submissionFields),
+    scoreStatistics: v.optional(scoreStatisticsFields),
     // Canvas-side timestamps: "new assignment" means created in Canvas
     // recently, not synced recently.
     canvasCreatedAt: v.optional(v.number()),
@@ -224,6 +265,18 @@ export default defineSchema({
     .index("by_user_canvasId", ["userId", "canvasId"])
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_dueAt", ["userId", "dueAt"]),
+
+  assignmentChanges: defineTable({
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    assignmentCanvasId: v.number(),
+    field: v.union(v.literal("dueAt"), v.literal("pointsPossible")),
+    before: v.optional(v.number()),
+    after: v.optional(v.number()),
+    changedAt: v.number(),
+  })
+    .index("by_user_changedAt", ["userId", "changedAt"])
+    .index("by_user_assignment", ["userId", "assignmentCanvasId"]),
 
   quizzes: defineTable({
     ...synced,
@@ -266,6 +319,12 @@ export default defineSchema({
     .index("by_user_canvasId", ["userId", "canvasId"])
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_course_announcement_postedAt", [
+      "userId",
+      "courseCanvasId",
+      "isAnnouncement",
+      "postedAt",
+    ])
     .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]),
 
   // -------------------------------------------------------------------------
@@ -410,8 +469,8 @@ export default defineSchema({
     hidden: v.optional(v.boolean()),
   }).index("by_user_course", ["userId", "courseCanvasId"]),
 
-  // "Have I looked at this yet" for announcements, pages, files, module
-  // items, grade changes. Keyed by kind + canvasId; one row per entity.
+  // One row per kind + canvasId. For assignment changes, seenVersion is the
+  // newest changedAt acknowledged.
   seenState: defineTable({
     userId: v.string(),
     kind: entityKind,
@@ -422,5 +481,6 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_user_kind", ["userId", "kind"])
-    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
+    .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"])
+    .index("by_user_seenAt", ["userId", "seenAt"]),
 });

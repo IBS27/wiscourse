@@ -27,6 +27,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { subtask, todoCanvasKind } from "./schema";
 import { requireUserId } from "./lib/auth";
 import { DAY_MS } from "./lib/time";
+import { activeCourseIds } from "./lib/courses";
 
 const DEFAULT_PAST_MS = 30 * DAY_MS;
 const DEFAULT_FUTURE_MS = 120 * DAY_MS;
@@ -54,6 +55,10 @@ export const todoItem = v.object({
   dueAt: v.optional(v.number()),
   pointsPossible: v.optional(v.number()),
   htmlUrl: v.optional(v.string()),
+  // Set on assignment items that wrap a graded quiz or discussion, so a
+  // module row keyed by the quiz/discussion id can find its todo.
+  quizCanvasId: v.optional(v.number()),
+  discussionCanvasId: v.optional(v.number()),
   submission: submissionState,
   submittedAt: v.optional(v.number()),
   // Only present when posted; the UI never sees an unposted score.
@@ -192,6 +197,8 @@ function toCanvasItem(r: CanvasRow, todo: Doc<"todos"> | undefined): TodoItem {
         ...base,
         title: r.row.name,
         pointsPossible: r.row.pointsPossible,
+        quizCanvasId: r.row.quizCanvasId,
+        discussionCanvasId: r.row.discussionCanvasId,
         submission: sub.state,
         submittedAt: sub.submittedAt,
         score: sub.score,
@@ -255,9 +262,12 @@ async function buildList(
   const items: TodoItem[] = [];
   const seen = new Set<string>();
 
+  const activeIds = await activeCourseIds(ctx, userId);
+
   const push = (r: CanvasRow) => {
     const key = `${r.kind}:${r.row.canvasId}`;
     if (seen.has(key) || !isTodo(r)) return;
+    if (!activeIds.has(r.row.courseCanvasId)) return;
     seen.add(key);
     items.push(toCanvasItem(r, todos.canvas.get(key)));
   };
@@ -319,9 +329,12 @@ export const get = query({
       if (!t || t.userId !== userId || t.source !== "local") return null;
       return toLocalItem(t);
     }
-    const r = await findCanvasRow(ctx, userId, ref.kind, ref.canvasId);
+    let r = await findCanvasRow(ctx, userId, ref.kind, ref.canvasId);
+    if (r !== null && r.kind !== "assignment" && r.row.assignmentCanvasId !== undefined) {
+      r = await findCanvasRow(ctx, userId, "assignment", r.row.assignmentCanvasId);
+    }
     if (r === null || !isTodo(r)) return null;
-    const todo = (await findCanvasTodo(ctx, userId, ref.kind, ref.canvasId)) ?? undefined;
+    const todo = (await findCanvasTodo(ctx, userId, r.kind, r.row.canvasId)) ?? undefined;
     return toCanvasItem(r, todo);
   },
 });
