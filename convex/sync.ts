@@ -15,7 +15,8 @@
 // Request budget, unpaginated: per active course ~14 on a full sync (1
 // assignments, 1 submission-comments pass, up to 1 tabs, 1 instructors,
 // 1 syllabus (UW's list endpoint never inlines it), 5 metadata, and content
-// sync is 4 + 1 per oversized module). A completed course costs 1 assignment
+// sync adds a front-page request, missing page bodies, and linked resources
+// omitted from listings, plus 1 per oversized module). A completed course costs 1 assignment
 // call. A delta costs 4 per active course. Per user, add 2 course lists and
 // one calendar call on full sync or one announcements call per 10 active
 // courses on delta.
@@ -138,6 +139,8 @@ export const tripwireUser = internalAction({
   args: { userId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const lease = await ctx.runMutation(internal.syncStore.claimSync, { userId: args.userId, full: false });
+    if (lease === null) return null;
     try {
       const session = await getCanvasClient(ctx, args.userId);
       const summary = await session.client.get<CanvasActivityStreamSummaryItem[]>(
@@ -159,6 +162,8 @@ export const tripwireUser = internalAction({
       }
     } catch (error) {
       await handleSyncError(ctx, args.userId, error);
+    } finally {
+      await ctx.runMutation(internal.syncStore.releaseSync, { userId: args.userId, lease });
     }
     return null;
   },
@@ -168,11 +173,16 @@ export const fullSyncUser = internalAction({
   args: { userId: v.string() },
   returns: v.null(),
   handler: async (ctx, args) => {
+    const lease = await ctx.runMutation(internal.syncStore.claimSync, { userId: args.userId, full: true });
+    if (lease === null) return null;
     try {
       const session = await getCanvasClient(ctx, args.userId);
       await runFullSync(ctx, args.userId, session);
+      await ctx.runMutation(internal.courseInterpretations.refreshEnabled, { userId: args.userId });
     } catch (error) {
       await handleSyncError(ctx, args.userId, error);
+    } finally {
+      await ctx.runMutation(internal.syncStore.releaseSync, { userId: args.userId, lease });
     }
     return null;
   },
@@ -279,7 +289,12 @@ async function runFullSync(
 
     if (active) {
       await syncCourseMeta(ctx, userId, client, course.id, { full: true });
-      await syncCourseContent(ctx, userId, client, course.id, { full: true });
+      await syncCourseContent(ctx, userId, client, course.id, {
+        full: true,
+        syllabusBody: courseUpserts.find((row) => row.canvasId === course.id)?.syllabusBody,
+        courseUrl: `https://${session.credential.instance}/courses/${course.id}`,
+      });
+      await ctx.runAction(internal.courseStaff.refresh, {userId,courseCanvasId:course.id});
     }
   }
 
@@ -362,6 +377,7 @@ async function runDeltaSync(
       sinceMs,
     });
     await syncCourseContent(ctx, userId, client, courseId, { full: false });
+    await ctx.runAction(internal.courseStaff.refresh, {userId,courseCanvasId:courseId});
   }
 
   await syncAnnouncements(ctx, userId, client, courseIds, sinceMs);
@@ -540,7 +556,7 @@ async function courseSyllabus(
   return full?.syllabus_body ?? undefined;
 }
 
-async function courseInstructors(
+export async function courseInstructors(
   client: CanvasClient,
   courseCanvasId: number,
 ): Promise<NonNullable<CourseUpsert["instructors"]>> {
@@ -569,7 +585,7 @@ async function courseInstructors(
       };
     })
     .sort((a, b) => Number(a.role === "ta") - Number(b.role === "ta"))
-    .slice(0, 8);
+    ;
 }
 
 function mapCourse(

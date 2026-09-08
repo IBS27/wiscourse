@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { courseMapValidator, resultResourceValidator } from "./lib/courseMap";
 import { searchFields } from "./lib/searchFields";
 
 // Design rule: mirror Canvas's native containers faithfully (modules, pages,
@@ -136,6 +137,20 @@ const synced = {
 };
 
 export default defineSchema({
+  courseInterpretations: defineTable({
+    userId: v.string(), courseCanvasId: v.number(), enabled: v.boolean(), sourceRevision: v.number(), generation: v.number(),
+    status: v.union(v.literal("queued"), v.literal("running"), v.literal("ready"), v.literal("failed"), v.literal("blocked"), v.literal("stale")),
+    requestedAt: v.number(), startedAt: v.optional(v.number()), finishedAt: v.optional(v.number()),
+    snapshotHash: v.optional(v.string()), resultRevision: v.optional(v.number()), resultHash: v.optional(v.string()),
+    map: v.optional(courseMapValidator), resources: v.optional(v.array(resultResourceValidator)),
+    model: v.string(), promptVersion: v.string(), threadId: v.optional(v.string()),
+    inputTokens: v.optional(v.number()), outputTokens: v.optional(v.number()), toolCalls: v.optional(v.number()),
+    error: v.optional(v.string()), validationIssues: v.optional(v.array(v.string())),
+  }).index("by_user_course", ["userId", "courseCanvasId"]),
+  courseDocuments: defineTable({
+    userId: v.string(), courseCanvasId: v.number(), fileCanvasId: v.number(), fingerprint: v.string(),
+    text: v.string(), pages: v.number(), extractedAt: v.number(),
+  }).index("by_user_course_file", ["userId", "courseCanvasId", "fileCanvasId"]),
   searchEntries: defineTable({ userId: v.string(), ...searchFields })
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
@@ -162,6 +177,8 @@ export default defineSchema({
     lastTripwireAt: v.optional(v.number()),
     lastDeltaSyncAt: v.optional(v.number()),
     lastFullSyncAt: v.optional(v.number()),
+    syncLeaseStartedAt: v.optional(v.number()),
+    syncFullRequested: v.optional(v.boolean()),
     rateLimitRemaining: v.optional(v.number()),
     status: v.union(v.literal("idle"), v.literal("syncing"), v.literal("error")),
     lastError: v.optional(v.string()),
@@ -196,6 +213,7 @@ export default defineSchema({
       v.union(v.literal("active"), v.literal("completed")),
     ),
     instructors: v.optional(v.array(instructorFields)),
+    verifiedInstructors: v.optional(v.array(instructorFields)),
     // Enrollment-level totals. Respect the posting policy: both are
     // undefined unless Canvas reports them, and `hideFinalGrades` means
     // the instructor hides totals entirely.
@@ -370,6 +388,7 @@ export default defineSchema({
     title: v.string(),
     body: v.optional(v.string()),
     isFrontPage: v.boolean(),
+    contentUnavailable: v.optional(v.boolean()),
     published: v.boolean(),
     updatedAt: v.optional(v.number()),
     htmlUrl: v.string(),
@@ -377,7 +396,8 @@ export default defineSchema({
   })
     .index("by_user_canvasId", ["userId", "canvasId"])
     .index("by_user_course", ["userId", "courseCanvasId"])
-    .index("by_user_course_url", ["userId", "courseCanvasId", "url"]),
+    .index("by_user_course_url", ["userId", "courseCanvasId", "url"])
+    .index("by_user_course_front", ["userId", "courseCanvasId", "isFrontPage"]),
 
   folders: defineTable({
     ...synced,

@@ -5,7 +5,10 @@ import { Lock } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { CanvasHtml, type Heading } from "@/components/reader/canvas-html";
 import { PageOutline } from "@/components/course/page-outline";
-import { PageModuleBar, PagePrevNext } from "@/components/course/page-module-bar";
+import {
+  PageModuleBar,
+  PagePrevNext,
+} from "@/components/course/page-module-bar";
 import {
   findPageModule,
   weekNumberInName,
@@ -23,7 +26,8 @@ export const Route = createFileRoute("/courses/$courseId/pages/$slug")({
 
 type Page = NonNullable<ReturnType<typeof useQuery<typeof api.pages.get>>>;
 
-const COLUMN = "min-w-0 max-w-[760px] flex-1 px-4 pt-6 pb-10 md:px-11 md:pt-[26px]";
+const COLUMN =
+  "min-w-0 max-w-[760px] flex-1 px-4 pt-6 pb-10 md:px-11 md:pt-[26px]";
 
 /**
  * The page reader (design 3-A): a reading column, the module the page sits
@@ -33,7 +37,10 @@ function CoursePage() {
   const { courseId, slug } = Route.useParams();
   const canvasId = Number(courseId);
   const valid = Number.isFinite(canvasId);
-  const page = useQuery(api.pages.get, valid ? { courseCanvasId: canvasId, url: slug } : "skip");
+  const page = useQuery(
+    api.pages.get,
+    valid ? { courseCanvasId: canvasId, url: slug } : "skip",
+  );
   const modules = useQuery(
     api.modules.listByCourse,
     valid ? { courseCanvasId: canvasId } : "skip",
@@ -56,7 +63,11 @@ function CoursePage() {
       style={courseStyle(courseColorVar(byId.get(canvasId)?.color))}
     >
       {context !== undefined && (
-        <PageModuleBar context={context} courseId={courseId} onOpenItem={openItem} />
+        <PageModuleBar
+          context={context}
+          courseId={courseId}
+          onOpenItem={openItem}
+        />
       )}
       <div className="flex min-h-0 flex-1">
         {page === undefined ? (
@@ -114,14 +125,19 @@ function PageBody({
       <article className={COLUMN}>
         <nav className="flex items-center gap-[6px] text-xs text-ink-3">
           {crumbs.map((crumb, i) => (
-            <span key={crumb.text} className="flex min-w-0 items-center gap-[6px]">
+            <span
+              key={crumb.text}
+              className="flex min-w-0 items-center gap-[6px]"
+            >
               {i > 0 && <span aria-hidden>/</span>}
               <Link
                 to={crumb.to}
                 params={{ courseId }}
                 hash={crumb.hash}
                 className={
-                  i === 0 ? "font-medium text-c hover:underline" : "truncate hover:text-ink-2"
+                  i === 0
+                    ? "font-medium text-c hover:underline"
+                    : "truncate hover:text-ink-2"
                 }
               >
                 {crumb.text}
@@ -146,14 +162,36 @@ function PageBody({
           </div>
         )}
 
-        {page.body === undefined || page.body.trim() === "" ? (
-          <p className="text-[13px] text-ink-3">This page has no content yet.</p>
+        {page.contentUnavailable || page.body === undefined ? (
+          <p className="text-[13px] text-ink-3">
+            Content is unavailable in wiscourse.{" "}
+            <a
+              href={page.htmlUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline"
+            >
+              Open in Canvas
+            </a>
+          </p>
+        ) : page.body.trim() === "" ? (
+          <p className="text-[13px] text-ink-3">
+            This page has no content yet.
+          </p>
         ) : (
-          <CanvasHtml html={page.body} courseId={canvasId} onOutline={setHeadings} />
+          <CanvasHtml
+            html={page.body}
+            courseId={canvasId}
+            onOutline={setHeadings}
+          />
         )}
 
         {context !== undefined && (
-          <PagePrevNext context={context} courseId={courseId} onOpenItem={onOpenItem} />
+          <PagePrevNext
+            context={context}
+            courseId={courseId}
+            onOpenItem={onOpenItem}
+          />
         )}
       </article>
 
@@ -192,7 +230,11 @@ function PageSkeleton() {
       <div className="mt-3 h-[13px] w-28 rounded bg-chip" />
       <div className="mt-7 space-y-[10px]">
         {[96, 88, 92, 60, 84, 74].map((width) => (
-          <div key={width} className="h-[13px] rounded bg-chip" style={{ width: `${width}%` }} />
+          <div
+            key={width}
+            className="h-[13px] rounded bg-chip"
+            style={{ width: `${width}%` }}
+          />
         ))}
       </div>
     </div>

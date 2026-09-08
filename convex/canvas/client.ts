@@ -94,6 +94,7 @@ export class CanvasClient {
       results.push(...((await response.json()) as T[]));
       url = parseNextLink(response.headers.get("Link"));
     }
+    if (url !== undefined) throw new Error("Canvas pagination exceeded its safety limit; refusing a partial snapshot");
     return results;
   }
 

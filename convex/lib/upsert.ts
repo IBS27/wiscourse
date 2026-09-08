@@ -6,6 +6,8 @@ import type { TableNames } from "../_generated/dataModel";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { IndexRange, WithoutSystemFields } from "convex/server";
+import { sourceFingerprint } from "./courseSource";
+import { touchInterpretation } from "./interpretationRevision";
 import { removeSearchEntry, updateSearchEntry } from "./searchEntries";
 
 // Convex's index-builder types don't distribute over a union of table
@@ -49,6 +51,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
 ): Promise<void> {
   const now = Date.now();
   const courseActivity = new Map<string, boolean>();
+  const changedCourses = new Set<number>();
   for (const row of rows) {
     const canvasId = (row as unknown as SyncedDoc).canvasId;
     const existing = (await ctx.db
@@ -62,6 +65,11 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
     const doc = { ...row, userId, syncedAt: now } as unknown as WithoutSystemFields<
       Doc<T>
     >;
+    if (sourceFingerprint(table, { ...existing, ...doc }) !== (existing ? sourceFingerprint(table, existing) : undefined)) {
+      const source = doc as { courseCanvasId?: number; canvasId?: number };
+      const courseId = table === "courses" ? source.canvasId : source.courseCanvasId;
+      if (courseId !== undefined) changedCourses.add(courseId);
+    }
     if (existing) {
       await ctx.db.patch(existing._id, doc);
     } else {
@@ -69,6 +77,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
     }
     await updateSearchEntry(ctx, table, doc, courseActivity);
   }
+  for (const courseId of changedCourses) await touchInterpretation(ctx, userId, courseId);
 }
 
 /**
@@ -100,5 +109,6 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
       deleted.push(canvasId);
     }
   }
+  if (deleted.length > 0 && sourceFingerprint(table, {}) !== undefined) await touchInterpretation(ctx, userId, courseCanvasId);
   return deleted;
 }

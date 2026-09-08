@@ -1,3 +1,4 @@
+import { teachingRange } from "@/lib/course-structure";
 import {
   ExternalLink,
   File as FileIcon,
@@ -190,24 +191,16 @@ interface ModuleWeek {
   weekNumber?: number;
 }
 
-/** `unlockAt` wins; otherwise a "Week n" name counts forward from the start. */
+/** Only instructor-authored teaching dates establish a calendar position. */
 function moduleWeek(
   module: Pick<ModuleDoc, "name" | "unlockAt">,
   courseStartKey: string | undefined,
 ): ModuleWeek | undefined {
-  const named = weekNumberInName(module.name);
-  const firstWeek = courseStartKey === undefined ? undefined : startOfMondayWeek(courseStartKey);
-
-  if (module.unlockAt !== undefined) {
-    const weekStart = startOfMondayWeek(dayKeyOf(module.unlockAt));
-    const counted =
-      firstWeek === undefined ? 0 : Math.floor(daysBetween(firstWeek, weekStart) / 7) + 1;
-    return { weekStart, weekNumber: named ?? (counted >= 1 ? counted : undefined) };
-  }
-  if (named !== undefined && firstWeek !== undefined) {
-    return { weekStart: addDays(firstWeek, (named - 1) * 7), weekNumber: named };
-  }
-  return undefined;
+  if (courseStartKey === undefined) return undefined;
+  const range = teachingRange(module.name, Number(courseStartKey.slice(0, 4)));
+  return range === undefined ? undefined : {
+    weekStart: startOfMondayWeek(range.start), weekNumber: weekNumberInName(module.name),
+  };
 }
 
 // Locked modules count too: the weeks still to come are the best dated, and

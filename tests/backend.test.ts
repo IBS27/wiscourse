@@ -416,3 +416,84 @@ describe("feed read state", () => {
     ).toEqual([]);
   });
 });
+
+describe("course content availability", () => {
+  it("scopes front pages to the signed-in user and clears content after access is denied", async () => {
+    const { t, student } = await setup();
+    await t.mutation(internal.storeContent.upsertPages, {
+      userId, courseCanvasId: 1, prune: false,
+      rows: [{ canvasId: 901, url: "home", title: "Home", body: "Original course content",
+        isFrontPage: true, published: true, htmlUrl: "https://canvas.wisc.edu/courses/1/pages/home" }],
+    });
+    expect((await student.query(api.pages.front, { courseCanvasId: 1 }))?.body).toBe("Original course content");
+    expect(await t.withIdentity({ subject: "other" }).query(api.pages.front, { courseCanvasId: 1 })).toBeNull();
+    expect(await t.query(api.pages.front, { courseCanvasId: 1 })).toBeNull();
+    await t.mutation(internal.storeContent.markPageUnavailable, { userId, courseCanvasId: 1, url: "home" });
+    expect(await student.query(api.pages.get, { courseCanvasId: 1, url: "home" })).toMatchObject({ body: "", contentUnavailable: true });
+  });
+});
+
+
+it("clears an old front-page designation when the instructor changes the course home", async () => {
+  const { t, student } = await setup();
+  await t.mutation(internal.storeContent.upsertPages, {
+    userId, courseCanvasId: 1, prune: false,
+    rows: [901, 902].map((canvasId) => ({ canvasId, url: `home-${canvasId}`, title: "Home",
+      body: "Course home", isFrontPage: true, published: true, htmlUrl: "/home" })),
+  });
+  await t.mutation(internal.storeContent.setFrontPage, { userId, courseCanvasId: 1, canvasId: 901 });
+  expect((await student.query(api.pages.front, { courseCanvasId: 1 }))?.canvasId).toBe(901);
+  await t.mutation(internal.storeContent.setFrontPage, { userId, courseCanvasId: 1, canvasId: null });
+  expect(await student.query(api.pages.front, { courseCanvasId: 1 })).toBeNull();
+});
+
+it("prunes only pages outside the completed snapshot and removes their search entries", async () => {
+  const { t, student } = await setup();
+  await t.mutation(internal.storeContent.upsertPages, {
+    userId, courseCanvasId: 1, prune: false,
+    rows: [901, 902].map((canvasId) => ({ canvasId, url: `page-${canvasId}`, title: `Page ${canvasId}`,
+      body: "Content", isFrontPage: false, published: true, htmlUrl: "/page" })),
+  });
+  await t.mutation(internal.storeContent.prunePages, { userId, courseCanvasId: 1, keepCanvasIds: [901] });
+  expect(await student.query(api.pages.get, { courseCanvasId: 1, url: "page-901" })).not.toBeNull();
+  expect(await student.query(api.pages.get, { courseCanvasId: 1, url: "page-902" })).toBeNull();
+  const entries = await t.run((ctx) => ctx.db.query("searchEntries").collect());
+  expect(entries.some((entry) => entry.kind === "page" && entry.canvasId === 902)).toBe(false);
+});
+
+describe("background sync serialization", () => {
+  it("allows one job per user and keeps the sync status active until it releases", async () => {
+    const { t } = await setup();
+    const lease = await t.mutation(internal.syncStore.claimSync, { userId, full: true });
+    expect(lease).not.toBeNull();
+    expect(await t.mutation(internal.syncStore.claimSync, { userId, full: false })).toBeNull();
+    await t.mutation(internal.syncStore.recordSyncResult, { userId, kind: "tripwire" });
+    expect((await t.query(internal.syncStore.getSyncState, { userId }))?.status).toBe("syncing");
+    await t.mutation(internal.syncStore.releaseSync, { userId, lease: lease! });
+    expect((await t.query(internal.syncStore.getSyncState, { userId }))?.status).toBe("idle");
+  });
+  it("retains a full-refresh request made while another job is running", async () => {
+    vi.useFakeTimers();
+    const { t } = await setup();
+    const lease = await t.mutation(internal.syncStore.claimSync, { userId, full: false });
+    expect(await t.mutation(internal.syncStore.claimSync, { userId, full: true })).toBeNull();
+    expect((await t.query(internal.syncStore.getSyncState, { userId }))?.syncFullRequested).toBe(true);
+    await t.mutation(internal.syncStore.releaseSync, { userId, lease: lease! });
+    await t.run(async (ctx) => {
+      const jobs = await ctx.db.system.query("_scheduled_functions").collect();
+      expect(jobs).toHaveLength(1);
+      expect(jobs[0].name).toBe("sync:enqueueFullSync");
+      await ctx.scheduler.cancel(jobs[0]._id);
+    });
+  });
+  it("recovers expired leases without letting an old job release the new one", async () => {
+    vi.useFakeTimers();
+    const { t } = await setup();
+    const old = await t.mutation(internal.syncStore.claimSync, { userId, full: true });
+    vi.setSystemTime(Date.now() + 16 * 60_000);
+    const current = await t.mutation(internal.syncStore.claimSync, { userId, full: true });
+    expect(current).not.toBe(old);
+    await t.mutation(internal.syncStore.releaseSync, { userId, lease: old! });
+    expect((await t.query(internal.syncStore.getSyncState, { userId }))?.syncLeaseStartedAt).toBe(current);
+  });
+});

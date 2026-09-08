@@ -3,6 +3,12 @@ import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import { FilePreview } from "../src/components/course/file-preview";
 
+vi.mock("../src/components/course/pdf-preview", () => ({
+  PdfPreview: ({ title }: { title: string }) => (
+    <div title={title}>PDF renderer</div>
+  ),
+}));
+
 const state = vi.hoisted(() => ({ freshUrl: vi.fn(), seen: vi.fn() }));
 vi.mock("convex/react", () => ({ useAction: () => state.freshUrl }));
 vi.mock("@/lib/seen", () => ({

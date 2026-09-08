@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
 import { ArrowLeft, Download, ExternalLink, Lock } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -14,6 +14,8 @@ import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
 
 /** Above this an inline text preview is a wall of characters — offer the file. */
+const PdfPreview = lazy(() => import("./pdf-preview").then(module => ({ default: module.PdfPreview })));
+
 const TEXT_MAX_BYTES = 256 * 1024;
 
 type PreviewFile = Pick<FileDoc, "canvasId"> & Partial<Pick<FileDoc,
@@ -132,13 +134,13 @@ export function FilePreview({
           <p className="text-xs text-ink-3">Your instructor hasn’t released this file yet.</p>
         </Centered>
       ) : (
-        <PreviewBody file={name} fetched={fetched} />
+        <PreviewBody file={name} fetched={fetched} fileCanvasId={file.canvasId} />
       )}
     </div>
   );
 }
 
-function PreviewBody({ file, fetched }: { file: FileName; fetched: Fetched }) {
+function PreviewBody({ file, fetched, fileCanvasId }: { file: FileName; fetched: Fetched; fileCanvasId: number }) {
   if (fetched.status === "loading") {
     return (
       <div className="min-h-0 flex-1 space-y-[10px] p-5">
@@ -162,11 +164,7 @@ function PreviewBody({ file, fetched }: { file: FileName; fetched: Fetched }) {
 
   if (kind === "pdf") {
     return (
-      <iframe
-        src={src}
-        title={file.displayName}
-        className="min-h-0 w-full flex-1 border-0 bg-white"
-      />
+      <Suspense fallback={<Centered><p className="text-xs text-ink-3">Loading PDF…</p></Centered>}><PdfPreview key={fileCanvasId} fileCanvasId={fileCanvasId} title={file.displayName}/></Suspense>
     );
   }
   if (kind === "image") {

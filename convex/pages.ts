@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
+import schema from "./schema";
 import type { Doc } from "./_generated/dataModel";
 
 /** A page row minus its HTML body — what a list of pages needs. */
@@ -35,7 +36,9 @@ export const listByCourse = query({
     const pages = await ctx.db
       .query("pages")
       .withIndex("by_user_course", (q) =>
-        q.eq("userId", identity.subject).eq("courseCanvasId", args.courseCanvasId),
+        q
+          .eq("userId", identity.subject)
+          .eq("courseCanvasId", args.courseCanvasId),
       )
       .collect();
     return pages
@@ -62,5 +65,31 @@ export const get = query({
           .eq("url", args.url),
       )
       .unique();
+  },
+});
+
+export const front = query({
+  args: { courseCanvasId: v.number() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      _id: v.id("pages"),
+      _creationTime: v.number(),
+      ...schema.tables.pages.validator.fields,
+    }),
+  ),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) return null;
+    return await ctx.db
+      .query("pages")
+      .withIndex("by_user_course_front", (q) =>
+        q
+          .eq("userId", identity.subject)
+          .eq("courseCanvasId", args.courseCanvasId)
+          .eq("isFrontPage", true),
+      )
+      .order("desc")
+      .first();
   },
 });

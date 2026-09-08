@@ -129,7 +129,8 @@ type TabPath =
   | "/courses/$courseId/modules"
   | "/courses/$courseId/files"
   | "/courses/$courseId/syllabus"
-  | "/courses/$courseId/grades";
+  | "/courses/$courseId/grades"
+  | "/courses/$courseId/interpretation";
 
 function Tab({
   to,

@@ -6,9 +6,11 @@
 // course. `prune: true` means "this payload is authoritative" (a full
 // sync fetched everything), so rows Canvas no longer returns are deleted.
 
+import { touchInterpretation } from "./lib/interpretationRevision";
 import { v, type Infer } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { completionRequirement, moduleItemType, moduleState } from "./schema";
+import { removeSearchEntry, updateSearchEntry } from "./lib/searchEntries";
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
 
 // Row validators mirror the schema tables minus the columns this layer
@@ -47,6 +49,7 @@ const pageRow = v.object({
   title: v.string(),
   body: v.optional(v.string()),
   isFrontPage: v.boolean(),
+  contentUnavailable: v.optional(v.boolean()),
   published: v.boolean(),
   updatedAt: v.optional(v.number()),
   htmlUrl: v.string(),
@@ -215,6 +218,89 @@ export const upsertFiles = internalMutation({
         args.courseCanvasId,
         rows.map((row) => row.canvasId),
       );
+    }
+    return null;
+  },
+});
+
+// These finish a paged content fetch without sending all HTML in one mutation.
+export const prunePages = internalMutation({
+  args: {
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    keepCanvasIds: v.array(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const pages = await ctx.db
+      .query("pages")
+      .withIndex("by_user_course", (q) =>
+        q.eq("userId", args.userId).eq("courseCanvasId", args.courseCanvasId),
+      )
+      .take(2001);
+    if (pages.length > 2000)
+      throw new Error("Course page snapshot exceeds 2000 pages");
+    const keep = new Set(args.keepCanvasIds);
+    if (pages.some((page) => !keep.has(page.canvasId))) await touchInterpretation(ctx, args.userId, args.courseCanvasId);
+    for (const page of pages) {
+      if (keep.has(page.canvasId)) continue;
+      await ctx.db.delete(page._id);
+      await removeSearchEntry(ctx, "pages", args.userId, page.canvasId);
+    }
+    return null;
+  },
+});
+
+export const markPageUnavailable = internalMutation({
+  args: { userId: v.string(), courseCanvasId: v.number(), url: v.string() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const page = await ctx.db
+      .query("pages")
+      .withIndex("by_user_course_url", (q) =>
+        q
+          .eq("userId", args.userId)
+          .eq("courseCanvasId", args.courseCanvasId)
+          .eq("url", args.url),
+      )
+      .unique();
+    if (page && (!page.contentUnavailable || page.body)) {
+      await touchInterpretation(ctx, args.userId, args.courseCanvasId);
+      await ctx.db.patch(page._id, { body: "", contentUnavailable: true });
+      await updateSearchEntry(ctx, "pages", {
+        ...page,
+        body: "",
+        contentUnavailable: true,
+      });
+    }
+    return null;
+  },
+});
+
+export const setFrontPage = internalMutation({
+  args: {
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    canvasId: v.union(v.number(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const previous = await ctx.db
+      .query("pages")
+      .withIndex("by_user_course_front", (q) =>
+        q
+          .eq("userId", args.userId)
+          .eq("courseCanvasId", args.courseCanvasId)
+          .eq("isFrontPage", true),
+      )
+      .take(100);
+    if (previous.length === 100)
+      throw new Error("Too many front pages for one course");
+    for (const page of previous) {
+      if (page.canvasId !== args.canvasId) {
+        await touchInterpretation(ctx, args.userId, args.courseCanvasId);
+        await ctx.db.patch(page._id, { isFrontPage: false });
+      }
     }
     return null;
   },

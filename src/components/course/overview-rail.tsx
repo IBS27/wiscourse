@@ -12,7 +12,6 @@ import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { leadInstructor, otherInstructors } from "@/lib/instructors";
-import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 type CourseHub = NonNullable<FunctionReturnType<typeof api.courses.hub>>;
@@ -66,7 +65,9 @@ export function OverviewRail({
       )}
 
       <div className="flex items-center gap-2 px-[14px] pt-4 pb-3">
-        <span className="text-[13px] font-semibold tracking-[-0.01em]">New</span>
+        <span className="text-[13px] font-semibold tracking-[-0.01em]">
+          New
+        </span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
           <button
@@ -86,7 +87,11 @@ export function OverviewRail({
           <OverviewRow
             key={item.key}
             className={RAIL_ROW}
-            icon={item.type === "assignment" ? ROW_ICON.Assignment : ROW_ICON[item.type]}
+            icon={
+              item.type === "assignment"
+                ? ROW_ICON.Assignment
+                : ROW_ICON[item.type]
+            }
             title={feedTitle(item)}
             unread={!item.seen}
             meta={formatAgo(item.at, now)}
@@ -117,37 +122,49 @@ export function OverviewRail({
   );
 }
 
-function Fact({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {
+function Fact({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+}) {
   return (
     <div className="border-b border-line px-[14px] pt-[13px] pb-3 text-[13px] text-ink">
       <div className="eyebrow mb-[3px] text-[10.5px]">{label}</div>
       {value}
-      {sub !== undefined && <div className="mt-[2px] text-xs text-ink-3">{sub}</div>}
+      {sub !== undefined && (
+        <div className="mt-[2px] text-xs text-ink-3">{sub}</div>
+      )}
     </div>
   );
 }
 
 function InstructorFact({ course }: { course: Course | undefined }) {
   const lead = leadInstructor(course);
-  if (lead === undefined) return null;
-  const others = otherInstructors(course);
+  if (!lead) return null;
+  const teachers = [lead, ...otherInstructors(course)];
   return (
     <Fact
-      label="Instructor"
-      value={lead.name}
-      sub={
-        <>
-          {lead.email !== undefined && (
-            <a href={`mailto:${lead.email}`} className="hover:text-ink">
-              {lead.email}
-            </a>
-          )}
-          {others.length > 0 && (
-            <div className={cn(lead.email !== undefined && "mt-[2px]")}>
-              With {others.map((t) => t.name).join(", ")}
+      label={teachers.length === 1 ? "Instructor" : "Instructors"}
+      value={
+        <div className="space-y-2">
+          {teachers.map((teacher) => (
+            <div key={teacher.name}>
+              <div>{teacher.name}</div>
+              {teacher.email && (
+                <a
+                  href={`mailto:${teacher.email}`}
+                  className="text-xs text-ink-3 hover:text-ink"
+                >
+                  {teacher.email}
+                </a>
+              )}
             </div>
-          )}
-        </>
+          ))}
+        </div>
       }
     />
   );
@@ -164,7 +181,9 @@ function standingLines(
       : `${Number.isInteger(hub.currentScore) ? hub.currentScore : hub.currentScore.toFixed(1)}%`;
   const value = [score, hub.currentGrade].filter(Boolean).join(" · ");
   const sub = [
-    hub.assignmentCount > 0 ? `${hub.gradedCount} of ${hub.assignmentCount} graded` : undefined,
+    hub.assignmentCount > 0
+      ? `${hub.gradedCount} of ${hub.assignmentCount} graded`
+      : undefined,
     hub.heaviestGroup === undefined
       ? undefined
       : `${hub.heaviestGroup.name} weigh ${hub.heaviestGroup.weight}%`,

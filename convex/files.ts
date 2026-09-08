@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { action, query } from "./_generated/server";
+import { action, query, internalQuery } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 import { requireUserId } from "./lib/auth";
 import { getCanvasClient } from "./credentials";
 import { CanvasApiError, CanvasRateLimitError } from "./canvas/client";
@@ -28,13 +29,17 @@ export const tree = query({
       await ctx.db
         .query("folders")
         .withIndex("by_user_course", (q) =>
-          q.eq("userId", identity.subject).eq("courseCanvasId", args.courseCanvasId),
+          q
+            .eq("userId", identity.subject)
+            .eq("courseCanvasId", args.courseCanvasId),
         )
         .collect(),
       await ctx.db
         .query("files")
         .withIndex("by_user_course", (q) =>
-          q.eq("userId", identity.subject).eq("courseCanvasId", args.courseCanvasId),
+          q
+            .eq("userId", identity.subject)
+            .eq("courseCanvasId", args.courseCanvasId),
         )
         .collect(),
     ];
@@ -64,13 +69,17 @@ export const fresh = query({
     const files = await ctx.db
       .query("files")
       .withIndex("by_user_course", (q) =>
-        q.eq("userId", identity.subject).eq("courseCanvasId", args.courseCanvasId),
+        q
+          .eq("userId", identity.subject)
+          .eq("courseCanvasId", args.courseCanvasId),
       )
       .collect();
     return files.flatMap((file) => {
       const at = file.updatedAt ?? file.modifiedAt;
       if (file.hidden === true || at === undefined || at < since) return [];
-      return [{ canvasId: file.canvasId, folderCanvasId: file.folderCanvasId, at }];
+      return [
+        { canvasId: file.canvasId, folderCanvasId: file.folderCanvasId, at },
+      ];
     });
   },
 });
@@ -85,12 +94,36 @@ export const freshUrl = action({
     displayName: v.string(),
     updatedAt: v.optional(v.number()),
   }),
-  handler: async (ctx, args) => {
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    url: string;
+    contentType: string;
+    size: number;
+    filename: string;
+    displayName: string;
+    updatedAt?: number;
+  }> => {
     const userId = await requireUserId(ctx);
-    const { client } = await getCanvasClient(ctx, userId);
+    const owned = await ctx.runQuery(internal.files.owned, {
+      userId,
+      fileCanvasId: args.fileCanvasId,
+    });
+    if (owned?.locked) throw new Error("File not available");
+    const lease = await ctx.runMutation(internal.syncStore.claimSync, {
+      userId,
+      full: false,
+    });
+    if (lease === null) {
+      if (owned) return owned.cached;
+      throw new Error("Canvas is syncing. Please retry shortly.");
+    }
     try {
+      const { client } = await getCanvasClient(ctx, userId);
       const file = await client.get<CanvasFile>(`/files/${args.fileCanvasId}`);
-      if (file.locked_for_user) throw new Error("File not available");
+      if (file.locked_for_user || file.hidden)
+        throw new Error("File not available");
       return {
         url: file.url,
         contentType: file["content-type"],
@@ -108,6 +141,49 @@ export const freshUrl = action({
         throw new Error("File not available", { cause: error });
       }
       throw error;
+    } finally {
+      await ctx.runMutation(internal.syncStore.releaseSync, { userId, lease });
     }
+  },
+});
+
+export const owned = internalQuery({
+  args: { userId: v.string(), fileCanvasId: v.number() },
+  returns: v.union(
+    v.null(),
+    v.object({
+      courseCanvasId: v.number(),
+      locked: v.boolean(),
+      cached: v.object({
+        url: v.string(),
+        contentType: v.string(),
+        size: v.number(),
+        filename: v.string(),
+        displayName: v.string(),
+        updatedAt: v.optional(v.number()),
+      }),
+    }),
+  ),
+  handler: async (ctx, a) => {
+    const f = await ctx.db
+      .query("files")
+      .withIndex("by_user_canvasId", (q) =>
+        q.eq("userId", a.userId).eq("canvasId", a.fileCanvasId),
+      )
+      .unique();
+    return f
+      ? {
+          courseCanvasId: f.courseCanvasId,
+          locked: !!f.lockedForUser || !!f.hidden,
+          cached: {
+            url: f.url,
+            contentType: f.contentType,
+            size: f.size,
+            filename: f.filename,
+            displayName: f.displayName,
+            updatedAt: f.updatedAt,
+          },
+        }
+      : null;
   },
 });

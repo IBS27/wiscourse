@@ -130,7 +130,11 @@ export const listActiveUserIds = internalQuery({
 export const setSyncStatus = internalMutation({
   args: {
     userId: v.string(),
-    status: v.union(v.literal("idle"), v.literal("syncing"), v.literal("error")),
+    status: v.union(
+      v.literal("idle"),
+      v.literal("syncing"),
+      v.literal("error"),
+    ),
     lastError: v.optional(v.string()),
   },
   returns: v.null(),
@@ -170,7 +174,7 @@ export const recordSyncResult = internalMutation({
       .unique();
     const now = Date.now();
     const patch: Record<string, unknown> = {
-      status: "idle",
+      status: state?.syncLeaseStartedAt === undefined ? "idle" : "syncing",
       lastError: undefined,
       rateLimitRemaining: args.rateLimitRemaining,
     };
@@ -209,9 +213,7 @@ export const upsertCourses = internalMutation({
       const expiredChanges = await ctx.db
         .query("assignmentChanges")
         .withIndex("by_user_changedAt", (q) =>
-          q
-            .eq("userId", args.userId)
-            .lt("changedAt", Date.now() - 30 * DAY_MS),
+          q.eq("userId", args.userId).lt("changedAt", Date.now() - 30 * DAY_MS),
         )
         .collect();
       for (const change of expiredChanges) await ctx.db.delete(change._id);
@@ -226,7 +228,8 @@ export const upsertCourses = internalMutation({
         await ctx.db.delete(course._id);
         await removeSearchEntry(ctx, "courses", args.userId, course.canvasId);
         await ctx.scheduler.runAfter(0, internal.search.pruneCourse, {
-          userId: args.userId, courseCanvasId: course.canvasId,
+          userId: args.userId,
+          courseCanvasId: course.canvasId,
         });
       }
     }
@@ -251,7 +254,12 @@ async function markDoneIfNewlySubmitted(
   const submittedAt = submission?.submittedAt;
   if (existing === null || submittedAt === undefined) return;
   if (existing.submission?.submittedAt === submittedAt) return;
-  const todo = await findCanvasTodo(ctx, userId, "assignment", existing.canvasId);
+  const todo = await findCanvasTodo(
+    ctx,
+    userId,
+    "assignment",
+    existing.canvasId,
+  );
   if (todo === null) {
     await ctx.db.insert("todos", {
       userId,
@@ -264,7 +272,10 @@ async function markDoneIfNewlySubmitted(
       doneBySubmission: true,
     });
   } else if (todo.doneAt === undefined) {
-    await ctx.db.patch(todo._id, { doneAt: submittedAt, doneBySubmission: true });
+    await ctx.db.patch(todo._id, {
+      doneAt: submittedAt,
+      doneBySubmission: true,
+    });
   }
 }
 
@@ -292,7 +303,12 @@ export const upsertAssignments = internalMutation({
           q.eq("userId", args.userId).eq("canvasId", row.canvasId),
         )
         .unique();
-      await markDoneIfNewlySubmitted(ctx, args.userId, existing, row.submission);
+      await markDoneIfNewlySubmitted(
+        ctx,
+        args.userId,
+        existing,
+        row.submission,
+      );
       if (args.logChanges && existing !== null) {
         for (const field of ["dueAt", "pointsPossible"] as const) {
           if (existing[field] === row[field]) continue;
@@ -352,18 +368,25 @@ export const applySubmissionUpdates = internalMutation({
           q.eq("userId", args.userId).eq("canvasId", update.assignmentCanvasId),
         )
         .unique();
-      await markDoneIfNewlySubmitted(ctx, args.userId, existing, update.submission);
+      await markDoneIfNewlySubmitted(
+        ctx,
+        args.userId,
+        existing,
+        update.submission,
+      );
       if (existing) {
         const submission = {
           ...update.submission,
-          comments:
-            update.submission.comments ?? existing.submission?.comments,
+          comments: update.submission.comments ?? existing.submission?.comments,
         };
         await ctx.db.patch(existing._id, {
           submission,
           syncedAt: now,
         });
-        await updateSearchEntry(ctx, "assignments", { ...existing, submission });
+        await updateSearchEntry(ctx, "assignments", {
+          ...existing,
+          submission,
+        });
       }
       // An update for an unknown assignment is dropped here; the nightly
       // full sync will pick the assignment itself up.
@@ -383,6 +406,57 @@ export const upsertCalendarEvents = internalMutation({
       source: "canvas" as const,
     }));
     await upsertByCanvasId(ctx, "calendarEvents", args.userId, rows);
+    return null;
+  },
+});
+
+// One background Canvas job per user. The lease outlives Convex's ten-minute
+// action limit, so an abandoned job can recover without overlapping its owner.
+export const claimSync = internalMutation({
+  args: { userId: v.string(), full: v.boolean() },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, args) => {
+    const state = await ctx.db
+      .query("syncState")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .unique();
+    const now = Date.now();
+    if (
+      state?.syncLeaseStartedAt !== undefined &&
+      now - state.syncLeaseStartedAt < 15 * 60_000
+    ) {
+      if (args.full) await ctx.db.patch(state._id, { syncFullRequested: true });
+      return null;
+    }
+    const patch = {
+      status: "syncing" as const,
+      syncLeaseStartedAt: now,
+      syncFullRequested: args.full ? false : state?.syncFullRequested,
+    };
+    if (state) await ctx.db.patch(state._id, patch);
+    else await ctx.db.insert("syncState", { userId: args.userId, ...patch });
+    return now;
+  },
+});
+
+export const releaseSync = internalMutation({
+  args: { userId: v.string(), lease: v.number() },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const state = await ctx.db
+      .query("syncState")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .unique();
+    if (!state || state.syncLeaseStartedAt !== args.lease) return null;
+    await ctx.db.patch(state._id, {
+      syncLeaseStartedAt: undefined,
+      syncFullRequested: undefined,
+      status: state.status === "error" ? "error" : "idle",
+    });
+    if (state.syncFullRequested)
+      await ctx.scheduler.runAfter(0, internal.sync.enqueueFullSync, {
+        userId: args.userId,
+      });
     return null;
   },
 });

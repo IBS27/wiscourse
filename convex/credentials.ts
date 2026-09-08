@@ -142,6 +142,9 @@ export const disconnect = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
     if (credential) await ctx.db.delete(credential._id);
+    const interpretations = await ctx.db.query("courseInterpretations").withIndex("by_user_course", q => q.eq("userId", userId)).paginate({ cursor: null, numItems: 100 });
+    for (const state of interpretations.page) await ctx.db.patch(state._id, { enabled: false, generation: state.generation + 1, status: state.map ? "ready" : "stale" });
+    if (!interpretations.isDone) await ctx.scheduler.runAfter(0, internal.courseInterpretations.disableUser, { userId, cursor: interpretations.continueCursor });
     return null;
   },
 });

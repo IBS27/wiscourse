@@ -6,10 +6,8 @@
 // Two Canvas quirks drive the shape of this file:
 // 1. `include[]=items` on /modules is best-effort — Canvas drops `items`
 //    for modules past a size threshold, so those need a follow-up call.
-// 2. Instructors can hide the Modules/Pages/Files nav tabs, and the
-//    matching endpoints then answer 401/403. That is "this course has no
-//    such content", not an error: we upsert an empty, pruning set so
-//    previously synced rows disappear.
+// 2. A disabled listing does not mean linked content is unavailable. Fetch
+//    front pages and explicit module/page links independently of listings.
 
 import type { ActionCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -48,13 +46,33 @@ export async function syncCourseContent(
   userId: string,
   client: CanvasClient,
   courseCanvasId: number,
-  opts: { full: boolean },
+  opts: { full: boolean; syllabusBody?: string; courseUrl?: string },
 ): Promise<void> {
-  await syncModules(ctx, userId, client, courseCanvasId);
+  const items = await syncModules(ctx, userId, client, courseCanvasId);
   if (!opts.full) return;
-  await syncPages(ctx, userId, client, courseCanvasId);
+  const linkedFiles = await syncPages(
+    ctx,
+    userId,
+    client,
+    courseCanvasId,
+    items,
+    opts,
+  );
   await syncFolders(ctx, userId, client, courseCanvasId);
-  await syncFiles(ctx, userId, client, courseCanvasId);
+  await syncFiles(
+    ctx,
+    userId,
+    client,
+    courseCanvasId,
+    new Set([
+      ...linkedFiles,
+      ...items.flatMap((item) =>
+        item.type === "File" && item.contentCanvasId !== undefined
+          ? [item.contentCanvasId]
+          : [],
+      ),
+    ]),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -67,17 +85,20 @@ async function syncModules(
   userId: string,
   client: CanvasClient,
   courseCanvasId: number,
-): Promise<void> {
-  const modules = await tolerateDisabledTab(() =>
-    client.getPaginated<CanvasModule>(`/courses/${courseCanvasId}/modules`, {
-      "include[]": ["items", "content_details"],
-    }),
-    [],
+): Promise<ModuleItemRow[]> {
+  const modules = await tolerateDisabledTab(
+    () =>
+      client.getPaginated<CanvasModule>(`/courses/${courseCanvasId}/modules`, {
+        "include[]": ["items", "content_details"],
+      }),
+    null,
   );
+  if (modules === null) return [];
 
   const moduleRows: ModuleRow[] = [];
   const itemRows: ModuleItemRow[] = [];
 
+  let completeItems = true;
   for (const module of modules) {
     moduleRows.push({
       canvasId: module.id,
@@ -97,16 +118,20 @@ async function syncModules(
     // Canvas omits `items` entirely for large modules; only those need the
     // extra request.
     const items =
-      module.items ??
-      (await tolerateDisabledTab(() =>
-        client.getPaginated<CanvasModuleItem>(
-          `/courses/${courseCanvasId}/modules/${module.id}/items`,
-          { "include[]": ["content_details"] },
-        ),
-      [],
-      ));
+      module.items !== undefined &&
+      module.items.length >= (module.items_count ?? module.items.length)
+        ? module.items
+        : await tolerateDisabledTab(
+            () =>
+              client.getPaginated<CanvasModuleItem>(
+                `/courses/${courseCanvasId}/modules/${module.id}/items`,
+                { "include[]": ["content_details"] },
+              ),
+            null,
+          );
+    if (items === null) completeItems = false;
 
-    for (const item of items) {
+    for (const item of items ?? []) {
       if (!MODULE_ITEM_TYPES.has(item.type)) continue;
       itemRows.push({
         canvasId: item.id,
@@ -142,8 +167,9 @@ async function syncModules(
     userId,
     courseCanvasId,
     rows: itemRows,
-    prune: true,
+    prune: completeItems,
   });
+  return itemRows;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,32 +180,150 @@ async function syncPages(
   userId: string,
   client: CanvasClient,
   courseCanvasId: number,
-): Promise<void> {
-  const pages = await tolerateDisabledTab(() =>
-    client.getPaginated<CanvasPage>(`/courses/${courseCanvasId}/pages`, {
-      "include[]": ["body"],
-    }),
-    [],
+  items: ModuleItemRow[],
+  source: { syllabusBody?: string; courseUrl?: string },
+): Promise<Set<number>> {
+  const listed = await tolerateDisabledTab(
+    () =>
+      client.getPaginated<CanvasPage>(`/courses/${courseCanvasId}/pages`, {
+        "include[]": ["body"],
+      }),
+    null,
   );
-  // If Canvas declines to inline a body we leave it undefined rather than
-  // firing one GET /pages/:url per page; pages.get can fill it in later.
-  const rows: PageRow[] = pages.map((page) => ({
-    canvasId: page.page_id,
-    url: page.url,
-    title: page.title,
-    body: page.body ?? undefined,
-    isFrontPage: page.front_page ?? false,
-    published: page.published ?? false,
-    updatedAt: toMillis(page.updated_at),
-    htmlUrl: page.html_url,
-    lockedForUser: page.locked_for_user,
-  }));
+  const front = await tolerateDisabledTab(
+    () => client.get<CanvasPage>(`/courses/${courseCanvasId}/front_page`),
+    null,
+  );
+  const pages = new Map((listed ?? []).map((page) => [page.url, page]));
+  if (front !== null) pages.set(front.url, { ...front, front_page: true });
+  const pending = new Set([
+    ...pages.keys(),
+    ...items.flatMap((item) =>
+      item.type === "Page" && item.pageUrl ? [item.pageUrl] : [],
+    ),
+  ]);
+  const syllabusLinks = source.courseUrl
+    ? courseContentLinks(
+        source.syllabusBody ?? "",
+        source.courseUrl,
+        courseCanvasId,
+      )
+    : undefined;
+  for (const slug of syllabusLinks?.pages ?? []) pending.add(slug);
+  const files = new Set<number>(syllabusLinks?.files);
+  const keep: number[] = [];
+  let batch: PageRow[] = [];
+  // A finite traversal of same-course links. Fail visibly instead of pruning
+  // against a truncated graph. All requests share the job's sequential client.
+  let visited = 0;
+  for (const slug of pending) {
+    if (++visited > 2000)
+      throw new Error("Course page traversal exceeded 2000 pages");
+    let page = pages.get(slug);
+    if (page?.body == null && page?.locked_for_user !== true) {
+      const detail = await tolerateDisabledTab(
+        () =>
+          client.get<CanvasPage>(
+            `/courses/${courseCanvasId}/pages/${encodeURIComponent(slug)}`,
+          ),
+        null,
+      );
+      if (detail === null) {
+        await ctx.runMutation(internal.storeContent.markPageUnavailable, {
+          userId,
+          courseCanvasId,
+          url: slug,
+        });
+        if (page) keep.push(page.page_id);
+        continue;
+      }
+      page = detail;
+    }
+    if (!page) continue;
+    keep.push(page.page_id);
+    if (!page.locked_for_user) {
+      const links = courseContentLinks(
+        page.body ?? "",
+        page.html_url,
+        courseCanvasId,
+      );
+      for (const linked of links.pages) pending.add(linked);
+      for (const file of links.files) files.add(file);
+    }
+    batch.push({
+      canvasId: page.page_id,
+      url: page.url,
+      title: page.title,
+      body: page.locked_for_user ? "" : (page.body ?? undefined),
+      contentUnavailable: page.locked_for_user === true || page.body == null,
+      isFrontPage: page.front_page ?? false,
+      published: page.published ?? false,
+      updatedAt: toMillis(page.updated_at),
+      htmlUrl: page.html_url,
+      lockedForUser: page.locked_for_user,
+    });
+    if (batch.length === 10) {
+      await ctx.runMutation(internal.storeContent.upsertPages, {
+        userId,
+        courseCanvasId,
+        rows: batch,
+        prune: false,
+      });
+      batch = [];
+    }
+  }
   await ctx.runMutation(internal.storeContent.upsertPages, {
     userId,
     courseCanvasId,
-    rows,
-    prune: true,
+    rows: batch,
+    prune: false,
   });
+  // Only a successful listing is authoritative about removals. It must also
+  // retain pages discovered through direct links that the listing omitted.
+  if (listed !== null) {
+    await ctx.runMutation(internal.storeContent.prunePages, {
+      userId,
+      courseCanvasId,
+      keepCanvasIds: keep,
+    });
+  }
+  await ctx.runMutation(internal.storeContent.setFrontPage, {
+    userId,
+    courseCanvasId,
+    canvasId: front?.page_id ?? null,
+  });
+  return files;
+}
+
+/** Extract only Canvas links in the current course, never external URLs. */
+export function courseContentLinks(
+  html: string,
+  base: string,
+  courseId: number,
+): { pages: Set<string>; files: Set<number> } {
+  const pages = new Set<string>();
+  const files = new Set<number>();
+  const origin = new URL(base).origin;
+  for (const match of html.matchAll(
+    /(?:href|src|data-api-endpoint)\s*=\s*["']([^"']+)["']/gi,
+  )) {
+    try {
+      const url = new URL(match[1].replace(/&amp;/g, "&"), base);
+      if (url.origin !== origin) continue;
+      const path = url.pathname.replace(/^\/api\/v1/, "");
+      const page = new RegExp(`^/courses/${courseId}/pages/([^/]+)$`).exec(
+        path,
+      );
+      if (page) pages.add(decodeURIComponent(page[1]));
+      const file = new RegExp(
+        `^(?:/courses/${courseId})?/files/(\\d+)(?:/(?:download|preview))?$`,
+      ).exec(path);
+      if (file) files.add(Number(file[1]));
+    } catch {
+      /* Malformed instructor links are not fetch targets. */
+    }
+  }
+  return { pages, files };
 }
 
 async function syncFolders(
@@ -188,10 +332,12 @@ async function syncFolders(
   client: CanvasClient,
   courseCanvasId: number,
 ): Promise<void> {
-  const folders = await tolerateDisabledTab(() =>
-    client.getPaginated<CanvasFolder>(`/courses/${courseCanvasId}/folders`),
-    [],
+  const folders = await tolerateDisabledTab(
+    () =>
+      client.getPaginated<CanvasFolder>(`/courses/${courseCanvasId}/folders`),
+    null,
   );
+  if (folders === null) return;
   const rows: FolderRow[] = folders.map((folder) => ({
     canvasId: folder.id,
     parentFolderCanvasId: folder.parent_folder_id ?? undefined,
@@ -215,12 +361,22 @@ async function syncFiles(
   userId: string,
   client: CanvasClient,
   courseCanvasId: number,
+  linkedIds: Set<number>,
 ): Promise<void> {
-  const files = await tolerateDisabledTab(() =>
-    client.getPaginated<CanvasFile>(`/courses/${courseCanvasId}/files`),
-    [],
+  const files = await tolerateDisabledTab(
+    () => client.getPaginated<CanvasFile>(`/courses/${courseCanvasId}/files`),
+    null,
   );
-  const rows: FileRow[] = files.map((file) => ({
+  const byId = new Map((files ?? []).map((file) => [file.id, file]));
+  for (const id of linkedIds) {
+    if (byId.has(id)) continue;
+    const file = await tolerateDisabledTab(
+      () => client.get<CanvasFile>(`/courses/${courseCanvasId}/files/${id}`),
+      null,
+    );
+    if (file !== null) byId.set(file.id, file);
+  }
+  const rows: FileRow[] = [...byId.values()].map((file) => ({
     canvasId: file.id,
     folderCanvasId: file.folder_id ?? undefined,
     displayName: file.display_name,
@@ -238,10 +394,9 @@ async function syncFiles(
     userId,
     courseCanvasId,
     rows,
-    prune: true,
+    prune: files !== null,
   });
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
-
