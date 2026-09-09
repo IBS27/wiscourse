@@ -31,6 +31,37 @@ async function setup() {
 afterEach(() => vi.useRealTimers());
 
 describe("search summaries", () => {
+  it("resolves shared folders per user and reflects renames and deleted folders", async () => {
+    const { t, student } = await setup();
+    const folderId = await t.run(async (ctx) => {
+      const folder = { courseCanvasId: 1, canvasId: 50, name: "Lectures", fullName: "course files/Lectures", syncedAt: 0 };
+      await ctx.db.insert("folders", { ...folder, userId: "other", fullName: "Private" });
+      return ctx.db.insert("folders", { ...folder, userId });
+    });
+    await t.mutation(internal.storeContent.upsertFiles, {
+      userId,
+      courseCanvasId: 1,
+      prune: false,
+      rows: [50, 50, 99, undefined].map((folderCanvasId, i) => ({
+        canvasId: 100 + i,
+        folderCanvasId,
+        displayName: `Lecture ${i}`,
+        filename: `lecture-${i}.pdf`,
+        contentType: "application/pdf",
+        size: 100,
+        url: "https://example.com/file",
+      })),
+    });
+    const paths = async () => (await student.query(api.search.index, {
+      paginationOpts: { cursor: null, numItems: 200 },
+    })).page.filter((row) => row.kind === "file").map((row) => row.folderPath);
+    expect(await paths()).toEqual(["course files/Lectures", "course files/Lectures", undefined, undefined]);
+    await t.run((ctx) => ctx.db.patch(folderId, { fullName: "course files/Renamed" }));
+    expect(await paths()).toEqual(["course files/Renamed", "course files/Renamed", undefined, undefined]);
+    await t.run((ctx) => ctx.db.delete(folderId));
+    expect(await paths()).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
   it("removes completed-course summaries and recreates them when the course becomes active", async () => {
     vi.useFakeTimers();
     const { t, student } = await setup();

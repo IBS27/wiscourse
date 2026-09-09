@@ -112,6 +112,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
   const expanded = openGroups.key === resultKey ? openGroups.groups : NO_GROUPS;
 
   const items = useMemo(() => (index === undefined ? [] : buildSearchItems(index)), [index]);
+  const byKey = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
   const pool = useMemo(() => {
     const inScope =
@@ -122,7 +123,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
   }, [items, scope, filter]);
 
   const hits = useMemo(() => rankItems(pool, query, now), [pool, query, now]);
-  const groups = groupHits(hits, scope !== undefined);
+  const groups = useMemo(() => groupHits(hits, scope !== undefined), [hits, scope]);
 
   const onChange = (value: string) => {
     const parsed = parseScopedQuery(value, active);
@@ -130,15 +131,18 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
     setQuery(parsed.courseCanvasId === undefined ? value : parsed.query);
   };
 
-  const moduleContext = new Map<string, { name: string; next?: string }>();
-  for (const module of modules ?? []) {
-    module.items.forEach((item, i) => {
-      const kind = MODULE_KIND[item.type];
-      const id = kind === "page" ? item.pageUrl : item.contentCanvasId;
-      if (kind === undefined || id === undefined) return;
-      moduleContext.set(keyOf(kind, id), { name: module.name, next: module.items[i + 1]?.title });
-    });
-  }
+  const moduleContext = useMemo(() => {
+    const context = new Map<string, { name: string; next?: string }>();
+    for (const module of modules ?? []) {
+      module.items.forEach((item, i) => {
+        const kind = MODULE_KIND[item.type];
+        const id = kind === "page" ? item.pageUrl : item.contentCanvasId;
+        if (kind === undefined || id === undefined) return;
+        context.set(keyOf(kind, id), { name: module.name, next: module.items[i + 1]?.title });
+      });
+    }
+    return context;
+  }, [modules]);
 
   const itemKey = (item: SearchItem) =>
     keyOf(item.kind, item.kind === "page" ? (item.pageSlug ?? "") : item.canvasId);
@@ -177,7 +181,6 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
       ],
     });
 
-    const byKey = new Map(items.map((item) => [item.id, item]));
     const recent: Entry[] = [];
     const used = new Set<string>();
     for (const row of recents ?? []) {

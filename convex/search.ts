@@ -41,39 +41,42 @@ export const index = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
     const host = credential?.instance ?? "canvas.wisc.edu";
-    const page = await Promise.all(
-      result.page
-        .filter((row) => activeIds.has(row.courseCanvasId))
-        .map(async (row) => {
-          const { _id, _creationTime, userId: owner, ...entry } = row;
-          void _id;
-          void _creationTime;
-          void owner;
-          const folder =
-            entry.kind === "file" && entry.folderCanvasId !== undefined
-              ? await ctx.db
-                  .query("folders")
-                  .withIndex("by_user_canvasId", (q) =>
-                    q
-                      .eq("userId", userId)
-                      .eq("canvasId", entry.folderCanvasId!),
-                  )
-                  .unique()
-              : null;
-          const path = `courses/${entry.courseCanvasId}`;
-          return {
-            ...entry,
-            folderPath: folder?.fullName,
-            htmlUrl:
-              entry.htmlUrl ||
-              `https://${host}/${path}${
-                entry.kind === "course"
-                  ? ""
-                  : `/${entry.kind === "module" ? "modules" : "files"}/${entry.canvasId}`
-              }`,
-          };
-        }),
+    const visibleRows = result.page.filter((row) => activeIds.has(row.courseCanvasId));
+    const folderIds = new Set<number>();
+    for (const row of visibleRows) {
+      if (row.kind === "file" && row.folderCanvasId !== undefined) folderIds.add(row.folderCanvasId);
+    }
+    // Files often share a folder. Read each folder once per query execution,
+    // so names still update live and nothing is cached across users or pages.
+    const folderPaths = new Map(
+      await Promise.all([...folderIds].map(async (canvasId) => {
+        const folder = await ctx.db
+          .query("folders")
+          .withIndex("by_user_canvasId", (q) => q.eq("userId", userId).eq("canvasId", canvasId))
+          .unique();
+        return [canvasId, folder?.fullName] as const;
+      })),
     );
+    const page = visibleRows.map((row) => {
+      const { _id, _creationTime, userId: owner, ...entry } = row;
+      void _id;
+      void _creationTime;
+      void owner;
+      const path = `courses/${entry.courseCanvasId}`;
+      return {
+        ...entry,
+        folderPath: entry.kind === "file" && entry.folderCanvasId !== undefined
+          ? folderPaths.get(entry.folderCanvasId)
+          : undefined,
+        htmlUrl:
+          entry.htmlUrl ||
+          `https://${host}/${path}${
+            entry.kind === "course"
+              ? ""
+              : `/${entry.kind === "module" ? "modules" : "files"}/${entry.canvasId}`
+          }`,
+      };
+    });
     return {
       page,
       isDone: result.isDone,

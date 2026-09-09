@@ -6,7 +6,7 @@ import type { TableNames } from "../_generated/dataModel";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { IndexRange, WithoutSystemFields } from "convex/server";
-import { sourceFingerprint } from "./courseSource";
+import { sourceChanged } from "./courseSource";
 import { touchInterpretation } from "./interpretationRevision";
 import { removeSearchEntry, updateSearchEntry } from "./searchEntries";
 
@@ -65,7 +65,7 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
     const doc = { ...row, userId, syncedAt: now } as unknown as WithoutSystemFields<
       Doc<T>
     >;
-    if (sourceFingerprint(table, { ...existing, ...doc }) !== (existing ? sourceFingerprint(table, existing) : undefined)) {
+    if (sourceChanged(table, existing, { ...existing, ...doc })) {
       const source = doc as { courseCanvasId?: number; canvasId?: number };
       const courseId = table === "courses" ? source.canvasId : source.courseCanvasId;
       if (courseId !== undefined) changedCourses.add(courseId);
@@ -109,6 +109,6 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
       deleted.push(canvasId);
     }
   }
-  if (deleted.length > 0 && sourceFingerprint(table, {}) !== undefined) await touchInterpretation(ctx, userId, courseCanvasId);
+  if (deleted.length > 0 && sourceChanged(table, null, {})) await touchInterpretation(ctx, userId, courseCanvasId);
   return deleted;
 }

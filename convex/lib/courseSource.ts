@@ -94,6 +94,24 @@ const relevantFields: Record<string, string[]> = {
   ],
   assignments: ["name", "description", "dueAt", "lockedForUser"],
 };
+
+function sourceValue(table: string, record: Record<string, unknown>, key: string) {
+  if (table === "modules" && key === "state") return record[key] === "locked";
+  const value = record[key];
+  // Match JSON's treatment of missing values and non-finite numbers.
+  return typeof value === "number" && !Number.isFinite(value) ? null : (value ?? null);
+}
+
+/** These fields are all scalars; comparing them avoids hashing HTML on every sync. */
+export function sourceChanged(table: string, before: object | null, after: object): boolean {
+  const fields = relevantFields[table];
+  if (!fields) return false;
+  if (before === null) return true;
+  const previous = before as Record<string, unknown>;
+  const next = after as Record<string, unknown>;
+  return fields.some((key) => sourceValue(table, previous, key) !== sourceValue(table, next, key));
+}
+
 export function sourceFingerprint(
   table: string,
   row: object,
@@ -104,9 +122,7 @@ export function sourceFingerprint(
   return hashContent(
     fields.map((key) => [
       key,
-      table === "modules" && key === "state"
-        ? record[key] === "locked"
-        : (record[key] ?? null),
+      sourceValue(table, record, key),
     ]),
   );
 }

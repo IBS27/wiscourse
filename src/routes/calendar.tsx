@@ -25,7 +25,9 @@ function Calendar() {
   const byDay = new Map<string, NonNullable<typeof events>>();
   for (const event of events ?? []) {
     const key = formatDate(event.startAt);
-    byDay.set(key, [...(byDay.get(key) ?? []), event]);
+    const dayEvents = byDay.get(key);
+    if (dayEvents) dayEvents.push(event);
+    else byDay.set(key, [event]);
   }
 
   return (

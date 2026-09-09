@@ -13,7 +13,7 @@ import {
   type CourseMap,
   type CourseResource,
 } from "../convex/lib/courseMap";
-import { courseText, sourceFingerprint } from "../convex/lib/courseSource";
+import { courseText, sourceChanged, sourceFingerprint } from "../convex/lib/courseSource";
 
 const provider = vi.hoisted(() => ({ model: undefined as unknown }));
 vi.mock("@ai-sdk/openai", () => ({ openai: () => provider.model }));
@@ -51,6 +51,30 @@ afterEach(() => {
 });
 
 describe("course source evidence", () => {
+  it.each([
+    { table: "pages", before: { body: "original" }, after: { body: "edited" }, changed: true },
+    { table: "pages", before: { body: "same", syncedAt: 1 }, after: { body: "same", syncedAt: 2 }, changed: false },
+    { table: "pages", before: { body: "original" }, after: { body: undefined }, changed: true },
+    { table: "pages", before: {}, after: { body: undefined }, changed: false },
+    { table: "pages", before: null, after: {}, changed: true },
+    { table: "courses", before: { syllabusBody: "old" }, after: { syllabusBody: "new" }, changed: true },
+    { table: "modules", before: { state: "started" }, after: { state: "completed" }, changed: false },
+    { table: "modules", before: {}, after: { state: "unlocked" }, changed: false },
+    { table: "modules", before: { state: "locked" }, after: { state: "unlocked" }, changed: true },
+    { table: "moduleItems", before: { position: 1 }, after: { position: 2 }, changed: true },
+    { table: "files", before: { url: "old" }, after: { url: "new" }, changed: false },
+    { table: "files", before: { hidden: false }, after: { hidden: true }, changed: true },
+    { table: "assignments", before: { submission: { score: 1 } }, after: { submission: { score: 2 } }, changed: false },
+    { table: "assignments", before: { dueAt: 1 }, after: { dueAt: 2 }, changed: true },
+    { table: "assignments", before: {}, after: { dueAt: NaN }, changed: false },
+    { table: "folders", before: null, after: { name: "New" }, changed: false },
+  ])("compares $table source fields without hashing: $before → $after", ({ table, before, after, changed }) => {
+    expect(sourceChanged(table, before, after)).toBe(changed);
+    expect(sourceChanged(table, before, after)).toBe(
+      sourceFingerprint(table, after) !== (before === null ? undefined : sourceFingerprint(table, before)),
+    );
+  });
+
   it("preserves table rows and Canvas references but excludes scripts and form content", () => {
     expect(
       courseText(
