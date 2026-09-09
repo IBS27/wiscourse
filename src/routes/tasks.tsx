@@ -22,32 +22,43 @@ const VIEWS: { id: View; label: string }[] = [
   { id: "undated", label: "Undated" },
   { id: "done", label: "Done" },
 ];
+type Semester = "current" | "all";
 type Source = "all" | "canvas" | "personal";
 
 function Tasks() {
   const items = useQuery(api.todos.list, {});
-  const { filterable, color } = useCourses();
+  const { loading, current, visible, filterable, color } = useCourses();
   const today = useToday();
   const now = useNow();
   const quickAdd = useQuickAdd();
   const [view, setView] = useState<View>("open");
   const [source, setSource] = useState<Source>("all");
+  const [semester, setSemester] = useState<Semester>("current");
   const [course, setCourse] = useState<number | null>(null);
 
+  const courseOptions = semester === "current" ? visible : filterable;
+  const scoped = useMemo(() => {
+    if (!items || loading) return undefined;
+    const currentIds = new Set(current.map((c) => c.canvasId));
+    return items.filter((it) => {
+      if (semester === "current" && it.courseCanvasId !== undefined && !currentIds.has(it.courseCanvasId)) return false;
+      if (source === "canvas" && it.kind === "local") return false;
+      if (source === "personal" && it.kind !== "local") return false;
+      return course === null || it.courseCanvasId === course;
+    });
+  }, [items, loading, current, semester, source, course]);
+
   const filtered = useMemo(() => {
-    if (!items) return undefined;
-    let list = items.filter((it) => {
+    if (!scoped) return undefined;
+    let list = scoped.filter((it) => {
       if (view === "done") return isDone(it);
       if (isDone(it)) return false;
       if (view === "undated") return it.dueAt === undefined && it.plannedDay === undefined;
       return true;
     });
-    if (source === "canvas") list = list.filter((it) => it.kind !== "local");
-    if (source === "personal") list = list.filter((it) => it.kind === "local");
-    if (course !== null) list = list.filter((it) => it.courseCanvasId === course);
     if (view === "done") list = [...list].sort((a, b) => (b.doneAt ?? 0) - (a.doneAt ?? 0));
     return list;
-  }, [items, view, source, course]);
+  }, [scoped, view]);
 
   return (
     <div className="flex flex-1 flex-col">
@@ -55,7 +66,7 @@ function Tasks() {
         <div>
           <div className="text-[15px] font-semibold tracking-[-0.015em]">Tasks</div>
           <div className="mt-[3px] text-xs text-ink-3">
-            {items ? `${items.filter((i) => !isDone(i)).length} open · ${items.filter(isDone).length} done` : ""}
+            {scoped ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done` : ""}
           </div>
         </div>
         <button
@@ -86,12 +97,24 @@ function Tasks() {
             { id: "personal", label: "Personal" },
           ]}
         />
-        {filterable.length > 0 && (
+        <Segmented
+          value={semester}
+          onChange={(value) => {
+            setSemester(value);
+            setCourse(null);
+          }}
+          options={[
+            { id: "current", label: "This semester" },
+            { id: "all", label: "All semesters" },
+          ]}
+        />
+        {courseOptions.length > 0 && (
           <div className="flex flex-wrap items-center gap-1">
-            {filterable.map((c) => (
+            {courseOptions.map((c) => (
               <button
                 key={c.canvasId}
                 type="button"
+                aria-pressed={course === c.canvasId}
                 onClick={() => setCourse(course === c.canvasId ? null : c.canvasId)}
                 className={cn(
                   "flex h-6 items-center gap-[6px] rounded-md px-2 text-xs font-medium text-ink-2 hover:bg-hover",
@@ -181,6 +204,7 @@ function Segmented<T extends string>({
           key={o.id}
           type="button"
           onClick={() => onChange(o.id)}
+          aria-pressed={value === o.id}
           className={cn(
             "h-full rounded-[6px] px-[10px] text-xs font-medium text-ink-2",
             value === o.id && "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)]",

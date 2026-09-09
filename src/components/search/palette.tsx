@@ -80,7 +80,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
   const quickAdd = useQuickAdd();
   const info = useSyncInfo();
   const requestSync = useMutation(api.sync.requestSync);
-  const { active, visible, byId, label, color } = useCourses();
+  const { current: currentCourses, visible, byId, label, color } = useCourses();
   const [now] = useState(() => Date.now());
 
   const modules = useQuery(
@@ -126,7 +126,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
   const groups = useMemo(() => groupHits(hits, scope !== undefined), [hits, scope]);
 
   const onChange = (value: string) => {
-    const parsed = parseScopedQuery(value, active);
+    const parsed = parseScopedQuery(value, currentCourses);
     if (parsed.courseCanvasId !== undefined) onScope(parsed.courseCanvasId);
     setQuery(parsed.courseCanvasId === undefined ? value : parsed.query);
   };
@@ -381,7 +381,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
           onKeyDown={onKeyDown}
           placeholder={
             scopeCourse === undefined
-              ? "Search or jump to…"
+              ? "Search this semester…"
               : `Search ${courseLabel(scopeCourse)}…`
           }
           spellCheck={false}

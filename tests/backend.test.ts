@@ -201,6 +201,43 @@ describe("search summaries", () => {
     expect((await read()).page.map((row) => row.kind)).toEqual(["course"]);
   });
 
+  it("searches only the current dated term, including across empty pages", async () => {
+    const { t, student } = await setup();
+    const now = Date.now();
+    const day = 86_400_000;
+    await t.mutation(internal.syncStore.upsertCourses, {
+      userId,
+      courses: [
+        { ...course, canvasId: 1, termId: 1, termStartAt: now - 180 * day, termEndAt: now - 60 * day },
+        { ...course, canvasId: 2 },
+        { ...course, canvasId: 3, termId: 3, termStartAt: now - day, termEndAt: now + 90 * day },
+        { ...course, canvasId: 4, termId: 4, termStartAt: now + 120 * day, termEndAt: now + 210 * day },
+      ],
+    });
+    for (const courseCanvasId of [1, 2, 3, 4]) {
+      await t.mutation(internal.syncStore.upsertAssignments, {
+        userId,
+        courseCanvasId,
+        logChanges: false,
+        assignments: [{ ...assignment, canvasId: 10 + courseCanvasId }],
+      });
+    }
+    const rows = [];
+    let cursor: string | null = null;
+    for (;;) {
+      const result: FunctionReturnType<typeof api.search.index> = await student.query(api.search.index, {
+        paginationOpts: { cursor, numItems: 1 },
+      });
+      rows.push(...result.page);
+      if (result.isDone) break;
+      cursor = result.continueCursor;
+    }
+    expect(rows.map((row) => [row.kind, row.courseCanvasId])).toEqual([
+      ["course", 3],
+      ["assignment", 3],
+    ]);
+  });
+
   it("paginates and isolates users and completed courses", async () => {
     const { t, student } = await setup();
     await t.mutation(internal.syncStore.upsertCourses, {

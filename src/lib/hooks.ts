@@ -27,6 +27,7 @@ export function useCourses() {
     return {
       loading: courses === undefined,
       courses: list,
+      current: sets.current,
       active: [...sets.current, ...sets.other],
       past: sets.past,
       termName: formatTerm(sets.termName),

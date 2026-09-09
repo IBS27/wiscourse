@@ -2,6 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { classifyCourses } from "./lib/terms";
 import { searchFields } from "./lib/searchFields";
 import { SEARCH_TABLES, updateSearchEntry } from "./lib/searchEntries";
 
@@ -19,15 +20,11 @@ export const index = query({
     if (!identity) return { page: [], isDone: true, continueCursor: "" };
     const userId = identity.subject;
     const courses = await ctx.db
-      .query("searchEntries")
-      .withIndex("by_user_kind_canvasId", (q) =>
-        q.eq("userId", userId).eq("kind", "course"),
-      )
-      .take(5000);
-    const activeIds = new Set(
-      courses
-        .filter((course) => course.active)
-        .map((course) => course.canvasId),
+      .query("courses")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    const currentIds = new Set(
+      classifyCourses(courses, Date.now()).current.map((course) => course.canvasId),
     );
     const result = await ctx.db
       .query("searchEntries")
@@ -41,7 +38,7 @@ export const index = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
     const host = credential?.instance ?? "canvas.wisc.edu";
-    const visibleRows = result.page.filter((row) => activeIds.has(row.courseCanvasId));
+    const visibleRows = result.page.filter((row) => currentIds.has(row.courseCanvasId));
     const folderIds = new Set<number>();
     for (const row of visibleRows) {
       if (row.kind === "file" && row.folderCanvasId !== undefined) folderIds.add(row.folderCanvasId);
