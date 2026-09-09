@@ -6,7 +6,6 @@ import { PageHeader } from "@/components/app/page-header";
 import { LedgerRow } from "@/components/course/ledger-row";
 import { LedgerPastTerms } from "@/components/course/ledger-past";
 import { LedgerFold } from "@/components/course/ledger-fold";
-import { useFeed } from "@/lib/feed";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
@@ -19,7 +18,7 @@ export const Route = createFileRoute("/courses/")({
 function CoursesIndex() {
   const { loading, courses, visible, other, past, termName, color } = useCourses();
   const todos = useQuery(api.todos.list, {});
-  const feed = useFeed();
+  const feed = useQuery(api.inbox.feed);
   const info = useSyncInfo();
   const now = useNow();
 

@@ -67,8 +67,6 @@ export function agendaDay(
 export type AgendaOptions = {
   todayKey: string;
   now: number;
-  /** Hide "Later" entirely (mobile) or cap it. */
-  laterLimit?: number;
 };
 
 export function buildAgenda(items: TodoItem[], opts: AgendaOptions): Bucket[] {

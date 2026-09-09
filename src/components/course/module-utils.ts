@@ -305,10 +305,6 @@ export function findPageModule(
   return undefined;
 }
 
-export function isModuleLocked(module: Pick<ModuleDoc, "state">): boolean {
-  return module.state === "locked";
-}
-
 /** Items that count towards "3 of 6" — headers are not content. */
 export function contentItems(items: ModuleItemDoc[]): ModuleItemDoc[] {
   return items.filter((item) => item.type !== "SubHeader");

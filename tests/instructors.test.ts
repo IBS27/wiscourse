@@ -1,6 +1,5 @@
 import { expect, it } from "vitest";
 import { identifyInstructors } from "../convex/lib/instructorEvidence";
-import { leadInstructor } from "../src/lib/instructors";
 const staff = [
   { name: "Hemanjali Gasada", role: "teacher" as const },
   { name: "James Sorenson", role: "teacher" as const },
@@ -16,7 +15,6 @@ it("uses instructor labels, not enrollment order or teacher roles", () => {
   expect(
     identifyInstructors("Teaching Assistants: James Sorenson", staff),
   ).toEqual([]);
-  expect(leadInstructor(undefined)).toBeUndefined();
 });
 it("matches a titled surname and takes contact email from its source", () => {
   expect(

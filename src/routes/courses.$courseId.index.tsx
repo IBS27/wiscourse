@@ -9,7 +9,6 @@ import { InterpretedOverview } from "@/components/course/interpreted-overview";
 import { usableInterpretation } from "@/lib/interpreted-course";
 import { Link } from "@tanstack/react-router";
 import { OverviewWeek } from "@/components/course/overview-week";
-import { useFeed } from "@/lib/feed";
 import {
   courseColorVar,
   courseStyle,
@@ -37,7 +36,7 @@ function CourseOverview() {
     courseCanvasId: canvasId,
   });
   const todos = useQuery(api.todos.list, {});
-  const feed = useFeed();
+  const feed = useQuery(api.inbox.feed);
   const interpretation = useQuery(api.courseInterpretations.get, {
     courseCanvasId: canvasId,
   });

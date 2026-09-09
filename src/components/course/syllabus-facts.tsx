@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "../../../convex/_generated/api";
 import type { Course } from "@/lib/hooks";
-import { leadInstructor } from "@/lib/instructors";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 
@@ -16,7 +15,7 @@ export function SyllabusFacts({
   course: Course | undefined;
   facts: CourseFacts | undefined;
 }) {
-  const lead = leadInstructor(course);
+  const lead = course?.verifiedInstructors?.[0];
 
   const cells: { label: string; value: ReactNode; sub?: ReactNode }[] = [];
   if (lead !== undefined) {

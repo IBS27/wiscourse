@@ -13,7 +13,7 @@ import { useSyncInfo } from "@/lib/sync-info";
 import { AgendaItem } from "@/components/agenda/agenda-item";
 import { WeekStrip } from "@/components/agenda/week-strip";
 import { FeedCard, NewRail } from "@/components/agenda/new-rail";
-import { groupFeed, useFeed } from "@/lib/feed";
+import { groupFeed } from "@/lib/feed";
 import { FirstSyncCard } from "@/components/agenda/first-sync";
 import { buildAgenda, agendaDay, isDone, type Bucket } from "@/lib/agenda";
 import { dayKeyOf, formatDay, formatDayLong, formatDayMedium } from "@/lib/dates";
@@ -230,7 +230,7 @@ function Section({
 }
 
 function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
-  const feed = useFeed();
+  const feed = useQuery(api.inbox.feed);
   const markAll = useMutation(api.inbox.markAllSeen);
   const [open, setOpen] = useState(false);
   const unseen = feed?.filter((f) => !f.seen) ?? [];

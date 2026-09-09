@@ -7,7 +7,6 @@ import { api } from "../../../convex/_generated/api";
 import { UnreadDot } from "./unread-dot";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import { courseColorVar, courseStyle, shortCode, type Course } from "@/lib/hooks";
-import { leadInstructor } from "@/lib/instructors";
 import { openSearch } from "@/lib/search-context";
 import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
@@ -35,7 +34,7 @@ export function CourseHeader({
   const meta = [
     code,
     course?.term,
-    leadInstructor(course)?.name,
+    course?.verifiedInstructors?.[0]?.name,
     facts?.meets,
     facts?.location,
   ].filter((part): part is string => part !== undefined && part !== "");

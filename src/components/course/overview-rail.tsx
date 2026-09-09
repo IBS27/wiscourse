@@ -11,7 +11,6 @@ import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
-import { leadInstructor, otherInstructors } from "@/lib/instructors";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 type CourseHub = NonNullable<FunctionReturnType<typeof api.courses.hub>>;
@@ -143,9 +142,8 @@ function Fact({
 }
 
 function InstructorFact({ course }: { course: Course | undefined }) {
-  const lead = leadInstructor(course);
-  if (!lead) return null;
-  const teachers = [lead, ...otherInstructors(course)];
+  const teachers = course?.verifiedInstructors ?? [];
+  if (teachers.length === 0) return null;
   return (
     <Fact
       label={teachers.length === 1 ? "Instructor" : "Instructors"}

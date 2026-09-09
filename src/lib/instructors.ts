@@ -1,16 +1,6 @@
 import type { Course } from "./hooks";
 
-export type Instructor = NonNullable<Course["instructors"]>[number];
-
-// Only source-verified instructors may be presented as teaching the course.
-export function leadInstructor(
-  course: Course | undefined,
-): Instructor | undefined {
-  return course?.verifiedInstructors?.[0];
-}
-export function otherInstructors(course: Course | undefined): Instructor[] {
-  return (course?.verifiedInstructors ?? []).slice(1);
-}
+export type Instructor = NonNullable<Course["verifiedInstructors"]>[number];
 
 /** "Arpaci-Dusseau" — handles the "Chen, L." form Canvas sometimes stores. */
 export function familyName(

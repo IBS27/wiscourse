@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -69,40 +68,27 @@ function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(
-    () =>
-      parseQuickAdd(
-        value,
-        courses.map((c) => ({
-          canvasId: c.canvasId,
-          courseCode: c.courseCode,
-          name: c.name,
-          nickname: c.nickname,
-        })),
-        today,
-      ),
+    () => parseQuickAdd(value, courses, today),
     [value, courses, today],
   );
 
-  const submit = useCallback(
-    async (keepOpen: boolean) => {
-      if (parsed.title.trim().length === 0 || busy) return;
-      setBusy(true);
-      try {
-        await createLocal({
-          title: parsed.title,
-          plannedDay: parsed.plannedDay,
-          dueAt: parsed.dueAt,
-          courseCanvasId: parsed.course?.canvasId,
-        });
-        setValue("");
-        if (!keepOpen) onDone();
-        else inputRef.current?.focus();
-      } finally {
-        setBusy(false);
-      }
-    },
-    [parsed, busy, createLocal, onDone],
-  );
+  const submit = async (keepOpen: boolean) => {
+    if (parsed.title.trim().length === 0 || busy) return;
+    setBusy(true);
+    try {
+      await createLocal({
+        title: parsed.title,
+        plannedDay: parsed.plannedDay,
+        dueAt: parsed.dueAt,
+        courseCanvasId: parsed.course?.canvasId,
+      });
+      setValue("");
+      if (!keepOpen) onDone();
+      else inputRef.current?.focus();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {

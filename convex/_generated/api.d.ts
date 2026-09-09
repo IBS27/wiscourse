@@ -8,7 +8,6 @@
  * @module
  */
 
-import type * as assignments from "../assignments.js";
 import type * as calendar from "../calendar.js";
 import type * as canvas_client from "../canvas/client.js";
 import type * as canvas_syncContent from "../canvas/syncContent.js";
@@ -57,7 +56,6 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  assignments: typeof assignments;
   calendar: typeof calendar;
   "canvas/client": typeof canvas_client;
   "canvas/syncContent": typeof canvas_syncContent;

@@ -27,14 +27,3 @@ export function formatBytes(bytes: number): string {
   if (mb < 1024) return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
   return `${(mb / 1024).toFixed(1)} GB`;
 }
-
-export function formatRelative(ms: number): string {
-  const diffMs = ms - Date.now();
-  const diffHours = Math.round(diffMs / (60 * 60 * 1000));
-  if (Math.abs(diffHours) < 1) return "now";
-  if (Math.abs(diffHours) < 24) {
-    return diffHours > 0 ? `in ${diffHours}h` : `${-diffHours}h ago`;
-  }
-  const diffDays = Math.round(diffHours / 24);
-  return diffDays > 0 ? `in ${diffDays}d` : `${-diffDays}d ago`;
-}

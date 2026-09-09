@@ -3,7 +3,6 @@ import { Clock } from "lucide-react";
 import {
   contentItems,
   groupModulesByWeek,
-  isModuleLocked,
   itemCountLabel,
   lockReason,
   moduleProgress,
@@ -42,7 +41,7 @@ export function ModuleTimeline({
     <div className="pb-6 md:px-5">
       {groups.map((group, index) => {
         const current = group.weekStart === thisWeek;
-        const open = group.modules.filter((m) => !isModuleLocked(m));
+        const open = group.modules.filter((m) => m.state !== "locked");
         const viewed = open.reduce((n, m) => n + moduleProgress(m, ctx.isSeen).viewed, 0);
         const total = open.reduce((n, m) => n + contentItems(m.items).length, 0);
 
@@ -118,7 +117,7 @@ function ModuleBlock({
   const topic = moduleTopic(module.name);
   const title = topic === "" ? module.name : topic;
 
-  if (isModuleLocked(module)) {
+  if (module.state === "locked") {
     return (
       <LockedRow
         id={`module-${module.canvasId}`}

@@ -98,24 +98,6 @@ export class CanvasClient {
     return results;
   }
 
-  async post<T>(path: string, body: unknown): Promise<T> {
-    const response = await this.request(this.buildUrl(path), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    return (await response.json()) as T;
-  }
-
-  async put<T>(path: string, body: unknown): Promise<T> {
-    const response = await this.request(this.buildUrl(path), {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    return (await response.json()) as T;
-  }
-
   private buildUrl(path: string, params?: QueryParams): string {
     const url = new URL(`https://${this.options.instance}/api/v1${path}`);
     if (params) {
@@ -130,11 +112,9 @@ export class CanvasClient {
     return url.toString();
   }
 
-  private async request(url: string, init?: RequestInit): Promise<Response> {
+  private async request(url: string): Promise<Response> {
     const response = await fetch(url, {
-      ...init,
       headers: {
-        ...init?.headers,
         Authorization: `Bearer ${this.options.accessToken}`,
       },
     });

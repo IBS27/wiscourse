@@ -8,7 +8,7 @@ import { Dot } from "@/components/app/bits";
 import { courseHref } from "@/lib/course-routes";
 import { formatDayShort, formatTime, formatWeekday, dayKeyOf } from "@/lib/dates";
 import { courseStyle, shortCode, type Course } from "@/lib/hooks";
-import { familyName, leadInstructor } from "@/lib/instructors";
+import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ export function LedgerRow({
   const seenFiles = useSeen("file");
 
   const code = shortCode(course);
-  const meta = [code, familyName(leadInstructor(course))].filter(
+  const meta = [code, familyName(course.verifiedInstructors?.[0])].filter(
     (part): part is string => part !== undefined && part !== "",
   );
 
@@ -109,7 +109,7 @@ export function LedgerRow({
 
 export function LedgerPastRow({ course, color }: { course: Course; color: string }) {
   const code = shortCode(course) ?? course.courseCode;
-  const instructor = familyName(leadInstructor(course));
+  const instructor = familyName(course.verifiedInstructors?.[0]);
   const final = course.hideFinalGrades === true ? undefined : course.finalGrade;
   return (
     <Link

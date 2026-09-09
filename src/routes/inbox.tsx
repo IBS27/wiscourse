@@ -8,7 +8,7 @@ import { InboxFilters, type TypeCounts } from "@/components/inbox/filters";
 import { InboxRow } from "@/components/inbox/row";
 import { DetailEmpty, DetailLoading, InboxDetail } from "@/components/inbox/detail";
 import { parseInboxSearch, type InboxSearch } from "@/components/inbox/search";
-import { feedSeenKind, groupFeed, useFeed } from "@/lib/feed";
+import { feedSeenKind, groupFeed } from "@/lib/feed";
 import { formatSince } from "@/lib/dates";
 import { useNow, useToday } from "@/lib/hooks";
 import { useSyncInfo } from "@/lib/sync-info";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/inbox")({
 function InboxPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const feed = useFeed();
+  const feed = useQuery(api.inbox.feed);
   const todos = useQuery(api.todos.list, {});
   const info = useSyncInfo();
   const today = useToday();

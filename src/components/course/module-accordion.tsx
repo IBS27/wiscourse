@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { ChevronRight, Clock } from "lucide-react";
 import {
   contentItems,
-  isModuleLocked,
   itemCountLabel,
   lockReason,
   moduleProgress,
@@ -46,7 +45,7 @@ export function ModuleAccordion({
   return (
     <div className="pb-6">
       {modules.map((module) => {
-        const locked = isModuleLocked(module);
+        const locked = module.state === "locked";
         const expanded = !locked && open.has(module.canvasId);
         const { viewed, total } = moduleProgress(module, ctx.isSeen);
 
@@ -112,7 +111,7 @@ function currentModule(
   modules: ModuleWithItems[],
   ctx: ModuleRowContext,
 ): number | undefined {
-  const open = modules.filter((m) => !isModuleLocked(m));
+  const open = modules.filter((m) => m.state !== "locked");
   const unread = open.find((m) => contentItems(m.items).some((item) => !ctx.isSeen(item)));
   const last: ModuleWithItems | undefined = open[open.length - 1];
   return (unread ?? last)?.canvasId;

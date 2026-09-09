@@ -1,10 +1,10 @@
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { Clock, Megaphone, Star, FilePlus2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge } from "@/components/app/bits";
 import { formatAgo } from "@/lib/dates";
-import { feedSeenKind, feedSubtitle, feedTitle, groupFeed, useFeed } from "@/lib/feed";
+import { feedSeenKind, feedSubtitle, feedTitle, groupFeed } from "@/lib/feed";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -51,7 +51,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
 }
 
 export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
-  const feed = useFeed();
+  const feed = useQuery(api.inbox.feed);
   const markAll = useMutation(api.inbox.markAllSeen);
   const unseen = feed?.filter((f) => !f.seen) ?? [];
   const groups = groupFeed((feed ?? []).slice(0, 12), todayKey, now);

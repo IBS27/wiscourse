@@ -1,5 +1,3 @@
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import type { FeedItem } from "../../convex/inbox";
 import {
   formatChange,
@@ -10,10 +8,6 @@ import {
 } from "@/components/inbox/format";
 import type { SeenKind } from "./seen";
 import { addDays, dayKeyOf } from "./dates";
-
-export function useFeed() {
-  return useQuery(api.inbox.feed);
-}
 
 export function feedSeenKind(type: FeedItem["type"]): SeenKind {
   if (type === "grade") return "grade";

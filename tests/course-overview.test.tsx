@@ -27,7 +27,6 @@ vi.mock("@/lib/hooks", () => ({
   useToday: () => "2026-09-08",
   useNow: () => Date.parse("2026-09-08"),
 }));
-vi.mock("@/lib/feed", () => ({ useFeed: () => [] }));
 vi.mock("@/lib/seen", () => ({
   useSeen: () => ({ has: () => false, mark: () => {} }),
 }));
