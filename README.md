@@ -65,6 +65,31 @@ for the developer's own account during development.
 - `bun run lint` — ESLint
 - `bun run dev` / `bun run dev:backend` — Vite / Convex dev servers
 
+## Deployment
+
+Vercel hosts the Vite frontend; Convex hosts the backend and database.
+`vercel.json` configures Bun installation, the Convex deployment/build command,
+and the fallback needed for direct links to client-side routes.
+
+1. Configure Clerk production for your domain and enable its Convex integration.
+2. Set `CLERK_FRONTEND_API_URL`, `CANVAS_ENCRYPTION_KEY`, and optionally
+   `OPENAI_API_KEY` in the **production Convex deployment**, not in Vercel.
+   Use the production Clerk Frontend API URL. Keep the encryption key stable
+   after users connect Canvas.
+3. Import this repository into Vercel. Set `CONVEX_DEPLOY_KEY` to a production
+   Convex deploy key with `deployment:deploy` permission, and set
+   `VITE_CLERK_PUBLISHABLE_KEY` to the production Clerk publishable key.
+   Scope both variables to **Production**.
+4. Deploy the production branch. The build command supplies `VITE_CONVEX_URL`
+   automatically; do not copy `CONVEX_DEPLOYMENT` from `.env.local` into Vercel.
+5. Verify sign-in, connecting Canvas, sync completion, and refreshing a course URL.
+
+For branch previews, configure a separate Convex preview deploy key scoped to
+Vercel's **Preview** environment, development Clerk credentials, and Convex
+preview environment defaults. Never use the production deploy key for previews.
+New production deployments start with an empty database; development users and
+Canvas connections are not migrated automatically.
+
 ## Search index migration
 
 After deploying this version to a deployment with existing Canvas data, run
