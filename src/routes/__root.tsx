@@ -33,6 +33,9 @@ function RootLayout() {
           <SignInButton mode="modal">
             <Button size="lg">Sign in</Button>
           </SignInButton>
+          <a href="/privacy.html" className="text-sm text-ink-3 underline underline-offset-4">
+            Privacy policy
+          </a>
         </div>
       </Unauthenticated>
 

@@ -162,6 +162,9 @@ function Settings() {
           )}
         </CardContent>
       </Card>
+      <a href="/privacy.html" className="block text-sm text-ink-3 underline underline-offset-4">
+        Privacy policy
+      </a>
       </div>
     </div>
   );
