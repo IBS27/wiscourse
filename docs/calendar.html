@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="en" data-t="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>wiscourse — Calendar design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── tokens (same as docs/design.html) ──────────────────────────────────── */
+[data-t="light"]{
+  --page:#ececee; --surface:#ffffff; --sunken:#f4f4f5; --raised:#ffffff;
+  --hover:#f4f4f5; --line:#e5e5e8; --line-2:#d6d6db; --chip:#f4f4f5;
+  --ink:#18181b; --ink-2:#55555f; --ink-3:#8a8a93;
+  --red:#c5050c; --red-bg:#fdf1f1; --brand-ink:#101114;
+  --today-bg:#18181b; --today-fg:#ffffff;
+  --shadow:0 8px 24px rgba(16,17,20,.12);
+  --c-cs:#4f46e5; --c-math:#b45309; --c-econ:#0f766e; --c-stat:#0369a1; --c-me:#71717a;
+}
+[data-t="dark"]{
+  --page:#0b0b0b; --surface:#181818; --sunken:#0f0f0f; --raised:#1e1e1e;
+  --hover:#242424; --line:#2b2b2b; --line-2:#3c3c3c; --chip:#242424;
+  --ink:#e8e8e8; --ink-2:#a3a3a3; --ink-3:#737373;
+  --red:#ff4b54; --red-bg:#2b1417; --brand-ink:#e8e8e8;
+  --today-bg:#e8e8e8; --today-fg:#181818;
+  --shadow:0 12px 32px rgba(0,0,0,.55);
+  --c-cs:#818cf8; --c-math:#f0a13a; --c-econ:#2dd4bf; --c-stat:#4cb4ec; --c-me:#8c8c8c;
+}
+*{box-sizing:border-box}
+html{background:var(--page);scroll-behavior:smooth}
+body{margin:0;padding:44px 28px 110px;font-family:Inter,system-ui,sans-serif;font-size:14px;
+  line-height:1.45;color:var(--ink);-webkit-font-smoothing:antialiased}
+svg{display:block}
+.ico{width:16px;height:16px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico-14{width:14px;height:14px}.ico-13{width:13px;height:13px}.ico-12{width:12px;height:12px}
+.tab-num{font-variant-numeric:tabular-nums}
+
+/* ── page chrome ────────────────────────────────────────────────────────── */
+.page{max-width:1344px;margin:0 auto}
+.mark{width:26px;height:26px;flex:none}
+.wm{font-size:19px;font-weight:600;letter-spacing:-.035em;color:var(--ink)}
+.wm b{color:var(--red);font-weight:600}
+.lockup{display:flex;align-items:center;gap:9px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px}
+.head h1{margin:16px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.head p{margin:0;color:var(--ink-2);max-width:66ch}
+.tog{position:fixed;top:18px;right:18px;z-index:20;display:flex;align-items:center;gap:7px;
+  padding:7px 12px;font:500 12px Inter,sans-serif;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:999px;cursor:pointer;box-shadow:var(--shadow)}
+.toc{display:flex;gap:2px;flex-wrap:wrap;margin:0 0 40px;padding:3px;border:1px solid var(--line);
+  border-radius:999px;background:var(--surface);width:max-content;font-size:12.5px;font-weight:500}
+.toc a{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;color:var(--ink-2);text-decoration:none;line-height:1}
+.toc a:hover{background:var(--hover);color:var(--ink)}
+.toc a b{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:4px;
+  background:var(--today-bg);color:var(--today-fg);font-size:10px;font-weight:600}
+h2{margin:64px 0 6px;font-size:17px;font-weight:600;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+h2 .v{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--today-bg);color:var(--today-fg);font-size:12px}
+h2 .lin{margin-left:6px;font-size:12.5px;font-weight:500;color:var(--ink-3);letter-spacing:0}
+h2+p{margin:0 0 20px;color:var(--ink-2);max-width:74ch;font-size:13.5px}
+.cap{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.note{margin:11px 0 0;font-size:12.5px;color:var(--ink-3);max-width:100ch}
+section{margin-bottom:40px}
+.scroll{overflow-x:auto;padding-bottom:4px}
+.row2{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.kbd{font:500 11px Inter,sans-serif;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+
+/* ── frames + shell ─────────────────────────────────────────────────────── */
+.frame{width:1280px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:var(--ink)}
+.shell{display:flex;min-height:760px}
+.sb{width:238px;flex:none;background:var(--sunken);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 10px 12px}
+.sb-top{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 16px}
+.sb-top .lockup{gap:8px}.sb-top .mark{width:22px;height:22px}.sb-top .wm{font-size:16px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-weight:500;font-size:13.5px}
+.nav a.on{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.nav a .n{margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-3);background:var(--chip);border-radius:999px;padding:1px 6px}
+.sb-sec{display:flex;align-items:center;justify-content:space-between;padding:22px 8px 7px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.crs{display:flex;align-items:center;gap:9px;height:29px;padding:0 8px;border-radius:8px;color:var(--ink-2);font-size:13px;text-decoration:none}
+.crs .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crs .code{margin-left:auto;font-size:11px;color:var(--ink-3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--c,var(--ink-3));flex:none}
+.sb-foot{margin-top:auto}
+.me{display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;border-radius:8px;color:var(--ink-2);font-size:13px;font-weight:500}
+.me .ico{margin-left:auto;color:var(--ink-3)}
+.av{width:22px;height:22px;border-radius:50%;background:var(--chip);border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--ink-2);flex:none}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* calendar top bar — shared by every direction */
+.ct{display:flex;align-items:center;gap:10px;height:54px;padding:0 16px 0 20px;border-bottom:1px solid var(--line)}
+.ct .ttl{font-size:15px;font-weight:600;letter-spacing:-.015em;margin-right:4px}
+.ct .ttl span{color:var(--ink-3);font-weight:500}
+.navb{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.navb span{display:flex;align-items:center;justify-content:center;height:28px;min-width:28px;padding:0 9px;color:var(--ink-2);font-size:12.5px;font-weight:500;cursor:pointer}
+.navb span+span{border-left:1px solid var(--line)}
+.navb span:hover{background:var(--hover);color:var(--ink)}
+.seg{display:flex;gap:1px;padding:2px;background:var(--sunken);border:1px solid var(--line);border-radius:8px;margin-left:auto}
+.seg a{padding:4px 11px;border-radius:6px;font-size:12.5px;font-weight:500;color:var(--ink-3);text-decoration:none;cursor:pointer}
+.seg a.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06),inset 0 0 0 1px var(--line)}
+.btn{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:8px;font-size:12.5px;font-weight:500;
+  border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn.pri{background:var(--today-bg);color:var(--today-fg);border-color:transparent}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3);padding:0 7px}
+.btn.ghost:hover{background:var(--hover);color:var(--ink)}
+
+/* item marks — one grammar for all four directions */
+.mk{width:14px;height:14px;display:grid;place-items:center;flex:none}
+.mk i{display:block}
+.mk.due i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.mk.evt i{width:7px;height:7px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c)}
+.mk.pln i{width:11px;height:11px;border-radius:3px;border:1.5px solid var(--c);opacity:.85}
+.mk.pln.on i{background:var(--ink-3);border-color:var(--ink-3);opacity:1}
+.mk.meet i{width:3px;height:12px;border-radius:2px;background:var(--c)}
+.mk.done i{width:11px;height:11px;border-radius:50%;background:var(--ink-3)}
+
+/* ── A · Grid ───────────────────────────────────────────────────────────── */
+.tg{display:grid;grid-template-columns:56px repeat(7,1fr);border-bottom:1px solid var(--line)}
+.tg.hd{border-bottom:1px solid var(--line)}
+.tg .gut{border-right:1px solid var(--line)}
+.tg .dh{padding:10px 0 9px;text-align:center;border-left:1px solid var(--line)}
+.tg .dh .dow{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.tg .dh .num{margin:3px auto 0;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:14px;font-weight:600;letter-spacing:-.02em}
+.tg .dh.past .dow,.tg .dh.past .num{color:var(--ink-3)}
+.tg .dh.today .num{background:var(--today-bg);color:var(--today-fg)}
+.tg .dh.today .dow{color:var(--ink)}
+.band{display:grid;grid-template-columns:56px repeat(7,1fr);border-bottom:1px solid var(--line)}
+.band .bl{padding:7px 8px 0 0;text-align:right;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border-right:1px solid var(--line)}
+.band .bc{min-height:34px;padding:5px 5px 4px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.band .bc.today{background:var(--sunken)}
+.li{display:flex;align-items:center;gap:6px;height:22px;padding:0 6px 0 4px;border-radius:5px;font-size:11.5px;font-weight:500;color:var(--ink);white-space:nowrap;overflow:hidden;cursor:default}
+.li:hover{background:var(--hover)}
+.li .t{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.li .at{color:var(--ink-3);font-weight:400;font-variant-numeric:tabular-nums;font-size:11px}
+.li.faded{color:var(--ink-3)}
+.li.faded .t{text-decoration:line-through;text-decoration-color:var(--line-2)}
+.li.all{color:var(--ink-2);font-weight:500}
+.tgb{display:grid;grid-template-columns:56px repeat(7,1fr);position:relative}
+.tgb .hrs{position:relative;height:490px;border-right:1px solid var(--line);font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.tgb .hrs span{position:absolute;right:8px;transform:translateY(-50%)}
+.tgb .col{position:relative;height:490px;border-left:1px solid var(--line);
+  background-image:repeating-linear-gradient(to bottom,var(--line) 0 1px,transparent 1px 48px);background-position:0 10px}
+.tgb .col.today{background-color:var(--sunken)}
+.tgb .col.past .ev{opacity:.5}
+.ev{position:absolute;left:3px;right:3px;top:calc(var(--t) * 1px + 10px);padding:4px 8px 0 8px;
+  border-radius:6px;background:var(--fill);font-size:11.5px;line-height:1.3;overflow:hidden;white-space:nowrap;
+  --fill:color-mix(in srgb,var(--c) 16%,var(--surface))}
+[data-t="dark"] .ev{--fill:color-mix(in srgb,var(--c) 26%,var(--surface))}
+.ev .t{font-weight:500;color:var(--c);overflow:hidden;text-overflow:ellipsis}
+.ev .t b{font-weight:600;color:var(--c)}
+.ev .s{color:color-mix(in srgb,var(--c) 70%,var(--ink));font-size:11px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;opacity:.85}
+.ev.local{background:color-mix(in srgb,var(--fill) 45%,var(--surface));outline:1px dashed color-mix(in srgb,var(--c) 55%,transparent);outline-offset:-1px}
+.ev:hover{--fill:color-mix(in srgb,var(--c) 22%,var(--surface))}
+[data-t="dark"] .ev:hover{--fill:color-mix(in srgb,var(--c) 34%,var(--surface))}
+.now{position:absolute;left:0;right:0;height:1px;background:var(--red);z-index:2}
+.now::before{content:"";position:absolute;left:-3px;top:-2.5px;width:6px;height:6px;border-radius:50%;background:var(--red)}
+.nowlbl{position:absolute;right:6px;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--red);font-variant-numeric:tabular-nums;background:var(--surface);padding:0 3px}
+.hint{display:flex;gap:16px;padding:10px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);margin-top:auto}
+.hint b{font-weight:500;color:var(--ink-2)}
+
+/* ── B · Month ──────────────────────────────────────────────────────────── */
+.mo-wrap{display:flex;flex:1;min-height:0;position:relative}
+.mo{flex:1;min-width:0;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:30px repeat(5,minmax(0,1fr))}
+.mo .dh{height:30px;display:flex;align-items:center;padding:0 9px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+.mo .dh:last-of-type{border-right:0}
+.cell{min-height:0;min-width:0;padding:6px 6px 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);cursor:default}
+.cell:nth-of-type(7n){border-right:0}
+.cell:hover{background:var(--hover)}
+.cell .n{width:22px;height:22px;display:grid;place-items:center;border-radius:6px;font-size:12.5px;font-weight:600;letter-spacing:-.02em;margin:0 0 4px 1px}
+.cell.out .n{color:var(--ink-3);font-weight:500}
+.cell.past .n{color:var(--ink-3)}
+.cell.past .li{color:var(--ink-3)}
+.cell.today .n{background:var(--today-bg);color:var(--today-fg)}
+.cell.sel{background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line-2)}
+.cell .li{height:20px;font-size:11.5px;padding:0 4px;gap:5px}
+.cell .li .at{display:none}
+.cell .more{padding:2px 4px 0;font-size:11px;color:var(--ink-3);font-weight:500}
+.cell .hol{font-size:11px;color:var(--ink-3);padding:0 4px;font-weight:500}
+.dp{position:absolute;left:608px;top:134px;width:324px;z-index:5;background:var(--raised);border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;padding-bottom:14px}
+[data-t="dark"] .dp{box-shadow:var(--shadow),0 0 0 1px rgba(255,255,255,.04)}
+.dp-h{padding:14px 16px 12px;border-bottom:1px solid var(--line)}
+.dp-h .d{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.dp-h .s{font-size:12px;color:var(--ink-3);margin-top:2px}
+.dp .g{padding:12px 16px 4px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.dp .r{display:flex;align-items:flex-start;gap:9px;padding:7px 16px 8px}
+.dp .r:hover{background:var(--hover)}
+.dp .r .mk{margin-top:3px}
+.dp .r .tm{width:70px;flex:none;white-space:nowrap;font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;padding-top:1px}
+.dp .r .b{min-width:0;flex:1}
+.dp .r .t{font-size:13px;font-weight:500;letter-spacing:-.005em}
+.dp .r .m{font-size:11.5px;color:var(--ink-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp .r .m .sep{margin:0 5px}
+.dp .r .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dp .r .m .code{color:var(--c);font-weight:500}
+.dp .r .m .sep{opacity:.55}
+.dp .r.done .t{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:6px;font-size:11px;font-weight:500;color:var(--ink-2);background:var(--chip);flex:none}
+.pill.red{color:var(--red);background:var(--red-bg)}
+.pill.out{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--ink-3)}
+.dp .add{display:flex;align-items:center;gap:7px;margin:12px 16px 0;padding:0 10px;height:32px;border:1px dashed var(--line-2);border-radius:8px;font-size:12.5px;color:var(--ink-3)}
+.dp-f{margin-top:10px;padding:10px 16px 8px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);display:flex;gap:6px;align-items:center}
+
+/* ── C · Agenda ─────────────────────────────────────────────────────────── */
+.ag-wrap{display:flex;flex:1;min-height:0}
+.ag{flex:1;min-width:0}
+.day{display:grid;grid-template-columns:88px 1fr;border-bottom:1px solid var(--line)}
+.day .dl{padding:15px 0 14px 20px}
+.day .dl .dow{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.day .dl .num{font-size:24px;font-weight:600;letter-spacing:-.035em;line-height:1;margin-top:2px}
+.day .dl .rel{font-size:11px;color:var(--ink-3);margin-top:5px}
+.day.today{background:var(--sunken)}
+.day.today .dl .dow{color:var(--ink)}
+.day.today .dl .num{color:var(--ink)}
+.day.past .dl .num{color:var(--ink-3)}
+.day .rows{padding:9px 0 10px}
+.arow{display:grid;grid-template-columns:96px 14px minmax(0,1fr) auto;align-items:center;gap:10px;padding:5px 20px 5px 0;font-size:13px}
+.arow:hover{background:var(--hover)}
+.arow .tm{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.arow .tm b{font-weight:500;color:var(--ink-2)}
+.arow .t{font-weight:500;letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arow .t .code{color:var(--c);font-weight:500;margin-right:6px}
+.arow .t .loc{color:var(--ink-3);font-weight:400;margin-left:8px}
+.arow .t .kind{color:var(--ink-3);font-weight:400;margin-left:8px}
+.arow.done .t{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.arow.blk{padding-top:3px;padding-bottom:3px}
+.arow.blk .mk{visibility:hidden}
+.arow.blk .t{height:28px;line-height:28px;padding:0 10px;border-radius:6px;color:var(--c);
+  --fill:color-mix(in srgb,var(--c) 16%,var(--surface));background:var(--fill)}
+[data-t="dark"] .arow.blk .t{--fill:color-mix(in srgb,var(--c) 26%,var(--surface))}
+.arow.blk .t .code{font-weight:600}
+.arow.blk .t .loc{color:color-mix(in srgb,var(--c) 70%,var(--ink));opacity:.85}
+.arow.blk.evt .t{background:color-mix(in srgb,var(--fill) 45%,var(--surface));outline:1px dashed color-mix(in srgb,var(--c) 55%,transparent);outline-offset:-1px}
+.arow.past{opacity:.6}
+.day.none .rows{display:flex;align-items:center;padding:0;font-size:12.5px;color:var(--ink-3)}
+.day.none .dl{padding:11px 0 11px 20px}
+.day.none .dl .num{font-size:15px;margin-top:1px}
+.wkh{display:flex;align-items:center;gap:8px;padding:12px 20px 6px;font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.wkh .n{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;font-size:11.5px}
+.earlier{display:flex;align-items:center;gap:7px;padding:11px 20px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--ink-3)}
+.rail{width:296px;flex:none;border-left:1px solid var(--line);background:var(--sunken);display:flex;flex-direction:column}
+.mini{padding:16px 16px 10px}
+.mini .mh{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:600;letter-spacing:-.01em;margin-bottom:10px}
+.mini .mh .nv{display:flex;gap:2px;color:var(--ink-3)}
+.mini .mg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0;text-align:center}
+.mini .mg .w{font-size:10px;font-weight:600;color:var(--ink-3);letter-spacing:.06em;padding-bottom:4px}
+.mini .mg .d{height:30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;font-variant-numeric:tabular-nums;border-radius:6px;cursor:pointer}
+.mini .mg .d:hover{background:var(--hover)}
+.mini .mg .d.out{color:var(--ink-3);opacity:.6}
+.mini .mg .d.today{background:var(--today-bg);color:var(--today-fg)}
+.mini .mg .d .dd{display:flex;gap:2px;height:4px}
+.mini .mg .d .dd i{width:4px;height:4px;border-radius:50%;background:var(--c);display:block}
+.mini .mg .d.today .dd i{background:var(--today-fg)}
+.rail .g{padding:14px 16px 6px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);border-top:1px solid var(--line);margin-top:6px}
+.tglr{display:flex;align-items:center;gap:9px;padding:6px 16px;font-size:13px;color:var(--ink-2)}
+.tglr .mk{margin-right:1px}
+.tglr i.sw{margin-left:auto;position:relative;width:28px;height:16px;border-radius:999px;background:var(--line-2);display:block}
+.tglr i.sw::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:var(--surface)}
+.tglr i.sw.on{background:var(--today-bg)}
+.tglr i.sw.on::after{left:14px}
+.rail-f{margin-top:auto;padding:12px 16px;border-top:1px solid var(--line);font-size:12px;color:var(--ink-3);display:flex;flex-direction:column;gap:8px}
+.rail-f .kv{display:flex;justify-content:space-between;align-items:center}
+.rail-f .kv b{font-weight:500;color:var(--ink-2)}
+
+/* ── D · Board ──────────────────────────────────────────────────────────── */
+.bd{display:grid;grid-template-columns:repeat(7,1fr);flex:1;min-height:0;position:relative}
+.bcol{position:relative;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0}
+.bcol:last-child{border-right:0}
+.bcol.today{background:var(--sunken)}
+.bh{display:flex;align-items:baseline;gap:6px;padding:12px 12px 10px;border-bottom:1px solid var(--line)}
+.bh .dow{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.bh .num{font-size:15px;font-weight:600;letter-spacing:-.02em}
+.bh .n{margin-left:auto;font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.bcol.past .bh .dow,.bcol.past .bh .num{color:var(--ink-3)}
+.bcol.today .bh .num{background:var(--today-bg);color:var(--today-fg);border-radius:6px;padding:0 6px;margin-left:-2px}
+.bcol.today .bh .dow{color:var(--ink)}
+.bg{padding:10px 10px 2px}
+.bg .gl{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px;display:flex;justify-content:space-between}
+.mt{display:flex;align-items:center;gap:6px;height:24px;font-size:11.5px;color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.mt .tm{font-variant-numeric:tabular-nums;color:var(--ink-3);width:32px;flex:none}
+.mt .code{color:var(--c);font-weight:500}
+.mt .t{overflow:hidden;text-overflow:ellipsis}
+.mt.local .t{color:var(--ink-2)}
+.bcol.past .mt{color:var(--ink-3)}
+.cd{border-radius:6px;padding:6px 9px 7px;font-size:12px;margin-bottom:6px;cursor:grab;
+  --fill:color-mix(in srgb,var(--c) 16%,var(--surface));background:var(--fill)}
+[data-t="dark"] .cd{--fill:color-mix(in srgb,var(--c) 26%,var(--surface))}
+.cd:hover{--fill:color-mix(in srgb,var(--c) 22%,var(--surface))}
+[data-t="dark"] .cd:hover{--fill:color-mix(in srgb,var(--c) 34%,var(--surface))}
+.cd .t{font-weight:500;letter-spacing:-.005em;line-height:1.3;color:var(--c)}
+.cd .m{font-size:11px;color:color-mix(in srgb,var(--c) 70%,var(--ink));opacity:.85;margin-top:3px;font-variant-numeric:tabular-nums;line-height:1.4}
+.cd .m .sep{margin:0 4px}
+.cd .m .code{color:var(--c);font-weight:500}
+.cd .m .sep{opacity:.55}
+.cd .m .late{color:var(--red);font-weight:500}
+.cd.done{opacity:.55;background:var(--chip)}
+.cd.done .t,.cd.done .m,.cd.done .m .code{color:var(--ink-2)}
+.cd.done .t{text-decoration:line-through;text-decoration-color:var(--line-2)}
+.cd.drag{position:absolute;width:150px;box-shadow:var(--shadow);transform:rotate(-1.5deg);z-index:3;background:color-mix(in srgb,var(--c) 16%,var(--raised))}
+.bcol.past .cd{opacity:.6}
+.pl{display:flex;align-items:flex-start;gap:7px;padding:4px 0;font-size:12px;line-height:1.3}
+.pl .mk{margin-top:2px}
+.pl .t{min-width:0}
+.pl .t .code{display:block;font-size:11px;color:var(--c);font-weight:500;margin-top:1px}
+.pl.done .t{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.slot{height:34px;border:1px dashed var(--line-2);border-radius:6px;display:grid;place-items:center;font-size:11px;color:var(--ink-3);margin-bottom:6px}
+.badd{display:flex;align-items:center;gap:6px;padding:4px 10px 12px;font-size:11.5px;color:var(--ink-3);margin-top:auto}
+.badd:hover{color:var(--ink)}
+.empt{padding:4px 0 0;font-size:11.5px;color:var(--ink-3)}
+
+/* ── mobile ─────────────────────────────────────────────────────────────── */
+.phone{width:390px;flex:none;background:var(--surface);border:1px solid var(--line-2);border-radius:30px;overflow:hidden;display:flex;flex-direction:column;min-height:812px;color:var(--ink)}
+.status{display:flex;align-items:center;justify-content:space-between;padding:12px 22px 2px;font-size:12px;font-weight:600;color:var(--ink)}
+.status .rt{display:flex;align-items:center;gap:5px;color:var(--ink-2)}
+.m-head{display:flex;align-items:center;justify-content:space-between;padding:10px 16px 10px}
+.m-head .t{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.m-head .t span{color:var(--ink-3);font-weight:500}
+.m-head .seg{margin:0}
+.m-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:2px 12px 12px;border-bottom:1px solid var(--line)}
+.wd{border:1px solid transparent;border-radius:8px;padding:7px 4px 8px;text-align:center}
+.dow{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.num{margin:3px auto 0;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-size:14px;font-weight:600;letter-spacing:-.02em}
+.dots{display:flex;justify-content:center;align-items:center;gap:3px;height:11px;margin-top:5px}
+.dots i{width:5px;height:5px;border-radius:50%;background:var(--c);display:block}
+.wd.past .dow,.wd.past .num{color:var(--ink-3)}
+.wd.past .dots i{opacity:.45}
+.wd.today{background:var(--hover);border-color:var(--line-2)}
+.wd.today .num{background:var(--today-bg);color:var(--today-fg)}
+.wd.today .dow{color:var(--ink-2)}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);padding:8px 6px 16px;background:var(--surface);margin-top:auto}
+.tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-3)}
+.tab.on{color:var(--ink);font-weight:500}
+.fab{display:grid;place-items:center;width:32px;height:32px;border-radius:8px;background:var(--today-bg);color:var(--today-fg)}
+/* phone: timeline day */
+.pband{display:flex;flex-direction:column;gap:2px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--sunken)}
+.pband .li{height:26px;font-size:12.5px;padding:0 6px}
+.ptl{position:relative;flex:1}
+.ptl .hr{position:relative;height:52px;border-top:1px solid var(--line);margin-left:52px}
+.ptl .hr span{position:absolute;left:-52px;top:-7px;width:44px;text-align:right;font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.ptl .ev{left:58px;right:12px;font-size:12.5px;padding:6px 9px 0}
+.ptl .ev .s{font-size:11.5px}
+.ptl .now{left:52px}
+/* phone: list day */
+.pg{padding:14px 16px 6px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between}
+.pr{display:flex;align-items:flex-start;gap:10px;padding:9px 16px 10px;border-bottom:1px solid var(--line)}
+.pr .mk{margin-top:3px}
+.pr .tm{width:70px;flex:none;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums;padding-top:1px}
+.pr .b{min-width:0;flex:1}
+.pr .t{font-size:13.5px;font-weight:500;letter-spacing:-.005em}
+.pr .m{font-size:12px;color:var(--ink-3);margin-top:2px;display:flex;gap:6px}
+.pr .m .code{color:var(--c);font-weight:500}
+.pr .m .sep{opacity:.55}
+.pr.done .t{color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.pr:first-of-type{border-top:1px solid var(--line)}
+
+/* ── shared: grammar, export ────────────────────────────────────────────── */
+.tok{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.tok>div{padding:16px 18px;border-right:1px solid var(--line)}
+.tok>div:last-child{border-right:0}
+.tok h4{margin:0 0 12px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.tok p{margin:0;font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.gr{display:flex;align-items:center;gap:10px;margin-bottom:9px;font-size:13px}
+.gr .mk{width:16px}
+.gr em{font-style:normal;margin-left:auto;font-size:11px;color:var(--ink-3)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;width:520px}
+.card .ch{padding:16px 18px 14px;border-bottom:1px solid var(--line)}
+.card .ch .t{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.card .ch .s{font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.5}
+.card .blk{padding:14px 18px;border-bottom:1px solid var(--line)}
+.card .blk:last-child{border-bottom:0}
+.card .blk-t{font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:10px}
+.url{display:flex;align-items:center;gap:8px;height:34px;padding:0 4px 0 11px;border:1px solid var(--line);border-radius:8px;background:var(--sunken);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden}
+.url .u{flex:1;overflow:hidden;text-overflow:ellipsis}
+.url .btn{height:26px;font-size:12px;padding:0 9px}
+.card .tglr{padding:7px 0}
+.card .warn{display:flex;gap:9px;align-items:flex-start;margin-top:12px;font-size:12px;color:var(--ink-3);line-height:1.5}
+.card .warn .ico{margin-top:2px;color:var(--ink-3)}
+.fld{display:flex;align-items:center;gap:9px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;color:var(--ink);background:var(--surface)}
+.fld .ico{margin-left:auto;color:var(--ink-3)}
+
+/* ── decisions ──────────────────────────────────────────────────────────── */
+.tw{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+table.dec{width:100%;border-collapse:collapse;font-size:13px}
+table.dec th,table.dec td{padding:11px 14px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);vertical-align:top;text-align:left;line-height:1.5}
+table.dec th{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);background:var(--sunken)}
+table.dec th:last-child,table.dec td:last-child{border-right:0}
+table.dec tr:last-child td{border-bottom:0}
+table.dec td:first-child{font-weight:600;white-space:nowrap}
+table.dec td:first-child span{display:block;font-weight:400;color:var(--ink-3);font-size:12px}
+table.dec td{color:var(--ink-2)}
+.rec{margin-top:18px;padding:14px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);font-size:13.5px;color:var(--ink-2);line-height:1.6;max-width:86ch}
+.rec b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<clipPath id="l"><rect x="0" y="0" width="32" height="64"/></clipPath>
+<clipPath id="r"><rect x="32" y="0" width="32" height="64"/></clipPath>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 14h5l1.5 2h3L15 14h5"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/></symbol>
+<symbol id="i-task" viewBox="0 0 24 24"><path d="m4 12 3 3 5-6"/><path d="M14 7h7M14 12h7M14 17h7M4 18h6"/></symbol>
+<symbol id="i-grade" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="i-set" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-chevl" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+<symbol id="i-updown" viewBox="0 0 24 24"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12.5 5 5L20 6.5"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+<symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4"/><path d="M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-export" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5"/><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+<symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6"/><path d="M4 16v-4h4M20 8v4h-4"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M2 8.5a15 15 0 0 1 20 0M5.5 12.5a10 10 0 0 1 13 0M9 16.5a5 5 0 0 1 6 0"/><circle cx="12" cy="20" r=".6" fill="currentColor"/></symbol>
+<symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></g></symbol>
+</defs></svg>
+
+<template id="tpl-sb">
+<aside class="sb">
+  <div class="sb-top">
+    <div class="lockup">
+      <svg class="mark" viewBox="0 0 64 64"><g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+        <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+      </g></svg>
+      <span class="wm"><b>wisc</b>ourse</span>
+    </div>
+    <svg class="ico ico-14" style="color:var(--ink-3)"><use href="#i-search"/></svg>
+  </div>
+  <nav class="nav">
+    <a href="#"><svg class="ico"><use href="#i-home"/></svg>Home<span class="n">6</span></a>
+    <a href="#"><svg class="ico"><use href="#i-inbox"/></svg>Inbox<span class="n">3</span></a>
+    <a href="#"><svg class="ico"><use href="#i-book"/></svg>Courses</a>
+    <a href="#"><svg class="ico"><use href="#i-task"/></svg>Tasks</a>
+    <a href="#"><svg class="ico"><use href="#i-grade"/></svg>Grades</a>
+    <a href="#" class="on"><svg class="ico"><use href="#i-cal"/></svg>Calendar</a>
+  </nav>
+  <div class="sb-sec"><span>Courses</span><span>Fall 2026</span></div>
+  <a href="#" class="crs" style="--c:var(--c-cs)"><span class="dot"></span><span class="t">Operating Systems</span><span class="code">CS 537</span></a>
+  <a href="#" class="crs" style="--c:var(--c-math)"><span class="dot"></span><span class="t">Linear Algebra</span><span class="code">MATH 340</span></a>
+  <a href="#" class="crs" style="--c:var(--c-econ)"><span class="dot"></span><span class="t">Microeconomics</span><span class="code">ECON 101</span></a>
+  <a href="#" class="crs" style="--c:var(--c-stat)"><span class="dot"></span><span class="t">Intro Statistics</span><span class="code">STAT 324</span></a>
+  <div class="sb-foot">
+    <div class="me"><span class="av">SB</span><span class="t">Srinivas B.</span><svg class="ico ico-14"><use href="#i-updown"/></svg></div>
+  </div>
+</aside>
+</template>
+
+<button class="tog" onclick="var h=document.documentElement;h.dataset.t=h.dataset.t==='dark'?'light':'dark'">
+  <svg class="ico ico-14" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5"/></svg>
+  Light / dark
+</button>
+
+<div class="page">
+<header class="head">
+  <div>
+    <div class="lockup">
+      <svg class="mark" viewBox="0 0 64 64" aria-label="wiscourse">
+        <g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+          <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+        </g>
+      </svg>
+      <span class="wm"><b>wisc</b>ourse</span>
+    </div>
+    <h1>Calendar — four directions</h1>
+    <p>Home already answers “what do I do next”. The calendar answers “where does my time go this week” and “when is
+       everything due this month”. Every direction below shows the same week (Mon Sep 7 – Sun Sep 13, 2026, today Thu 10)
+       with the same four kinds of item: class meetings, due times, planned todos, and events. They differ in what gets
+       the space.</p>
+  </div>
+</header>
+
+<nav class="toc">
+  <a href="#a"><b>A</b>Grid</a><a href="#b"><b>B</b>Month</a><a href="#c"><b>C</b>Agenda</a><a href="#d"><b>D</b>Board</a>
+  <a href="#mobile">Mobile</a><a href="#shared">Shared</a><a href="#decisions">Decisions</a>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════ A -->
+<h2 id="a"><span class="v">A</span>Grid<span class="lin">Notion Calendar · Cron lineage</span></h2>
+<p>A time grid for the things that actually occupy time (class meetings, office hours, local events), with two thin
+   bands above it for the things that don’t: <em>Due</em> and <em>Planned</em>. Due times never become blocks — a
+   11:59 PM deadline is not a 1-minute meeting. Meetings are filled with a tint of their course colour, with local events lighter and dashed, so the week
+   reads as blocks of colour on a quiet grid.</p>
+<section>
+  <p class="cap">Desktop · Week</p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb></div>
+    <div class="main">
+      <div class="ct">
+        <div class="ttl">September 2026 <span>· Week 2</span></div>
+        <div class="navb"><span><svg class="ico ico-13"><use href="#i-chevl"/></svg></span><span>Today</span><span><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
+        <div class="seg"><a>Day</a><a class="on">Week</a><a>Month</a></div>
+        <div class="btn ghost"><svg class="ico ico-14"><use href="#i-export"/></svg>Subscribe</div>
+        <div class="btn"><svg class="ico ico-14"><use href="#i-plus"/></svg>Event</div>
+      </div>
+
+      <div class="tg hd">
+        <div class="gut"></div>
+        <div class="dh past"><div class="dow">Mon</div><div class="num">7</div></div>
+        <div class="dh past"><div class="dow">Tue</div><div class="num">8</div></div>
+        <div class="dh past"><div class="dow">Wed</div><div class="num">9</div></div>
+        <div class="dh today"><div class="dow">Thu</div><div class="num">10</div></div>
+        <div class="dh"><div class="dow">Fri</div><div class="num">11</div></div>
+        <div class="dh"><div class="dow">Sat</div><div class="num">12</div></div>
+        <div class="dh"><div class="dow">Sun</div><div class="num">13</div></div>
+      </div>
+
+      <div class="band">
+        <div class="bl">Due</div>
+        <div class="bc"><div class="li all" style="--c:var(--c-me)"><span class="mk evt"><i></i></span><span class="t">Labor Day — no classes</span></div></div>
+        <div class="bc"><div class="li faded" style="--c:var(--c-econ)"><span class="mk done"><i></i></span><span class="t">Reading quiz ch. 6</span><span class="at">11:59p</span></div></div>
+        <div class="bc"><div class="li faded" style="--c:var(--c-cs)"><span class="mk done"><i></i></span><span class="t">P2: Web Server</span><span class="at">11:59p</span></div></div>
+        <div class="bc today">
+          <div class="li" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="t">Problem Set 3</span><span class="at">5:00p</span></div>
+          <div class="li faded" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="t">Quiz 2: Sampling</span><span class="at">11:59p</span></div>
+        </div>
+        <div class="bc"><div class="li" style="--c:var(--c-math)"><span class="mk due"><i></i></span><span class="t">HW 5: Eigenvalues</span><span class="at">11:59p</span></div></div>
+        <div class="bc"></div>
+        <div class="bc"></div>
+      </div>
+      <div class="band">
+        <div class="bl">Plan</div>
+        <div class="bc"></div>
+        <div class="bc"><div class="li faded" style="--c:var(--c-cs)"><span class="mk pln on"><i></i></span><span class="t">Read ch. 4 — Threads</span></div></div>
+        <div class="bc"></div>
+        <div class="bc today"><div class="li" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="t">Email prof re: office hours</span></div></div>
+        <div class="bc"></div>
+        <div class="bc"><div class="li" style="--c:var(--c-cs)"><span class="mk pln"><i></i></span><span class="t">Start P3: xv6 scheduler</span></div></div>
+        <div class="bc"><div class="li" style="--c:var(--c-math)"><span class="mk pln"><i></i></span><span class="t">Exam 1 review sheet</span></div></div>
+      </div>
+
+      <div class="tgb">
+        <div class="hrs">
+          <span style="top:10px">8 AM</span><span style="top:58px">9 AM</span><span style="top:106px">10 AM</span><span style="top:154px">11 AM</span>
+          <span style="top:202px">Noon</span><span style="top:250px">1 PM</span><span style="top:298px">2 PM</span><span style="top:346px">3 PM</span>
+          <span style="top:394px">4 PM</span><span style="top:442px">5 PM</span>
+        </div>
+        <div class="col past"></div>
+        <div class="col past">
+          <div class="ev" style="--c:var(--c-math);--t:144;height:60px"><div class="t"><b>MATH 340</b> Lecture</div><div class="s">Van Vleck B102</div></div>
+          <div class="ev" style="--c:var(--c-stat);--t:312;height:60px"><div class="t"><b>STAT 324</b> Lecture</div><div class="s">Ingraham 19</div></div>
+        </div>
+        <div class="col past">
+          <div class="ev" style="--c:var(--c-cs);--t:92;height:40px"><div class="t"><b>CS 537</b> Lecture</div><div class="s">CS 1240</div></div>
+          <div class="ev" style="--c:var(--c-econ);--t:256;height:40px"><div class="t"><b>ECON 101</b> Lecture</div><div class="s">Soc Sci 6210</div></div>
+          <div class="ev" style="--c:var(--c-stat);--t:360;height:72px"><div class="t"><b>STAT 324</b> Lab</div><div class="s">MSC 1210</div></div>
+        </div>
+        <div class="col today">
+          <div class="ev" style="--c:var(--c-math);--t:144;height:60px"><div class="t"><b>MATH 340</b> Lecture</div><div class="s">Van Vleck B102</div></div>
+          <div class="ev" style="--c:var(--c-stat);--t:312;height:60px"><div class="t"><b>STAT 324</b> Lecture</div><div class="s">Ingraham 19</div></div>
+          <div class="ev local" style="--c:var(--c-cs);--t:384;height:48px"><div class="t">Office hours · Arpaci-Dusseau</div><div class="s">CS 7361</div></div>
+          <div class="now" style="top:309px"><span class="nowlbl">2:14</span></div>
+        </div>
+        <div class="col">
+          <div class="ev" style="--c:var(--c-cs);--t:92;height:40px"><div class="t"><b>CS 537</b> Lecture</div><div class="s">CS 1240</div></div>
+          <div class="ev" style="--c:var(--c-econ);--t:256;height:40px"><div class="t"><b>ECON 101</b> Lecture</div><div class="s">Soc Sci 6210</div></div>
+        </div>
+        <div class="col"></div>
+        <div class="col">
+          <div class="ev local" style="--c:var(--c-me);--t:384;height:96px"><div class="t">Study group — P3</div><div class="s">College Library</div></div>
+        </div>
+      </div>
+      <div class="hint"><span><b>←</b> <b>→</b> week</span><span><b>T</b> today</span><span><b>D</b> <b>W</b> <b>M</b> view</span><span><b>N</b> new event</span><span style="margin-left:auto">Times in America/Chicago</span></div>
+    </div>
+  </div></div></div>
+  <p class="note">Grid runs 8 AM – 6 PM by default and grows to fit the earliest / latest item; it never scrolls
+     inside the page. Done items stay in the Due band, struck through, until the day passes. Local events are
+     lighter with a dashed edge so a Canvas meeting and a self-made block never look the same. The red now-line is the only red on the page.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ B -->
+<h2 id="b"><span class="v">B</span>Month<span class="lin">Fantastical lineage</span></h2>
+<p>The zoomed-out view: one line per item, no blocks, no fills. Class meetings are hidden by default so the month
+   shows only what changes week to week — deadlines, exams, plans. Clicking a day opens it in a popover beside the cell
+   instead of navigating away, so you can walk the month with arrow keys and read each day in full.</p>
+<section>
+  <p class="cap">Desktop · Month</p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb></div>
+    <div class="main">
+      <div class="ct">
+        <div class="ttl">September 2026</div>
+        <div class="navb"><span><svg class="ico ico-13"><use href="#i-chevl"/></svg></span><span>Today</span><span><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
+        <div class="seg"><a>Day</a><a>Week</a><a class="on">Month</a></div>
+        <div class="btn ghost">Show classes</div>
+        <div class="btn ghost"><svg class="ico ico-14"><use href="#i-export"/></svg>Subscribe</div>
+        <div class="btn"><svg class="ico ico-14"><use href="#i-plus"/></svg>Event</div>
+      </div>
+      <div class="mo-wrap">
+        <div class="mo">
+          <div class="dh">Mon</div><div class="dh">Tue</div><div class="dh">Wed</div><div class="dh">Thu</div><div class="dh">Fri</div><div class="dh">Sat</div><div class="dh">Sun</div>
+
+          <div class="cell out past"><div class="n">31</div></div>
+          <div class="cell past"><div class="n">1</div><div class="li" style="--c:var(--c-cs)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">P1: Shell</span></div></div>
+          <div class="cell past"><div class="n">2</div></div>
+          <div class="cell past"><div class="n">3</div><div class="li" style="--c:var(--c-econ)"><span class="mk done"><i></i></span><span class="at">5:00p</span><span class="t">Problem Set 2</span></div><div class="li" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">Quiz 1</span></div></div>
+          <div class="cell past"><div class="n">4</div><div class="li" style="--c:var(--c-math)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">HW 4: Subspaces</span></div></div>
+          <div class="cell past"><div class="n">5</div></div>
+          <div class="cell past"><div class="n">6</div></div>
+
+          <div class="cell past"><div class="n">7</div><div class="hol">Labor Day — no classes</div></div>
+          <div class="cell past"><div class="n">8</div><div class="li" style="--c:var(--c-econ)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">Reading quiz ch. 6</span></div><div class="li" style="--c:var(--c-cs)"><span class="mk pln on"><i></i></span><span class="at"></span><span class="t">Read ch. 4 — Threads</span></div></div>
+          <div class="cell past"><div class="n">9</div><div class="li" style="--c:var(--c-cs)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">P2: Web Server</span></div></div>
+          <div class="cell today sel"><div class="n">10</div>
+            <div class="li" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="at">5:00p</span><span class="t">Problem Set 3</span></div>
+            <div class="li" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="at">11:59p</span><span class="t">Quiz 2: Sampling</span></div>
+            <div class="li" style="--c:var(--c-cs)"><span class="mk evt"><i></i></span><span class="at">4:00p</span><span class="t">Office hours</span></div>
+            <div class="li" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="at"></span><span class="t">Email prof re: OH</span></div>
+          </div>
+          <div class="cell"><div class="n">11</div><div class="li" style="--c:var(--c-math)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">HW 5: Eigenvalues</span></div></div>
+          <div class="cell"><div class="n">12</div><div class="li" style="--c:var(--c-cs)"><span class="mk pln"><i></i></span><span class="at"></span><span class="t">Start P3: xv6 scheduler</span></div></div>
+          <div class="cell"><div class="n">13</div><div class="li" style="--c:var(--c-me)"><span class="mk evt"><i></i></span><span class="at">4:00p</span><span class="t">Study group — P3</span></div><div class="li" style="--c:var(--c-math)"><span class="mk pln"><i></i></span><span class="at"></span><span class="t">Exam 1 review sheet</span></div></div>
+
+          <div class="cell"><div class="n">14</div></div>
+          <div class="cell"><div class="n">15</div><div class="li" style="--c:var(--c-math)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">HW 6: Determinants</span></div></div>
+          <div class="cell"><div class="n">16</div><div class="li" style="--c:var(--c-stat)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">Lab 4 write-up</span></div></div>
+          <div class="cell"><div class="n">17</div><div class="li" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="at">5:00p</span><span class="t">Problem Set 4</span></div></div>
+          <div class="cell"><div class="n">18</div><div class="li" style="--c:var(--c-cs)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">P3: xv6 Scheduler</span></div></div>
+          <div class="cell"><div class="n">19</div></div>
+          <div class="cell"><div class="n">20</div></div>
+
+          <div class="cell"><div class="n">21</div></div>
+          <div class="cell"><div class="n">22</div><div class="li" style="--c:var(--c-stat)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">HW 4: Confidence Intervals</span></div></div>
+          <div class="cell"><div class="n">23</div></div>
+          <div class="cell"><div class="n">24</div><div class="li" style="--c:var(--c-econ)"><span class="mk evt"><i></i></span><span class="at">1:20p</span><span class="t">Midterm 1 · in class</span></div></div>
+          <div class="cell"><div class="n">25</div><div class="li" style="--c:var(--c-math)"><span class="mk evt"><i></i></span><span class="at">11:00a</span><span class="t">Exam 1 · in class</span></div><div class="li" style="--c:var(--c-math)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">HW 7: Eigenvectors</span></div></div>
+          <div class="cell"><div class="n">26</div></div>
+          <div class="cell"><div class="n">27</div></div>
+
+          <div class="cell"><div class="n">28</div></div>
+          <div class="cell"><div class="n">29</div><div class="li" style="--c:var(--c-stat)"><span class="mk evt"><i></i></span><span class="at">7:15p</span><span class="t">Exam 1 · Ingraham B10</span></div></div>
+          <div class="cell"><div class="n">30</div></div>
+          <div class="cell out"><div class="n">1</div><div class="li" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="at">5:00p</span><span class="t">Problem Set 5</span></div></div>
+          <div class="cell out"><div class="n">2</div><div class="li" style="--c:var(--c-cs)"><span class="mk due"><i></i></span><span class="at">11:59p</span><span class="t">P4: Memory Allocator</span></div></div>
+          <div class="cell out"><div class="n">3</div></div>
+          <div class="cell out"><div class="n">4</div></div>
+        </div>
+
+        <aside class="dp">
+          <div class="dp-h"><div class="d">Thursday, September 10</div><div class="s">Today · 3 classes · 2 due · 1 planned</div></div>
+          <div class="g">Classes</div>
+          <div class="r" style="--c:var(--c-math)"><span class="mk meet"><i></i></span><span class="tm">11:00–12:15</span><div class="b"><div class="t">MATH 340 Lecture</div><div class="m">Van Vleck B102</div></div></div>
+          <div class="r" style="--c:var(--c-stat)"><span class="mk meet"><i></i></span><span class="tm">2:30–3:45</span><div class="b"><div class="t">STAT 324 Lecture</div><div class="m">Ingraham 19</div></div></div>
+          <div class="r" style="--c:var(--c-cs)"><span class="mk evt"><i></i></span><span class="tm">4:00–5:00</span><div class="b"><div class="t">Office hours · Arpaci-Dusseau</div><div class="m">CS 7361<span class="sep">·</span>Local event</div></div></div>
+          <div class="g">Due</div>
+          <div class="r" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="tm">5:00 PM</span><div class="b"><div class="t">Problem Set 3 — Elasticity</div><div class="m"><span class="code">ECON 101</span><span class="sep">·</span>Due in 2h 46m</div></div></div>
+          <div class="r done" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="tm">11:59 PM</span><div class="b"><div class="t">Quiz 2: Sampling Distributions</div><div class="m"><span class="code">STAT 324</span><span class="sep">·</span>Submitted 9:12 AM</div></div></div>
+          <div class="g">Planned</div>
+          <div class="r" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="tm">—</span><div class="b"><div class="t">Email prof about office hours</div><div class="m">Personal<span class="sep">·</span>No due date</div></div></div>
+          <div class="add"><svg class="ico ico-13"><use href="#i-plus"/></svg>Plan something for Thursday…</div>
+        </aside>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">A month cell shows mark and title only, at most four lines, then “+2 more”; times and status live in the
+     popover, which always shows everything and closes on Esc or on the next arrow key. Exams are Canvas events (ring mark), not
+     assignments, so they never carry a “Not submitted” state.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ C -->
+<h2 id="c"><span class="v">C</span>Agenda<span class="lin">Things “Upcoming” · Amie lineage</span></h2>
+<p>No grid at all: a continuous list of days, each with its time-ordered rows, with a mini-month on the right for
+   jumping. Everything is a row, so meetings, deadlines and plans get equal typographic weight and the page stays a
+   single scroll. This is the direction closest to Home — its strength and its risk.</p>
+<section>
+  <p class="cap">Desktop · Agenda</p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb></div>
+    <div class="main">
+      <div class="ct">
+        <div class="ttl">September 2026</div>
+        <div class="navb"><span><svg class="ico ico-13"><use href="#i-chevl"/></svg></span><span>Today</span><span><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
+        <div class="seg"><a class="on">Agenda</a><a>Week</a><a>Month</a></div>
+        <div class="btn"><svg class="ico ico-14"><use href="#i-plus"/></svg>Event</div>
+      </div>
+      <div class="ag-wrap">
+        <div class="ag">
+          <div class="earlier"><svg class="ico ico-13"><use href="#i-chev"/></svg>Earlier this week · Mon 7 – Wed 9 · 5 items, all done</div>
+
+          <div class="day today">
+            <div class="dl"><div class="dow">Thu</div><div class="num">10</div><div class="rel">Today</div></div>
+            <div class="rows">
+              <div class="arow blk past" style="--c:var(--c-math)"><span class="tm"><b>11:00</b> – 12:15</span><span class="mk meet"><i></i></span><span class="t"><span class="code">MATH 340</span>Lecture<span class="loc">Van Vleck B102</span></span><span></span></div>
+              <div class="arow blk" style="--c:var(--c-stat)"><span class="tm"><b>2:30</b> – 3:45</span><span class="mk meet"><i></i></span><span class="t"><span class="code">STAT 324</span>Lecture<span class="loc">Ingraham 19</span></span><span class="pill">now</span></div>
+              <div class="arow blk evt" style="--c:var(--c-cs)"><span class="tm"><b>4:00</b> – 5:00</span><span class="mk evt"><i></i></span><span class="t">Office hours · Arpaci-Dusseau<span class="loc">CS 7361</span></span><span></span></div>
+              <div class="arow" style="--c:var(--c-econ)"><span class="tm"><b>5:00 PM</b></span><span class="mk due"><i></i></span><span class="t"><span class="code">ECON 101</span>Problem Set 3 — Elasticity<span class="kind">due</span></span><span class="pill out">Not submitted</span></div>
+              <div class="arow done" style="--c:var(--c-stat)"><span class="tm"><b>11:59 PM</b></span><span class="mk done"><i></i></span><span class="t"><span class="code">STAT 324</span>Quiz 2: Sampling Distributions<span class="kind">due</span></span><span class="pill">Submitted</span></div>
+              <div class="arow" style="--c:var(--c-me)"><span class="tm">planned</span><span class="mk pln"><i></i></span><span class="t">Email Prof. Arpaci-Dusseau about Thursday office hours</span><span></span></div>
+            </div>
+          </div>
+
+          <div class="day">
+            <div class="dl"><div class="dow">Fri</div><div class="num">11</div><div class="rel">Tomorrow</div></div>
+            <div class="rows">
+              <div class="arow blk" style="--c:var(--c-cs)"><span class="tm"><b>9:55</b> – 10:45</span><span class="mk meet"><i></i></span><span class="t"><span class="code">CS 537</span>Lecture<span class="loc">CS 1240</span></span><span></span></div>
+              <div class="arow blk" style="--c:var(--c-econ)"><span class="tm"><b>1:20</b> – 2:10</span><span class="mk meet"><i></i></span><span class="t"><span class="code">ECON 101</span>Lecture<span class="loc">Soc Sci 6210</span></span><span></span></div>
+              <div class="arow" style="--c:var(--c-math)"><span class="tm"><b>11:59 PM</b></span><span class="mk due"><i></i></span><span class="t"><span class="code">MATH 340</span>HW 5: Eigenvalues and Diagonalization<span class="kind">due</span></span><span class="pill out">1 / 3 subtasks</span></div>
+            </div>
+          </div>
+
+          <div class="day">
+            <div class="dl"><div class="dow">Sat</div><div class="num">12</div></div>
+            <div class="rows">
+              <div class="arow" style="--c:var(--c-cs)"><span class="tm">planned</span><span class="mk pln"><i></i></span><span class="t"><span class="code">CS 537</span>Start P3: xv6 scheduler<span class="kind">due Fri 18</span></span><span></span></div>
+            </div>
+          </div>
+
+          <div class="day">
+            <div class="dl"><div class="dow">Sun</div><div class="num">13</div></div>
+            <div class="rows">
+              <div class="arow blk evt" style="--c:var(--c-me)"><span class="tm"><b>4:00</b> – 6:00</span><span class="mk evt"><i></i></span><span class="t">Study group — P3<span class="loc">College Library 2250</span></span><span></span></div>
+              <div class="arow" style="--c:var(--c-math)"><span class="tm">planned</span><span class="mk pln"><i></i></span><span class="t"><span class="code">MATH 340</span>Build exam 1 review sheet</span><span></span></div>
+            </div>
+          </div>
+
+          <div class="wkh">Next week<span>Sep 14 – 20</span><span class="n">6 due · 2 exams</span></div>
+          <div class="day none">
+            <div class="dl"><div class="dow">Mon</div><div class="num">14</div></div>
+            <div class="rows">Classes only</div>
+          </div>
+          <div class="day">
+            <div class="dl"><div class="dow">Tue</div><div class="num">15</div></div>
+            <div class="rows">
+              <div class="arow blk" style="--c:var(--c-math)"><span class="tm"><b>11:00</b> – 12:15</span><span class="mk meet"><i></i></span><span class="t"><span class="code">MATH 340</span>Lecture<span class="loc">Van Vleck B102</span></span><span></span></div>
+              <div class="arow blk" style="--c:var(--c-stat)"><span class="tm"><b>2:30</b> – 3:45</span><span class="mk meet"><i></i></span><span class="t"><span class="code">STAT 324</span>Lecture<span class="loc">Ingraham 19</span></span><span></span></div>
+              <div class="arow" style="--c:var(--c-math)"><span class="tm"><b>11:59 PM</b></span><span class="mk due"><i></i></span><span class="t"><span class="code">MATH 340</span>HW 6: Determinants<span class="kind">due</span></span><span class="pill out">Not planned</span></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="rail">
+          <div class="mini">
+            <div class="mh">September 2026<span class="nv"><svg class="ico ico-13"><use href="#i-chevl"/></svg><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
+            <div class="mg">
+              <div class="w">M</div><div class="w">T</div><div class="w">W</div><div class="w">T</div><div class="w">F</div><div class="w">S</div><div class="w">S</div>
+              <div class="d out">31</div><div class="d">1</div><div class="d">2</div><div class="d">3</div><div class="d">4</div><div class="d">5</div><div class="d">6</div>
+              <div class="d">7</div><div class="d">8</div><div class="d">9</div><div class="d today">10<span class="dd"><i></i><i></i></span></div><div class="d">11<span class="dd"><i style="--c:var(--c-math)"></i></span></div><div class="d">12</div><div class="d">13</div>
+              <div class="d">14</div><div class="d">15<span class="dd"><i style="--c:var(--c-math)"></i></span></div><div class="d">16<span class="dd"><i style="--c:var(--c-stat)"></i></span></div><div class="d">17<span class="dd"><i style="--c:var(--c-econ)"></i></span></div><div class="d">18<span class="dd"><i style="--c:var(--c-cs)"></i></span></div><div class="d">19</div><div class="d">20</div>
+              <div class="d">21</div><div class="d">22<span class="dd"><i style="--c:var(--c-stat)"></i></span></div><div class="d">23</div><div class="d">24<span class="dd"><i style="--c:var(--c-econ)"></i></span></div><div class="d">25<span class="dd"><i style="--c:var(--c-math)"></i><i style="--c:var(--c-math)"></i></span></div><div class="d">26</div><div class="d">27</div>
+              <div class="d">28</div><div class="d">29<span class="dd"><i style="--c:var(--c-stat)"></i></span></div><div class="d">30</div><div class="d out">1</div><div class="d out">2</div><div class="d out">3</div><div class="d out">4</div>
+            </div>
+          </div>
+          <div class="g">Show</div>
+          <div class="tglr"><span class="mk meet" style="--c:var(--ink-3)"><i></i></span>Class meetings<i class="sw on"></i></div>
+          <div class="tglr"><span class="mk due" style="--c:var(--ink-3)"><i></i></span>Due dates<i class="sw on"></i></div>
+          <div class="tglr"><span class="mk pln" style="--c:var(--ink-3)"><i></i></span>Planned todos<i class="sw on"></i></div>
+          <div class="tglr"><span class="mk evt" style="--c:var(--ink-3)"><i></i></span>Events<i class="sw on"></i></div>
+          <div class="g">Courses</div>
+          <div class="tglr"><span class="dot" style="--c:var(--c-cs)"></span>CS 537<i class="sw on"></i></div>
+          <div class="tglr"><span class="dot" style="--c:var(--c-math)"></span>MATH 340<i class="sw on"></i></div>
+          <div class="tglr"><span class="dot" style="--c:var(--c-econ)"></span>ECON 101<i class="sw on"></i></div>
+          <div class="tglr"><span class="dot" style="--c:var(--c-stat)"></span>STAT 324<i class="sw"></i></div>
+          <div class="rail-f">
+            <div class="kv">Time zone<b>America/Chicago</b></div>
+            <div class="kv">Subscribe (.ics)<b style="display:flex;align-items:center;gap:5px">Copy link<svg class="ico ico-12"><use href="#i-copy"/></svg></b></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">Rows share one grid: time · mark · title · status. A day with only class meetings collapses to a
+     single line so exam weeks don’t drown in lectures. Filters in the rail are per-device and persist.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ D -->
+<h2 id="d"><span class="v">D</span>Board<span class="lin">Sunsama · Akiflow lineage</span></h2>
+<p>Seven columns, no time axis. Each day stacks its class meetings as a compact schedule at the top, then its due
+   items as cards, then the todos planned for that day. Cards drag between columns to set a planned day, which makes
+   this the only direction where the calendar is also the planning surface, not just a picture of it.</p>
+<section>
+  <p class="cap">Desktop · Week board</p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb></div>
+    <div class="main">
+      <div class="ct">
+        <div class="ttl">Sep 7 – 13 <span>· Week 2</span></div>
+        <div class="navb"><span><svg class="ico ico-13"><use href="#i-chevl"/></svg></span><span>Today</span><span><svg class="ico ico-13"><use href="#i-chev"/></svg></span></div>
+        <div class="seg"><a>Day</a><a class="on">Week</a><a>Month</a></div>
+        <div class="btn ghost"><svg class="ico ico-14"><use href="#i-export"/></svg>Subscribe</div>
+        <div class="btn"><svg class="ico ico-14"><use href="#i-plus"/></svg>Event</div>
+      </div>
+      <div class="bd">
+        <div class="bcol past">
+          <div class="bh"><span class="dow">Mon</span><span class="num">7</span></div>
+          <div class="bg"><div class="empt">Labor Day — no classes</div></div>
+        </div>
+        <div class="bcol past">
+          <div class="bh"><span class="dow">Tue</span><span class="num">8</span><span class="n">2</span></div>
+          <div class="bg">
+            <div class="mt" style="--c:var(--c-math)"><span class="tm">11:00</span><span class="mk meet"><i></i></span><span class="t"><span class="code">MATH 340</span></span></div>
+            <div class="mt" style="--c:var(--c-stat)"><span class="tm">2:30</span><span class="mk meet"><i></i></span><span class="t"><span class="code">STAT 324</span></span></div>
+          </div>
+          <div class="bg"><div class="gl">Due</div>
+            <div class="cd done" style="--c:var(--c-econ)"><div class="t">Reading quiz — ch. 6</div><div class="m"><span class="code">ECON 101</span><span class="sep">·</span>Submitted</div></div>
+          </div>
+          <div class="bg"><div class="gl">Planned</div>
+            <div class="pl done" style="--c:var(--c-cs)"><span class="mk pln on"><i></i></span><span class="t">Read ch. 4 — Threads</span></div>
+          </div>
+        </div>
+        <div class="bcol past">
+          <div class="bh"><span class="dow">Wed</span><span class="num">9</span><span class="n">1</span></div>
+          <div class="bg">
+            <div class="mt" style="--c:var(--c-cs)"><span class="tm">9:55</span><span class="mk meet"><i></i></span><span class="t"><span class="code">CS 537</span></span></div>
+            <div class="mt" style="--c:var(--c-econ)"><span class="tm">1:20</span><span class="mk meet"><i></i></span><span class="t"><span class="code">ECON 101</span></span></div>
+            <div class="mt" style="--c:var(--c-stat)"><span class="tm">3:30</span><span class="mk meet"><i></i></span><span class="t"><span class="code">STAT 324</span></span></div>
+          </div>
+          <div class="bg"><div class="gl">Due</div>
+            <div class="cd done" style="--c:var(--c-cs)"><div class="t">P2: Web Server</div><div class="m"><span class="code">CS 537</span><span class="sep">·</span>Submitted 10:41 PM</div></div>
+          </div>
+        </div>
+        <div class="bcol today">
+          <div class="bh"><span class="dow">Thu</span><span class="num">10</span><span class="n">3</span></div>
+          <div class="bg">
+            <div class="mt" style="--c:var(--c-math)"><span class="tm">11:00</span><span class="mk meet"><i></i></span><span class="t"><span class="code">MATH 340</span></span></div>
+            <div class="mt" style="--c:var(--c-stat)"><span class="tm">2:30</span><span class="mk meet"><i></i></span><span class="t"><span class="code">STAT 324</span></span></div>
+            <div class="mt local" style="--c:var(--c-cs)"><span class="tm">4:00</span><span class="mk evt"><i></i></span><span class="t">Office hrs</span></div>
+          </div>
+          <div class="bg"><div class="gl">Due<span>2</span></div>
+            <div class="cd" style="--c:var(--c-econ)"><div class="t">Problem Set 3 — Elasticity</div><div class="m"><span class="code">ECON 101</span><span class="sep">·</span>5:00 PM<span class="sep">·</span><span class="late">in 2h 46m</span></div></div>
+            <div class="cd done" style="--c:var(--c-stat)"><div class="t">Quiz 2: Sampling Distributions</div><div class="m"><span class="code">STAT 324</span><span class="sep">·</span>Submitted 9:12 AM</div></div>
+          </div>
+          <div class="bg"><div class="gl">Planned<span>1</span></div>
+            <div class="pl" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="t">Email prof about office hours</span></div>
+          </div>
+          <div class="badd"><svg class="ico ico-13"><use href="#i-plus"/></svg>Plan for today</div>
+        </div>
+        <div class="bcol">
+          <div class="bh"><span class="dow">Fri</span><span class="num">11</span><span class="n">1</span></div>
+          <div class="bg">
+            <div class="mt" style="--c:var(--c-cs)"><span class="tm">9:55</span><span class="mk meet"><i></i></span><span class="t"><span class="code">CS 537</span></span></div>
+            <div class="mt" style="--c:var(--c-econ)"><span class="tm">1:20</span><span class="mk meet"><i></i></span><span class="t"><span class="code">ECON 101</span></span></div>
+          </div>
+          <div class="bg"><div class="gl">Due</div>
+            <div class="cd" style="--c:var(--c-math)"><div class="t">HW 5: Eigenvalues</div><div class="m"><span class="code">MATH 340</span><span class="sep">·</span>11:59 PM<span class="sep">·</span>1/3</div></div>
+          </div>
+        </div>
+        <div class="bcol">
+          <div class="bh"><span class="dow">Sat</span><span class="num">12</span><span class="n">1</span></div>
+          <div class="bg"><div class="empt">No classes</div></div>
+          <div class="bg"><div class="gl">Planned</div>
+            <div class="pl" style="--c:var(--c-cs)"><span class="mk pln"><i></i></span><span class="t">Start P3: xv6 scheduler<span class="code">CS 537 · due Fri 18</span></span></div>
+            <div class="slot">Plan for Saturday</div>
+          </div>
+          <div class="cd drag" style="--c:var(--c-stat);left:14px;top:150px"><div class="t">HW 4: Confidence Intervals</div><div class="m"><span class="code">STAT 324</span><span class="sep">·</span>due Tue 22</div></div>
+        </div>
+        <div class="bcol">
+          <div class="bh"><span class="dow">Sun</span><span class="num">13</span><span class="n">2</span></div>
+          <div class="bg">
+            <div class="mt local" style="--c:var(--c-me)"><span class="tm">4:00</span><span class="mk evt"><i></i></span><span class="t">Study group</span></div>
+          </div>
+          <div class="bg"><div class="gl">Planned</div>
+            <div class="pl" style="--c:var(--c-math)"><span class="mk pln"><i></i></span><span class="t">Build exam 1 review sheet<span class="code">MATH 340</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="hint"><span><b>←</b> <b>→</b> week</span><span><b>T</b> today</span><span>Drag a card to plan it for a day</span><span><b>Space</b> mark done</span><span style="margin-left:auto">Times in America/Chicago</span></div>
+    </div>
+  </div></div></div>
+  <p class="note">Shown mid-drag: a STAT 324 homework being pulled from Tasks (or from a later column) onto Saturday;
+     the dashed slot is the only drop feedback. Due cards can’t leave their column — dragging one creates a
+     planned copy instead, so a deadline never moves. The board and Home share the todo row components.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ mobile -->
+<h2 id="mobile">Mobile · Day</h2>
+<p>Day is the default view on a phone. Two mappings: the timeline (natural partner of A and B) and the list
+   (partner of C and D). Both keep the week strip from Home so switching days is one tap, and both put the Due band
+   above the fold — on mobile the deadline is the whole reason you opened the calendar.</p>
+<section>
+  <div class="row2">
+    <div>
+      <p class="cap">Day · Timeline (A / B)</p>
+      <div class="phone">
+        <div class="status"><span>2:14</span><span class="rt"><svg class="ico ico-13"><use href="#i-wifi"/></svg>100%</span></div>
+        <div class="m-head"><div class="t">September <span>2026</span></div><div class="seg"><a class="on">Day</a><a>Week</a><a>Month</a></div></div>
+        <div class="m-body">
+          <div class="week">
+            <div class="wd past"><div class="dow">Mon</div><div class="num">7</div><div class="dots"></div></div>
+            <div class="wd past"><div class="dow">Tue</div><div class="num">8</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+            <div class="wd past"><div class="dow">Wed</div><div class="num">9</div><div class="dots"><i style="--c:var(--c-cs)"></i></div></div>
+            <div class="wd today"><div class="dow">Thu</div><div class="num">10</div><div class="dots"><i style="--c:var(--c-econ)"></i><i style="--c:var(--c-stat)"></i></div></div>
+            <div class="wd"><div class="dow">Fri</div><div class="num">11</div><div class="dots"><i style="--c:var(--c-math)"></i></div></div>
+            <div class="wd"><div class="dow">Sat</div><div class="num">12</div><div class="dots"><i style="--c:var(--c-cs)"></i></div></div>
+            <div class="wd"><div class="dow">Sun</div><div class="num">13</div><div class="dots"><i style="--c:var(--c-me)"></i><i style="--c:var(--c-math)"></i></div></div>
+          </div>
+          <div class="pband">
+            <div class="li" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="t">Problem Set 3 — Elasticity</span><span class="at">5:00 PM</span></div>
+            <div class="li faded" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="t">Quiz 2: Sampling</span><span class="at">11:59 PM</span></div>
+            <div class="li" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="t">Email prof re: office hours</span></div>
+          </div>
+          <div class="ptl">
+            <div class="hr" style="margin-top:14px"><span>10 AM</span></div>
+            <div class="hr"><span>11 AM</span></div>
+            <div class="hr"><span>Noon</span></div>
+            <div class="hr"><span>1 PM</span></div>
+            <div class="hr"><span>2 PM</span></div>
+            <div class="hr"><span>3 PM</span></div>
+            <div class="hr"><span>4 PM</span></div>
+            <div class="hr"><span>5 PM</span></div>
+            <div class="hr"><span>6 PM</span></div>
+            <div class="ev" style="--c:var(--c-math);--t:56;height:65px"><div class="t"><b>MATH 340</b> Lecture</div><div class="s">11:00 – 12:15 · Van Vleck B102</div></div>
+            <div class="ev" style="--c:var(--c-stat);--t:238;height:65px"><div class="t"><b>STAT 324</b> Lecture</div><div class="s">2:30 – 3:45 · Ingraham 19</div></div>
+            <div class="ev local" style="--c:var(--c-cs);--t:316;height:52px"><div class="t">Office hours · Arpaci-Dusseau</div><div class="s">4:00 – 5:00 · CS 7361</div></div>
+            <div class="now" style="top:234px"></div>
+          </div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><svg class="ico"><use href="#i-home"/></svg>Home</div>
+          <div class="tab"><svg class="ico"><use href="#i-inbox"/></svg>Inbox</div>
+          <div class="tab"><svg class="ico"><use href="#i-book"/></svg>Courses</div>
+          <div class="tab on"><svg class="ico"><use href="#i-cal"/></svg>Calendar</div>
+          <div class="tab"><svg class="ico"><use href="#i-task"/></svg>Tasks</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <p class="cap">Day · List (C / D)</p>
+      <div class="phone">
+        <div class="status"><span>2:14</span><span class="rt"><svg class="ico ico-13"><use href="#i-wifi"/></svg>100%</span></div>
+        <div class="m-head"><div class="t">Thursday <span>Sep 10</span></div><div class="fab"><svg class="ico"><use href="#i-plus"/></svg></div></div>
+        <div class="m-body">
+          <div class="week">
+            <div class="wd past"><div class="dow">Mon</div><div class="num">7</div><div class="dots"></div></div>
+            <div class="wd past"><div class="dow">Tue</div><div class="num">8</div><div class="dots"><i style="--c:var(--c-econ)"></i></div></div>
+            <div class="wd past"><div class="dow">Wed</div><div class="num">9</div><div class="dots"><i style="--c:var(--c-cs)"></i></div></div>
+            <div class="wd today"><div class="dow">Thu</div><div class="num">10</div><div class="dots"><i style="--c:var(--c-econ)"></i><i style="--c:var(--c-stat)"></i></div></div>
+            <div class="wd"><div class="dow">Fri</div><div class="num">11</div><div class="dots"><i style="--c:var(--c-math)"></i></div></div>
+            <div class="wd"><div class="dow">Sat</div><div class="num">12</div><div class="dots"><i style="--c:var(--c-cs)"></i></div></div>
+            <div class="wd"><div class="dow">Sun</div><div class="num">13</div><div class="dots"><i style="--c:var(--c-me)"></i><i style="--c:var(--c-math)"></i></div></div>
+          </div>
+          <div class="pg">Due<span>2</span></div>
+          <div class="pr" style="--c:var(--c-econ)"><span class="mk due"><i></i></span><span class="tm">5:00 PM</span><div class="b"><div class="t">Problem Set 3 — Elasticity</div><div class="m"><span class="code">ECON 101</span><span class="sep">·</span>Not submitted</div></div><span class="pill out">2h 46m</span></div>
+          <div class="pr done" style="--c:var(--c-stat)"><span class="mk done"><i></i></span><span class="tm">11:59 PM</span><div class="b"><div class="t">Quiz 2: Sampling Distributions</div><div class="m"><span class="code">STAT 324</span><span class="sep">·</span>Submitted 9:12 AM</div></div></div>
+          <div class="pg">Classes<span>3</span></div>
+          <div class="pr" style="--c:var(--c-math)"><span class="mk meet"><i></i></span><span class="tm">11:00</span><div class="b"><div class="t">MATH 340 Lecture</div><div class="m">until 12:15<span class="sep">·</span>Van Vleck B102</div></div></div>
+          <div class="pr" style="--c:var(--c-stat)"><span class="mk meet"><i></i></span><span class="tm">2:30</span><div class="b"><div class="t">STAT 324 Lecture</div><div class="m">until 3:45<span class="sep">·</span>Ingraham 19</div></div><span class="pill">now</span></div>
+          <div class="pr" style="--c:var(--c-cs)"><span class="mk evt"><i></i></span><span class="tm">4:00</span><div class="b"><div class="t">Office hours · Arpaci-Dusseau</div><div class="m">until 5:00<span class="sep">·</span>CS 7361</div></div></div>
+          <div class="pg">Planned<span>1</span></div>
+          <div class="pr" style="--c:var(--c-me)"><span class="mk pln"><i></i></span><span class="tm">—</span><div class="b"><div class="t">Email Prof. Arpaci-Dusseau about Thursday office hours</div><div class="m">Personal<span class="sep">·</span>No due date</div></div></div>
+        </div>
+        <div class="tabs">
+          <div class="tab"><svg class="ico"><use href="#i-home"/></svg>Home</div>
+          <div class="tab"><svg class="ico"><use href="#i-inbox"/></svg>Inbox</div>
+          <div class="tab"><svg class="ico"><use href="#i-book"/></svg>Courses</div>
+          <div class="tab on"><svg class="ico"><use href="#i-cal"/></svg>Calendar</div>
+          <div class="tab"><svg class="ico"><use href="#i-task"/></svg>Tasks</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note">Swipe the strip for the next week; swipe the body for the next day. Month on mobile is B’s grid with
+     dots instead of lines, and tapping a day drops into this Day view rather than a popover.</p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ shared -->
+<h2 id="shared">Shared</h2>
+<p>Whatever direction wins, these parts are the same: one mark per kind of item, course colour as the only hue,
+   and the subscribe sheet.</p>
+<section>
+  <p class="cap">Item grammar</p>
+  <div class="tok">
+    <div>
+      <h4>Kinds</h4>
+      <div class="gr" style="--c:var(--c-cs)"><span class="mk meet"><i></i></span>Class meeting<em>Canvas · recurring</em></div>
+      <div class="gr" style="--c:var(--c-econ)"><span class="mk due"><i></i></span>Due time<em>assignment · quiz</em></div>
+      <div class="gr" style="--c:var(--c-math)"><span class="mk pln"><i></i></span>Planned todo<em>local · day-keyed</em></div>
+      <div class="gr" style="--c:var(--c-stat)"><span class="mk evt"><i></i></span>Event<em>Canvas or local</em></div>
+      <div class="gr" style="--c:var(--c-stat)"><span class="mk done"><i></i></span>Done<em>struck through</em></div>
+    </div>
+    <div>
+      <h4>Colour</h4>
+      <p>Course colour fills time blocks (meetings, events) as a tint, and marks everything else. Personal items use the neutral course colour.
+         Red appears twice: the now-line, and “late” on an overdue due card. Exams are events, so they read as rings.</p>
+    </div>
+    <div>
+      <h4>Time</h4>
+      <p>Tabular numerals everywhere. Ranges use an en dash with spaces (<span class="tab-num">11:00 – 12:15</span>);
+         meridiem is dropped inside a range and kept on a lone due time (<span class="tab-num">5:00 PM</span>). Dense
+         cells use <span class="tab-num">11:59p</span>. Grid rows are 48px per hour, never smaller than 40px per block.</p>
+    </div>
+    <div>
+      <h4>States</h4>
+      <p>Past days lose contrast but keep their content. Today gets the sunken background and the filled date. A due
+         item that is submitted stays on its day, struck through, so the week still shows what happened. Nothing is
+         optimistic here — the calendar only reflects what Convex already knows.</p>
+    </div>
+  </div>
+</section>
+<section>
+  <p class="cap">Subscribe (ICS)</p>
+  <div class="row2">
+    <div class="card">
+      <div class="ch"><div class="t">Subscribe in another calendar</div><div class="s">A private feed for Apple Calendar, Google Calendar or Outlook. It refreshes on their schedule, usually every few hours.</div></div>
+      <div class="blk">
+        <div class="blk-t">Feed link</div>
+        <div class="url"><span class="u">https://wiscourse.app/ics/u_8f3k…/9c1e0b4a-2f7d-4e61-a5c2-0d8f1b7e3c9a.ics</span><span class="btn"><svg class="ico ico-12"><use href="#i-copy"/></svg>Copy</span></div>
+        <div class="warn"><svg class="ico ico-13"><use href="#i-info"/></svg>Anyone with this link can read your calendar. Regenerating it disconnects every app that uses the old one.</div>
+      </div>
+      <div class="blk">
+        <div class="blk-t">Include</div>
+        <div class="tglr"><span class="mk meet" style="--c:var(--ink-3)"><i></i></span>Class meetings<i class="sw on"></i></div>
+        <div class="tglr"><span class="mk due" style="--c:var(--ink-3)"><i></i></span>Due dates<i class="sw on"></i></div>
+        <div class="tglr"><span class="mk pln" style="--c:var(--ink-3)"><i></i></span>Planned todos<i class="sw"></i></div>
+        <div class="tglr"><span class="mk evt" style="--c:var(--ink-3)"><i></i></span>Events<i class="sw on"></i></div>
+      </div>
+      <div class="blk" style="display:flex;gap:8px;align-items:center">
+        <span class="btn ghost"><svg class="ico ico-13"><use href="#i-sync"/></svg>Regenerate link</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--ink-3)">Last fetched by Apple Calendar 41 min ago</span>
+      </div>
+    </div>
+    <div class="card" style="width:340px">
+      <div class="ch"><div class="t">Time zone</div><div class="s">Times follow the browser. Override when travelling so due times stay in Madison time.</div></div>
+      <div class="blk">
+        <div class="blk-t">Show times in</div>
+        <div class="fld"><svg class="ico ico-14" style="margin:0;color:var(--ink-3)"><use href="#i-globe"/></svg>America/Chicago · browser<svg class="ico ico-13"><use href="#i-down"/></svg></div>
+        <div class="warn"><svg class="ico ico-13"><use href="#i-clock"/></svg>Canvas stores due times in UTC; the 11:59 PM you see is 11:59 PM in this zone.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════ decisions -->
+<h2 id="decisions">Decisions</h2>
+<p>The four directions aren’t exclusive: Week / Month / Day are separate views, so this is really two choices —
+   which week view, and whether month gets a day popover.</p>
+<section>
+  <div class="tw"><table class="dec">
+    <tr><th style="width:150px">Direction</th><th>Best at</th><th>Weak spot</th><th>Planning</th><th>Mobile</th><th>Build</th></tr>
+    <tr>
+      <td>A · Grid<span>week, time axis</span></td>
+      <td>Seeing free time between classes. The only view where a 90-minute gap is visible as 90 minutes.</td>
+      <td>Deadlines live in a band, not the grid, so a heavy due week looks calm. Weekends waste two columns.</td>
+      <td>None on the grid. Plan band is display-only; planning happens on Home.</td>
+      <td>Timeline day. Clean mapping.</td>
+      <td>Absolute positioning, overlap layout, now-line. The most code.</td>
+    </tr>
+    <tr>
+      <td>B · Month<span>month, popover</span></td>
+      <td>Exam and deadline overview across a term. Reads like a syllabus.</td>
+      <td>Useless for today. Cells overflow in project weeks; classes must be hidden.</td>
+      <td>Popover can add a plan for the selected day.</td>
+      <td>Dot grid, tap to Day.</td>
+      <td>Small. Shares the popover rows with Home.</td>
+    </tr>
+    <tr>
+      <td>C · Agenda<span>list, no grid</span></td>
+      <td>Scanning. One column, one scroll, works at any width without a second layout.</td>
+      <td>Overlaps Home almost entirely; the only differences are meetings and the mini-month.</td>
+      <td>Same as Home (checkbox, planned day in the row menu).</td>
+      <td>It already is the mobile layout.</td>
+      <td>Smallest. Mostly existing row components.</td>
+    </tr>
+    <tr>
+      <td>D · Board<span>week, columns</span></td>
+      <td>Deciding which day to do things. Drag-to-plan makes the week a workspace.</td>
+      <td>No sense of duration; a 15-min quiz and a 3-hour lab are the same line. Seven narrow columns wrap titles.</td>
+      <td>Native. Drag between columns, drop from Tasks.</td>
+      <td>List day with the same groups.</td>
+      <td>Medium. Drag-and-drop and a todos mutation for plannedDay.</td>
+    </tr>
+  </table></div>
+  <div class="rec">
+    <b>Recommendation.</b> Ship <b>A</b> as Week and <b>B</b> as Month, with the timeline Day on mobile. They are the two
+    views Home cannot be, and together they cover “where is my time” and “what is coming”. Fold D’s one real idea in
+    later: let the Plan band in A accept drops from Tasks. Skip C as a route; it is Home with a different header.
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+  var tpl=document.getElementById('tpl-sb');
+  document.querySelectorAll('[data-sb]').forEach(function(ph){ph.replaceWith(tpl.content.firstElementChild.cloneNode(true))});
+})();
+</script>
+</body>
+</html>

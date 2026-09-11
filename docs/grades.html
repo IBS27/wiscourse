@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="en" data-t="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>wiscourse — Grades design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<style>
+/* ── tokens (same as design.html / src/index.css) ───────────────────────── */
+[data-t="light"]{
+  --page:#ececee; --surface:#ffffff; --sunken:#f4f4f5; --raised:#ffffff;
+  --hover:#f4f4f5; --line:#e5e5e8; --line-2:#d6d6db; --chip:#f4f4f5;
+  --ink:#18181b; --ink-2:#55555f; --ink-3:#8a8a93;
+  --red:#c5050c; --red-bg:#fdf1f1; --brand-ink:#101114;
+  --today-bg:#18181b; --today-fg:#ffffff;
+  --shadow:0 8px 24px rgba(16,17,20,.12);
+  --c-cs:#4f46e5; --c-math:#b45309; --c-econ:#0f766e; --c-stat:#0369a1;
+}
+[data-t="dark"]{
+  --page:#0b0b0b; --surface:#181818; --sunken:#0f0f0f; --raised:#1e1e1e;
+  --hover:#242424; --line:#2b2b2b; --line-2:#3c3c3c; --chip:#242424;
+  --ink:#e8e8e8; --ink-2:#a3a3a3; --ink-3:#737373;
+  --red:#ff4b54; --red-bg:#2b1417; --brand-ink:#e8e8e8;
+  --today-bg:#e8e8e8; --today-fg:#181818;
+  --shadow:0 12px 32px rgba(0,0,0,.55);
+  --c-cs:#818cf8; --c-math:#f0a13a; --c-econ:#2dd4bf; --c-stat:#4cb4ec;
+}
+*{box-sizing:border-box}
+html{background:var(--page)}
+body{margin:0;padding:44px 28px 110px;font-family:Inter,system-ui,sans-serif;font-size:14px;
+  line-height:1.45;color:var(--ink);-webkit-font-smoothing:antialiased}
+svg{display:block}
+a{color:inherit;text-decoration:none}
+.ico{width:16px;height:16px;stroke:currentColor;stroke-width:1.5;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico-14{width:14px;height:14px}.ico-13{width:13px;height:13px}.ico-12{width:12px;height:12px}
+.tab,.n,.sc,.pc,.cl,.of,.pct,.big,.wt,.kv{font-variant-numeric:tabular-nums}
+
+/* ── doc chrome ─────────────────────────────────────────────────────────── */
+.page{max-width:1344px;margin:0 auto}
+.mark{width:26px;height:26px;flex:none}
+.wm{font-size:19px;font-weight:600;letter-spacing:-.035em;color:var(--ink)}
+.wm b{color:var(--red);font-weight:600}
+.lockup{display:flex;align-items:center;gap:9px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:30px}
+.head h1{margin:16px 0 4px;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.head p{margin:0;color:var(--ink-2);max-width:70ch}
+.tog{position:fixed;top:18px;right:18px;z-index:20;display:flex;align-items:center;gap:7px;padding:7px 12px;
+  font:500 12px Inter,sans-serif;color:var(--ink);background:var(--surface);border:1px solid var(--line);
+  border-radius:999px;cursor:pointer;box-shadow:var(--shadow)}
+h2.m{margin:58px 0 6px;font-size:17px;font-weight:600;letter-spacing:-.02em}
+h2.m+p{margin:0 0 20px;color:var(--ink-2);max-width:80ch}
+.cap{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);display:flex;align-items:center}
+.cap .v{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:8px;border-radius:5px;background:var(--today-bg);color:var(--today-fg);font-size:11px;letter-spacing:0}
+.cap .ideal{margin-left:8px;color:var(--ink-3);font-weight:500;letter-spacing:0;text-transform:none;font-size:11.5px}
+.note{margin:11px 0 0;font-size:12.5px;color:var(--ink-3);max-width:110ch}
+.note b{color:var(--ink-2);font-weight:500}
+section{margin-bottom:44px}
+.scroll{overflow-x:auto;padding-bottom:4px}
+.row2{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.rules{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,1fr);gap:10px 28px;max-width:1000px}
+.rules li{padding-left:14px;position:relative;color:var(--ink-2);font-size:13.5px}
+.rules li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--ink-3)}
+.rules li b{color:var(--ink);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em;background:var(--chip);padding:1px 5px;border-radius:4px}
+
+/* ── frames ─────────────────────────────────────────────────────────────── */
+.frame{width:1280px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden;color:var(--ink)}
+.shell{display:flex;min-height:760px;max-height:760px}
+.frame.short .shell{min-height:620px;max-height:620px}
+.frame.tall .shell{min-height:950px;max-height:950px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+
+/* sidebar (verbatim from the shell design) */
+.sb{width:238px;flex:none;background:var(--sunken);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:14px 10px 12px}
+.sb-top{display:flex;align-items:center;justify-content:space-between;padding:2px 6px 16px}
+.sb-top .lockup{gap:8px}.sb-top .mark{width:22px;height:22px}.sb-top .wm{font-size:16px}
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav a{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:8px;color:var(--ink-2);font-weight:500;font-size:13.5px}
+.nav a.on{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.nav a .n{margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-3);background:var(--chip);border-radius:999px;padding:1px 6px}
+.sb-sec{display:flex;align-items:center;justify-content:space-between;padding:22px 8px 7px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.crs{display:flex;align-items:center;gap:9px;height:29px;padding:0 8px;border-radius:8px;color:var(--ink-2);font-size:13px}
+.crs .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.crs .code{margin-left:auto;font-size:11px;color:var(--ink-3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--c,var(--ink-3));flex:none}
+.sb-foot{margin-top:auto}
+.me{display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;border-radius:8px;color:var(--ink-2);font-size:13px;font-weight:500}
+.me .ico{margin-left:auto;color:var(--ink-3)}
+.av{width:22px;height:22px;border-radius:50%;background:var(--chip);border:1px solid var(--line);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--ink-2);flex:none}
+
+/* main column */
+.main{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 20px;border-bottom:1px solid var(--line);flex:none}
+.tb-date{font-size:15px;font-weight:600;letter-spacing:-.015em;display:flex;align-items:center;gap:8px}
+.tb-date .bk{color:var(--ink-3);transform:rotate(180deg)}
+.tb-date .code{font-weight:500;color:var(--ink-3);font-size:13px}
+.sync{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12px;color:var(--ink-3)}
+.tb-r{display:flex;align-items:center;gap:8px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:31px;padding:0 12px;border-radius:8px;border:1px solid var(--line);
+  font-size:12.5px;font-weight:500;color:var(--ink-2);background:var(--surface);white-space:nowrap}
+.btn .ico{width:13px;height:13px}
+.btn.pri{background:var(--today-bg);color:var(--today-fg);border-color:transparent}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-3);padding:0 6px}
+.kbd{font:500 11px Inter,sans-serif;color:var(--ink-3);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.chip{display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:5px;background:var(--chip);font-size:11px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+.chip.ln{background:transparent;border:1px solid var(--line-2)}
+.chip.red{color:var(--red);background:var(--red-bg)}
+.new{width:6px;height:6px;border-radius:50%;background:var(--red);flex:none}
+
+/* letter + percent */
+.grade{display:inline-flex;align-items:baseline;gap:8px}
+.grade .pct{font-size:17px;font-weight:600;letter-spacing:-.02em}
+.grade .let{font-size:12px;font-weight:600;color:var(--ink-2);padding:1px 6px;border:1px solid var(--line-2);border-radius:5px;position:relative;top:-2px}
+.grade.dim .pct,.grade.dim .let{color:var(--ink-3);font-weight:500}
+.cov{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink-2)}
+.cov .tr{width:96px;height:4px;border-radius:2px;background:var(--chip);overflow:hidden;flex:none}
+.cov .tr i{display:block;height:100%;width:var(--f);background:var(--ink-2);border-radius:2px}
+.cov .s{color:var(--ink-3)}
+
+/* ── 1A · index ledger ──────────────────────────────────────────────────── */
+.gx-h,.gx-r{display:grid;grid-template-columns:minmax(0,1fr) 150px 210px 330px;gap:16px;padding:0 20px 0 24px;align-items:center}
+.gx-h{height:34px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.gx-r{height:60px;border-bottom:1px solid var(--line);position:relative;color:var(--ink)}
+.gx-r:hover{background:var(--hover)}
+.gx-r::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 3px 3px 0;background:var(--c)}
+.gx-r .id{display:flex;align-items:center;gap:10px;min-width:0}
+.gx-r .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gx-r .mt{font-size:12px;color:var(--ink-3);margin-top:1px}
+.gx-r .mt .code{color:var(--ink-2);font-weight:500}
+.latest{display:flex;align-items:center;gap:9px;font-size:13px;min-width:0}
+.latest .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.latest .s{color:var(--ink-3);white-space:nowrap}
+.latest .sc{font-weight:500}
+.gx-term{display:flex;align-items:center;gap:8px;height:40px;padding:0 20px 0 24px;margin-top:6px;font-size:12.5px;font-weight:500;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.gx-term .ico{color:var(--ink-3)}.gx-term .ico.open{transform:rotate(90deg)}
+.gx-term .n{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-weight:400}
+.gx-r.past{height:42px;opacity:.85}
+.gx-r.past::before{opacity:.45}
+.gx-r.past .nm{font-weight:400}
+.gx-r.past .fin{font-size:12.5px;color:var(--ink-3)}
+.gx-r.past .fin b{margin-left:6px;font-weight:600;color:var(--ink)}
+.gx-r.past .fin .s{margin-left:8px;color:var(--ink-3)}
+
+/* ── course gradebook ───────────────────────────────────────────────────── */
+.gb{padding:0 20px 24px;overflow:hidden}
+.gb-sum{display:flex;align-items:flex-start;gap:40px;padding:20px 0 18px}
+.gb-sum .lbl{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.big{display:flex;align-items:baseline;gap:10px}
+.big .pct{font-size:32px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.big .let{font-size:14px;font-weight:600;color:var(--ink-2);padding:2px 7px;border:1px solid var(--line-2);border-radius:6px;position:relative;top:-4px}
+.big .arrow{font-size:20px;color:var(--ink-3);font-weight:400;position:relative;top:-2px}
+.big .pct.was{color:var(--ink-3);font-weight:500}
+.gb-sum .meta{font-size:12.5px;color:var(--ink-3);margin-top:7px}
+.gb-sum .meta b{color:var(--ink-2);font-weight:500}
+.gb-sum .cov{margin-top:9px}
+.gt-h,.gg,.ga,.gt-f{display:grid;grid-template-columns:minmax(0,1fr) 150px 120px 72px 96px;gap:14px;align-items:center;padding:0 10px 0 16px}
+.narrow .gt-h,.narrow .gg,.narrow .ga,.narrow .gt-f{grid-template-columns:minmax(0,1fr) 118px 108px 64px 82px;gap:10px}
+.gt-h{height:32px;font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);border-bottom:1px solid var(--line)}
+.r{text-align:right}
+.gg{height:40px;margin-top:12px;border-bottom:1px solid var(--line-2);font-size:13px;font-weight:600}
+.gg .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.gg .nm .chip{font-weight:500}
+.gg .sc,.gg .pc{font-weight:600}
+.gg .sc .of{font-weight:400;color:var(--ink-3)}
+.gg.ng .sc,.gg.ng .pc{color:var(--ink-3);font-weight:500}
+.ga{height:36px;border-bottom:1px solid var(--line);font-size:13px;position:relative}
+.ga .nm .new{position:absolute;left:3px;top:50%;margin-top:-3px}
+.ga:hover{background:var(--hover)}
+.ga .nm{display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ga .nm .t{overflow:hidden;text-overflow:ellipsis}
+.ga .dt{font-size:12.5px;color:var(--ink-3);white-space:nowrap}
+.ga .sc{text-align:right;font-weight:500;white-space:nowrap}
+.ga .sc .of{color:var(--ink-3);font-weight:400}
+.ga .pc{text-align:right}
+.ga .cl{text-align:right;font-size:12.5px;color:var(--ink-3)}
+.ga.ng .sc,.ga.ng .pc{color:var(--ink-3);font-weight:400}
+.ga.ng .dt{color:var(--ink-2)}
+.ga.drop{opacity:.55}
+.ga.drop .sc{text-decoration:line-through;text-decoration-color:var(--ink-3)}
+.ga .st{font-size:11.5px;color:var(--ink-3);font-weight:400}
+.ga .st.red{color:var(--red)}
+.gt-f{height:46px;margin-top:14px;border-top:1px solid var(--ink);font-size:13px;font-weight:600}
+.gt-f .sub{color:var(--ink-3);font-weight:400;font-size:12.5px;margin-left:8px}
+.gt-f .pc{text-align:right}
+.gt-f .let{margin-left:8px;font-size:11.5px;color:var(--ink-2);padding:1px 6px;border:1px solid var(--line-2);border-radius:5px}
+
+/* what-if cells */
+.wi{display:inline-flex;align-items:center;justify-content:flex-end;height:26px;min-width:56px;padding:0 8px;border-radius:6px;
+  background:var(--surface);border:1px solid var(--line-2);font-weight:500;color:var(--ink)}
+.wi.foc{border-color:var(--ink);box-shadow:0 0 0 3px color-mix(in srgb,var(--ink) 8%,transparent)}
+.wi .car{width:1px;height:14px;background:var(--ink);margin-left:1px}
+.ga.ed .nm .t::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ink-2);margin-left:8px;position:relative;top:-2px}
+.ga.ed .was{font-size:11.5px;color:var(--ink-3)}
+.gb.wif .ga.ng .sc{color:var(--ink-3)}
+.gb.wif .ga.ng .sc .hint{font-size:12px;color:var(--ink-3);border-bottom:1px dashed var(--line-2);padding-bottom:1px}
+
+/* composition strip (2B) */
+.comp{display:flex;gap:3px;height:12px;margin:16px 0 8px;border-radius:3px;overflow:hidden}
+.comp i{display:block;height:100%;flex:0 0 var(--w);background:var(--chip);position:relative;border-radius:2px;overflow:hidden}
+.comp i::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--f,0%);background:var(--ink-2)}
+.comp-l{display:flex;gap:22px;font-size:12px;color:var(--ink-3);margin-bottom:4px}
+.comp-l span{white-space:nowrap;display:inline-flex;align-items:center;gap:7px}
+.comp-l span::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--ink-2)}
+.comp-l span.ng::before{background:var(--chip)}
+.comp-l span b{color:var(--ink);font-weight:500}
+.comp-l span em{font-style:normal;color:var(--ink-2)}
+
+/* 2C · weights rail + chronological */
+.two{display:flex;min-height:0;flex:1}
+.rail{width:300px;flex:none;border-right:1px solid var(--line);padding:18px 18px 18px 20px;background:var(--sunken)}
+.rail .lbl{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.kv{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;font-size:13px;align-items:center}
+.kv .k{color:var(--ink);min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:6px 0}
+.kv .k .s{display:block;font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.kv .wt{color:var(--ink-3);text-align:right;font-size:12.5px}
+.kv .v{text-align:right;font-weight:500}
+.kv .v.ng{color:var(--ink-3);font-weight:400}
+.kv .tot{border-top:1px solid var(--line-2);padding-top:8px;margin-top:4px;font-weight:600}
+.kv .tot.wt,.kv .tot.k{font-weight:400;color:var(--ink-3)}
+.rail .tg{margin-top:22px}
+.tg-r{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:13px}
+.tg-r:last-child{border-bottom:1px solid var(--line)}
+.tg-r .l{min-width:30px;font-weight:600;white-space:nowrap}
+.tg-r .c{color:var(--ink-3);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg-r .n{text-align:right;font-weight:500}
+.tg-r.far .n,.tg-r.far .l{color:var(--ink-3);font-weight:400}
+.tg-r.on .l::after{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ink);margin-left:6px;position:relative;top:-2px}
+.chron{flex:1;min-width:0;padding:0 20px 20px;overflow:hidden}
+.ch-day{padding:18px 10px 6px;font-size:11.5px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+.ch-day:first-child{padding-top:14px}
+.chron .ga{grid-template-columns:minmax(0,1fr) 130px 104px 64px 70px}
+.chron .ga .grp{font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+
+/* 1B · split */
+.sl{width:320px;flex:none;border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.sl-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;font-size:15px;font-weight:600;letter-spacing:-.015em}
+.sl-h .s{font-size:12px;font-weight:400;color:var(--ink-3)}
+.sl-r{display:flex;align-items:center;gap:10px;height:52px;padding:0 12px;margin:0 8px;border-radius:8px;position:relative;color:var(--ink)}
+.sl-r.on{background:var(--sunken);box-shadow:inset 0 0 0 1px var(--line)}
+.sl-r .nm{font-weight:500;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sl-r .mt{font-size:11.5px;color:var(--ink-3);margin-top:1px}
+.sl-r .g{margin-left:auto;text-align:right;flex:none}
+.sl-r .g .pct{font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.sl-r .g .l{font-size:11px;color:var(--ink-3);margin-top:1px}
+.sl-r .g .l b{color:var(--ink-2);font-weight:600}
+.sl-sec{padding:18px 20px 6px;font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between}
+.sl .gx-term{margin:12px 0 0;padding:0 20px;border-top:1px solid var(--line)}
+.sl-f{margin-top:auto;padding:12px 20px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-3);display:flex;gap:12px}
+.sl-f .kbd{margin-right:2px}
+.pane{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+
+/* 1C · one page */
+.st{border-bottom:1px solid var(--line)}
+.st-h{display:flex;align-items:center;gap:12px;height:56px;padding:0 20px 0 24px;position:relative;background:var(--surface)}
+.st-h::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:4px;border-radius:0 3px 3px 0;background:var(--c)}
+.st-h .nm{font-size:15px;font-weight:600;letter-spacing:-.015em}
+.st-h .code{font-size:12.5px;color:var(--ink-3);font-weight:500}
+.st-h .grade{margin-left:auto}
+.st-h .cov{margin-left:28px}
+.st-h .ico{color:var(--ink-3)}
+.st-b{padding:0 20px 14px 24px}
+.sg{display:grid;grid-template-columns:18px minmax(0,1fr) 150px 120px 72px 96px;gap:14px;align-items:center;height:36px;padding:0 10px 0 6px;font-size:13px;border-top:1px solid var(--line)}
+.sg .ico{color:var(--ink-3)}.sg .ico.open{transform:rotate(90deg)}
+.sg .nm{display:flex;align-items:center;gap:8px;font-weight:500}
+.sg .sc{text-align:right;font-weight:500}.sg .sc .of{color:var(--ink-3);font-weight:400}
+.sg .pc{text-align:right}
+.sg.ng .sc,.sg.ng .pc{color:var(--ink-3);font-weight:400}
+.sg .dt{font-size:12.5px;color:var(--ink-3)}
+.st-b .ga{grid-template-columns:18px minmax(0,1fr) 150px 120px 72px 96px;padding:0 10px 0 6px;height:34px;border-bottom:0;border-top:1px solid var(--line)}
+.st-b .ga>:first-child{width:18px}
+.st-b .ga .nm .new{left:24px}
+
+/* ── phone ──────────────────────────────────────────────────────────────── */
+.phone{width:390px;height:760px;border:1px solid var(--line);border-radius:28px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;flex:none}
+.stat{display:flex;justify-content:space-between;padding:14px 26px 6px;font-size:12px;font-weight:600}
+.m-tb{display:flex;align-items:center;gap:10px;padding:6px 16px 10px;border-bottom:1px solid var(--line)}
+.m-tb .ttl{font-size:19px;font-weight:600;letter-spacing:-.02em}
+.m-tb .s{font-size:12px;color:var(--ink-3);margin-top:1px}
+.m-tb .r{margin-left:auto}
+.m-tb .bk{color:var(--ink-3);transform:rotate(180deg)}
+.mx{display:flex;align-items:center;gap:12px;height:64px;padding:0 16px 0 18px;border-bottom:1px solid var(--line);position:relative}
+.mx::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 3px 3px 0;background:var(--c)}
+.mx .nm{font-weight:500;font-size:14px}
+.mx .mt{font-size:12px;color:var(--ink-3);margin-top:2px}
+.mx .grade{margin-left:auto}
+.mx .grade .pct{font-size:16px}
+.mx .ico{color:var(--ink-3)}
+.m-term{display:flex;align-items:center;gap:8px;height:44px;padding:0 16px;font-size:12.5px;font-weight:500;color:var(--ink-2);border-bottom:1px solid var(--line)}
+.m-term .ico{color:var(--ink-3)}.m-term .n{margin-left:auto;font-size:11.5px;color:var(--ink-3);font-weight:400}
+.m-sum{padding:16px 16px 12px;display:flex;align-items:flex-end;justify-content:space-between}
+.m-sum .big .pct{font-size:30px}
+.m-gg{display:flex;align-items:center;gap:8px;height:38px;padding:0 16px;margin-top:6px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line-2)}
+.m-gg .r{margin-left:auto;font-weight:600}.m-gg .r .of{font-weight:400;color:var(--ink-3)}
+.m-gg.ng .r{color:var(--ink-3);font-weight:500}
+.m-ga{display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border-bottom:1px solid var(--line);font-size:13.5px;position:relative}
+.m-ga .new{position:absolute;left:5px;top:50%;margin-top:-3px}
+.m-ga .t{min-width:0}
+.m-ga .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m-ga .dt{font-size:12px;color:var(--ink-3);margin-top:1px}
+.m-ga .sc{margin-left:auto;font-weight:500;white-space:nowrap;text-align:right}
+.m-ga .sc .of{color:var(--ink-3);font-weight:400}
+.m-ga .sc .pc{display:block;font-size:11.5px;color:var(--ink-3);font-weight:400;margin-top:1px}
+.m-ga.ng .sc{color:var(--ink-3);font-weight:400}
+.m-ga.drop{opacity:.55}
+.tabs{margin-top:auto;flex:none;display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--line);padding:8px 0 22px;background:var(--surface)}
+.tabs a{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:500;color:var(--ink-3)}
+.tabs a.on{color:var(--ink)}
+.tabs a .ico{width:20px;height:20px}
+
+/* states strip */
+.states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.states .card{padding:0 0 2px}
+.states .ttl{padding:12px 14px 4px;font-size:12px;font-weight:600;color:var(--ink-2)}
+.states .ga{grid-template-columns:minmax(0,1fr) 92px 60px;padding:0 14px;height:40px;border-bottom:0}
+.states .ga .sc{white-space:nowrap}
+.states .d{padding:2px 14px 12px;font-size:12px;color:var(--ink-3);line-height:1.5}
+.states .hd{display:flex;align-items:baseline;gap:10px;padding:2px 14px 8px}
+.states .hd .big .pct{font-size:22px}
+
+/* decisions */
+.dec{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 24px;max-width:1000px}
+.dec .card{padding:14px 16px}
+.dec .q{font-weight:600;font-size:13.5px;margin-bottom:6px;letter-spacing:-.01em}
+.dec p{margin:0;font-size:13px;color:var(--ink-2);line-height:1.5}
+.dec p b{color:var(--ink);font-weight:500}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<clipPath id="l"><rect x="0" y="0" width="32" height="64"/></clipPath>
+<clipPath id="r"><rect x="32" y="0" width="32" height="64"/></clipPath>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.4 5h13.2l2.4 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z"/><path d="M4 17.5h15"/></symbol>
+<symbol id="i-task" viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11"/><path d="m3 5 1.6 1.6L7.4 3.8M3 18.6 4.6 20l2.8-2.8"/></symbol>
+<symbol id="i-grade" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+<symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+<symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4 11 13"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+<symbol id="i-updown" viewBox="0 0 24 24"><path d="m8 9 4-4 4 4M8 15l4 4 4-4"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h10a5 5 0 0 1 0 10h-3"/><path d="M8 5 4 9l4 4"/></symbol>
+<symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6.5L4.5 19a1 1 0 0 0 .9 1.5h13.2a1 1 0 0 0 .9-1.5L14 9.5V3"/><path d="M7.5 15h9"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+</defs></svg>
+
+<template id="tpl-sb">
+  <aside class="sb">
+    <div class="sb-top">
+      <div class="lockup">
+        <svg class="mark" viewBox="0 0 64 64"><g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+          <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+        </g></svg>
+        <span class="wm"><b>wisc</b>ourse</span>
+      </div>
+      <svg class="ico ico-14" style="color:var(--ink-3)"><use href="#i-search"/></svg>
+    </div>
+    <nav class="nav">
+      <a href="#" data-n="Home"><svg class="ico"><use href="#i-home"/></svg>Home<span class="n">7</span></a>
+      <a href="#" data-n="Inbox"><svg class="ico"><use href="#i-inbox"/></svg>Inbox<span class="n">5</span></a>
+      <a href="#" data-n="Courses"><svg class="ico"><use href="#i-book"/></svg>Courses</a>
+      <a href="#" data-n="Tasks"><svg class="ico"><use href="#i-task"/></svg>Tasks</a>
+      <a href="#" data-n="Grades"><svg class="ico"><use href="#i-grade"/></svg>Grades</a>
+      <a href="#" data-n="Calendar"><svg class="ico"><use href="#i-cal"/></svg>Calendar</a>
+    </nav>
+    <div class="sb-sec"><span>Courses</span><span>Fall 2026</span></div>
+    <a href="#" class="crs" style="--c:var(--c-cs)"><span class="dot"></span><span class="t">Operating Systems</span><span class="code">CS 537</span></a>
+    <a href="#" class="crs" style="--c:var(--c-math)"><span class="dot"></span><span class="t">Linear Algebra</span><span class="code">MATH 340</span></a>
+    <a href="#" class="crs" style="--c:var(--c-econ)"><span class="dot"></span><span class="t">Microeconomics</span><span class="code">ECON 101</span></a>
+    <a href="#" class="crs" style="--c:var(--c-stat)"><span class="dot"></span><span class="t">Intro Statistics</span><span class="code">STAT 324</span></a>
+    <div class="sb-foot"><div class="me"><span class="av">SB</span><span class="t">Srinivas B.</span><svg class="ico ico-14"><use href="#i-updown"/></svg></div></div>
+  </aside>
+</template>
+
+<button class="tog" onclick="var h=document.documentElement;h.dataset.t=h.dataset.t==='dark'?'light':'dark'">
+  <svg class="ico ico-14" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5"/></svg>
+  Light / dark
+</button>
+
+<div class="page">
+<header class="head">
+  <div>
+    <div class="lockup">
+      <svg class="mark" viewBox="0 0 64 64" aria-label="wiscourse"><g fill="none" stroke-width="7.475" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="var(--red)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#l)"/>
+        <path stroke="var(--brand-ink)" d="M6.7 17.05 19.35 46.95 32 17.05 44.65 46.95 57.3 17.05" clip-path="url(#r)"/>
+      </g></svg>
+      <span class="wm"><b>wisc</b>ourse</span>
+    </div>
+    <h1>Grades</h1>
+    <p>Canvas answers "how am I doing?" with a page per course, a hidden weights table and a what-if that forgets itself.
+       This page answers it once for the term, then lets you drill into the arithmetic. Letters A/B/C are alternatives to
+       choose between; the index and the course table mix freely. Same tokens and shell as <code>design.html</code>.</p>
+  </div>
+</header>
+
+<h2 class="m" style="margin-top:0">0 · What the page has to do</h2>
+<p>Rules from <code>docs/overview.html</code> and the schema, restated as design constraints.</p>
+<ul class="rules">
+  <li><b>Canvas's number is the truth.</b> The current score and letter shown are <code>courses.currentScore / currentGrade</code>. Nothing is recomputed locally except hypotheticals.</li>
+  <li><b>Unposted is invisible.</b> A submission without <code>postedAt</code> reads as ungraded, even if Canvas already holds a score. The query enforces this; the UI never sees the number.</li>
+  <li><b>Hidden totals stay hidden.</b> When <code>hideFinalGrades</code> is set, list the posted scores but show no total, and no home-brewed estimate either.</li>
+  <li><b>Weighted or points.</b> <code>applyAssignmentGroupWeights</code> decides whether groups carry a percent. Points-only courses still section by group.</li>
+  <li><b>Group rules are visible.</b> Drop-lowest / drop-highest / never-drop and <code>omitFromFinalGrade</code> are shown on the rows they affect, not buried in a tooltip.</li>
+  <li><b>What-if is local and reversible.</b> Edits live in the browser, are marked, survive reload, and reset in one click. Canvas is never written.</li>
+  <li><b>"How much is decided?"</b> The share of the grade that has been graded is shown next to every total, because a 97% built on 20% of the course is a different fact from a 97% built on 80%.</li>
+  <li><b>Class context when Canvas gives it.</b> <code>scoreStatistics.median</code> appears as a quiet column; absent, the column is empty, not "—".</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">1 · Grades index</h2>
+<p>What <code>/grades</code> shows. Four courses is the common case, so the page should read in one glance and not make
+   the reader click to learn a number they already know is there.</p>
+
+<section>
+  <p class="cap"><span class="v">A</span>Term ledger<span class="ideal">one row per course · current grade · how much of it is in · the latest posting · past terms fold to a final letter</span></p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date">Grades</div><div class="sync">Fall 2026 · 4 courses · synced 2 min ago</div></div>
+        <div class="tb-r"><span class="btn ghost">Fall 2026<svg class="ico ico-12"><use href="#i-down"/></svg></span></div>
+      </div>
+      <div class="gx-h"><span>Course</span><span>Current</span><span>Graded so far</span><span>Latest posted</span></div>
+      <a href="#" class="gx-r" style="--c:var(--c-cs)">
+        <div class="id"><div style="min-width:0"><div class="nm">Operating Systems</div><div class="mt"><span class="code">CS 537</span> · weighted · 4 groups</div></div></div>
+        <div class="grade"><span class="pct">92.7%</span><span class="let">AB</span></div>
+        <div class="cov"><span class="tr"><i style="--f:65%"></i></span>65% of grade</div>
+        <div class="latest"><span class="new"></span><span class="t">Homework 3: Virtual Memory</span><span class="sc">19 / 20</span><span class="s">· today</span></div>
+      </a>
+      <a href="#" class="gx-r" style="--c:var(--c-math)">
+        <div class="id"><div style="min-width:0"><div class="nm">Linear Algebra</div><div class="mt"><span class="code">MATH 340</span> · weighted · 4 groups</div></div></div>
+        <div class="grade"><span class="pct">97.5%</span><span class="let">A</span></div>
+        <div class="cov"><span class="tr"><i style="--f:20%"></i></span>20% of grade</div>
+        <div class="latest"><span class="t">Homework 2</span><span class="sc">9.5 / 10</span><span class="s">· Mon Sep 7</span></div>
+      </a>
+      <a href="#" class="gx-r" style="--c:var(--c-econ)">
+        <div class="id"><div style="min-width:0"><div class="nm">Microeconomics</div><div class="mt"><span class="code">ECON 101</span> · points · 460 possible</div></div></div>
+        <div class="grade"><span class="pct">86.7%</span><span class="let">B</span></div>
+        <div class="cov"><span class="tr"><i style="--f:20%"></i></span>90 of 460 pts</div>
+        <div class="latest"><span class="new"></span><span class="t">Quiz 2</span><span class="sc">15 / 20</span><span class="s">· Tue Sep 8</span></div>
+      </a>
+      <a href="#" class="gx-r" style="--c:var(--c-stat)">
+        <div class="id"><div style="min-width:0"><div class="nm">Intro Statistics</div><div class="mt"><span class="code">STAT 324</span> · weighted · 5 groups</div></div></div>
+        <div class="grade"><span class="pct">96.6%</span><span class="let">A</span></div>
+        <div class="cov"><span class="tr"><i style="--f:40%"></i></span>40% of grade</div>
+        <div class="latest"><span class="t">Lab 2: Sampling</span><span class="sc">9 / 10</span><span class="s">· Wed Sep 9</span></div>
+      </a>
+      <div class="gx-term"><svg class="ico ico-13 open"><use href="#i-chev"/></svg>Spring 2026<span class="n">4 courses</span></div>
+      <a href="#" class="gx-r past" style="--c:var(--c-cs)"><div class="id"><div class="nm">Intro to Algorithms</div><div class="mt" style="margin:0 0 0 10px"><span class="code">CS 577</span></div></div><div class="fin">Final<b>A</b><span class="s">94.1%</span></div><div></div><div></div></a>
+      <a href="#" class="gx-r past" style="--c:var(--c-math)"><div class="id"><div class="nm">Calculus III</div><div class="mt" style="margin:0 0 0 10px"><span class="code">MATH 234</span></div></div><div class="fin">Final<b>AB</b><span class="s">90.3%</span></div><div></div><div></div></a>
+      <a href="#" class="gx-r past" style="--c:var(--c-stat)"><div class="id"><div class="nm">Data Structures</div><div class="mt" style="margin:0 0 0 10px"><span class="code">CS 400</span></div></div><div class="fin">Final<b>A</b><span class="s">96.8%</span></div><div></div><div></div></a>
+      <a href="#" class="gx-r past" style="--c:var(--c-econ)"><div class="id"><div class="nm">Intro Psychology</div><div class="mt" style="margin:0 0 0 10px"><span class="code">PSYCH 202</span></div></div><div class="fin">Final<b>A</b><span class="s">95.0%</span></div><div></div><div></div></a>
+      <div class="gx-term"><svg class="ico ico-13"><use href="#i-chev"/></svg>Fall 2025<span class="n">5 courses</span></div>
+    </div>
+  </div></div></div>
+  <p class="note">Same skeleton as the Courses index, so the two pages feel like one list read two ways. <b>Graded so far</b> is the
+     sum of graded groups' weights (or graded points over possible points in a points course). The red dot on "Latest posted" is
+     the Inbox's unseen state, not a new colour. Past terms show Canvas's final letter and score only; no coverage, no latest.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">B</span>Split: course list + gradebook<span class="ideal">no drill-down · j/k moves between courses · the table on the right is 2A</span></p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main"><div class="two">
+      <div class="sl">
+        <div class="sl-h"><span>Grades</span><span class="s">synced 2 min ago</span></div>
+        <div class="sl-sec"><span>Fall 2026</span><span>4 courses</span></div>
+        <a href="#" class="sl-r on" style="--c:var(--c-cs)"><span class="dot"></span><div style="min-width:0"><div class="nm">Operating Systems</div><div class="mt">CS 537 · 65% graded</div></div><div class="g"><div class="pct">92.7%</div><div class="l"><b>AB</b></div></div></a>
+        <a href="#" class="sl-r" style="--c:var(--c-math)"><span class="dot"></span><div style="min-width:0"><div class="nm">Linear Algebra</div><div class="mt">MATH 340 · 20% graded</div></div><div class="g"><div class="pct">97.5%</div><div class="l"><b>A</b></div></div></a>
+        <a href="#" class="sl-r" style="--c:var(--c-econ)"><span class="dot"></span><div style="min-width:0"><div class="nm">Microeconomics</div><div class="mt">ECON 101 · 90 of 460 pts</div></div><div class="g"><div class="pct">86.7%</div><div class="l"><b>B</b></div></div></a>
+        <a href="#" class="sl-r" style="--c:var(--c-stat)"><span class="dot"></span><div style="min-width:0"><div class="nm">Intro Statistics</div><div class="mt">STAT 324 · 40% graded</div></div><div class="g"><div class="pct">96.6%</div><div class="l"><b>A</b></div></div></a>
+        <div class="gx-term"><svg class="ico ico-13"><use href="#i-chev"/></svg>Spring 2026<span class="n">4</span></div>
+        <div class="gx-term" style="margin-top:0;border-top:0"><svg class="ico ico-13"><use href="#i-chev"/></svg>Fall 2025<span class="n">5</span></div>
+        <div class="sl-f"><span><span class="kbd">j</span><span class="kbd">k</span> course</span><span><span class="kbd">w</span> what-if</span></div>
+      </div>
+      <div class="pane">
+        <div class="topbar">
+          <div><div class="tb-date">Operating Systems <span class="code">CS 537</span></div><div class="sync">Weighted · Arpaci-Dusseau · grades posted manually</div></div>
+          <div class="tb-r"><span class="btn"><svg class="ico"><use href="#i-flask"/></svg>What-if</span><span class="btn ghost"><svg class="ico"><use href="#i-ext"/></svg>Canvas</span></div>
+        </div>
+        <div class="gb narrow">
+          <div class="gb-sum">
+            <div><div class="lbl">Current</div><div class="big"><span class="pct">92.7%</span><span class="let">AB</span></div><div class="meta">Exams (35%) not yet graded · weights rescaled</div></div>
+            <div><div class="lbl">Graded so far</div><div class="cov" style="margin-top:2px"><span class="tr" style="width:140px"><i style="--f:65%"></i></span>65% of the grade</div><div class="meta">670 pts still to come</div></div>
+          </div>
+          <div class="gt-h"><span>Assignment</span><span>Due</span><span class="r">Score</span><span class="r">%</span><span class="r">Median</span></div>
+          <div class="gg"><div class="nm">Projects<span class="chip">50%</span></div><span></span><span class="sc r">182<span class="of"> / 200</span></span><span class="pc r">91.0%</span><span></span></div>
+          <div class="ga"><div class="nm"><span class="t">Project 1: Shell</span></div><span class="dt">Fri Aug 28</span><span class="sc">94<span class="of"> / 100</span></span><span class="pc">94.0%</span><span class="cl">89</span></div>
+          <div class="ga"><div class="nm"><span class="new"></span><span class="t">Project 2: Multithreaded Web Server</span></div><span class="dt">Fri Sep 4</span><span class="sc">88<span class="of"> / 100</span></span><span class="pc">88.0%</span><span class="cl">84</span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="dt">Fri Sep 25</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Project 4: Memory Allocator</span></div><span class="dt">Fri Oct 16</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="gg ng"><div class="nm">Exams<span class="chip">35%</span></div><span></span><span class="sc r">not yet graded</span><span class="pc r"></span><span></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Midterm 1</span></div><span class="dt">Thu Oct 8</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Final Exam</span></div><span class="dt">Sat Dec 19</span><span class="sc">—<span class="of"> / 150</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="gg"><div class="nm">Homework<span class="chip">10%</span><span class="chip ln">drops lowest 1</span></div><span></span><span class="sc r">39<span class="of"> / 40</span></span><span class="pc r">97.5%</span><span></span></div>
+          <div class="ga"><div class="nm"><span class="t">Homework 1: Processes</span></div><span class="dt">Wed Aug 26</span><span class="sc">20<span class="of"> / 20</span></span><span class="pc">100%</span><span class="cl">18</span></div>
+          <div class="ga drop"><div class="nm"><span class="t">Homework 2: Scheduling</span><span class="st">dropped</span></div><span class="dt">Wed Sep 2</span><span class="sc">17<span class="of"> / 20</span></span><span class="pc">85.0%</span><span class="cl">16</span></div>
+          <div class="ga"><div class="nm"><span class="new"></span><span class="t">Homework 3: Virtual Memory</span></div><span class="dt">Wed Sep 9</span><span class="sc">19<span class="of"> / 20</span></span><span class="pc">95.0%</span><span class="cl">17</span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Homework 4: Paging</span></div><span class="dt">Wed Sep 16</span><span class="sc">—<span class="of"> / 20</span></span><span class="pc"></span><span class="cl"></span></div>
+        </div>
+      </div>
+    </div></div>
+  </div></div></div>
+  <p class="note">Everything on one screen; the list doubles as the term summary. The cost is width: the table loses ~300px, so the
+     assignment column truncates sooner and the class-median column is the first to go on a laptop. The keyboard footer is the
+     same convention as Inbox B.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">C</span>One page, every course<span class="ideal">no navigation at all · course headers stick · groups open in place · the term reads like a statement</span></p>
+  <div class="scroll"><div class="frame"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date">Grades</div><div class="sync">Fall 2026 · 4 courses · synced 2 min ago</div></div>
+        <div class="tb-r"><span class="btn"><svg class="ico"><use href="#i-flask"/></svg>What-if</span><span class="btn ghost">Collapse all</span></div>
+      </div>
+      <div class="st">
+        <div class="st-h" style="--c:var(--c-cs)"><span class="nm">Operating Systems</span><span class="code">CS 537</span><div class="grade"><span class="pct">92.7%</span><span class="let">AB</span></div><div class="cov"><span class="tr"><i style="--f:65%"></i></span><span class="s">65% graded</span></div></div>
+        <div class="st-b">
+          <div class="sg"><svg class="ico ico-13 open"><use href="#i-chev"/></svg><div class="nm">Projects<span class="chip">50%</span></div><span></span><span class="sc">182<span class="of"> / 200</span></span><span class="pc">91.0%</span><span></span></div>
+          <div class="ga"><span></span><div class="nm"><span class="t">Project 1: Shell</span></div><span class="dt">Fri Aug 28</span><span class="sc">94<span class="of"> / 100</span></span><span class="pc">94.0%</span><span class="cl">89</span></div>
+          <div class="ga"><span></span><div class="nm"><span class="new"></span><span class="t">Project 2: Multithreaded Web Server</span></div><span class="dt">Fri Sep 4</span><span class="sc">88<span class="of"> / 100</span></span><span class="pc">88.0%</span><span class="cl">84</span></div>
+          <div class="ga ng"><span></span><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="dt">Fri Sep 25</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><span></span><div class="nm"><span class="t">Project 4: Memory Allocator</span></div><span class="dt">Fri Oct 16</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><span></span><div class="nm"><span class="t">Project 5: File System Checker</span></div><span class="dt">Fri Nov 13</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="sg ng"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Exams<span class="chip">35%</span></div><span class="dt">first: Thu Oct 8</span><span class="sc">not yet graded</span><span class="pc"></span><span></span></div>
+          <div class="sg"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Homework<span class="chip">10%</span><span class="chip ln">drops lowest 1</span></div><span class="dt">3 of 8 graded</span><span class="sc">39<span class="of"> / 40</span></span><span class="pc">97.5%</span><span></span></div>
+          <div class="sg"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Participation<span class="chip">5%</span></div><span class="dt">1 of 5 graded</span><span class="sc">5<span class="of"> / 5</span></span><span class="pc">100%</span><span></span></div>
+        </div>
+      </div>
+      <div class="st">
+        <div class="st-h" style="--c:var(--c-math)"><span class="nm">Linear Algebra</span><span class="code">MATH 340</span><div class="grade"><span class="pct">97.5%</span><span class="let">A</span></div><div class="cov"><span class="tr"><i style="--f:20%"></i></span><span class="s">20% graded</span></div></div>
+        <div class="st-b">
+          <div class="sg"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Homework<span class="chip">20%</span></div><span class="dt">2 graded · 1 awaiting</span><span class="sc">19.5<span class="of"> / 20</span></span><span class="pc">97.5%</span><span></span></div>
+          <div class="sg ng"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Midterm 1<span class="chip">25%</span></div><span class="dt">Thu Sep 24</span><span class="sc">not yet graded</span><span class="pc"></span><span></span></div>
+          <div class="sg ng"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Midterm 2<span class="chip">25%</span></div><span class="dt">Thu Nov 5</span><span class="sc">not yet graded</span><span class="pc"></span><span></span></div>
+          <div class="sg ng"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Final<span class="chip">30%</span></div><span class="dt">Fri Dec 18</span><span class="sc">not yet graded</span><span class="pc"></span><span></span></div>
+        </div>
+      </div>
+      <div class="st">
+        <div class="st-h" style="--c:var(--c-econ)"><span class="nm">Microeconomics</span><span class="code">ECON 101</span><div class="grade"><span class="pct">86.7%</span><span class="let">B</span></div><div class="cov"><span class="tr"><i style="--f:20%"></i></span><span class="s">90 of 460 pts</span></div></div>
+        <div class="st-b">
+          <div class="sg"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Problem Sets</div><span class="dt">2 of 4 graded</span><span class="sc">45<span class="of"> / 50</span></span><span class="pc">90.0%</span><span></span></div>
+          <div class="sg"><svg class="ico ico-13"><use href="#i-chev"/></svg><div class="nm">Quizzes</div><span class="dt">2 of 4 graded</span><span class="sc">33<span class="of"> / 40</span></span><span class="pc">82.5%</span><span></span></div>
+        </div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">Group rows are the unit; a group opens to its assignments, and the open state is remembered per group. Course headers
+     are sticky so the number you are scrolling under is always visible. This is the fastest to read and the slowest to scan
+     for one assignment; ⌘K covers that. Points courses (ECON) drop the weight chip and nothing else changes.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">2 · Course gradebook</h2>
+<p>The drill-down from 1A, the right pane in 1B, or the Grades tab inside the course hub. The table is the same in all three
+   variants; they differ in what sits above it and beside it.</p>
+
+<section>
+  <p class="cap"><span class="v">A</span>Sectioned table<span class="ideal">groups are section rows with weight and subtotal · one column set · nothing above the table but the number</span></p>
+  <div class="scroll"><div class="frame tall"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date"><svg class="ico ico-14 bk"><use href="#i-chev"/></svg>Operating Systems <span class="code">CS 537</span></div><div class="sync">Weighted · Arpaci-Dusseau · grades posted manually · synced 2 min ago</div></div>
+        <div class="tb-r"><span class="btn"><svg class="ico"><use href="#i-flask"/></svg>What-if<span class="kbd" style="margin-left:2px">W</span></span><span class="btn ghost"><svg class="ico"><use href="#i-ext"/></svg>Canvas</span></div>
+      </div>
+      <div class="gb">
+        <div class="gb-sum">
+          <div><div class="lbl">Current</div><div class="big"><span class="pct">92.7%</span><span class="let">AB</span></div><div class="meta">Exams (35%) not yet graded · weights rescaled across the rest</div></div>
+          <div><div class="lbl">Graded so far</div><div class="cov" style="margin-top:2px"><span class="tr" style="width:160px"><i style="--f:65%"></i></span>65% of the grade</div><div class="meta">670 pts still to come · <b>93.4%</b> on them keeps an A</div></div>
+          <div><div class="lbl">Latest</div><div style="font-size:13.5px;font-weight:500;margin-top:2px;display:flex;align-items:center;gap:8px"><span class="new"></span>Homework 3: Virtual Memory <span style="color:var(--ink-3);font-weight:400">19 / 20</span></div><div class="meta">posted today, 8:12 AM</div></div>
+        </div>
+        <div class="gt-h"><span>Assignment</span><span>Due</span><span class="r">Score</span><span class="r">%</span><span class="r">Class median</span></div>
+        <div class="gg"><div class="nm">Projects<span class="chip">50%</span></div><span></span><span class="sc r">182<span class="of"> / 200</span></span><span class="pc r">91.0%</span><span></span></div>
+        <div class="ga"><div class="nm"><span class="t">Project 1: Shell</span></div><span class="dt">Fri Aug 28</span><span class="sc">94<span class="of"> / 100</span></span><span class="pc">94.0%</span><span class="cl">89</span></div>
+        <div class="ga"><div class="nm"><span class="new"></span><span class="t">Project 2: Multithreaded Web Server</span></div><span class="dt">Fri Sep 4</span><span class="sc">88<span class="of"> / 100</span></span><span class="pc">88.0%</span><span class="cl">84</span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="dt">Fri Sep 25</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 4: Memory Allocator</span></div><span class="dt">Fri Oct 16</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 5: File System Checker</span></div><span class="dt">Fri Nov 13</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="gg ng"><div class="nm">Exams<span class="chip">35%</span></div><span></span><span class="sc r">not yet graded</span><span class="pc r"></span><span></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Midterm 1</span></div><span class="dt">Thu Oct 8</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Final Exam</span></div><span class="dt">Sat Dec 19</span><span class="sc">—<span class="of"> / 150</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="gg"><div class="nm">Homework<span class="chip">10%</span><span class="chip ln">drops lowest 1</span></div><span></span><span class="sc r">39<span class="of"> / 40</span></span><span class="pc r">97.5%</span><span></span></div>
+        <div class="ga"><div class="nm"><span class="t">Homework 1: Processes</span></div><span class="dt">Wed Aug 26</span><span class="sc">20<span class="of"> / 20</span></span><span class="pc">100%</span><span class="cl">18</span></div>
+        <div class="ga drop"><div class="nm"><span class="t">Homework 2: Scheduling</span><span class="st">dropped</span></div><span class="dt">Wed Sep 2</span><span class="sc">17<span class="of"> / 20</span></span><span class="pc">85.0%</span><span class="cl">16</span></div>
+        <div class="ga"><div class="nm"><span class="new"></span><span class="t">Homework 3: Virtual Memory</span></div><span class="dt">Wed Sep 9</span><span class="sc">19<span class="of"> / 20</span></span><span class="pc">95.0%</span><span class="cl">17</span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Homework 4: Paging</span></div><span class="dt">Wed Sep 16</span><span class="sc">—<span class="of"> / 20</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="gg"><div class="nm">Participation<span class="chip">5%</span></div><span></span><span class="sc r">5<span class="of"> / 5</span></span><span class="pc r">100%</span><span></span></div>
+        <div class="ga"><div class="nm"><span class="t">Discussion 1: Introductions</span></div><span class="dt">Fri Aug 28</span><span class="sc">5<span class="of"> / 5</span></span><span class="pc">100%</span><span class="cl">5</span></div>
+        <div class="gt-f"><div>Current<span class="sub">Canvas · graded groups only</span></div><span></span><span></span><span class="pc">92.7%<span class="let">AB</span></span><span></span></div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">The summary strip is three facts, not a dashboard: the number, how much of it is settled, and what just changed.
+     Ungraded rows keep their "/ 100" so the size of what's left is visible without a separate column. The footer repeats the
+     Canvas total so the table ends where the arithmetic ends.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">B</span>Composition strip<span class="ideal">the weights drawn once, to scale · filled to the share of each group that is graded · then the same table</span></p>
+  <div class="scroll"><div class="frame short"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date"><svg class="ico ico-14 bk"><use href="#i-chev"/></svg>Operating Systems <span class="code">CS 537</span></div><div class="sync">Weighted · Arpaci-Dusseau · grades posted manually · synced 2 min ago</div></div>
+        <div class="tb-r"><span class="btn"><svg class="ico"><use href="#i-flask"/></svg>What-if</span><span class="btn ghost"><svg class="ico"><use href="#i-ext"/></svg>Canvas</span></div>
+      </div>
+      <div class="gb">
+        <div class="gb-sum" style="padding-bottom:0">
+          <div><div class="lbl">Current</div><div class="big"><span class="pct">92.7%</span><span class="let">AB</span></div></div>
+          <div style="flex:1;min-width:0">
+            <div class="lbl">How the grade is built <span style="font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink-3)">· 65% graded so far</span></div>
+            <div class="comp" style="margin-top:8px">
+              <i style="--w:50%;--f:40%"></i><i style="--w:35%;--f:0%"></i><i style="--w:10%;--f:37.5%"></i><i style="--w:5%;--f:20%"></i>
+            </div>
+            <div class="comp-l">
+              <span><b>Projects</b> 50% · <em>91.0%</em></span>
+              <span class="ng"><b>Exams</b> 35% · not yet graded</span>
+              <span><b>Homework</b> 10% · <em>97.5%</em></span>
+              <span><b>Participation</b> 5% · <em>100%</em></span>
+            </div>
+          </div>
+        </div>
+        <div style="height:18px"></div>
+        <div class="gt-h"><span>Assignment</span><span>Due</span><span class="r">Score</span><span class="r">%</span><span class="r">Class median</span></div>
+        <div class="gg"><div class="nm">Projects<span class="chip">50%</span></div><span></span><span class="sc r">182<span class="of"> / 200</span></span><span class="pc r">91.0%</span><span></span></div>
+        <div class="ga"><div class="nm"><span class="t">Project 1: Shell</span></div><span class="dt">Fri Aug 28</span><span class="sc">94<span class="of"> / 100</span></span><span class="pc">94.0%</span><span class="cl">89</span></div>
+        <div class="ga"><div class="nm"><span class="new"></span><span class="t">Project 2: Multithreaded Web Server</span></div><span class="dt">Fri Sep 4</span><span class="sc">88<span class="of"> / 100</span></span><span class="pc">88.0%</span><span class="cl">84</span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="dt">Fri Sep 25</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 4: Memory Allocator</span></div><span class="dt">Fri Oct 16</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Project 5: File System Checker</span></div><span class="dt">Fri Nov 13</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="gg ng"><div class="nm">Exams<span class="chip">35%</span></div><span></span><span class="sc r">not yet graded</span><span class="pc r"></span><span></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Midterm 1</span></div><span class="dt">Thu Oct 8</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        <div class="ga ng"><div class="nm"><span class="t">Final Exam</span></div><span class="dt">Sat Dec 19</span><span class="sc">—<span class="of"> / 150</span></span><span class="pc"></span><span class="cl"></span></div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">The strip is proportional by weight and filled by <em>points graded ÷ points possible</em> inside the group, so an
+     empty Exams block says "35% of this grade is still entirely open" without a sentence. Ink only, no course colour: the
+     rail already carries that. If the course is points-based the strip is by points possible per group instead.</p>
+</section>
+
+<section>
+  <p class="cap"><span class="v">C</span>Weights rail + chronological<span class="ideal">the arithmetic in a side column · assignments in the order they were graded · targets live in the rail</span></p>
+  <div class="scroll"><div class="frame short"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date"><svg class="ico ico-14 bk"><use href="#i-chev"/></svg>Operating Systems <span class="code">CS 537</span></div><div class="sync">Weighted · Arpaci-Dusseau · grades posted manually · synced 2 min ago</div></div>
+        <div class="tb-r"><span class="btn"><svg class="ico"><use href="#i-flask"/></svg>What-if</span><span class="btn ghost"><svg class="ico"><use href="#i-ext"/></svg>Canvas</span></div>
+      </div>
+      <div class="two">
+        <div class="rail">
+          <div class="big" style="margin-bottom:16px"><span class="pct">92.7%</span><span class="let">AB</span></div>
+          <p class="lbl">Weights</p>
+          <div class="kv">
+            <span class="k">Projects<span class="s">2 of 5 graded</span></span><span class="wt">50%</span><span class="v">91.0%</span>
+            <span class="k">Exams<span class="s">first Thu Oct 8</span></span><span class="wt">35%</span><span class="v ng">—</span>
+            <span class="k">Homework<span class="s">drops lowest 1 · 3 of 8</span></span><span class="wt">10%</span><span class="v">97.5%</span>
+            <span class="k">Participation<span class="s">1 of 5</span></span><span class="wt">5%</span><span class="v">100%</span>
+            <span class="k tot">Graded so far</span><span class="wt tot">65%</span><span class="v tot">92.7%</span>
+          </div>
+          <div class="tg">
+            <p class="lbl">To finish with</p>
+            <div class="tg-r"><span class="l">A</span><span class="c">≥ 93% · 670 pts left</span><span class="n">93.4%</span></div>
+            <div class="tg-r on"><span class="l">AB</span><span class="c">≥ 88%</span><span class="n">86.8%</span></div>
+            <div class="tg-r far"><span class="l">B</span><span class="c">≥ 83%</span><span class="n">80.1%</span></div>
+          </div>
+        </div>
+        <div class="chron">
+          <div class="ch-day">Today · Thu Sep 10</div>
+          <div class="ga"><div class="nm"><span class="new"></span><span class="t">Homework 3: Virtual Memory</span></div><span class="grp">Homework</span><span class="sc">19<span class="of"> / 20</span></span><span class="pc">95.0%</span><span class="cl">med 17</span></div>
+          <div class="ch-day">Tue Sep 8</div>
+          <div class="ga"><div class="nm"><span class="new"></span><span class="t">Project 2: Multithreaded Web Server</span></div><span class="grp">Projects</span><span class="sc">88<span class="of"> / 100</span></span><span class="pc">88.0%</span><span class="cl">med 84</span></div>
+          <div class="ch-day">Fri Sep 4</div>
+          <div class="ga drop"><div class="nm"><span class="t">Homework 2: Scheduling</span><span class="st">dropped</span></div><span class="grp">Homework</span><span class="sc">17<span class="of"> / 20</span></span><span class="pc">85.0%</span><span class="cl">med 16</span></div>
+          <div class="ch-day">Mon Aug 31</div>
+          <div class="ga"><div class="nm"><span class="t">Project 1: Shell</span></div><span class="grp">Projects</span><span class="sc">94<span class="of"> / 100</span></span><span class="pc">94.0%</span><span class="cl">med 89</span></div>
+          <div class="ga"><div class="nm"><span class="t">Homework 1: Processes</span></div><span class="grp">Homework</span><span class="sc">20<span class="of"> / 20</span></span><span class="pc">100%</span><span class="cl">med 18</span></div>
+          <div class="ga"><div class="nm"><span class="t">Discussion 1: Introductions</span></div><span class="grp">Participation</span><span class="sc">5<span class="of"> / 5</span></span><span class="pc">100%</span><span class="cl">med 5</span></div>
+          <div class="ch-day" style="color:var(--ink-2)">Not yet graded</div>
+          <div class="ga ng"><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="grp">Projects · due Fri Sep 25</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Homework 4: Paging</span></div><span class="grp">Homework · due Wed Sep 16</span><span class="sc">—<span class="of"> / 20</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Midterm 1</span></div><span class="grp">Exams · Thu Oct 8</span><span class="sc">—<span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+        </div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">Grouped by <em>posted</em> date, newest first, so the page mirrors Inbox: what just landed is at the top. The rail is the
+     whole weighting model in twelve lines, and it is also where targets belong. Best for a student who checks after every
+     posting; worst for "what is my homework average", which 2A answers in one row.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">3 · What-if</h2>
+<p>Type a score into any row and the totals move. Two edits are shown: a hypothetical 95 on Project 3 and 94 on Midterm 1.
+   Edited rows carry a dot; the original Canvas value is kept in the row so nothing has to be remembered.</p>
+
+<section>
+  <p class="cap"><span class="v">A</span>Inline edits, targets in a rail<span class="ideal">mode toggle in the topbar · every score cell becomes a field · header shows before → after · one Reset</span></p>
+  <div class="scroll"><div class="frame tall"><div class="shell">
+    <div data-sb="Grades"></div>
+    <div class="main">
+      <div class="topbar">
+        <div><div class="tb-date"><svg class="ico ico-14 bk"><use href="#i-chev"/></svg>Operating Systems <span class="code">CS 537</span></div><div class="sync">What-if · 2 edits · saved in this browser only</div></div>
+        <div class="tb-r"><span class="btn ghost"><svg class="ico"><use href="#i-undo"/></svg>Reset</span><span class="btn pri"><svg class="ico"><use href="#i-flask"/></svg>Done</span></div>
+      </div>
+      <div class="two">
+        <div class="gb wif narrow" style="flex:1;min-width:0">
+          <div class="gb-sum">
+            <div><div class="lbl">Current → what-if</div><div class="big"><span class="pct was">92.7%</span><span class="arrow">→</span><span class="pct">93.8%</span><span class="let">A</span></div><div class="meta">Exams now has a score, so all four weights apply</div></div>
+            <div><div class="lbl">Graded so far</div><div class="cov" style="margin-top:2px"><span class="tr" style="width:140px"><i style="--f:65%"></i></span>65% of the grade</div><div class="meta">+25% from your edits · 470 pts still open</div></div>
+          </div>
+          <div class="gt-h"><span>Assignment</span><span>Due</span><span class="r">Score</span><span class="r">%</span><span class="r">Median</span></div>
+          <div class="gg"><div class="nm">Projects<span class="chip">50%</span></div><span></span><span class="sc r">277<span class="of"> / 300</span></span><span class="pc r">92.3%</span><span></span></div>
+          <div class="ga"><div class="nm"><span class="t">Project 1: Shell</span></div><span class="dt">Fri Aug 28</span><span class="sc"><span class="wi">94</span></span><span class="pc">94.0%</span><span class="cl">89</span></div>
+          <div class="ga"><div class="nm"><span class="t">Project 2: Multithreaded Web Server</span></div><span class="dt">Fri Sep 4</span><span class="sc"><span class="wi">88</span></span><span class="pc">88.0%</span><span class="cl">84</span></div>
+          <div class="ga ed"><div class="nm"><span class="t">Project 3: xv6 Scheduler</span></div><span class="dt">Fri Sep 25</span><span class="sc"><span class="wi foc">95<span class="car"></span></span></span><span class="pc">95.0%</span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Project 4: Memory Allocator</span></div><span class="dt">Fri Oct 16</span><span class="sc"><span class="hint">try a score</span><span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Project 5: File System Checker</span></div><span class="dt">Fri Nov 13</span><span class="sc"><span class="hint">try a score</span><span class="of"> / 100</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="gg"><div class="nm">Exams<span class="chip">35%</span></div><span></span><span class="sc r">94<span class="of"> / 100</span></span><span class="pc r">94.0%</span><span></span></div>
+          <div class="ga ed"><div class="nm"><span class="t">Midterm 1</span></div><span class="dt">Thu Oct 8</span><span class="sc"><span class="wi">94</span></span><span class="pc">94.0%</span><span class="cl"></span></div>
+          <div class="ga ng"><div class="nm"><span class="t">Final Exam</span></div><span class="dt">Sat Dec 19</span><span class="sc"><span class="hint">try a score</span><span class="of"> / 150</span></span><span class="pc"></span><span class="cl"></span></div>
+          <div class="gg"><div class="nm">Homework<span class="chip">10%</span><span class="chip ln">drops lowest 1</span></div><span></span><span class="sc r">39<span class="of"> / 40</span></span><span class="pc r">97.5%</span><span></span></div>
+          <div class="ga"><div class="nm"><span class="t">Homework 1: Processes</span></div><span class="dt">Wed Aug 26</span><span class="sc"><span class="wi">20</span></span><span class="pc">100%</span><span class="cl">18</span></div>
+          <div class="ga drop"><div class="nm"><span class="t">Homework 2: Scheduling</span><span class="st">dropped</span></div><span class="dt">Wed Sep 2</span><span class="sc"><span class="wi">17</span></span><span class="pc">85.0%</span><span class="cl">16</span></div>
+          <div class="ga"><div class="nm"><span class="t">Homework 3: Virtual Memory</span></div><span class="dt">Wed Sep 9</span><span class="sc"><span class="wi">19</span></span><span class="pc">95.0%</span><span class="cl">17</span></div>
+          <div class="gt-f"><div>What-if<span class="sub">local · drop rules and weights applied</span></div><span></span><span></span><span class="pc">93.8%<span class="let">A</span></span><span></span></div>
+        </div>
+        <div class="rail" style="border-right:0;border-left:1px solid var(--line);width:290px;padding-left:18px">
+          <p class="lbl">To finish with</p>
+          <div class="tg-r on"><span class="l">A</span><span class="c">≥ 93% · 470 pts left</span><span class="n">93.0%</span></div>
+          <div class="tg-r"><span class="l">AB</span><span class="c">≥ 88%</span><span class="n">83.2%</span></div>
+          <div class="tg-r far"><span class="l">B</span><span class="c">≥ 83%</span><span class="n">73.4%</span></div>
+          <p class="note" style="margin-top:12px">With your two edits counted as real. Cutoffs from the course grading scheme; the dot marks where the current average lands.</p>
+          <p class="lbl" style="margin-top:26px">Edits</p>
+          <div class="kv" style="grid-template-columns:1fr auto">
+            <span class="k">Project 3: xv6 Scheduler<span class="s">was —</span></span><span class="v">95</span>
+            <span class="k">Midterm 1<span class="s">was —</span></span><span class="v">94</span>
+          </div>
+          <span class="btn" style="margin-top:14px"><svg class="ico"><use href="#i-undo"/></svg>Reset all</span>
+        </div>
+      </div>
+    </div>
+  </div></div></div>
+  <p class="note">What-if is a mode, not a separate page: the same rows, and every score becomes a field so graded scores can be
+     "regraded" too. Local math applies the group's drop rules and the course weights; the footer says so. The rail lists the
+     edits by name so a stray change from last week is never a mystery. Alternative placements: the targets as a fourth block in
+     the summary strip (no rail, fits 1B's narrower pane), or a popover on the letter chip.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">4 · Mobile</h2>
+<p>The index is 1A collapsed to two lines per course. The course table drops the class-median and due columns and keeps score and percent stacked on the right.</p>
+<section>
+  <div class="row2">
+    <div>
+      <p class="cap">Index</p>
+      <div class="phone">
+        <div class="stat"><span>9:41</span><span>●●●</span></div>
+        <div class="m-tb"><div><div class="ttl">Grades</div><div class="s">Fall 2026 · synced 2 min ago</div></div><span class="r av">SB</span></div>
+        <a href="#" class="mx" style="--c:var(--c-cs)"><div><div class="nm">Operating Systems</div><div class="mt">CS 537 · 65% graded · <span class="new" style="display:inline-block;vertical-align:1px"></span> HW 3 posted</div></div><div class="grade"><span class="pct">92.7%</span><span class="let">AB</span></div><svg class="ico ico-14"><use href="#i-chev"/></svg></a>
+        <a href="#" class="mx" style="--c:var(--c-math)"><div><div class="nm">Linear Algebra</div><div class="mt">MATH 340 · 20% graded</div></div><div class="grade"><span class="pct">97.5%</span><span class="let">A</span></div><svg class="ico ico-14"><use href="#i-chev"/></svg></a>
+        <a href="#" class="mx" style="--c:var(--c-econ)"><div><div class="nm">Microeconomics</div><div class="mt">ECON 101 · 90 of 460 pts · <span class="new" style="display:inline-block;vertical-align:1px"></span> Quiz 2</div></div><div class="grade"><span class="pct">86.7%</span><span class="let">B</span></div><svg class="ico ico-14"><use href="#i-chev"/></svg></a>
+        <a href="#" class="mx" style="--c:var(--c-stat)"><div><div class="nm">Intro Statistics</div><div class="mt">STAT 324 · 40% graded</div></div><div class="grade"><span class="pct">96.6%</span><span class="let">A</span></div><svg class="ico ico-14"><use href="#i-chev"/></svg></a>
+        <div class="m-term"><svg class="ico ico-13"><use href="#i-chev"/></svg>Spring 2026<span class="n">4 courses</span></div>
+        <div class="m-term"><svg class="ico ico-13"><use href="#i-chev"/></svg>Fall 2025<span class="n">5 courses</span></div>
+        <nav class="tabs">
+          <a href="#"><svg class="ico"><use href="#i-home"/></svg>Home</a>
+          <a href="#"><svg class="ico"><use href="#i-inbox"/></svg>Inbox</a>
+          <a href="#"><svg class="ico"><use href="#i-book"/></svg>Courses</a>
+          <a href="#" class="on"><svg class="ico"><use href="#i-grade"/></svg>Grades</a>
+          <a href="#"><svg class="ico"><use href="#i-more"/></svg>More</a>
+        </nav>
+      </div>
+    </div>
+    <div>
+      <p class="cap">Course</p>
+      <div class="phone">
+        <div class="stat"><span>9:41</span><span>●●●</span></div>
+        <div class="m-tb"><svg class="ico bk"><use href="#i-chev"/></svg><div><div class="ttl">Operating Systems</div><div class="s">CS 537 · weighted</div></div><span class="r btn" style="height:28px;padding:0 10px"><svg class="ico"><use href="#i-flask"/></svg>What-if</span></div>
+        <div class="m-sum">
+          <div><div class="big"><span class="pct">92.7%</span><span class="let">AB</span></div><div class="meta" style="font-size:12px;color:var(--ink-3);margin-top:6px">Exams not yet graded</div></div>
+          <div class="cov" style="flex-direction:column;align-items:flex-end;gap:5px"><span class="s">65% of grade</span><span class="tr" style="width:120px"><i style="--f:65%"></i></span></div>
+        </div>
+        <div class="m-gg">Projects<span class="chip">50%</span><span class="r">182<span class="of"> / 200</span> · 91.0%</span></div>
+        <div class="m-ga"><div class="t"><div class="nm">Project 1: Shell</div><div class="dt">Fri Aug 28</div></div><div class="sc">94<span class="of"> / 100</span><span class="pc">94.0% · med 89</span></div></div>
+        <div class="m-ga"><span class="new"></span><div class="t"><div class="nm">Project 2: Multithreaded Web Server</div><div class="dt">Fri Sep 4</div></div><div class="sc">88<span class="of"> / 100</span><span class="pc">88.0% · med 84</span></div></div>
+        <div class="m-ga ng"><div class="t"><div class="nm">Project 3: xv6 Scheduler</div><div class="dt">Fri Sep 25</div></div><div class="sc">—<span class="of"> / 100</span></div></div>
+        <div class="m-ga ng"><div class="t"><div class="nm">Project 4: Memory Allocator</div><div class="dt">Fri Oct 16</div></div><div class="sc">—<span class="of"> / 100</span></div></div>
+        <div class="m-gg ng">Exams<span class="chip">35%</span><span class="r">not yet graded</span></div>
+        <div class="m-ga ng"><div class="t"><div class="nm">Midterm 1</div><div class="dt">Thu Oct 8</div></div><div class="sc">—<span class="of"> / 100</span></div></div>
+        <div class="m-gg">Homework<span class="chip">10%</span><span class="chip ln">drops 1</span><span class="r">39<span class="of"> / 40</span> · 97.5%</span></div>
+        <div class="m-ga"><div class="t"><div class="nm">Homework 1: Processes</div><div class="dt">Wed Aug 26</div></div><div class="sc">20<span class="of"> / 20</span><span class="pc">100%</span></div></div>
+        <div class="m-ga drop"><div class="t"><div class="nm">Homework 2: Scheduling</div><div class="dt">dropped</div></div><div class="sc">17<span class="of"> / 20</span><span class="pc">85.0%</span></div></div>
+        <div class="m-ga"><span class="new"></span><div class="t"><div class="nm">Homework 3: Virtual Memory</div><div class="dt">Wed Sep 9</div></div><div class="sc">19<span class="of"> / 20</span><span class="pc">95.0% · med 17</span></div></div>
+        <nav class="tabs">
+          <a href="#"><svg class="ico"><use href="#i-home"/></svg>Home</a>
+          <a href="#"><svg class="ico"><use href="#i-inbox"/></svg>Inbox</a>
+          <a href="#"><svg class="ico"><use href="#i-book"/></svg>Courses</a>
+          <a href="#" class="on"><svg class="ico"><use href="#i-grade"/></svg>Grades</a>
+          <a href="#"><svg class="ico"><use href="#i-more"/></svg>More</a>
+        </nav>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">5 · States the rows have to carry</h2>
+<p>Each is one row (or one header) in the table above. Words over icons; the only colour is the red already used for "missing" elsewhere in the app.</p>
+<section>
+  <div class="states">
+    <div class="card"><div class="ttl">Submitted, not posted</div>
+      <div class="ga"><div class="nm"><span class="t">Homework 3</span></div><span class="dt">submitted Sep 8</span><span class="sc" style="color:var(--ink-3);font-weight:400">—</span></div>
+      <div class="d">No score is shown even if Canvas already holds one. "submitted" replaces the due date so the row does not look forgotten.</div></div>
+    <div class="card"><div class="ttl">Missing</div>
+      <div class="ga"><div class="nm"><span class="t">Quiz 1</span><span class="st red">missing</span></div><span class="dt">Mon Aug 31</span><span class="sc">0<span class="of"> / 20</span></span></div>
+      <div class="d">Canvas's automatic zero, once posted, counts. The word is red; the number is not.</div></div>
+    <div class="card"><div class="ttl">Late</div>
+      <div class="ga"><div class="nm"><span class="t">Problem Set 2</span><span class="st">late</span></div><span class="dt">Fri Sep 4</span><span class="sc">22<span class="of"> / 25</span></span></div>
+      <div class="d">The score Canvas shows already includes any penalty. We label, we do not compute.</div></div>
+    <div class="card"><div class="ttl">Excused</div>
+      <div class="ga"><div class="nm"><span class="t">Lab 1</span></div><span class="dt">Tue Sep 1</span><span class="sc" style="color:var(--ink-3)">EX<span class="of"> / 10</span></span></div>
+      <div class="d">Out of the denominator for the group and for coverage. What-if fields are disabled on it.</div></div>
+    <div class="card"><div class="ttl">Dropped by rule</div>
+      <div class="ga drop"><div class="nm"><span class="t">Homework 2</span><span class="st">dropped</span></div><span class="dt">Wed Sep 2</span><span class="sc">17<span class="of"> / 20</span></span></div>
+      <div class="d">Faded and struck. Which row is dropped is recomputed live in what-if, since a new low score changes it.</div></div>
+    <div class="card"><div class="ttl">Not counted</div>
+      <div class="ga"><div class="nm"><span class="t">Syllabus quiz</span><span class="st">not counted</span></div><span class="dt">Wed Aug 26</span><span class="sc">5<span class="of"> / 5</span></span></div>
+      <div class="d"><code>omitFromFinalGrade</code>. Shown in its group for completeness, excluded from every sum.</div></div>
+    <div class="card"><div class="ttl">Totals hidden by the instructor</div>
+      <div class="hd"><div class="big"><span class="pct" style="color:var(--ink-3);font-weight:500">Hidden</span></div><span style="font-size:12.5px;color:var(--ink-3)">by the instructor until grades are final</span></div>
+      <div class="d"><code>hideFinalGrades</code>. Posted scores and group subtotals still list; there is no course total, no letter, no local estimate, and what-if is off. The index row reads "Hidden" in place of the number.</div></div>
+    <div class="card"><div class="ttl">Points course, no weights</div>
+      <div class="hd"><div class="big"><span class="pct">86.7%</span><span class="let">B</span></div><span style="font-size:12.5px;color:var(--ink-3)">90 / 104 pts graded · 460 possible</span></div>
+      <div class="d">Groups keep their section rows without a weight chip. Coverage is points graded over points possible; the composition strip in 2B is by points.</div></div>
+    <div class="card"><div class="ttl">Nothing graded yet</div>
+      <div class="hd"><div class="big"><span class="pct" style="color:var(--ink-3);font-weight:500">—</span></div><span style="font-size:12.5px;color:var(--ink-3)">first grade expected after Homework 1, due Fri Sep 11</span></div>
+      <div class="d">The first two weeks of every term. The row still lists the upcoming assignments and their point values, so the table is useful before it has a number.</div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<h2 class="m">6 · Decisions</h2>
+<p>What choosing between the variants actually decides.</p>
+<section>
+  <div class="dec">
+    <div class="card"><div class="q">Index: 1A ledger, 1B split, or 1C one page?</div><p><b>1A</b> matches Courses and keeps the table wide. <b>1B</b> is fastest to move between courses and best for keyboard users. <b>1C</b> reads the whole term without a click and is the strongest "faster than Canvas" moment; it depends on groups collapsing well.</p></div>
+    <div class="card"><div class="q">Course: 2A table, 2B strip, or 2C rail + chronological?</div><p><b>2A</b> is the quiet default. <b>2B</b> adds one drawing that explains weights better than any table. <b>2C</b> turns the page into a feed and gives the targets a permanent home; it is the only one where "when" is the primary order.</p></div>
+    <div class="card"><div class="q">Where do the targets live?</div><p>Rail (3A, 2C), summary block, or a popover on the letter. Rail is always visible and holds the edits list; the summary block fits 1B; the popover keeps the default page free of hypotheticals.</p></div>
+    <div class="card"><div class="q">Class median column: yes or no?</div><p>Canvas only sends <code>scoreStatistics</code> for some assignments. When present it is the most-asked question after "what did I get". When absent the column is blank, which is fine in 2A and awkward in 1B's narrow pane.</p></div>
+    <div class="card"><div class="q">Letter cutoffs for "to finish with"</div><p>Canvas exposes the course grading scheme on the enrollment in some cases and not others. Fallback: the standard UW scale (A 93 · AB 88 · B 83 · BC 78 · C 70 · D 60), editable per course. Without a scheme the targets list percentages only.</p></div>
+    <div class="card"><div class="q">Current vs final</div><p>Canvas reports both: current (graded only) and final (ungraded as zero). Every variant shows current and hides final; the coverage bar is the honest version of the same warning. Final could appear in the footer as "if everything left were zero".</p></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var tpl=document.getElementById('tpl-sb');
+  document.querySelectorAll('[data-sb]').forEach(function(ph){
+    var sb=tpl.content.firstElementChild.cloneNode(true);
+    sb.querySelectorAll('.nav a').forEach(function(a){a.classList.toggle('on',a.dataset.n===ph.dataset.sb)});
+    ph.replaceWith(sb);
+  });
+})();
+</script>
+</body>
+</html>

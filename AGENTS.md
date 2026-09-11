@@ -8,8 +8,6 @@ into Convex in the background; the UI reads only from Convex. Full context:
 
 - `bun run typecheck` — TypeScript (app + convex/)
 - `bun run lint` — ESLint
-- Do not start dev servers or builds; assume `bun run dev` and
-  `bun run dev:backend` are already running.
 
 ## Stack
 
