@@ -1,14 +1,13 @@
-import { useQuery } from "convex/react";
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { Check, Clock, RefreshCw } from "lucide-react";
-import { api } from "../../../convex/_generated/api";
 import { useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 /** Shown on Home until the first full sync completes. */
 export function FirstSyncCard({ syncing }: { syncing: boolean }) {
   const { courses } = useCourses();
-  const items = useQuery(api.todos.list, {});
-  const feed = useQuery(api.inbox.feed);
+  const items = useTodoList();
+  const feed = useInboxFeed();
   const n = items?.length ?? 0;
   const steps = [
     { label: "Courses", done: courses.length > 0, detail: courses.length > 0 ? `${courses.length} active` : "queued" },

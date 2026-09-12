@@ -1,0 +1,99 @@
+{
+  "capturedAt": "2026-09-12T07:09:24.434142+00:00",
+  "deployment": "prod",
+  "url": "https://brave-swordfish-418.convex.cloud",
+  "functionSpecSha256": "c4c18690b936dbf631b91204ed477cb352842de93d42a3161ffcaeb51c7d0545",
+  "functionCount": 119,
+  "note": "Function-spec hash identifies the API contract, not a deployed git revision. Sizes are UTF-8 JSON bytes, not billed I/O.",
+  "usage": {
+    "metrics": {
+      "actionComputeConvexGbHours": {
+        "unit": "GB-hours",
+        "usage": {
+          "current_day": 0.0016652430555555557,
+          "current_month": 0.11584676833333336
+        }
+      },
+      "actionComputeCpuGbHours": {
+        "unit": "GB-hours",
+        "usage": {
+          "current_day": 0.0016577430555555555,
+          "current_month": 0.08058133597222222
+        }
+      },
+      "actionComputeNodeJsGbHours": {
+        "unit": "GB-hours",
+        "usage": {
+          "current_day": 0,
+          "current_month": 0.03401236111111111
+        }
+      },
+      "dataEgressGb": {
+        "unit": "GB",
+        "usage": {
+          "current_day": 0,
+          "current_month": 0.0019307257607579231
+        }
+      },
+      "databaseIoGb": {
+        "unit": "GB",
+        "usage": {
+          "current_day": 0.009187696501612663,
+          "current_month": 0.43833006639033556
+        }
+      },
+      "functionCalls": {
+        "unit": "calls",
+        "usage": {
+          "current_day": 1443,
+          "current_month": 18906
+        }
+      },
+      "queryMutationComputeGbHours": {
+        "unit": "GB-hours",
+        "usage": {
+          "current_day": 0.002907656250000001,
+          "current_month": 0.053282736111111076
+        }
+      },
+      "searchQueryGb": {
+        "unit": "Query-GB",
+        "usage": {
+          "current_day": 0,
+          "current_month": 0
+        }
+      }
+    },
+    "seedStatus": "complete"
+  },
+  "tables": {
+    "courses": {
+      "count": 32,
+      "jsonBytes": 30143,
+      "largeFieldJsonBytes": 128,
+      "medianJsonBytes": 614,
+      "maxJsonBytes": 1880
+    },
+    "assignments": {
+      "count": 899,
+      "jsonBytes": 1721818,
+      "largeFieldJsonBytes": 1044349,
+      "medianJsonBytes": 822,
+      "maxJsonBytes": 43447
+    },
+    "discussions": {
+      "count": 56,
+      "jsonBytes": 139455,
+      "largeFieldJsonBytes": 111734,
+      "medianJsonBytes": 2285,
+      "maxJsonBytes": 4642
+    },
+    "quizzes": {
+      "count": 32,
+      "jsonBytes": 22026,
+      "largeFieldJsonBytes": 5825,
+      "medianJsonBytes": 535,
+      "maxJsonBytes": 1463
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { useTodoList } from "@/lib/list-queries";
 import { useCallback, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -28,7 +29,7 @@ export function useModuleRowContext(courseId: string): ModuleRowContext {
     api.files.tree,
     Number.isFinite(canvasId) ? { courseCanvasId: canvasId } : "skip",
   );
-  const todos = useQuery(api.todos.list, {});
+  const todos = useTodoList();
   const seen = useSeen("moduleItem");
   const todayKey = useToday();
   const now = useNow();

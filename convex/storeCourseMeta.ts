@@ -9,6 +9,7 @@
 import { v, type Infer } from "convex/values";
 import { internalMutation } from "./_generated/server";
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
+import { removeListSummary } from "./lib/listSummaries";
 
 const assignmentGroupUpsert = v.object({
   canvasId: v.number(),
@@ -180,6 +181,7 @@ export const upsertDiscussions = internalMutation({
       .collect();
     for (const row of existing) {
       if (!row.isAnnouncement && !keep.has(row.canvasId)) {
+        await removeListSummary(ctx, "discussions", args.userId, row.canvasId);
         await ctx.db.delete(row._id);
       }
     }

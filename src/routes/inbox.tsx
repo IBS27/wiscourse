@@ -1,6 +1,7 @@
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { CountBadge } from "@/components/app/bits";
 import { ProfileMenu } from "@/components/app/profile-menu";
@@ -22,8 +23,8 @@ export const Route = createFileRoute("/inbox")({
 function InboxPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
-  const feed = useQuery(api.inbox.feed);
-  const todos = useQuery(api.todos.list, {});
+  const feed = useInboxFeed();
+  const todos = useTodoList();
   const info = useSyncInfo();
   const today = useToday();
   const now = useNow();

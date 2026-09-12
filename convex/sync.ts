@@ -85,6 +85,7 @@ export const dispatchTripwire = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    if (process.env.WISCOURSE_BACKGROUND_SYNC === "false") return null;
     const userIds: string[] = await ctx.runQuery(
       internal.syncStore.listActiveUserIds,
       {},
@@ -100,6 +101,7 @@ export const dispatchFullSync = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
+    if (process.env.WISCOURSE_BACKGROUND_SYNC === "false") return null;
     const userIds: string[] = await ctx.runQuery(
       internal.syncStore.listActiveUserIds,
       {},

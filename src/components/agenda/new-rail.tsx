@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from "convex/react";
+import { useInboxFeed } from "@/lib/list-queries";
+import { useMutation } from "convex/react";
 import { Clock, Megaphone, Star, FilePlus2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
@@ -51,7 +52,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
 }
 
 export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
-  const feed = useQuery(api.inbox.feed);
+  const feed = useInboxFeed();
   const markAll = useMutation(api.inbox.markAllSeen);
   const unseen = feed?.filter((f) => !f.seen) ?? [];
   const groups = groupFeed((feed ?? []).slice(0, 12), todayKey, now);

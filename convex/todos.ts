@@ -1,3 +1,4 @@
+import { compactListsEnabled } from "./lib/listSummaries";
 // The unified todo list.
 //
 // Canvas items (assignments, quizzes, graded discussions) stay pure
@@ -86,11 +87,11 @@ type TodoRef = Infer<typeof todoRef>;
 // work, ungraded items, and "no submission" assignments.
 const NO_SUBMISSION_TYPES = new Set(["none", "on_paper", "not_graded"]);
 
-function hasNothingToSubmit(assignment: Doc<"assignments">): boolean {
+function hasNothingToSubmit(assignment: Pick<Doc<"assignments">, "submissionTypes" | "submission">): boolean {
   return assignment.submissionTypes.every((t) => NO_SUBMISSION_TYPES.has(t));
 }
 
-function submissionOf(assignment: Doc<"assignments">): {
+function submissionOf(assignment: Pick<Doc<"assignments">, "submissionTypes" | "submission">): {
   state: SubmissionState;
   submittedAt?: number;
   score?: number;
@@ -136,29 +137,30 @@ export async function findCanvasTodo(
 }
 
 type CanvasRow =
-  | { kind: "assignment"; row: Doc<"assignments"> }
-  | { kind: "quiz"; row: Doc<"quizzes"> }
-  | { kind: "discussion"; row: Doc<"discussions"> };
+  | { kind: "assignment"; row: Omit<Doc<"assignments">, "_id" | "_creationTime" | "syncedAt"> }
+  | { kind: "quiz"; row: Omit<Doc<"quizzes">, "_id" | "_creationTime" | "syncedAt"> }
+  | { kind: "discussion"; row: Omit<Doc<"discussions">, "_id" | "_creationTime" | "syncedAt"> };
 
 async function findCanvasRow(
   ctx: QueryCtx | MutationCtx,
   userId: string,
   kind: TodoCanvasKind,
   canvasId: number,
+  compact = false,
 ): Promise<CanvasRow | null> {
   const byId = (q: { eq(f: "userId", v: string): { eq(f: "canvasId", v: number): IndexRange } }) =>
     q.eq("userId", userId).eq("canvasId", canvasId);
   switch (kind) {
     case "assignment": {
-      const row = await ctx.db.query("assignments").withIndex("by_user_canvasId", byId).unique();
+      const row = await ctx.db.query(compact ? "assignmentSummaries" : "assignments").withIndex("by_user_canvasId", byId).unique();
       return row && { kind, row };
     }
     case "quiz": {
-      const row = await ctx.db.query("quizzes").withIndex("by_user_canvasId", byId).unique();
+      const row = await ctx.db.query(compact ? "quizSummaries" : "quizzes").withIndex("by_user_canvasId", byId).unique();
       return row && { kind, row };
     }
     case "discussion": {
-      const row = await ctx.db.query("discussions").withIndex("by_user_canvasId", byId).unique();
+      const row = await ctx.db.query(compact ? "discussionSummaries" : "discussions").withIndex("by_user_canvasId", byId).unique();
       return row && { kind, row };
     }
   }
@@ -253,16 +255,17 @@ async function todoMap(
 export async function buildList(
   ctx: QueryCtx,
   userId: string,
-  args: { from?: number; to?: number },
+  args: { from?: number; to?: number; now?: number },
 ): Promise<TodoItem[]> {
-  const now = Date.now();
+  const now = args.now ?? Date.now();
   const from = args.from ?? now - DEFAULT_PAST_MS;
   const to = args.to ?? now + DEFAULT_FUTURE_MS;
   const todos = await todoMap(ctx, userId);
   const items: TodoItem[] = [];
   const seen = new Set<string>();
 
-  const activeIds = await activeCourseIds(ctx, userId);
+  const compact = await compactListsEnabled(ctx);
+  const activeIds = await activeCourseIds(ctx, userId, compact);
 
   const push = (r: CanvasRow) => {
     const key = `${r.kind}:${r.row.canvasId}`;
@@ -272,15 +275,17 @@ export async function buildList(
     items.push(toCanvasItem(r, todos.canvas.get(key)));
   };
 
+  // The date range excludes historical work. Querying it once avoids one
+  // index seek per active course; course visibility is applied by push().
   const dueWindow = (q: { eq(f: "userId", v: string): { gte(f: "dueAt", v: number): { lte(f: "dueAt", v: number): IndexRange } } }) =>
     q.eq("userId", userId).gte("dueAt", from).lte("dueAt", to);
-  for (const row of await ctx.db.query("assignments").withIndex("by_user_dueAt", dueWindow).collect()) {
+  for (const row of await ctx.db.query(compact ? "assignmentSummaries" : "assignments").withIndex("by_user_dueAt", dueWindow).collect()) {
     push({ kind: "assignment", row });
   }
-  for (const row of await ctx.db.query("quizzes").withIndex("by_user_dueAt", dueWindow).collect()) {
+  for (const row of await ctx.db.query(compact ? "quizSummaries" : "quizzes").withIndex("by_user_dueAt", dueWindow).collect()) {
     push({ kind: "quiz", row });
   }
-  for (const row of await ctx.db.query("discussions").withIndex("by_user_dueAt", dueWindow).collect()) {
+  for (const row of await ctx.db.query(compact ? "discussionSummaries" : "discussions").withIndex("by_user_dueAt", dueWindow).collect()) {
     push({ kind: "discussion", row });
   }
 
@@ -290,7 +295,8 @@ export async function buildList(
   for (const [key, todo] of todos.canvas) {
     if (seen.has(key) || todo.canvasKind === undefined || todo.canvasId === undefined) continue;
     if (todo.doneAt !== undefined && todo.doneAt < from) continue;
-    const r = await findCanvasRow(ctx, userId, todo.canvasKind, todo.canvasId);
+    if (todo.courseCanvasId !== undefined && !activeIds.has(todo.courseCanvasId)) continue;
+    const r = await findCanvasRow(ctx, userId, todo.canvasKind, todo.canvasId, compact);
     if (r) push(r);
   }
 
@@ -307,7 +313,7 @@ export async function buildList(
 }
 
 export const list = query({
-  args: { from: v.optional(v.number()), to: v.optional(v.number()) },
+  args: { from: v.optional(v.number()), to: v.optional(v.number()), now: v.optional(v.number()) },
   returns: v.array(todoItem),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();

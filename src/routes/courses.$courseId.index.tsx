@@ -1,3 +1,4 @@
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -35,8 +36,8 @@ function CourseOverview() {
   const modules = useQuery(api.modules.listByCourse, {
     courseCanvasId: canvasId,
   });
-  const todos = useQuery(api.todos.list, {});
-  const feed = useQuery(api.inbox.feed);
+  const todos = useTodoList();
+  const feed = useInboxFeed();
   const interpretation = useQuery(api.courseInterpretations.get, {
     courseCanvasId: canvasId,
   });

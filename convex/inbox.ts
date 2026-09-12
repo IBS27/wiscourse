@@ -1,3 +1,4 @@
+import { compactListsEnabled, sourceOrder, announcementExcerpt } from "./lib/listSummaries";
 import { v, type Infer } from "convex/values";
 import { mutation, query, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { requireUserId } from "./lib/auth";
@@ -41,146 +42,145 @@ export const feedItem = v.object({
 });
 export type FeedItem = Infer<typeof feedItem>;
 
-function stripHtml(html: string | undefined): string | undefined {
-  if (html === undefined) return undefined;
-  const text = html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
-  return text.length === 0 ? undefined : text;
+// A recent grade can belong to an old assignment. Merge both indexed paths
+// and retain source creation order so equal-time items keep their old order.
+async function activeAssignments(ctx: QueryCtx | MutationCtx, userId: string, courseIds: Set<number>, now: number, compact: boolean) {
+  const recent = await ctx.db.query(compact ? "assignmentSummaries" : "assignments").withIndex("by_user_createdAt", (q) =>
+    q.eq("userId", userId).gte("canvasCreatedAt", now - NEW_ASSIGNMENT_WINDOW_MS)).collect();
+  const graded = await ctx.db.query(compact ? "assignmentSummaries" : "assignments").withIndex("by_user_postedAt", (q) =>
+    q.eq("userId", userId).gte("submission.postedAt", now - GRADE_WINDOW_MS)).collect();
+  const courseOrder = new Map([...courseIds].map((id, i) => [id, i]));
+  return [...new Map([...recent, ...graded].map((row) => [row.canvasId, row])).values()]
+    .filter((row) => courseIds.has(row.courseCanvasId))
+    .sort((a, b) => courseOrder.get(a.courseCanvasId)! - courseOrder.get(b.courseCanvasId)! ||
+      sourceOrder(a) - sourceOrder(b));
 }
 
-// CanvasClient limits each course listing to 50 pages of 100 assignments.
-// Restrict the database reads before loading rows, including for mark-all.
-async function activeAssignments(ctx: QueryCtx | MutationCtx, userId: string, courseIds: Set<number>) {
-  const courses = await Promise.all([...courseIds].map((courseCanvasId) =>
-    ctx.db.query("assignments").withIndex("by_user_course", (q) =>
-      q.eq("userId", userId).eq("courseCanvasId", courseCanvasId)).take(5000),
-  ));
-  return courses.flat();
+async function buildFeed(ctx: QueryCtx | MutationCtx, userId: string, now: number): Promise<FeedItem[]> {
+  const items: FeedItem[] = [];
+  const compact = await compactListsEnabled(ctx);
+  const activeIds = await activeCourseIds(ctx, userId, compact);
+
+  const seenDiscussions = await getSeenSet(ctx, userId, "discussion");
+  const announcements = await ctx.db.query(compact ? "discussionSummaries" : "discussions")
+    .withIndex("by_user_announcement_postedAt", (q) =>
+      q.eq("userId", userId).eq("isAnnouncement", true)
+        .gte("postedAt", now - ANNOUNCEMENT_WINDOW_MS)).collect();
+  announcements.sort((a, b) => (a.postedAt ?? 0) - (b.postedAt ?? 0) || sourceOrder(a) - sourceOrder(b));
+  for (const a of announcements) {
+    if (a.postedAt === undefined || !activeIds.has(a.courseCanvasId)) {
+      continue;
+    }
+    items.push({
+      key: `announcement:${a.canvasId}`,
+      type: "announcement",
+      canvasId: a.canvasId,
+      courseCanvasId: a.courseCanvasId,
+      title: a.title,
+      subtitle: "sourceId" in a ? a.excerpt : announcementExcerpt(a.message),
+      at: a.postedAt,
+      seen: seenDiscussions.has(a.canvasId),
+      htmlUrl: a.htmlUrl,
+    });
+  }
+
+  const seenAssignments = await getSeenSet(ctx, userId, "assignment");
+  const seenGrades = await getSeenSet(ctx, userId, "grade");
+  const assignments = await activeAssignments(ctx, userId, activeIds, now, compact);
+  for (const a of assignments) {
+    const postedAt = a.submission?.postedAt;
+    const seen = seenAssignments.get(a.canvasId);
+    if (postedAt !== undefined && postedAt >= now - GRADE_WINDOW_MS) {
+      const version = gradeVersion(postedAt);
+      items.push({
+        key: `grade:${a.canvasId}`,
+        type: "grade",
+        canvasId: a.canvasId,
+        courseCanvasId: a.courseCanvasId,
+        title: a.name,
+        subtitle: a.submission?.grade,
+        at: postedAt,
+        // Existing assignment rows supply the grade history until first changed.
+        seen: (seenGrades.get(a.canvasId) ?? seen)?.seenVersion === version,
+        seenVersion: version,
+        htmlUrl: a.htmlUrl,
+        score: a.submission?.score,
+        grade: a.submission?.grade,
+        pointsPossible: a.pointsPossible,
+      });
+    }
+    // Rows synced before we stored Canvas's created_at have no date and
+    // are never "new".
+    const createdAt = a.canvasCreatedAt;
+    if (createdAt !== undefined && createdAt >= now - NEW_ASSIGNMENT_WINDOW_MS) {
+      items.push({
+        key: `assignment:${a.canvasId}`,
+        type: "assignment",
+        canvasId: a.canvasId,
+        courseCanvasId: a.courseCanvasId,
+        title: a.name,
+        at: createdAt,
+        seen: seen !== undefined,
+        htmlUrl: a.htmlUrl,
+        pointsPossible: a.pointsPossible,
+      });
+    }
+  }
+
+  const seenChanges = await getSeenSet(ctx, userId, "assignmentChange");
+  const changes = await ctx.db
+    .query("assignmentChanges")
+    .withIndex("by_user_changedAt", (q) =>
+      q.eq("userId", userId).gte("changedAt", now - 30 * DAY_MS),
+    )
+    .collect();
+  const assignmentById = new Map(
+    assignments.map((assignment) => [assignment.canvasId, assignment]),
+  );
+  for (const change of changes) {
+    if (!activeIds.has(change.courseCanvasId)) continue;
+    let assignment = assignmentById.get(change.assignmentCanvasId);
+    if (assignment === undefined) {
+      assignment = (await ctx.db.query(compact ? "assignmentSummaries" : "assignments").withIndex("by_user_canvasId", (q) =>
+        q.eq("userId", userId).eq("canvasId", change.assignmentCanvasId)).unique()) ?? undefined;
+      if (assignment) assignmentById.set(assignment.canvasId, assignment);
+    }
+    if (assignment === undefined) continue;
+    const version = String(change.changedAt);
+    items.push({
+      key: `change:${change.assignmentCanvasId}:${change.changedAt}`,
+      type: "change",
+      canvasId: change.assignmentCanvasId,
+      courseCanvasId: change.courseCanvasId,
+      title: assignment.name,
+      subtitle:
+        change.field === "dueAt" ? "Due date moved" : "Points changed",
+      at: change.changedAt,
+      seen:
+        Number(seenChanges.get(change.assignmentCanvasId)?.seenVersion ?? 0) >=
+        change.changedAt,
+      seenVersion: version,
+      htmlUrl: assignment.htmlUrl,
+      change: {
+        field: change.field,
+        before: change.before,
+        after: change.after,
+      },
+    });
+  }
+
+  return items.sort((x, y) => y.at - x.at);
 }
 
 export const feed = query({
-  args: {},
+  args: { now: v.optional(v.number()) },
   returns: v.array(feedItem),
-  handler: async (ctx) => {
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) return [];
     const userId = identity.subject;
-    const now = Date.now();
-    const items: FeedItem[] = [];
-    const activeIds = await activeCourseIds(ctx, userId);
-
-    const seenDiscussions = await getSeenSet(ctx, userId, "discussion");
-    const announcements = await ctx.db
-      .query("discussions")
-      .withIndex("by_user_announcement_postedAt", (q) =>
-        q
-          .eq("userId", userId)
-          .eq("isAnnouncement", true)
-          .gte("postedAt", now - ANNOUNCEMENT_WINDOW_MS),
-      )
-      .collect();
-    for (const a of announcements) {
-      if (a.postedAt === undefined || !activeIds.has(a.courseCanvasId)) {
-        continue;
-      }
-      items.push({
-        key: `announcement:${a.canvasId}`,
-        type: "announcement",
-        canvasId: a.canvasId,
-        courseCanvasId: a.courseCanvasId,
-        title: a.title,
-        subtitle: stripHtml(a.message),
-        at: a.postedAt,
-        seen: seenDiscussions.has(a.canvasId),
-        htmlUrl: a.htmlUrl,
-      });
-    }
-
-    const seenAssignments = await getSeenSet(ctx, userId, "assignment");
-    const seenGrades = await getSeenSet(ctx, userId, "grade");
-    const assignments = await activeAssignments(ctx, userId, activeIds);
-    for (const a of assignments) {
-      const postedAt = a.submission?.postedAt;
-      const seen = seenAssignments.get(a.canvasId);
-      if (postedAt !== undefined && postedAt >= now - GRADE_WINDOW_MS) {
-        const version = gradeVersion(postedAt);
-        items.push({
-          key: `grade:${a.canvasId}`,
-          type: "grade",
-          canvasId: a.canvasId,
-          courseCanvasId: a.courseCanvasId,
-          title: a.name,
-          subtitle: a.submission?.grade,
-          at: postedAt,
-          // Existing assignment rows supply the grade history until first changed.
-          seen: (seenGrades.get(a.canvasId) ?? seen)?.seenVersion === version,
-          seenVersion: version,
-          htmlUrl: a.htmlUrl,
-          score: a.submission?.score,
-          grade: a.submission?.grade,
-          pointsPossible: a.pointsPossible,
-        });
-      }
-      // Rows synced before we stored Canvas's created_at have no date and
-      // are never "new".
-      const createdAt = a.canvasCreatedAt;
-      if (createdAt !== undefined && createdAt >= now - NEW_ASSIGNMENT_WINDOW_MS) {
-        items.push({
-          key: `assignment:${a.canvasId}`,
-          type: "assignment",
-          canvasId: a.canvasId,
-          courseCanvasId: a.courseCanvasId,
-          title: a.name,
-          at: createdAt,
-          seen: seen !== undefined,
-          htmlUrl: a.htmlUrl,
-          pointsPossible: a.pointsPossible,
-        });
-      }
-    }
-
-    const seenChanges = await getSeenSet(ctx, userId, "assignmentChange");
-    const changes = await ctx.db
-      .query("assignmentChanges")
-      .withIndex("by_user_changedAt", (q) =>
-        q.eq("userId", userId).gte("changedAt", now - 30 * DAY_MS),
-      )
-      .collect();
-    const assignmentById = new Map(
-      assignments.map((assignment) => [assignment.canvasId, assignment]),
-    );
-    for (const change of changes) {
-      if (!activeIds.has(change.courseCanvasId)) continue;
-      const assignment = assignmentById.get(change.assignmentCanvasId);
-      if (assignment === undefined) continue;
-      const version = String(change.changedAt);
-      items.push({
-        key: `change:${change.assignmentCanvasId}:${change.changedAt}`,
-        type: "change",
-        canvasId: change.assignmentCanvasId,
-        courseCanvasId: change.courseCanvasId,
-        title: assignment.name,
-        subtitle:
-          change.field === "dueAt" ? "Due date moved" : "Points changed",
-        at: change.changedAt,
-        seen:
-          Number(seenChanges.get(change.assignmentCanvasId)?.seenVersion ?? 0) >=
-          change.changedAt,
-        seenVersion: version,
-        htmlUrl: assignment.htmlUrl,
-        change: {
-          field: change.field,
-          before: change.before,
-          after: change.after,
-        },
-      });
-    }
-
-    return items.sort((x, y) => y.at - x.at);
+    const now = args.now ?? Date.now();
+    return buildFeed(ctx, userId, now);
   },
 });
 
@@ -275,54 +275,10 @@ export const markAllSeen = mutation({
   returns: v.null(),
   handler: async (ctx) => {
     const userId = await requireUserId(ctx);
-    const now = Date.now();
-    const upsert = (
-      kind: "assignment" | "grade" | "discussion" | "assignmentChange",
-      canvasId: number,
-      seenVersion: string | undefined,
-    ) => upsertSeen(ctx, userId, kind, canvasId, seenVersion);
-
-    const activeIds = await activeCourseIds(ctx, userId);
-
-    const announcements = await ctx.db
-      .query("discussions")
-      .withIndex("by_user_announcement_postedAt", (q) =>
-        q
-          .eq("userId", userId)
-          .eq("isAnnouncement", true)
-          .gte("postedAt", now - ANNOUNCEMENT_WINDOW_MS),
-      )
-      .collect();
-    for (const a of announcements) {
-      if (activeIds.has(a.courseCanvasId)) {
-        await upsert("discussion", a.canvasId, undefined);
-      }
-    }
-
-    const assignments = await activeAssignments(ctx, userId, activeIds);
-    for (const a of assignments) {
-      const postedAt = a.submission?.postedAt;
-      const isNew =
-        a.canvasCreatedAt !== undefined && a.canvasCreatedAt >= now - NEW_ASSIGNMENT_WINDOW_MS;
-      const hasGrade = postedAt !== undefined && postedAt >= now - GRADE_WINDOW_MS;
-      if (!isNew && !hasGrade) continue;
-      if (isNew) await upsert("assignment", a.canvasId, undefined);
-      if (hasGrade) await upsert("grade", a.canvasId, gradeVersion(postedAt));
-    }
-
-    const changes = await ctx.db
-      .query("assignmentChanges")
-      .withIndex("by_user_changedAt", (q) =>
-        q.eq("userId", userId).gte("changedAt", now - 30 * DAY_MS),
-      )
-      .collect();
-    for (const change of changes) {
-      if (!activeIds.has(change.courseCanvasId)) continue;
-      await upsert(
-        "assignmentChange",
-        change.assignmentCanvasId,
-        String(change.changedAt),
-      );
+    const items = await buildFeed(ctx, userId, Date.now());
+    for (const item of items) {
+      const kind = item.type === "announcement" ? "discussion" : item.type === "change" ? "assignmentChange" : item.type;
+      await upsertSeen(ctx, userId, kind, item.canvasId, item.seenVersion);
     }
     return null;
   },

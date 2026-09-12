@@ -9,6 +9,9 @@ import type { IndexRange, WithoutSystemFields } from "convex/server";
 import { sourceChanged } from "./courseSource";
 import { touchInterpretation } from "./interpretationRevision";
 import { removeSearchEntry, updateSearchEntry } from "./searchEntries";
+import schema from "../schema";
+import { sameValue } from "./equality";
+import { isListSource, syncListSummary, removeListSummary, type ListSource } from "./listSummaries";
 
 // Convex's index-builder types don't distribute over a union of table
 // names, so the two shared indexes are typed structurally here. Every
@@ -26,9 +29,7 @@ type UserCourseRange = {
 type SyncedDoc = { _id: unknown; canvasId: number };
 
 type SyncedTableNames = {
-  [T in TableNames]: T extends "searchEntries" ? never : Doc<T> extends { canvasId?: number; syncedAt?: number }
-    ? T
-    : never;
+  [T in TableNames]: Doc<T> extends { syncedAt: number } ? T : T extends "calendarEvents" ? T : never;
 }[TableNames];
 
 /** Fields the caller supplies: the row minus what we fill in. */
@@ -38,16 +39,17 @@ export type UpsertRow<T extends SyncedTableNames> = Omit<
 >;
 
 /**
- * Insert or patch rows keyed by (userId, canvasId). Patches replace the
- * provided fields only, so columns that live outside the sync payload
- * (none today, by design — local state lives in `todos`/`seenState`)
- * survive untouched.
+ * Rows are normalized snapshots: omitted optional source fields are cleared.
+ * Locally derived fields survive. Submission comments are the exception:
+ * Canvas omits them in partial responses; an explicit [] clears them.
+ * syncedAt records the last persisted content change, not a sync attempt.
  */
 export async function upsertByCanvasId<T extends SyncedTableNames>(
   ctx: MutationCtx,
   table: T,
   userId: string,
   rows: ReadonlyArray<UpsertRow<T>>,
+  beforeWrite?: (existing: Doc<T> | null, next: UpsertRow<T>) => Promise<void>,
 ): Promise<void> {
   const now = Date.now();
   const courseActivity = new Map<string, boolean>();
@@ -62,19 +64,52 @@ export async function upsertByCanvasId<T extends SyncedTableNames>(
           .eq("canvasId", canvasId),
       )
       .unique()) as Doc<T> | null;
-    const doc = { ...row, userId, syncedAt: now } as unknown as WithoutSystemFields<
-      Doc<T>
-    >;
+    const fields: Record<string, unknown> = {};
+    const incoming = row as Record<string, unknown>;
+    for (const key of Object.keys(schema.tables[table].validator.fields)) {
+      if (key === "syncedAt" || key === "userId" ||
+        (table === "courses" && key === "verifiedInstructors")) continue;
+      fields[key] = incoming[key];
+    }
+    if (table === "pages" && incoming.body === undefined) {
+      const previous = existing as Doc<"pages"> | null;
+      // Page metadata responses may omit the body. Explicit unavailable or
+      // locked responses must still remove previously accessible content.
+      fields.body = incoming.contentUnavailable === true || incoming.lockedForUser === true
+        ? "" : previous?.body;
+      fields.contentUnavailable = incoming.contentUnavailable ?? previous?.contentUnavailable;
+    }
+    if (table === "assignments") {
+      const previous = existing as Doc<"assignments"> | null;
+      const submission = incoming.submission as Doc<"assignments">["submission"];
+      // No submission object means the endpoint did not include one. Clearing
+      // a grade is represented by a submission without postedAt/score/grade.
+      fields.submission = submission === undefined ? previous?.submission : {
+        ...submission, comments: submission.comments ?? previous?.submission?.comments,
+      };
+    }
+    const doc = { ...fields, userId } as unknown as WithoutSystemFields<Doc<T>>;
+    await beforeWrite?.(existing, doc as UpsertRow<T>);
     if (sourceChanged(table, existing, { ...existing, ...doc })) {
       const source = doc as { courseCanvasId?: number; canvasId?: number };
       const courseId = table === "courses" ? source.canvasId : source.courseCanvasId;
       if (courseId !== undefined) changedCourses.add(courseId);
     }
-    if (existing) {
-      await ctx.db.patch(existing._id, doc);
-    } else {
-      await ctx.db.insert(table, doc);
+    const changed = existing === null || Object.entries(fields).some(([key, value]) =>
+      !sameValue((existing as Record<string, unknown>)[key], value));
+    let saved = existing;
+    if (changed) {
+      if (existing) await ctx.db.patch(existing._id, { ...doc, syncedAt: now });
+      else {
+        const id = await ctx.db.insert(table, { ...doc, syncedAt: now });
+        if (isListSource(table)) saved = await ctx.db.get(id) as Doc<T>;
+      }
     }
+    if (isListSource(table) && saved) {
+      await syncListSummary(ctx, table, { ...saved, ...doc } as unknown as Doc<ListSource>);
+    }
+    // Reconcile the small search projection even on a replay: a course may
+    // have become active again since its child search entries were pruned.
     await updateSearchEntry(ctx, table, doc, courseActivity);
   }
   for (const courseId of changedCourses) await touchInterpretation(ctx, userId, courseId);
@@ -104,6 +139,7 @@ export async function pruneCourseRows<T extends SyncedTableNames>(
   for (const row of rows) {
     const canvasId = (row as unknown as SyncedDoc).canvasId;
     if (!keep.has(canvasId)) {
+      await removeListSummary(ctx, table, userId, canvasId);
       await ctx.db.delete(row._id);
       await removeSearchEntry(ctx, table, userId, canvasId);
       deleted.push(canvasId);

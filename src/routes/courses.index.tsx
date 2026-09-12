@@ -1,7 +1,6 @@
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
 import { Search } from "lucide-react";
-import { api } from "../../convex/_generated/api";
 import { PageHeader } from "@/components/app/page-header";
 import { LedgerRow } from "@/components/course/ledger-row";
 import { LedgerPastTerms } from "@/components/course/ledger-past";
@@ -17,8 +16,8 @@ export const Route = createFileRoute("/courses/")({
 
 function CoursesIndex() {
   const { loading, courses, visible, other, past, termName, color } = useCourses();
-  const todos = useQuery(api.todos.list, {});
-  const feed = useQuery(api.inbox.feed);
+  const todos = useTodoList();
+  const feed = useInboxFeed();
   const info = useSyncInfo();
   const now = useNow();
 

@@ -25,6 +25,8 @@ import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
 import { findCanvasTodo } from "./todos";
 import { DAY_MS } from "./lib/time";
 import { removeSearchEntry, updateSearchEntry } from "./lib/searchEntries";
+import { sameValue } from "./lib/equality";
+import { syncListSummary, removeListSummary } from "./lib/listSummaries";
 
 const courseUpsert = v.object({
   canvasId: v.number(),
@@ -227,6 +229,7 @@ export const upsertCourses = internalMutation({
         .collect();
       for (const course of existing) {
         if (keep.has(course.canvasId)) continue;
+        await removeListSummary(ctx, "courses", args.userId, course.canvasId);
         await ctx.db.delete(course._id);
         await removeSearchEntry(ctx, "courses", args.userId, course.canvasId);
         await ctx.scheduler.runAfter(0, internal.search.pruneCourse, {
@@ -298,13 +301,7 @@ export const upsertAssignments = internalMutation({
       courseCanvasId: args.courseCanvasId,
     }));
     let changedAt = Date.now();
-    for (const row of rows) {
-      const existing = await ctx.db
-        .query("assignments")
-        .withIndex("by_user_canvasId", (q) =>
-          q.eq("userId", args.userId).eq("canvasId", row.canvasId),
-        )
-        .unique();
+    await upsertByCanvasId(ctx, "assignments", args.userId, rows, async (existing, row) => {
       await markDoneIfNewlySubmitted(
         ctx,
         args.userId,
@@ -326,8 +323,7 @@ export const upsertAssignments = internalMutation({
           changedAt += 1;
         }
       }
-    }
-    await upsertByCanvasId(ctx, "assignments", args.userId, rows);
+    });
     if (args.prune) {
       const deleted = await pruneCourseRows(
         ctx,
@@ -381,10 +377,10 @@ export const applySubmissionUpdates = internalMutation({
           ...update.submission,
           comments: update.submission.comments ?? existing.submission?.comments,
         };
-        await ctx.db.patch(existing._id, {
-          submission,
-          syncedAt: now,
-        });
+        if (!sameValue(existing.submission, submission)) {
+          await ctx.db.patch(existing._id, { submission, syncedAt: now });
+        }
+        await syncListSummary(ctx, "assignments", { ...existing, submission });
         await updateSearchEntry(ctx, "assignments", {
           ...existing,
           submission,

@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { omit } from "convex-helpers";
 import { courseMapValidator, resultResourceValidator } from "./lib/courseMap";
 import { searchFields } from "./lib/searchFields";
 
@@ -160,7 +161,165 @@ const synced = {
   syncedAt: v.number(),
 };
 
+const coursesTable = defineTable({
+    userId: v.string(),
+    canvasId: v.number(),
+    name: v.string(),
+    courseCode: v.string(),
+    term: v.optional(v.string()),
+    // Enrollment-term id and dates. Academic terms carry dates; the
+    // catch-all terms Canvas admins use for orientation/advising courses
+    // do not, which is how the UI tells "this semester" from "ongoing".
+    termId: v.optional(v.number()),
+    termStartAt: v.optional(v.number()),
+    termEndAt: v.optional(v.number()),
+    startAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
+    isFavorite: v.optional(v.boolean()),
+    // How the instructor set the course up. `defaultView` is the landing
+    // tab in Canvas; `tabs` is the ordered list of nav tabs the instructor
+    // left visible (Canvas tab ids: home, modules, pages, files, ...).
+    defaultView: v.optional(courseDefaultView),
+    tabs: v.optional(v.array(v.string())),
+    syllabusBody: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    enrollmentState: v.optional(
+      v.union(v.literal("active"), v.literal("completed")),
+    ),
+    instructors: v.optional(v.array(instructorFields)),
+    verifiedInstructors: v.optional(v.array(instructorFields)),
+    // Enrollment-level totals. Respect the posting policy: both are
+    // undefined unless Canvas reports them, and `hideFinalGrades` means
+    // the instructor hides totals entirely.
+    currentScore: v.optional(v.number()),
+    currentGrade: v.optional(v.string()),
+    finalScore: v.optional(v.number()),
+    finalGrade: v.optional(v.string()),
+    hideFinalGrades: v.optional(v.boolean()),
+    applyAssignmentGroupWeights: v.optional(v.boolean()),
+    // The course's letter scheme when Canvas exposes it; else the UI falls
+    // back to the UW scale (or the student's own cutoffs in coursePrefs).
+    gradingScheme: v.optional(v.array(gradingSchemeEntry)),
+    syncedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_canvasId", ["userId", "canvasId"]);
+
+const assignmentsTable = defineTable({
+    ...synced,
+    name: v.string(),
+    description: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+    unlockAt: v.optional(v.number()),
+    lockAt: v.optional(v.number()),
+    pointsPossible: v.optional(v.number()),
+    gradingType: v.optional(v.string()), // points | percent | letter_grade | gpa_scale | pass_fail | not_graded
+    assignmentGroupCanvasId: v.optional(v.number()),
+    position: v.optional(v.number()),
+    htmlUrl: v.string(),
+    submissionTypes: v.array(v.string()),
+    // Graded quizzes and discussions are also assignments; these link back
+    // so the UI can open the right thing.
+    quizCanvasId: v.optional(v.number()),
+    discussionCanvasId: v.optional(v.number()),
+    lockedForUser: v.optional(v.boolean()),
+    omitFromFinalGrade: v.optional(v.boolean()),
+    submission: v.optional(submissionFields),
+    scoreStatistics: v.optional(scoreStatisticsFields),
+    // Canvas-side timestamps: "new assignment" means created in Canvas
+    // recently, not synced recently.
+    canvasCreatedAt: v.optional(v.number()),
+    canvasUpdatedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_createdAt", ["userId", "canvasCreatedAt"])
+    .index("by_user_postedAt", ["userId", "submission.postedAt"]);
+
+const quizzesTable = defineTable({
+    ...synced,
+    title: v.string(),
+    description: v.optional(v.string()),
+    quizType: v.string(), // practice_quiz | assignment | graded_survey | survey
+    dueAt: v.optional(v.number()),
+    unlockAt: v.optional(v.number()),
+    lockAt: v.optional(v.number()),
+    pointsPossible: v.optional(v.number()),
+    timeLimitMinutes: v.optional(v.number()),
+    allowedAttempts: v.optional(v.number()), // -1 = unlimited
+    questionCount: v.optional(v.number()),
+    assignmentCanvasId: v.optional(v.number()),
+    htmlUrl: v.string(),
+    lockedForUser: v.optional(v.boolean()),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"]);
+
+const discussionsTable = defineTable({
+    ...synced,
+    title: v.string(),
+    message: v.optional(v.string()),
+    isAnnouncement: v.boolean(),
+    postedAt: v.optional(v.number()),
+    lastReplyAt: v.optional(v.number()),
+    dueAt: v.optional(v.number()), // graded discussions
+    assignmentCanvasId: v.optional(v.number()),
+    authorName: v.optional(v.string()),
+    unreadCount: v.optional(v.number()),
+    readState: v.optional(v.string()), // read | unread (Canvas-side)
+    locked: v.optional(v.boolean()),
+    pinned: v.optional(v.boolean()),
+    htmlUrl: v.string(),
+  })
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_course", ["userId", "courseCanvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_course_announcement_postedAt", [
+      "userId",
+      "courseCanvasId",
+      "isAnnouncement",
+      "postedAt",
+    ])
+    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]);
+
 export default defineSchema({
+  // Compatible list projections. Original tables remain the source of truth
+  // and the detail read path throughout rollout and rollback.
+  courseSummaries: defineTable({
+    ...omit(coursesTable.validator.fields, ["syllabusBody", "syncedAt"]),
+    sourceId: v.id("courses"), sourceCreatedAt: v.number(),
+  }).index("by_user", ["userId"])
+    .index("by_user_canvasId", ["userId", "canvasId"]),
+  assignmentSummaries: defineTable({
+    ...omit(assignmentsTable.validator.fields, ["description", "submission", "syncedAt", "canvasUpdatedAt"]),
+    submission: v.optional(v.object(omit(submissionFields.fields, ["comments"]))),
+    sourceId: v.id("assignments"), sourceCreatedAt: v.number(),
+  }).index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_createdAt", ["userId", "canvasCreatedAt"])
+    .index("by_user_postedAt", ["userId", "submission.postedAt"]),
+  quizSummaries: defineTable({
+    ...omit(quizzesTable.validator.fields, ["description", "syncedAt"]),
+    sourceId: v.id("quizzes"), sourceCreatedAt: v.number(),
+  }).index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"]),
+  discussionSummaries: defineTable({
+    ...omit(discussionsTable.validator.fields, ["message", "syncedAt"]),
+    excerpt: v.optional(v.string()), sourceId: v.id("discussions"), sourceCreatedAt: v.number(),
+  }).index("by_user_canvasId", ["userId", "canvasId"])
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]),
+  listMigrations: defineTable({
+    table: v.union(v.literal("courses"), v.literal("assignments"), v.literal("quizzes"), v.literal("discussions")),
+    stage: v.union(v.literal("backfill"), v.literal("verify"), v.literal("verifyOrphans"), v.literal("ready")),
+    cursor: v.union(v.string(), v.null()), processed: v.number(),
+  }).index("by_table", ["table"]),
+  listRollout: defineTable({ key: v.literal("compact-v1"), enabled: v.boolean() })
+    .index("by_key", ["key"]),
+
   courseInterpretations: defineTable({
     userId: v.string(), courseCanvasId: v.number(), enabled: v.boolean(), sourceRevision: v.number(), generation: v.number(),
     status: v.union(v.literal("queued"), v.literal("running"), v.literal("ready"), v.literal("failed"), v.literal("blocked"), v.literal("stale")),
@@ -211,49 +370,7 @@ export default defineSchema({
   // -------------------------------------------------------------------------
   // Courses
 
-  courses: defineTable({
-    userId: v.string(),
-    canvasId: v.number(),
-    name: v.string(),
-    courseCode: v.string(),
-    term: v.optional(v.string()),
-    // Enrollment-term id and dates. Academic terms carry dates; the
-    // catch-all terms Canvas admins use for orientation/advising courses
-    // do not, which is how the UI tells "this semester" from "ongoing".
-    termId: v.optional(v.number()),
-    termStartAt: v.optional(v.number()),
-    termEndAt: v.optional(v.number()),
-    startAt: v.optional(v.number()),
-    endAt: v.optional(v.number()),
-    isFavorite: v.optional(v.boolean()),
-    // How the instructor set the course up. `defaultView` is the landing
-    // tab in Canvas; `tabs` is the ordered list of nav tabs the instructor
-    // left visible (Canvas tab ids: home, modules, pages, files, ...).
-    defaultView: v.optional(courseDefaultView),
-    tabs: v.optional(v.array(v.string())),
-    syllabusBody: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
-    enrollmentState: v.optional(
-      v.union(v.literal("active"), v.literal("completed")),
-    ),
-    instructors: v.optional(v.array(instructorFields)),
-    verifiedInstructors: v.optional(v.array(instructorFields)),
-    // Enrollment-level totals. Respect the posting policy: both are
-    // undefined unless Canvas reports them, and `hideFinalGrades` means
-    // the instructor hides totals entirely.
-    currentScore: v.optional(v.number()),
-    currentGrade: v.optional(v.string()),
-    finalScore: v.optional(v.number()),
-    finalGrade: v.optional(v.string()),
-    hideFinalGrades: v.optional(v.boolean()),
-    applyAssignmentGroupWeights: v.optional(v.boolean()),
-    // The course's letter scheme when Canvas exposes it; else the UI falls
-    // back to the UW scale (or the student's own cutoffs in coursePrefs).
-    gradingScheme: v.optional(v.array(gradingSchemeEntry)),
-    syncedAt: v.number(),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_canvasId", ["userId", "canvasId"]),
+  courses: coursesTable,
 
   assignmentGroups: defineTable({
     ...synced,
@@ -280,36 +397,7 @@ export default defineSchema({
   // -------------------------------------------------------------------------
   // Gradeable things
 
-  assignments: defineTable({
-    ...synced,
-    name: v.string(),
-    description: v.optional(v.string()),
-    dueAt: v.optional(v.number()),
-    unlockAt: v.optional(v.number()),
-    lockAt: v.optional(v.number()),
-    pointsPossible: v.optional(v.number()),
-    gradingType: v.optional(v.string()), // points | percent | letter_grade | gpa_scale | pass_fail | not_graded
-    assignmentGroupCanvasId: v.optional(v.number()),
-    position: v.optional(v.number()),
-    htmlUrl: v.string(),
-    submissionTypes: v.array(v.string()),
-    // Graded quizzes and discussions are also assignments; these link back
-    // so the UI can open the right thing.
-    quizCanvasId: v.optional(v.number()),
-    discussionCanvasId: v.optional(v.number()),
-    lockedForUser: v.optional(v.boolean()),
-    omitFromFinalGrade: v.optional(v.boolean()),
-    submission: v.optional(submissionFields),
-    scoreStatistics: v.optional(scoreStatisticsFields),
-    // Canvas-side timestamps: "new assignment" means created in Canvas
-    // recently, not synced recently.
-    canvasCreatedAt: v.optional(v.number()),
-    canvasUpdatedAt: v.optional(v.number()),
-  })
-    .index("by_user", ["userId"])
-    .index("by_user_canvasId", ["userId", "canvasId"])
-    .index("by_user_course", ["userId", "courseCanvasId"])
-    .index("by_user_dueAt", ["userId", "dueAt"]),
+  assignments: assignmentsTable,
 
   assignmentChanges: defineTable({
     userId: v.string(),
@@ -323,54 +411,11 @@ export default defineSchema({
     .index("by_user_changedAt", ["userId", "changedAt"])
     .index("by_user_assignment", ["userId", "assignmentCanvasId"]),
 
-  quizzes: defineTable({
-    ...synced,
-    title: v.string(),
-    description: v.optional(v.string()),
-    quizType: v.string(), // practice_quiz | assignment | graded_survey | survey
-    dueAt: v.optional(v.number()),
-    unlockAt: v.optional(v.number()),
-    lockAt: v.optional(v.number()),
-    pointsPossible: v.optional(v.number()),
-    timeLimitMinutes: v.optional(v.number()),
-    allowedAttempts: v.optional(v.number()), // -1 = unlimited
-    questionCount: v.optional(v.number()),
-    assignmentCanvasId: v.optional(v.number()),
-    htmlUrl: v.string(),
-    lockedForUser: v.optional(v.boolean()),
-  })
-    .index("by_user_canvasId", ["userId", "canvasId"])
-    .index("by_user_course", ["userId", "courseCanvasId"])
-    .index("by_user_dueAt", ["userId", "dueAt"]),
+  quizzes: quizzesTable,
 
   // Discussions and announcements share one table: an announcement is a
   // discussion topic with `isAnnouncement: true`.
-  discussions: defineTable({
-    ...synced,
-    title: v.string(),
-    message: v.optional(v.string()),
-    isAnnouncement: v.boolean(),
-    postedAt: v.optional(v.number()),
-    lastReplyAt: v.optional(v.number()),
-    dueAt: v.optional(v.number()), // graded discussions
-    assignmentCanvasId: v.optional(v.number()),
-    authorName: v.optional(v.string()),
-    unreadCount: v.optional(v.number()),
-    readState: v.optional(v.string()), // read | unread (Canvas-side)
-    locked: v.optional(v.boolean()),
-    pinned: v.optional(v.boolean()),
-    htmlUrl: v.string(),
-  })
-    .index("by_user_canvasId", ["userId", "canvasId"])
-    .index("by_user_course", ["userId", "courseCanvasId"])
-    .index("by_user_dueAt", ["userId", "dueAt"])
-    .index("by_user_course_announcement_postedAt", [
-      "userId",
-      "courseCanvasId",
-      "isAnnouncement",
-      "postedAt",
-    ])
-    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]),
+  discussions: discussionsTable,
 
   // -------------------------------------------------------------------------
   // Course content containers

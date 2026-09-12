@@ -1,3 +1,5 @@
+import { omit } from "convex-helpers";
+import { compactListsEnabled } from "./lib/listSummaries";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import schema, { COURSE_COLORS, courseColor } from "./schema";
@@ -20,7 +22,7 @@ const courseFields = {
   ...schema.tables.courses.validator.fields,
 };
 const courseListItem = v.object({
-  ...courseFields,
+  ...omit(courseFields, ["syncedAt", "syllabusBody"]),
   color: courseColor,
   nickname: v.optional(v.string()),
   position: v.optional(v.number()),
@@ -40,8 +42,9 @@ export const list = query({
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) return [];
     const userId = identity.subject;
+    const compact = await compactListsEnabled(ctx);
     const courses = await ctx.db
-      .query("courses")
+      .query(compact ? "courseSummaries" : "courses")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect();
     const prefs = await ctx.db
@@ -57,8 +60,9 @@ export const list = query({
       .map((course, index) => {
         const pref = prefByCourse.get(course.canvasId);
         return {
-          ...course,
-          syllabusBody: undefined,
+          ...("sourceId" in course
+            ? { ...omit(course, ["_id", "_creationTime", "sourceId", "sourceCreatedAt"]), _id: course.sourceId, _creationTime: course.sourceCreatedAt }
+            : omit(course, ["syncedAt", "syllabusBody"])),
           enrollmentState: course.enrollmentState ?? "active",
           color: pref?.color ?? COURSE_COLORS[index % COURSE_COLORS.length],
           nickname: pref?.nickname,

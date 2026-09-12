@@ -1,3 +1,5 @@
+import { sameValue } from "./lib/equality";
+import { syncListSummary } from "./lib/listSummaries";
 import { getCanvasClient } from "./credentials";
 import { courseInstructors } from "./sync";
 import { v } from "convex/values";
@@ -83,8 +85,11 @@ export const save = internalMutation({
         q.eq("userId", a.userId).eq("canvasId", a.courseCanvasId),
       )
       .unique();
-    if (course)
-      await ctx.db.patch(course._id, { verifiedInstructors: a.instructors });
+    if (course) {
+      if (!sameValue(course.verifiedInstructors, a.instructors))
+        await ctx.db.patch(course._id, { verifiedInstructors: a.instructors, syncedAt: Date.now() });
+      await syncListSummary(ctx, "courses", { ...course, verifiedInstructors: a.instructors });
+    }
     return null;
   },
 });
@@ -152,7 +157,11 @@ export const roster = internalMutation({
         q.eq("userId", a.userId).eq("canvasId", a.courseCanvasId),
       )
       .unique();
-    if (course) await ctx.db.patch(course._id, { instructors: a.instructors });
+    if (course) {
+      if (!sameValue(course.instructors, a.instructors))
+        await ctx.db.patch(course._id, { instructors: a.instructors, syncedAt: Date.now() });
+      await syncListSummary(ctx, "courses", { ...course, instructors: a.instructors });
+    }
     return null;
   },
 });

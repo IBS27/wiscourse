@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import {
   BarChart3,
   BookOpen,
@@ -7,7 +7,6 @@ import {
   Inbox,
   ListChecks,
 } from "lucide-react";
-import { api } from "../../../convex/_generated/api";
 import { buildAgenda } from "@/lib/agenda";
 import { useNow, useToday } from "@/lib/hooks";
 
@@ -24,8 +23,8 @@ export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar", "/tasks"] as
 
 /** Badge counts for the nav: open items due/overdue today, unseen feed items. */
 export function useNavCounts(): { home: number; inbox: number } {
-  const items = useQuery(api.todos.list, {});
-  const feed = useQuery(api.inbox.feed);
+  const items = useTodoList();
+  const feed = useInboxFeed();
   const today = useToday();
   const now = useNow();
   let home = 0;

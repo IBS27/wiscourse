@@ -1,8 +1,7 @@
+import { useTodoList } from "@/lib/list-queries";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "convex/react";
 import { Plus } from "lucide-react";
-import { api } from "../../convex/_generated/api";
 import type { TodoItem } from "../../convex/todos";
 import { Dot, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
@@ -26,7 +25,7 @@ type Semester = "current" | "all";
 type Source = "all" | "canvas" | "personal";
 
 function Tasks() {
-  const items = useQuery(api.todos.list, {});
+  const items = useTodoList();
   const { loading, current, visible, filterable, color } = useCourses();
   const today = useToday();
   const now = useNow();

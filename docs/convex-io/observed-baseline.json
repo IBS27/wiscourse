@@ -1,0 +1,156 @@
+{
+  "report": {
+    "initial:inbox.feed": {
+      "bytesRead": 178195,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 214,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 25.273888000000056
+    },
+    "initial:todos.list": {
+      "bytesRead": 86957,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 155,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 9.194605999999908
+    },
+    "unchanged:upsertAssignments": {
+      "bytesRead": 35738,
+      "bytesWritten": 11655,
+      "databaseQueries": 10,
+      "documentsRead": 13,
+      "documentsWritten": 3,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0
+    },
+    "unchanged:inbox.feed": {
+      "bytesRead": 178195,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 214,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 11.10634600000003
+    },
+    "unchanged:todos.list": {
+      "bytesRead": 86957,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 155,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 3.9888089999999465
+    },
+    "changed:upsertAssignments": {
+      "bytesRead": 20851,
+      "bytesWritten": 7159,
+      "databaseQueries": 5,
+      "documentsRead": 6,
+      "documentsWritten": 3,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0
+    },
+    "changed:inbox.feed": {
+      "bytesRead": 178394,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 215,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 11.186305999999945
+    },
+    "changed:todos.list": {
+      "bytesRead": 93724,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 156,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 3.7657179999999926
+    },
+    "seen:inbox.feed": {
+      "bytesRead": 178568,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 216,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 10.933669000000009
+    },
+    "seen:todos.list": {
+      "bytesRead": 93724,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 156,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 3.6005870000000186
+    },
+    "done:inbox.feed": {
+      "bytesRead": 178568,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 216,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 11.594266000000061
+    },
+    "done:todos.list": {
+      "bytesRead": 93921,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 157,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 4.586506999999983
+    },
+    "navigation:inbox.feed": {
+      "bytesRead": 178568,
+      "bytesWritten": 0,
+      "databaseQueries": 22,
+      "documentsRead": 216,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 10.968845999999985
+    },
+    "navigation:todos.list": {
+      "bytesRead": 93921,
+      "bytesWritten": 0,
+      "databaseQueries": 5,
+      "documentsRead": 157,
+      "documentsWritten": 0,
+      "functionsScheduled": 0,
+      "scheduledFunctionArgsBytes": 0,
+      "localElapsedMs": 3.8308009999999513
+    }
+  },
+  "digests": {
+    "initial:inbox.feed": "4932d7857bae7827ff4d629da76a403919c8615e8b8d9f3f9f2789709a98ab7f",
+    "initial:todos.list": "041c11ba0cec77588df64483b315e2555eb9394e91f220e254b9c0b6944ee110",
+    "unchanged:inbox.feed": "4932d7857bae7827ff4d629da76a403919c8615e8b8d9f3f9f2789709a98ab7f",
+    "unchanged:todos.list": "041c11ba0cec77588df64483b315e2555eb9394e91f220e254b9c0b6944ee110",
+    "changed:inbox.feed": "18cc29e5d4496a5cf551aa9b9cef86cb9362c24a7df1d55f713966a5ec4e0da6",
+    "changed:todos.list": "a76674bf92337950b6b6b65cb537f86471629ba12a414462f035b4f8b3f4b515",
+    "seen:inbox.feed": "10fc8d42a73f09611e9c2a3da5aa285eb38d17dfc6f4cbb877500c79b7fef62e",
+    "seen:todos.list": "a76674bf92337950b6b6b65cb537f86471629ba12a414462f035b4f8b3f4b515",
+    "done:inbox.feed": "10fc8d42a73f09611e9c2a3da5aa285eb38d17dfc6f4cbb877500c79b7fef62e",
+    "done:todos.list": "d6c6729878c1df65b13667d2adc8343f54ea0bc3f6d1509cb9801bfc66e77fbf",
+    "navigation:inbox.feed": "10fc8d42a73f09611e9c2a3da5aa285eb38d17dfc6f4cbb877500c79b7fef62e",
+    "navigation:todos.list": "d6c6729878c1df65b13667d2adc8343f54ea0bc3f6d1509cb9801bfc66e77fbf"
+  }
+}

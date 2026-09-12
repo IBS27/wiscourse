@@ -1,6 +1,7 @@
+import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { ChevronDown, ChevronRight, Megaphone, Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { TodoItem } from "../../convex/todos";
@@ -29,7 +30,7 @@ const LATER_PREVIEW = 3;
 function Home() {
   const today = useToday();
   const now = useNow();
-  const items = useQuery(api.todos.list, {});
+  const items = useTodoList();
   const info = useSyncInfo();
   const quickAdd = useQuickAdd();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
@@ -230,7 +231,7 @@ function Section({
 }
 
 function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
-  const feed = useQuery(api.inbox.feed);
+  const feed = useInboxFeed();
   const markAll = useMutation(api.inbox.markAllSeen);
   const [open, setOpen] = useState(false);
   const unseen = feed?.filter((f) => !f.seen) ?? [];

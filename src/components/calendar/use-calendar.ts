@@ -1,3 +1,4 @@
+import { useTodoList } from "@/lib/list-queries";
 // One place where the calendar's three subscriptions live: todos (due times
 // and plans), calendar events, and class meetings. Every view asks for a set
 // of day keys and gets back the per-day model; the query range is memoised
@@ -35,7 +36,7 @@ export function useCalendarData({ days }: { days: string[] }): CalendarData {
   );
 
   const todoRange = useMemo(() => ({ from: range.start, to: range.end }), [range]);
-  const todos = useQuery(api.todos.list, todoRange);
+  const todos = useTodoList(todoRange);
   const eventRows = useQuery(api.calendar.range, range);
   const meetings = useQuery(api.meetings.list);
 

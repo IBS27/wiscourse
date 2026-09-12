@@ -266,7 +266,7 @@ export const markPageUnavailable = internalMutation({
       .unique();
     if (page && (!page.contentUnavailable || page.body)) {
       await touchInterpretation(ctx, args.userId, args.courseCanvasId);
-      await ctx.db.patch(page._id, { body: "", contentUnavailable: true });
+      await ctx.db.patch(page._id, { body: "", contentUnavailable: true, syncedAt: Date.now() });
       await updateSearchEntry(ctx, "pages", {
         ...page,
         body: "",
@@ -299,7 +299,7 @@ export const setFrontPage = internalMutation({
     for (const page of previous) {
       if (page.canvasId !== args.canvasId) {
         await touchInterpretation(ctx, args.userId, args.courseCanvasId);
-        await ctx.db.patch(page._id, { isFrontPage: false });
+        await ctx.db.patch(page._id, { isFrontPage: false, syncedAt: Date.now() });
       }
     }
     return null;
