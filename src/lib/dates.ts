@@ -1,39 +1,56 @@
-// Day keys are "YYYY-MM-DD" in the browser's zone. Everything that is a
+// Day keys are "YYYY-MM-DD" on the display clock (src/lib/time-zone.ts:
+// the browser's zone unless the user overrode it). Everything that is a
 // calendar day (planned day, agenda buckets) goes through these; instants
 // (due dates) stay as epoch ms.
+//
+// No `Date` local-zone getters here: every conversion goes through the
+// display zone so an override in Settings moves every date on screen.
+
+import {
+  addDaysKey,
+  dayKeyIn,
+  daysBetween,
+  weekdayOfKey,
+  zonedToUtc,
+} from "../../convex/lib/zones";
+import { displayTimeZone } from "./time-zone";
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function dayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return dayKeyIn(date.getTime(), displayTimeZone());
 }
 
 export function dayKeyOf(ms: number): string {
-  return dayKey(new Date(ms));
+  return dayKeyIn(ms, displayTimeZone());
 }
 
-/** Local midnight at the start of the given day key. */
+/** Midnight at the start of the given day key, on the display clock. */
 export function startOfDay(key: string): Date {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(zonedToUtc(key, 0, displayTimeZone()));
+}
+
+/** The instant at `minute` past midnight on `key`, on the display clock. */
+export function atMinute(key: string, minute: number): number {
+  return zonedToUtc(key, minute, displayTimeZone());
 }
 
 export function addDays(key: string, days: number): string {
-  const date = startOfDay(key);
-  date.setDate(date.getDate() + days);
-  return dayKey(date);
+  return addDaysKey(key, days);
+}
+
+/** Whole days from `a` to `b`. */
+export function dayDiff(a: string, b: string): number {
+  return daysBetween(a, b);
 }
 
 export function today(): string {
-  return dayKey(new Date());
+  return dayKeyOf(Date.now());
 }
 
 /** 0 = Sunday. */
 export function weekday(key: string): number {
-  return startOfDay(key).getDay();
+  return weekdayOfKey(key);
 }
 
 /** The Sunday on or before the given day. */
@@ -46,72 +63,110 @@ export function startOfMondayWeek(key: string): string {
   return addDays(key, -((weekday(key) + 6) % 7));
 }
 
-const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "short" });
-const WEEKDAY_LONG = new Intl.DateTimeFormat("en-US", { weekday: "long" });
-const MONTH_DAY = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-const MONTH_DAY_LONG = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric" });
-const MONTH_DAY_YEAR = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-const DAY_NUM = new Intl.DateTimeFormat("en-US", { day: "numeric" });
-const TIME = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" });
+// ── Formatters ──────────────────────────────────────────────────────────────
+// Built per zone and cached; the zone rarely changes.
+
+type Fmt =
+  | "weekday"
+  | "weekdayLong"
+  | "monthDay"
+  | "monthDayLong"
+  | "monthDayYear"
+  | "dayNum"
+  | "time"
+  | "monthYear";
+
+const OPTIONS: Record<Fmt, Intl.DateTimeFormatOptions> = {
+  weekday: { weekday: "short" },
+  weekdayLong: { weekday: "long" },
+  monthDay: { month: "short", day: "numeric" },
+  monthDayLong: { month: "long", day: "numeric" },
+  monthDayYear: { month: "short", day: "numeric", year: "numeric" },
+  dayNum: { day: "numeric" },
+  time: { hour: "numeric", minute: "2-digit" },
+  monthYear: { month: "long", year: "numeric" },
+};
+
+const cache = new Map<string, Intl.DateTimeFormat>();
+
+function fmt(kind: Fmt): Intl.DateTimeFormat {
+  const zone = displayTimeZone();
+  const key = `${zone}|${kind}`;
+  let f = cache.get(key);
+  if (f === undefined) {
+    f = new Intl.DateTimeFormat("en-US", { ...OPTIONS[kind], timeZone: zone });
+    cache.set(key, f);
+  }
+  return f;
+}
+
+/** Noon on the day, so a day-key formats as itself in every zone. */
+function noon(key: string): Date {
+  return new Date(atMinute(key, 12 * 60));
+}
 
 /** "Fri, Aug 21" */
 export function formatDay(key: string): string {
-  const d = startOfDay(key);
-  return `${WEEKDAY.format(d)}, ${MONTH_DAY.format(d)}`;
+  const d = noon(key);
+  return `${fmt("weekday").format(d)}, ${fmt("monthDay").format(d)}`;
 }
 
 /** "Friday, August 21" */
 export function formatDayLong(key: string): string {
-  const d = startOfDay(key);
-  return `${WEEKDAY_LONG.format(d)}, ${MONTH_DAY_LONG.format(d)}`;
+  const d = noon(key);
+  return `${fmt("weekdayLong").format(d)}, ${fmt("monthDayLong").format(d)}`;
 }
 
 /** "Friday, Aug 21" */
 export function formatDayMedium(key: string): string {
-  const d = startOfDay(key);
-  return `${WEEKDAY_LONG.format(d)}, ${MONTH_DAY.format(d)}`;
+  const d = noon(key);
+  return `${fmt("weekdayLong").format(d)}, ${fmt("monthDay").format(d)}`;
 }
 
-/** "Fri Aug 21" */
 /** "Sun", "Mon", ... */
 export function formatWeekday(key: string): string {
-  return WEEKDAY.format(startOfDay(key));
+  return fmt("weekday").format(noon(key));
+}
+
+/** "September 2026" for the month containing `key`. */
+export function formatMonthYear(key: string): string {
+  return fmt("monthYear").format(noon(key));
 }
 
 /** "Aug 21" — an instant, not a day key; the one month-day label. */
 export function formatMonthDay(ms: number): string {
-  return MONTH_DAY.format(new Date(ms));
+  return fmt("monthDay").format(new Date(ms));
 }
 
 /** "Aug 21", carrying the year once the date is from another one. */
 export function formatMonthDayYear(ms: number, now: number = Date.now()): string {
-  const date = new Date(ms);
-  return date.getFullYear() === new Date(now).getFullYear()
-    ? MONTH_DAY.format(date)
-    : MONTH_DAY_YEAR.format(date);
+  const year = (t: number) => dayKeyOf(t).slice(0, 4);
+  return year(ms) === year(now)
+    ? fmt("monthDay").format(new Date(ms))
+    : fmt("monthDayYear").format(new Date(ms));
 }
 
 /** "Aug 10 – 14", or "Aug 31 – Sep 4" across a month boundary. */
-export function formatWeekRange(mondayKey: string): string {
-  const start = startOfDay(mondayKey);
-  const end = startOfDay(addDays(mondayKey, 4));
+export function formatWeekRange(mondayKey: string, length = 5): string {
+  const start = noon(mondayKey);
+  const endKey = addDays(mondayKey, length - 1);
+  const end = noon(endKey);
   const tail =
-    start.getMonth() === end.getMonth() ? DAY_NUM.format(end) : MONTH_DAY.format(end);
-  return `${MONTH_DAY.format(start)} – ${tail}`;
+    mondayKey.slice(0, 7) === endKey.slice(0, 7)
+      ? fmt("dayNum").format(end)
+      : fmt("monthDay").format(end);
+  return `${fmt("monthDay").format(start)} – ${tail}`;
 }
 
+/** "Fri Aug 21" */
 export function formatDayShort(key: string): string {
-  const d = startOfDay(key);
-  return `${WEEKDAY.format(d)} ${MONTH_DAY.format(d)}`;
+  const d = noon(key);
+  return `${fmt("weekday").format(d)} ${fmt("monthDay").format(d)}`;
 }
 
 /** "11:59 PM" */
 export function formatTime(ms: number): string {
-  return TIME.format(new Date(ms));
+  return fmt("time").format(new Date(ms));
 }
 
 /**
@@ -121,8 +176,8 @@ export function formatTime(ms: number): string {
 export function formatDueRelative(ms: number, todayKey: string): string {
   const key = dayKeyOf(ms);
   if (key === todayKey) return formatTime(ms);
-  const diff = Math.round((startOfDay(key).getTime() - startOfDay(todayKey).getTime()) / DAY_MS);
-  if (diff > 0 && diff < 7) return `${WEEKDAY.format(new Date(ms))}, ${formatTime(ms)}`;
+  const diff = dayDiff(todayKey, key);
+  if (diff > 0 && diff < 7) return `${formatWeekday(key)}, ${formatTime(ms)}`;
   return `${formatDayShort(key)}, ${formatTime(ms)}`;
 }
 
@@ -130,8 +185,8 @@ export function formatDueRelative(ms: number, todayKey: string): string {
 export function formatPlannedRelative(key: string, todayKey: string): string {
   if (key === todayKey) return "today";
   if (key === addDays(todayKey, 1)) return "tomorrow";
-  const diff = Math.round((startOfDay(key).getTime() - startOfDay(todayKey).getTime()) / DAY_MS);
-  if (diff > 0 && diff < 7) return WEEKDAY.format(startOfDay(key));
+  const diff = dayDiff(todayKey, key);
+  if (diff > 0 && diff < 7) return formatWeekday(key);
   return formatDayShort(key);
 }
 
@@ -141,8 +196,8 @@ export function formatAgo(ms: number, now: number = Date.now()): string {
   if (diff < 60_000) return "now";
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
   if (diff < DAY_MS) return `${Math.floor(diff / 3_600_000)}h`;
-  if (diff < 7 * DAY_MS) return WEEKDAY.format(new Date(ms));
-  return MONTH_DAY.format(new Date(ms));
+  if (diff < 7 * DAY_MS) return fmt("weekday").format(new Date(ms));
+  return fmt("monthDay").format(new Date(ms));
 }
 
 /** "2 days late" / "1 day late" / "3 hours late". */

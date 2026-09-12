@@ -13,7 +13,7 @@
 //                  at that time; a time without any day means today)
 // Everything left over is the title.
 
-import { addDays, dayKey, startOfDay, weekday } from "./dates";
+import { addDays, atMinute, dayKey, weekday } from "./dates";
 
 export type QuickAddCourse = {
   canvasId: number;
@@ -64,12 +64,14 @@ function nextWeekday(todayKey: string, target: number, next = false): string {
 
 function monthDay(todayKey: string, month: number, day: number): string | undefined {
   if (month < 1 || month > 12 || day < 1 || day > 31) return undefined;
-  const base = startOfDay(todayKey);
-  let date = new Date(base.getFullYear(), month - 1, day);
-  if (date.getMonth() !== month - 1) return undefined;
+  const year = Number(todayKey.slice(0, 4));
+  const build = (y: number) => `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  // Pure day-key arithmetic: a day that overflows its month (Feb 30) rolls.
+  const valid = (key: string) => addDays(key, 0) === key;
+  const thisYear = build(year);
+  if (!valid(thisYear)) return undefined;
   // A month/day already past this year means next year.
-  if (dayKey(date) < todayKey) date = new Date(base.getFullYear() + 1, month - 1, day);
-  return dayKey(date);
+  return thisYear < todayKey ? build(year + 1) : thisYear;
 }
 
 /** Parse a day phrase starting at words[i]; returns [dayKey, wordsConsumed]. */
@@ -236,10 +238,7 @@ export function parseQuickAdd(
   }
   let dueAt: number | undefined;
   if (dueDay !== undefined) {
-    const d = startOfDay(dueDay);
-    const minutes = dueMinutes ?? 23 * 60 + 59;
-    d.setMinutes(minutes);
-    dueAt = d.getTime();
+    dueAt = atMinute(dueDay, dueMinutes ?? 23 * 60 + 59);
   }
 
   return { title: title.join(" "), plannedDay, dueAt, course, tokens };

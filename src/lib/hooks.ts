@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { dayKey, startOfDay, addDays } from "./dates";
+import { dayKeyOf, startOfDay, addDays } from "./dates";
 import { classifyCourses, formatTerm } from "./terms";
+import { useDisplayTimeZone } from "./time-zone";
 
 export type Course = NonNullable<
   ReturnType<typeof useQuery<typeof api.courses.list>>
@@ -65,15 +66,29 @@ export function courseColorVar(color: string | undefined): string {
   return color === undefined ? "var(--course-none)" : `var(--course-${color})`;
 }
 
-/** Today's day key; re-renders when the calendar day rolls over. */
+// Today's day key as an external store: `getSnapshot` reads the clock
+// through the display zone (so a zone override moves "today"), and the
+// subscription wakes every subscriber at the next midnight.
+function todaySnapshot(): string {
+  return dayKeyOf(Date.now());
+}
+function subscribeToday(onChange: () => void): () => void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    const next = startOfDay(addDays(todaySnapshot(), 1)).getTime() - Date.now() + 1000;
+    timer = setTimeout(() => {
+      onChange();
+      arm();
+    }, Math.max(next, 1000));
+  };
+  arm();
+  return () => clearTimeout(timer);
+}
+
+/** Today's day key; re-renders when the calendar day rolls over or the zone changes. */
 export function useToday(): string {
-  const [key, setKey] = useState(() => dayKey(new Date()));
-  useEffect(() => {
-    const next = startOfDay(addDays(key, 1)).getTime() - Date.now() + 1000;
-    const t = setTimeout(() => setKey(dayKey(new Date())), next);
-    return () => clearTimeout(t);
-  }, [key]);
-  return key;
+  useDisplayTimeZone(); // a zone change re-renders, and the snapshot re-reads through it
+  return useSyncExternalStore(subscribeToday, todaySnapshot, todaySnapshot);
 }
 
 export function useNow(intervalMs = 60_000): number {

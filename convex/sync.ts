@@ -52,6 +52,7 @@ import {
   type CanvasAssignment,
   type CanvasCalendarEvent,
   type CanvasCourse,
+  type CanvasGradingStandard,
   type CanvasDiscussionTopic,
   type CanvasSubmission,
   type CanvasTab,
@@ -231,13 +232,14 @@ async function runFullSync(
     const tabs = await courseTabIds(client, course);
     const instructors = await courseInstructors(client, course.id);
     const syllabusBody = await courseSyllabus(client, course);
+    const gradingScheme = await courseGradingScheme(client, course);
     courseUpserts.push(
-      mapCourse({ ...course, syllabus_body: syllabusBody }, tabs, "active", instructors),
+      mapCourse({ ...course, syllabus_body: syllabusBody }, tabs, "active", instructors, gradingScheme),
     );
   }
   for (const course of completedCourses) {
     courseUpserts.push(
-      mapCourse(course, inlineCourseTabIds(course), "completed", undefined),
+      mapCourse(course, inlineCourseTabIds(course), "completed", undefined, undefined),
     );
   }
   await ctx.runMutation(internal.syncStore.upsertCourses, {
@@ -588,11 +590,34 @@ export async function courseInstructors(
     ;
 }
 
+/**
+ * The course's letter scheme, when it has one and Canvas lets a student
+ * read it. Account-level standards often 401 from the course context; the
+ * UI then falls back to the UW scale.
+ */
+async function courseGradingScheme(
+  client: CanvasClient,
+  course: CanvasCourse,
+): Promise<CourseUpsert["gradingScheme"]> {
+  const standardId = course.grading_standard_id;
+  if (standardId === undefined || standardId === null) return undefined;
+  const standard = await tolerateDisabledTab<CanvasGradingStandard | undefined>(
+    () => client.get<CanvasGradingStandard>(`/courses/${course.id}/grading_standards/${standardId}`),
+    undefined,
+  );
+  const scheme = standard?.grading_scheme
+    ?.filter((entry) => typeof entry.value === "number" && entry.name.trim() !== "")
+    .map((entry) => ({ name: entry.name, value: entry.value }))
+    .sort((a, b) => b.value - a.value);
+  return scheme !== undefined && scheme.length > 0 ? scheme : undefined;
+}
+
 function mapCourse(
   course: CanvasCourse,
   tabs: string[] | undefined,
   enrollmentState: "active" | "completed",
   instructors: CourseUpsert["instructors"],
+  gradingScheme: CourseUpsert["gradingScheme"],
 ): CourseUpsert {
   // Only the student enrollment's totals are ours to show; a TA or designer
   // enrollment on the same course reports someone else's (or no) scores.
@@ -631,6 +656,7 @@ function mapCourse(
       : (enrollment?.computed_final_grade ?? undefined),
     hideFinalGrades: course.hide_final_grades,
     applyAssignmentGroupWeights: course.apply_assignment_group_weights,
+    gradingScheme,
   };
 }
 
@@ -687,6 +713,7 @@ function mapSubmission(submission: CanvasSubmission) {
     grade: submission.grade ?? undefined,
     late: submission.late,
     missing: submission.missing,
+    excused: submission.excused === true ? true : undefined,
     postedAt: toMillis(submission.posted_at),
     comments: submission.submission_comments?.flatMap((comment) => {
       const createdAt = toMillis(comment.created_at);

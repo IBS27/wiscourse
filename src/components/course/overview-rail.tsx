@@ -1,12 +1,14 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { ROW_ICON } from "./overview-icons";
 import { OverviewRow } from "./overview-row";
 import { CountBadge } from "@/components/app/bits";
+import { MeetingsEditor } from "@/components/calendar/meetings-editor";
+import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedTitle } from "@/lib/feed";
@@ -58,6 +60,7 @@ export function OverviewRail({
       {facts?.officeHours !== undefined && (
         <Fact label="Office hours" value={facts.officeHours} />
       )}
+      <ClassTimesFact canvasId={canvasId} />
       <InstructorFact course={course} />
       {standing !== undefined && (
         <Fact label="Standing" value={standing.value} sub={standing.sub} />
@@ -138,6 +141,39 @@ function Fact({
         <div className="mt-[2px] text-xs text-ink-3">{sub}</div>
       )}
     </div>
+  );
+}
+
+/** Meeting times live here because Canvas does not carry them. */
+function ClassTimesFact({ canvasId }: { canvasId: number }) {
+  const meetings = useQuery(api.meetings.forCourse, { courseCanvasId: canvasId });
+  const [open, setOpen] = useState(false);
+  if (meetings === undefined) return null;
+  return (
+    <>
+      <div className="border-b border-line px-[14px] pt-[13px] pb-3 text-[13px] text-ink">
+        <div className="eyebrow mb-[3px] text-[10.5px]">Class times</div>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="block w-full text-left text-ink-2 hover:text-ink"
+        >
+          {meetings.length === 0 ? (
+            <span className="text-[12.5px]">Add class times</span>
+          ) : (
+            meetings.map((meeting) => (
+              <div key={meeting._id} className="tabular">
+                {dayLetters(meeting.days)} {minuteRange(meeting.startMinute, meeting.endMinute)}
+                {meeting.location !== undefined && (
+                  <span className="text-ink-3"> · {meeting.location}</span>
+                )}
+              </div>
+            ))
+          )}
+        </button>
+      </div>
+      <MeetingsEditor open={open} onOpenChange={setOpen} courseCanvasId={canvasId} />
+    </>
   );
 }
 

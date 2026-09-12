@@ -19,6 +19,7 @@ import {
   courseDefaultView,
   instructorFields,
   scoreStatisticsFields,
+  gradingSchemeEntry,
 } from "./schema";
 import { pruneCourseRows, upsertByCanvasId } from "./lib/upsert";
 import { findCanvasTodo } from "./todos";
@@ -50,6 +51,7 @@ const courseUpsert = v.object({
   finalGrade: v.optional(v.string()),
   hideFinalGrades: v.optional(v.boolean()),
   applyAssignmentGroupWeights: v.optional(v.boolean()),
+  gradingScheme: v.optional(v.array(gradingSchemeEntry)),
 });
 
 // `courseCanvasId` is supplied once per call, not per row: assignments are

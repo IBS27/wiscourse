@@ -21,6 +21,7 @@ export const submissionFields = v.object({
   grade: v.optional(v.string()),
   late: v.optional(v.boolean()),
   missing: v.optional(v.boolean()),
+  excused: v.optional(v.boolean()),
   postedAt: v.optional(v.number()),
   comments: v.optional(
     v.array(
@@ -99,6 +100,29 @@ export const todoCanvasKind = v.union(
   v.literal("quiz"),
   v.literal("discussion"),
 );
+
+// Letter cutoffs, Canvas's `grading_scheme` shape: `value` is the lower
+// bound as a fraction of 100 (0.93 = 93%). Sorted high to low when used.
+export const gradingSchemeEntry = v.object({ name: v.string(), value: v.number() });
+
+// A recurring class meeting the student enters (Canvas has no meeting
+// times). Wall-clock in the campus zone; see convex/lib/meetings.ts.
+export const meetingKind = v.union(
+  v.literal("lecture"),
+  v.literal("discussion"),
+  v.literal("lab"),
+  v.literal("seminar"),
+  v.literal("office_hours"),
+  v.literal("other"),
+);
+export const MEETING_KINDS = [
+  "lecture",
+  "discussion",
+  "lab",
+  "seminar",
+  "office_hours",
+  "other",
+] as const;
 
 export const subtask = v.object({
   id: v.string(),
@@ -223,6 +247,9 @@ export default defineSchema({
     finalGrade: v.optional(v.string()),
     hideFinalGrades: v.optional(v.boolean()),
     applyAssignmentGroupWeights: v.optional(v.boolean()),
+    // The course's letter scheme when Canvas exposes it; else the UI falls
+    // back to the UW scale (or the student's own cutoffs in coursePrefs).
+    gradingScheme: v.optional(v.array(gradingSchemeEntry)),
     syncedAt: v.number(),
   })
     .index("by_user", ["userId"])
@@ -447,10 +474,54 @@ export default defineSchema({
     endAt: v.optional(v.number()),
     allDay: v.optional(v.boolean()),
     location: v.optional(v.string()),
+    // Local events only; Canvas events carry the course in `contextCode`.
+    courseCanvasId: v.optional(v.number()),
     syncedAt: v.optional(v.number()),
   })
     .index("by_user_startAt", ["userId", "startAt"])
     .index("by_user_canvasId", ["userId", "canvasId"]),
+
+  // Class meetings: entered by the student, prefilled from the syllabus.
+  // `days` are 0..6 (Sunday = 0); `startMinute`/`endMinute` are minutes
+  // past midnight on the campus clock. Meetings run for the course term
+  // unless `startsOn`/`endsOn` (day keys) narrow it.
+  courseMeetings: defineTable({
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    kind: meetingKind,
+    // Free label shown after the course code, e.g. "Section 302".
+    label: v.optional(v.string()),
+    days: v.array(v.number()),
+    startMinute: v.number(),
+    endMinute: v.number(),
+    location: v.optional(v.string()),
+    startsOn: v.optional(v.string()),
+    endsOn: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_user_course", ["userId", "courseCanvasId"]),
+
+  // Per-user settings that are not about one course. One row per user.
+  userPrefs: defineTable({
+    userId: v.string(),
+    // IANA zone the UI displays times in; unset = the browser's zone.
+    timeZone: v.optional(v.string()),
+    // The ICS feed. The secret is the whole capability: anyone holding it
+    // reads the calendar, and regenerating it revokes every old link.
+    icsSecret: v.optional(v.string()),
+    icsInclude: v.optional(
+      v.object({
+        meetings: v.boolean(),
+        due: v.boolean(),
+        planned: v.boolean(),
+        events: v.boolean(),
+      }),
+    ),
+    icsLastFetchedAt: v.optional(v.number()),
+    icsLastFetchedBy: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_icsSecret", ["icsSecret"]),
 
   // The one local-write table for todos. A Canvas item (assignment,
   // quiz, graded discussion) stays a pure mirror in its own table; the
@@ -487,6 +558,9 @@ export default defineSchema({
     nickname: v.optional(v.string()),
     position: v.optional(v.number()),
     hidden: v.optional(v.boolean()),
+    // The student's own letter cutoffs for "to finish with"; overrides the
+    // synced scheme and the UW fallback.
+    gradeCutoffs: v.optional(v.array(gradingSchemeEntry)),
   }).index("by_user_course", ["userId", "courseCanvasId"]),
 
   // One row per kind + canvasId. For assignment changes, seenVersion is the

@@ -11,12 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
-import { Route as GradesRouteImport } from './routes/grades'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as CoursesIndexRouteImport } from './routes/courses.index'
 import { Route as CoursesCourseIdRouteImport } from './routes/courses.$courseId'
+import { Route as GradesIndexRouteImport } from './routes/grades.index'
+import { Route as GradesCourseIdRouteImport } from './routes/grades.$courseId'
 import { Route as TodoKeyRouteImport } from './routes/todo.$key'
 import { Route as CoursesCourseIdIndexRouteImport } from './routes/courses.$courseId.index'
 import { Route as CoursesCourseIdAnnouncementsRouteImport } from './routes/courses.$courseId.announcements'
@@ -35,11 +36,6 @@ const IndexRoute = IndexRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GradesRoute = GradesRouteImport.update({
-  id: '/grades',
-  path: '/grades',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxRoute = InboxRouteImport.update({
@@ -65,6 +61,16 @@ const CoursesIndexRoute = CoursesIndexRouteImport.update({
 const CoursesCourseIdRoute = CoursesCourseIdRouteImport.update({
   id: '/courses/$courseId',
   path: '/courses/$courseId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GradesIndexRoute = GradesIndexRouteImport.update({
+  id: '/grades/',
+  path: '/grades/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GradesCourseIdRoute = GradesCourseIdRouteImport.update({
+  id: '/grades/$courseId',
+  path: '/grades/$courseId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TodoKeyRoute = TodoKeyRouteImport.update({
@@ -119,13 +125,14 @@ const CoursesCourseIdPagesSlugRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
+  '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
   '/courses/': typeof CoursesIndexRoute
+  '/grades/': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
   '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
   '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
@@ -138,12 +145,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
   '/courses': typeof CoursesIndexRoute
+  '/grades': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
   '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
   '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
@@ -157,13 +165,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
-  '/grades': typeof GradesRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
   '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
+  '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
   '/courses/': typeof CoursesIndexRoute
+  '/grades/': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
   '/courses/$courseId/files': typeof CoursesCourseIdFilesRoute
   '/courses/$courseId/grades': typeof CoursesCourseIdGradesRoute
@@ -178,13 +187,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/calendar'
-    | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
     | '/courses/$courseId'
+    | '/grades/$courseId'
     | '/todo/$key'
     | '/courses/'
+    | '/grades/'
     | '/courses/$courseId/announcements'
     | '/courses/$courseId/files'
     | '/courses/$courseId/grades'
@@ -197,12 +207,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/calendar'
-    | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/grades/$courseId'
     | '/todo/$key'
     | '/courses'
+    | '/grades'
     | '/courses/$courseId/announcements'
     | '/courses/$courseId/files'
     | '/courses/$courseId/grades'
@@ -215,13 +226,14 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/calendar'
-    | '/grades'
     | '/inbox'
     | '/settings'
     | '/tasks'
     | '/courses/$courseId'
+    | '/grades/$courseId'
     | '/todo/$key'
     | '/courses/'
+    | '/grades/'
     | '/courses/$courseId/announcements'
     | '/courses/$courseId/files'
     | '/courses/$courseId/grades'
@@ -235,13 +247,14 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
-  GradesRoute: typeof GradesRoute
   InboxRoute: typeof InboxRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
   CoursesCourseIdRoute: typeof CoursesCourseIdRouteWithChildren
+  GradesCourseIdRoute: typeof GradesCourseIdRoute
   TodoKeyRoute: typeof TodoKeyRoute
   CoursesIndexRoute: typeof CoursesIndexRoute
+  GradesIndexRoute: typeof GradesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -258,13 +271,6 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/grades': {
-      id: '/grades'
-      path: '/grades'
-      fullPath: '/grades'
-      preLoaderRoute: typeof GradesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inbox': {
@@ -300,6 +306,20 @@ declare module '@tanstack/react-router' {
       path: '/courses/$courseId'
       fullPath: '/courses/$courseId'
       preLoaderRoute: typeof CoursesCourseIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grades/': {
+      id: '/grades/'
+      path: '/grades'
+      fullPath: '/grades/'
+      preLoaderRoute: typeof GradesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grades/$courseId': {
+      id: '/grades/$courseId'
+      path: '/grades/$courseId'
+      fullPath: '/grades/$courseId'
+      preLoaderRoute: typeof GradesCourseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/todo/$key': {
@@ -397,13 +417,14 @@ const CoursesCourseIdRouteWithChildren = CoursesCourseIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
-  GradesRoute: GradesRoute,
   InboxRoute: InboxRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
   CoursesCourseIdRoute: CoursesCourseIdRouteWithChildren,
+  GradesCourseIdRoute: GradesCourseIdRoute,
   TodoKeyRoute: TodoKeyRoute,
   CoursesIndexRoute: CoursesIndexRoute,
+  GradesIndexRoute: GradesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { SubscribeSections } from "@/components/calendar/subscribe";
 import { formatDateTime } from "@/lib/format";
 
 export const Route = createFileRoute("/settings")({
@@ -59,6 +60,16 @@ function Settings() {
         </CardHeader>
         <CardContent>
           <ThemePicker />
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden pb-0">
+        <CardHeader>
+          <CardTitle>Calendar</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0">
+          {/* The same sheet the calendar's Subscribe button opens. */}
+          <SubscribeSections />
         </CardContent>
       </Card>
 

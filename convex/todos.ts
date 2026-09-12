@@ -250,7 +250,7 @@ async function todoMap(
  * a plan row (planned, annotated, or done) and every local task. Items
  * without a due date and without a plan only come from local tasks.
  */
-async function buildList(
+export async function buildList(
   ctx: QueryCtx,
   userId: string,
   args: { from?: number; to?: number },

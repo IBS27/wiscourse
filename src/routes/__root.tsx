@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/app/sidebar";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import { QuickAddProvider } from "@/components/app/quick-add";
 import { CommandPalette } from "@/components/search/command-palette";
+import { useTimeZonePreference } from "@/lib/time-zone";
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -40,6 +41,7 @@ function RootLayout() {
       </Unauthenticated>
 
       <Authenticated>
+        <TimeZoneSync />
         <QuickAddProvider>
           <div className="flex min-h-dvh">
             <Sidebar />
@@ -53,4 +55,10 @@ function RootLayout() {
       </Authenticated>
     </>
   );
+}
+
+/** Keeps the display zone in step with the saved preference. Renders nothing. */
+function TimeZoneSync() {
+  useTimeZonePreference();
+  return null;
 }

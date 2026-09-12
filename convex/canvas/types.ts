@@ -40,6 +40,7 @@ export interface CanvasCourse {
   image_download_url?: string | null;
   hide_final_grades?: boolean;
   apply_assignment_group_weights?: boolean;
+  grading_standard_id?: number | null;
   enrollments?: CanvasEnrollment[];
   tabs?: CanvasTab[]; // include[]=tabs (not always honored on the list endpoint)
 }
@@ -196,6 +197,7 @@ export interface CanvasSubmission {
   grade: string | null;
   late?: boolean;
   missing?: boolean;
+  excused?: boolean | null;
   posted_at: string | null;
   submission_comments?: CanvasSubmissionComment[];
 }
@@ -238,6 +240,12 @@ export interface CanvasAssignment {
   omit_from_final_grade?: boolean;
   submission?: CanvasSubmission;
   score_statistics?: CanvasScoreStatistics;
+}
+
+export interface CanvasGradingStandard {
+  id: number;
+  title: string;
+  grading_scheme: Array<{ name: string; value: number }>;
 }
 
 export interface CanvasCalendarEvent {
