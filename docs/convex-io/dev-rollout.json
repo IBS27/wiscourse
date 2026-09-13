@@ -1,0 +1,79 @@
+{
+  "deployment": "dev:standing-warthog-759",
+  "url": "https://standing-warthog-759.convex.cloud",
+  "releaseCommit": "1753964b31a735b3eba7a0b93d43a789095135f3",
+  "functionSpecSha256": "bc67cb154b07cc5d63a45220c7d1c5ddd5493528ca2839df15531750acbfbc4e",
+  "backfillStartedAt": "2026-09-13T16:37:47Z",
+  "backfillFinishedAt": "2026-09-13T16:39:57Z",
+  "advanceCalls": {
+    "courses": 9,
+    "assignments": 185,
+    "quizzes": 9,
+    "discussions": 14,
+    "total": 217
+  },
+  "processedRows": {
+    "courses": 96,
+    "assignments": 2697,
+    "quizzes": 96,
+    "discussions": 168
+  },
+  "verificationFailures": 0,
+  "migrationUsageDelta": {
+    "note": "deployment usage current_day delta across the backfill window; includes three baseline list queries, one count query, and open-client re-executions",
+    "databaseIoGb": 0.010688232257962227,
+    "functionCalls": 259
+  },
+  "compactReadersEnabledAt": "2026-09-13T16:40:09Z",
+  "backgroundSync": {
+    "setFalseAt": "2026-09-13T16:37:47Z",
+    "restoredUnsetAt": "2026-09-13T16:51:47Z",
+    "note": "unset = production cadence"
+  },
+  "manualFullSync": {
+    "requestedAt": "2026-09-13T16:41:05Z",
+    "finishedAt": "2026-09-13T16:51:24Z",
+    "status": "idle",
+    "assignmentWriteBytes": 0,
+    "courseWriteBytes": 68000
+  },
+  "queryEquivalence": {
+    "queries": [
+      "inbox:feed",
+      "todos:list",
+      "courses:list"
+    ],
+    "identity": "dev user",
+    "preSync": "identical",
+    "postSync": "identical",
+    "note": "same minute-aligned now argument; byte-for-byte diff of CLI output between reader modes"
+  },
+  "checks": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "tests": "27 files / 204 passed"
+  },
+  "observationStartedAt": "2026-09-13T16:52:01Z",
+  "observationTargetEnd": "2026-09-15T16:52:00Z",
+  "nightlySyncUTC": "09:00",
+  "capture": {
+    "logs": "/tmp/wiscourse-io-observe/dev-logs.jsonl",
+    "usageHourly": "/tmp/wiscourse-io-observe/dev-usage.jsonl",
+    "analyzer": "/tmp/wiscourse-io-observe/analyze.py"
+  },
+  "browserVerification": {
+    "verifiedAt": "2026-09-13T16:55:00Z",
+    "client": "Tailscale dev server, authenticated Clerk session, compact readers on",
+    "pages": [
+      "/",
+      "/inbox",
+      "/tasks",
+      "/courses",
+      "/calendar",
+      "/grades",
+      "/courses/518311"
+    ],
+    "result": "all rendered without errors; inbox 17 items / 6 unseen, tasks 93 open + 6 done matched CLI compact outputs",
+    "seenTransition": "clicked one unseen grade card: badge 6 -> 5 in UI and in inbox:feed via CLI"
+  }
+}

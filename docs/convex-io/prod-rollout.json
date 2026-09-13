@@ -1,0 +1,63 @@
+{
+  "deployment": "prod:brave-swordfish-418",
+  "url": "https://brave-swordfish-418.convex.cloud",
+  "releaseCommit": "1753964b31a735b3eba7a0b93d43a789095135f3",
+  "functionSpecSha256": "3a77850856cb53a996a87ea71c1ca94273193c5a711daf527ca754ce7ae5f4df",
+  "users": 1,
+  "backfillStartedAt": "2026-09-13T22:54:24Z",
+  "backfillFinishedAt": "2026-09-13T22:56:40Z",
+  "advanceCalls": {
+    "courses": 9,
+    "assignments": 185,
+    "quizzes": 9,
+    "discussions": 14,
+    "total": 217
+  },
+  "processedRows": {
+    "courses": 96,
+    "assignments": 2697,
+    "quizzes": 96,
+    "discussions": 168
+  },
+  "verificationFailures": 0,
+  "migrationUsageDelta": {
+    "note": "deployment usage current_day delta across the backfill window; includes three baseline list queries, one count query, and open-client re-executions",
+    "databaseIoGb": 0.011525736190378666,
+    "functionCalls": 296
+  },
+  "compactReadersEnabledAt": "2026-09-13T22:56:51Z",
+  "backgroundSync": {
+    "setFalseAt": "2026-09-13T22:54:24Z",
+    "restoredUnsetAt": "2026-09-13T22:56:54Z",
+    "syncStateDuringMigration": "idle"
+  },
+  "queryEquivalence": {
+    "queries": [
+      "inbox:feed",
+      "todos:list",
+      "courses:list"
+    ],
+    "result": "identical between reader modes, same minute-aligned now"
+  },
+  "observationStartedAt": "2026-09-13T22:57:00Z",
+  "observationTargetEnd": "2026-09-15T22:57:00Z",
+  "nightlySyncUTC": "09:00",
+  "capture": {
+    "logs": "/tmp/wiscourse-io-observe/prod-logs.jsonl",
+    "usageHourly": "/tmp/wiscourse-io-observe/prod-usage.jsonl"
+  },
+  "browserVerification": {
+    "verifiedAt": "2026-09-13T23:05:00Z",
+    "client": "www.wiscourse.com, authenticated Clerk session, compact readers on",
+    "pages": [
+      "/",
+      "/inbox",
+      "/tasks",
+      "/courses",
+      "/calendar",
+      "/grades",
+      "/courses/518311"
+    ],
+    "result": "all rendered without errors; inbox 15 items / 14 unread and tasks 94 open + 5 done matched CLI compact outputs (99 todos)"
+  }
+}
