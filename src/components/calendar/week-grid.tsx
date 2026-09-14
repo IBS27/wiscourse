@@ -33,7 +33,7 @@ const COLUMNS: CSSProperties = { gridTemplateColumns: "56px repeat(7, minmax(0, 
 // The headers and bands sit outside the scrolling body but share its column
 // template, so they reserve the same scrollbar gutter (a no-op with overlay
 // scrollbars) to keep the weekday columns aligned.
-const GUTTER = "overflow-hidden [scrollbar-gutter:stable]";
+const GUTTER = "shrink-0 overflow-hidden [scrollbar-gutter:stable]";
 
 const HOUR_LINES: CSSProperties = {
   backgroundImage: `repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px ${PX_PER_HOUR}px)`,
