@@ -75,5 +75,38 @@
     ],
     "result": "all rendered without errors; inbox 17 items / 6 unseen, tasks 93 open + 6 done matched CLI compact outputs",
     "seenTransition": "clicked one unseen grade card: badge 6 -> 5 in UI and in inbox:feed via CLI"
+  },
+  "checkpoint24h": {
+    "window": "2026-09-13T16:52Z..2026-09-14T16:51Z",
+    "executions": 12221,
+    "errors": 0,
+    "nightlySync": "09:06:25Z ok, 370 s",
+    "lists": {
+      "todos:list": {
+        "n": 785,
+        "cached": 408,
+        "readMB": 44.8,
+        "p50ms": 72.9,
+        "p95ms": 94.8
+      },
+      "inbox:feed": {
+        "n": 786,
+        "cached": 407,
+        "readMB": 19.3,
+        "p50ms": 46.2,
+        "p95ms": 95.0
+      },
+      "courses:list": {
+        "n": 447,
+        "cached": 382,
+        "readMB": 2.0,
+        "p50ms": 52.5,
+        "p95ms": 70.7
+      }
+    },
+    "deploymentUsageDelta": {
+      "databaseIoGb": 0.1256,
+      "functionCalls": 12221
+    }
   }
 }
