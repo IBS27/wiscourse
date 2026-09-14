@@ -230,10 +230,14 @@ function Calendar() {
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col",
-        // The Day view is bounded to the phone viewport (less the tab bar)
-        // so its timeline scrolls under a fixed strip and Due band.
-        view === "day" && "h-[calc(100dvh-72px)] md:h-auto md:flex-1",
+        "flex min-h-0 flex-col",
+        // The Day and Week views are bounded to the phone viewport (less
+        // the tab bar) so their timelines scroll under the fixed headers.
+        // `flex-none` matters: the page column has no set height there, so
+        // a `flex-1` basis would size this to its content and ignore `h-`.
+        view === "month"
+          ? "flex-1"
+          : "h-[calc(100dvh-72px)] flex-none md:h-auto md:flex-1",
       )}
     >
       <CalendarToolbar

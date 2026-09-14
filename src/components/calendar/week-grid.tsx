@@ -1,16 +1,17 @@
 // Direction A: a time grid for the things that occupy time, with two thin
 // bands above it for the things that do not (Due and Plan). The grid runs
-// 8 AM – 6 PM and grows to fit the earliest and latest block; it never
-// scrolls inside the page.
+// the whole day and scrolls under the headers and bands, opening on the
+// now-line or the morning.
 
-import { type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
   blockLabel,
   blockTimeLabel,
   clockTime,
-  gridBounds,
+  GRID_BOUNDS,
+  gridScrollTop,
   hourLabel,
   layoutBlocks,
   minuteOf,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/calendar";
 import { AllDayLine, DueLine, PlanLine } from "./bands";
 import { blockFill, BLOCK_SUBTITLE } from "./block-styles";
+import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -53,14 +55,15 @@ export function WeekGrid({
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
-  const dayModels = days.map((day) => models.get(day));
-  const bounds = gridBounds(dayModels.flatMap((m) => m?.blocks ?? []));
+  const bounds = GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
-  const showNow = days.includes(todayKey) && nowTop >= 0 && nowTop <= bounds.height;
+  const showNow = days.includes(todayKey);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useTimelineScroll(scrollRef, gridScrollTop(showNow ? nowMinute : undefined));
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {prompt}
 
       <div className="grid border-b border-line" style={COLUMNS}>
@@ -90,7 +93,7 @@ export function WeekGrid({
         {(day) => <>{models.get(day)?.planned.map((item) => <PlanLine key={item.key} item={item} />)}</>}
       </Band>
 
-      <div className="relative grid" style={COLUMNS}>
+      <div ref={scrollRef} className="relative grid min-h-0 flex-1 overflow-y-auto" style={COLUMNS}>
         <div
           className="relative border-r border-line text-[10.5px] tabular text-ink-3"
           style={{ height: bounds.height }}
