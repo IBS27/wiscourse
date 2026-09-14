@@ -59,5 +59,26 @@
       "/courses/518311"
     ],
     "result": "all rendered without errors; inbox 15 items / 14 unread and tasks 94 open + 5 done matched CLI compact outputs (99 todos)"
+  },
+  "nightlySync_2026_09_14": {
+    "dispatchedAt": "09:00:59Z",
+    "attempts": [
+      {
+        "end": "09:03:12Z",
+        "failedIn": "storeContent:upsertModuleItems then syncStore:setSyncStatus (15 s timeouts)"
+      },
+      {
+        "end": "09:07:27Z",
+        "failedIn": "storeContent:upsertFiles (15.9 s timeout)"
+      },
+      {
+        "end": "09:10:52Z",
+        "failedIn": "storeContent:upsertModuleItems (15.8 s timeout)"
+      }
+    ],
+    "error": "Your request timed out performing too many system operations",
+    "diagnosis": "Prod backend latency per database operation rose from ~5 ms/doc to ~43 ms/doc across attempts; trivial mutations (setSyncStatus, loop:loop) took 0.5-15 s. Same mutations read identical document counts on dev (nightly succeeded in 370 s, 3.7 ms/doc) and on prod the previous evening (3.6 s total for upsertModuleItems vs 25.5 s). No client subscriptions were open on prod. Writers in the failing mutations do the same reads as before the release and fewer writes, so this is deployment-side latency, not added work.",
+    "recovery": "manual sync:requestSync at 09:16:35Z succeeded at 09:24:20Z (465 s, p50 336 ms, p95 4.4 s per mutation); syncState idle, lastError cleared",
+    "followUp": "Workpool retries (3 attempts, 2 s base backoff) all landed inside the same slow window; consider a longer backoff so a transient platform slowdown does not exhaust attempts."
   }
 }
