@@ -27,6 +27,9 @@ import { isOverdue } from "@/lib/agenda";
 import { courseStyle, useCourses, useNow, useToday } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
+/** Header chips sit on the course tint, so they outline instead of filling. */
+const OUTLINE_CHIP = "border border-line-2 bg-transparent";
+
 const KIND_LABEL = { assignment: "Assignment", quiz: "Quiz", discussion: "Discussion", local: "Personal task" } as const;
 
 export function TodoDetail({ item }: { item: TodoItem }) {
@@ -77,7 +80,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   return (
     <div className="mx-auto w-full max-w-[760px] md:my-6 md:rounded-[10px] md:border md:border-line md:bg-surface" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
-      <div className="border-b border-l-4 border-b-line border-l-c px-[18px] pt-4 pb-[14px] md:rounded-tl-[10px]">
+      <div className="border-b border-line bg-c/8 px-[18px] pt-4 pb-[14px] md:rounded-t-[10px]">
         <div className="flex items-center gap-[7px] text-[11.5px] text-ink-3">
           <Dot />
           {course ? (
@@ -98,7 +101,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         )}
         <div className="flex flex-wrap items-center gap-[7px]">
           {done ? (
-            <Pill>
+            <Pill className={OUTLINE_CHIP}>
               <Check />
               Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
               {item.doneBySubmission ? " · on submission" : ""}
@@ -109,21 +112,21 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               Overdue — due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)} · {formatLate(item.dueAt, now)}
             </Pill>
           ) : item.dueAt !== undefined ? (
-            <Chip>
+            <Chip className={OUTLINE_CHIP}>
               <Clock />
               Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
             </Chip>
           ) : (
-            <Chip>No due date</Chip>
+            <Chip className={OUTLINE_CHIP}>No due date</Chip>
           )}
           {item.plannedDay !== undefined && (
-            <Chip>
+            <Chip className={OUTLINE_CHIP}>
               <CalendarDays />
               Planned {formatPlannedRelative(item.plannedDay, today)}
             </Chip>
           )}
-          {isLocal && !course && <Chip>No course</Chip>}
-          <SubmissionChip item={item} />
+          {isLocal && !course && <Chip className={OUTLINE_CHIP}>No course</Chip>}
+          <SubmissionChip item={item} className={OUTLINE_CHIP} />
         </div>
       </div>
 
@@ -292,18 +295,18 @@ function QuickPlan({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-function SubmissionChip({ item }: { item: TodoItem }) {
+function SubmissionChip({ item, className }: { item: TodoItem; className?: string }) {
   switch (item.submission) {
     case "graded":
       return (
-        <Chip>
+        <Chip className={className}>
           <Check />
           Graded{item.score !== undefined && item.pointsPossible !== undefined ? ` ${item.score}/${item.pointsPossible}` : ""}
         </Chip>
       );
     case "submitted":
       return (
-        <Chip>
+        <Chip className={className}>
           <Check />
           Submitted
         </Chip>
