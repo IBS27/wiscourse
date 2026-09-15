@@ -80,5 +80,47 @@
     "diagnosis": "Prod backend latency per database operation rose from ~5 ms/doc to ~43 ms/doc across attempts; trivial mutations (setSyncStatus, loop:loop) took 0.5-15 s. Same mutations read identical document counts on dev (nightly succeeded in 370 s, 3.7 ms/doc) and on prod the previous evening (3.6 s total for upsertModuleItems vs 25.5 s). No client subscriptions were open on prod. Writers in the failing mutations do the same reads as before the release and fewer writes, so this is deployment-side latency, not added work.",
     "recovery": "manual sync:requestSync at 09:16:35Z succeeded at 09:24:20Z (465 s, p50 336 ms, p95 4.4 s per mutation); syncState idle, lastError cleared",
     "followUp": "Workpool retries (3 attempts, 2 s base backoff) all landed inside the same slow window; consider a longer backoff so a transient platform slowdown does not exhaust attempts."
+  },
+  "checkpoint24h": {
+    "window": "2026-09-13T22:57Z..2026-09-14T22:57Z",
+    "executions": 21169,
+    "errors": 7,
+    "errorsNote": "all 7 from the 09:00Z nightly sync slowdown incident; none from list queries",
+    "lists": {
+      "todos:list": {
+        "n": 1866,
+        "cached": 1031,
+        "readMB": 97.7,
+        "p50ms": 92.3,
+        "p95ms": 422.9
+      },
+      "inbox:feed": {
+        "n": 1795,
+        "cached": 1001,
+        "readMB": 40.9,
+        "p50ms": 86.0,
+        "p95ms": 547.8
+      },
+      "courses:list": {
+        "n": 975,
+        "cached": 856,
+        "readMB": 3.7,
+        "p50ms": 62.6,
+        "p95ms": 251.4
+      }
+    },
+    "largestReaderOutsideRollout": {
+      "courses:hub": {
+        "n": 663,
+        "cached": 11,
+        "readMB": 171.5,
+        "perLiveExecKB": 263
+      }
+    },
+    "deploymentUsageDelta23h": {
+      "databaseIoGb": 0.3625,
+      "functionCalls": 20189
+    },
+    "captureGapsOver15min": 0
   }
 }
