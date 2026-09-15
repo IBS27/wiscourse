@@ -5,7 +5,8 @@ import {
   clockTimeMeridiem,
   denseTime,
   eventCourseId,
-  gridBounds,
+  GRID_BOUNDS,
+  gridScrollTop,
   hourLabel,
   layoutBlocks,
   minuteRange,
@@ -76,44 +77,41 @@ describe("time labels", () => {
 });
 
 describe("grid bounds", () => {
-  it("defaults to 8 AM – 6 PM", () => {
-    const bounds = gridBounds([]);
-    expect(bounds.startMinute).toBe(8 * 60);
-    expect(bounds.endMinute).toBe(18 * 60);
-    expect(bounds.hours).toHaveLength(10);
-    expect(bounds.height).toBe(10 + 10 * 48);
+  it("covers the whole day", () => {
+    expect(GRID_BOUNDS.startMinute).toBe(0);
+    expect(GRID_BOUNDS.endMinute).toBe(24 * 60);
+    expect(GRID_BOUNDS.hours).toHaveLength(24);
+    expect(GRID_BOUNDS.height).toBe(10 + 24 * 48);
   });
 
-  it("grows on whole hours to fit the earliest and latest block", () => {
-    const bounds = gridBounds([block(7 * 60 + 45, 8 * 60 + 45), block(18 * 60, 19 * 60 + 10)]);
-    expect(bounds.startMinute).toBe(7 * 60);
-    expect(bounds.endMinute).toBe(20 * 60);
+  it("opens at 8 AM when today is not in view", () => {
+    expect(gridScrollTop(undefined)).toBe(8 * 48);
   });
 
-  it("keeps a multi-day block at its start time, running off the bottom", () => {
-    // 2 PM until midnight: it is meant to overflow the 8 AM – 6 PM grid,
-    // not to be pulled up so that it fits.
-    const bounds = gridBounds([]);
-    expect(blockGeometry({ startMinute: 14 * 60, endMinute: 24 * 60 }, bounds)).toEqual({
-      top: 10 + 6 * 48,
+  it("opens an hour above the now-line on today", () => {
+    expect(gridScrollTop(14 * 60 + 30)).toBe(13.5 * 48);
+    expect(gridScrollTop(20)).toBe(0);
+  });
+
+  it("keeps a block that runs to midnight at its start time", () => {
+    expect(blockGeometry({ startMinute: 14 * 60, endMinute: 24 * 60 }, GRID_BOUNDS)).toEqual({
+      top: 10 + 14 * 48,
       height: 480,
     });
   });
 
   it("nudges a padded block up so its 40px minimum stays in the grid", () => {
-    const bounds = gridBounds([]);
-    const late = blockGeometry({ startMinute: 17 * 60 + 50, endMinute: 18 * 60 }, bounds);
+    const late = blockGeometry({ startMinute: 23 * 60 + 50, endMinute: 24 * 60 }, GRID_BOUNDS);
     expect(late.height).toBe(40);
-    expect(late.top + late.height).toBe(bounds.height);
+    expect(late.top + late.height).toBe(GRID_BOUNDS.height);
   });
 
   it("never renders a block shorter than 40px", () => {
-    const bounds = gridBounds([]);
-    const tiny = blockGeometry({ startMinute: 9 * 60, endMinute: 9 * 60 + 15 }, bounds);
+    const tiny = blockGeometry({ startMinute: 9 * 60, endMinute: 9 * 60 + 15 }, GRID_BOUNDS);
     expect(tiny.height).toBe(40);
-    const lecture = blockGeometry({ startMinute: 11 * 60, endMinute: 12 * 60 + 15 }, bounds);
+    const lecture = blockGeometry({ startMinute: 11 * 60, endMinute: 12 * 60 + 15 }, GRID_BOUNDS);
     expect(lecture.height).toBe(60);
-    expect(lecture.top).toBe(10 + 3 * 48);
+    expect(lecture.top).toBe(10 + 11 * 48);
   });
 });
 

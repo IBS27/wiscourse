@@ -20,8 +20,10 @@ export const MIN_BLOCK_PX = 40;
 const MIN_BLOCK_MINUTES = (MIN_BLOCK_PX / PX_PER_HOUR) * 60;
 /** Breathing room above the first hour line so its label is not clipped. */
 export const GRID_TOP_PAD = 10;
-export const DEFAULT_GRID_START = 8 * 60;
-export const DEFAULT_GRID_END = 18 * 60;
+/** Where the timeline opens when today is not in view: the start of the day. */
+export const GRID_OPENS_AT = 8 * 60;
+/** How far above the now-line the timeline opens on today, so it has context. */
+const NOW_LEAD = 60;
 
 /** Shape of a `calendarEvents` row; structural so tests need no Convex ids. */
 export interface CalendarEvent {
@@ -313,36 +315,29 @@ function freeLane(laneEnds: number[], minute: number): number {
 export interface GridBounds {
   startMinute: number;
   endMinute: number;
-  /** Whole hours the gutter labels, `startHour` … `endHour - 1`. */
+  /** Whole hours the gutter labels. */
   hours: number[];
   height: number;
 }
 
 /**
- * 8 AM – 6 PM, grown on whole hours to fit the earliest and latest block.
- * The grid never scrolls, so it must always be tall enough for its content.
+ * The whole day, midnight to midnight. The grid scrolls inside its view, and
+ * `gridScrollTop` decides where it opens.
  */
-export function gridBounds(blocks: { startMinute: number; endMinute: number }[]): GridBounds {
-  let start = DEFAULT_GRID_START;
-  let end = DEFAULT_GRID_END;
-  for (const block of blocks) {
-    start = Math.min(start, Math.floor(block.startMinute / 60) * 60);
-    // A block clipped at midnight is something that carries on into the
-    // next day; it must not drag the whole week down to 12 AM. It runs off
-    // the bottom of its column instead, which is what "continues" looks like.
-    if (block.endMinute >= 24 * 60) continue;
-    end = Math.max(end, Math.ceil(block.endMinute / 60) * 60);
-  }
-  start = Math.max(0, start);
-  end = Math.min(24 * 60, Math.max(end, start + 60));
-  const hours: number[] = [];
-  for (let m = start; m < end; m += 60) hours.push(m / 60);
-  return {
-    startMinute: start,
-    endMinute: end,
-    hours,
-    height: GRID_TOP_PAD + ((end - start) / 60) * PX_PER_HOUR,
-  };
+export const GRID_BOUNDS: GridBounds = {
+  startMinute: 0,
+  endMinute: 24 * 60,
+  hours: Array.from({ length: 24 }, (_, hour) => hour),
+  height: GRID_TOP_PAD + 24 * PX_PER_HOUR,
+};
+
+/**
+ * The scroll offset the timeline opens at: an hour above the now-line when
+ * today is in view, otherwise 8 AM. Clamped so the top pad stays visible.
+ */
+export function gridScrollTop(nowMinute: number | undefined): number {
+  const minute = nowMinute === undefined ? GRID_OPENS_AT : nowMinute - NOW_LEAD;
+  return Math.max(0, minuteOffset(Math.max(0, minute), GRID_BOUNDS) - GRID_TOP_PAD);
 }
 
 /** Pixels from the top of the grid body for a given minute of the day. */
@@ -358,9 +353,8 @@ export function blockGeometry(
   const height = Math.max(MIN_BLOCK_PX, drawn);
   const top = minuteOffset(block.startMinute, bounds);
   // A short block near the bottom edge is nudged up so its 40px minimum
-  // still fits. Only one that was padded, though: a block clipped at
-  // midnight is *meant* to run off the bottom, and pulling it up would put
-  // a 2 PM event at 8 AM.
+  // still fits. Only one that was padded, though: a block that runs to
+  // midnight already fits exactly and must not be pulled up.
   const overflow = top + height - bounds.height;
   if (height > drawn && overflow > 0) {
     return { top: Math.max(GRID_TOP_PAD, top - overflow), height };

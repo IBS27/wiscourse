@@ -8,7 +8,8 @@ import {
   blockGeometry,
   blockTimeLabel,
   eventCourseId,
-  gridBounds,
+  GRID_BOUNDS,
+  gridScrollTop,
   hourLabel,
   layoutBlocks,
   minuteOf,
@@ -18,6 +19,7 @@ import {
 import { AllDayLine, DueLine, PlanLine } from "./bands";
 import { blockFill, BLOCK_SUBTITLE } from "./block-styles";
 import { NowLine } from "./week-grid";
+import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatDayLong, formatWeekday } from "@/lib/dates";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -51,6 +53,8 @@ export function DayView({
   const model = models.get(day);
   const bodySwipe = useSwipe((delta) => onShiftDay(delta));
   const stripSwipe = useSwipe((delta) => onShiftWeek(delta));
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useTimelineScroll(scrollRef, gridScrollTop(day === todayKey ? minuteOf(now, zone) : undefined));
   const band = [
     ...(model?.allDay ?? []).map((event) => (
       <AllDayLine key={`all:${event._id}`} event={event} onOpen={onOpenEvent} roomy />
@@ -82,7 +86,7 @@ export function DayView({
           </div>
         )}
         {/* The strip and the Due band stay put; the hours scroll under them. */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
           <DayTimeline
             model={model}
             todayKey={todayKey}
@@ -113,11 +117,11 @@ export function DayTimeline({
   onOpenBlock: (block: TimeBlock) => void;
 }) {
   const { color } = useCourses();
-  const bounds = gridBounds(model?.blocks ?? []);
+  const bounds = GRID_BOUNDS;
   const blocks = layoutBlocks(model?.blocks ?? []);
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
-  const showNow = day === todayKey && nowTop >= 0 && nowTop <= bounds.height;
+  const showNow = day === todayKey;
 
   return (
     <div className="relative pr-3" style={{ height: bounds.height + 8 }}>
