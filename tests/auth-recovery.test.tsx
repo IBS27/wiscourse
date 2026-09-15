@@ -163,6 +163,28 @@ it("retries on tab return and coalesces focus and visibility events", async () =
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls + 1);
 });
 
+it("shows loading, not reconnecting, during the initial handshake", async () => {
+  clerk.getToken.mockReturnValue(new Promise<string>(() => {}));
+  render(<App />);
+  await flush();
+  expect(screen.getByRole("status").textContent).toBe("Loading…");
+  await advance(10_000);
+  expect(screen.getByRole("status").textContent).toBe("Reconnecting…");
+});
+
+it("does not restart an in-flight handshake on focus or visibility", async () => {
+  clerk.getToken.mockReturnValue(new Promise<string>(() => {}));
+  render(<App />);
+  await flush();
+  const initialCalls = clerk.getToken.mock.calls.length;
+  await advance(2_000);
+  fireEvent(window, new Event("focus"));
+  fireEvent(document, new Event("visibilitychange"));
+  fireEvent(window, new Event("online"));
+  await flush();
+  expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls);
+});
+
 it("bounds a hung token request and ignores its stale result after recovery", async () => {
   let resolveOldToken: ((token: string) => void) | undefined;
   const pending = new Promise<string>((resolve) => { resolveOldToken = resolve; });

@@ -115,7 +115,10 @@ function ConnectionRecovery({ isLoading }: { isLoading: boolean }) {
     return () => clearTimeout(timeout);
   }, [attempt, exhausted, isLoading, online, retry]);
 
+  // Passive resume must not abort a handshake that is already in flight;
+  // the stall timeout above bounds that case.
   useEffect(() => {
+    if (isLoading) return;
     const resume = () => {
       if (document.visibilityState === "visible") retryNow();
     };
@@ -127,14 +130,18 @@ function ConnectionRecovery({ isLoading }: { isLoading: boolean }) {
       window.removeEventListener("focus", resume);
       window.removeEventListener("online", resume);
     };
-  }, [retryNow]);
+  }, [isLoading, retryNow]);
+
+  // The SDK's first handshake after sign-in is normal loading, not recovery.
+  const initialHandshake = isLoading && attempt === 0;
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
       <p role="status" className="text-ink-3">
         {!online ? "You're offline. We'll reconnect when you're back online."
           : exhausted ? "We couldn't reconnect. Please try again."
-            : "Reconnecting…"}
+            : initialHandshake ? "Loading…"
+              : "Reconnecting…"}
       </p>
       {(exhausted || !online) && <Button onClick={retryNow} disabled={!online}>Retry</Button>}
     </div>
