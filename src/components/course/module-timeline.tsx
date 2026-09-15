@@ -49,16 +49,13 @@ export function ModuleTimeline({
           <Fragment key={group.key}>
             {index === nowIndex && <NowMarker />}
             <section
-              className={cn(
-                "grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)]",
-                current && "bg-sunken/60",
-              )}
+              className="grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)]"
             >
               <div className="px-4 pt-[14px] pb-1 text-[12.5px] text-ink-3 md:px-0 md:py-[14px] md:pr-4">
                 <b
                   className={cn(
                     "text-[13.5px] font-semibold tracking-[-0.01em] md:block",
-                    current ? "text-ink" : group.weekStart === undefined ? "text-ink-3" : "text-ink",
+                    current ? "text-c" : group.weekStart === undefined ? "text-ink-3" : "text-ink",
                   )}
                 >
                   {group.label}
