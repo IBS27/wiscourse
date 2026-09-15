@@ -1,6 +1,6 @@
-import { ClerkProvider, useAuth } from "@clerk/clerk-react";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
+import { AuthProvider } from "@/components/app/auth-provider";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
@@ -54,9 +54,9 @@ export default function App() {
   }
   return (
     <ClerkProvider publishableKey={clerkPublishableKey}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      <AuthProvider client={convex}>
         <RouterProvider router={router} />
-      </ConvexProviderWithClerk>
+      </AuthProvider>
     </ClerkProvider>
   );
 }
