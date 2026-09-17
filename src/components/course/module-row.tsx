@@ -29,7 +29,7 @@ export function ModuleRow({
 }) {
   const id = `item-${item.canvasId}`;
   const style = {
-    paddingLeft: (dense ? 22 : 46) + item.indent * 22,
+    paddingLeft: (dense ? 30 : 46) + item.indent * 22,
     paddingRight: dense ? 16 : 20,
   };
 
