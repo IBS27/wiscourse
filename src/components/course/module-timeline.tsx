@@ -81,6 +81,7 @@ export function ModuleTimeline({
                   ctx={ctx}
                   byId={byId}
                   groupLabel={group.label}
+                  current={current}
                 />
               ))}
             </div>
@@ -96,11 +97,14 @@ function ModuleBlock({
   ctx,
   byId,
   groupLabel,
+  current,
 }: {
   module: ModuleWithItems;
   ctx: ModuleRowContext;
   byId: Map<number, ModuleDoc>;
   groupLabel: string;
+  /** Inside the current week, whose `bg-sunken` matches `bg-hover` in light mode. */
+  current: boolean;
 }) {
   const topic = moduleTopic(module.name);
   const title = topic === "" ? module.name : topic;
@@ -124,7 +128,13 @@ function ModuleBlock({
         </div>
       )}
       {module.items.map((item) => (
-        <ModuleRow key={item.canvasId} item={item} ctx={ctx} dense />
+        <ModuleRow
+          key={item.canvasId}
+          item={item}
+          ctx={ctx}
+          dense
+          className={current ? "hover:bg-surface" : undefined}
+        />
       ))}
     </div>
   );
