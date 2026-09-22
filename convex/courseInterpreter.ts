@@ -11,6 +11,7 @@ import { internalAction } from "./_generated/server";
 import { internal, components } from "./_generated/api";
 import {
   courseMapSchema,
+  dropUnsupportedDates,
   hashContent,
   INTERPRETER_MODEL,
   INTERPRETER_VERSION,
@@ -374,12 +375,15 @@ export const run = internalAction({
         messages: session.args.messages,
         abortSignal: signal,
       });
-      let map = courseMapSchema.parse(result.output);
-      let issues = validateCourseMap(
-        map,
-        { revision: state.sourceRevision, hash, resources, year: course.year },
-        evidence,
-      );
+      const check = (output: unknown) => {
+        const map = dropUnsupportedDates(
+          courseMapSchema.parse(output),
+          course.year,
+        );
+        const snapshot = { revision: state.sourceRevision, hash, resources };
+        return { map, issues: validateCourseMap(map, snapshot, evidence) };
+      };
+      let { map, issues } = check(result.output);
       if (issues.length) {
         const cited = new Set([
           ...map.sections.flatMap((section) =>
@@ -438,17 +442,7 @@ export const run = internalAction({
             messages: repairSession.args.messages,
             abortSignal: signal,
           });
-          map = courseMapSchema.parse(corrected.output);
-          issues = validateCourseMap(
-            map,
-            {
-              revision: state.sourceRevision,
-              hash,
-              resources,
-              year: course.year,
-            },
-            evidence,
-          );
+          ({ map, issues } = check(corrected.output));
         }
       }
       await ctx.runMutation(internal.courseInterpretations.finish, {

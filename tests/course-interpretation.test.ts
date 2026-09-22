@@ -7,6 +7,7 @@ import schema from "../convex/schema";
 import { api, internal } from "../convex/_generated/api";
 import {
   courseMapSchema,
+  dropUnsupportedDates,
   INTERPRETER_MODEL,
   INTERPRETER_VERSION,
   validateCourseMap,
@@ -44,7 +45,7 @@ const map: CourseMap = {
   conflicts: [],
   unresolvedResourceIds: [],
 };
-const snapshot = { resources: [resource], year: 2026, hash: "h", revision: 0 };
+const snapshot = { resources: [resource], hash: "h", revision: 0 };
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.useRealTimers();
@@ -133,28 +134,47 @@ describe("course source evidence", () => {
       validateCourseMap(bad, snapshot, new Map([[resource.id, resource.text]])),
     ).toContain("Unknown or unavailable resource: page:another-users-page");
   });
-  it("rejects old years, impossible dates, and deadlines without teaching-date evidence", () => {
-    for (const date of ["2024-09-08", "2026-02-30", "2026-09-09"]) {
-      const bad = structuredClone(map);
-      bad.sections[0].teachingDates = { start: date, end: date };
-      bad.sections[0].evidence[0].quote = resource.text;
-      expect(
-        validateCourseMap(
-          bad,
-          snapshot,
-          new Map([[resource.id, resource.text]]),
-        ),
-      ).not.toEqual([]);
-    }
-    const valid = structuredClone(map);
-    valid.sections[0].teachingDates = {
+  it("drops old years, impossible dates, and deadlines without teaching-date evidence", () => {
+    const withDates = (
+      start: string,
+      end: string,
+      quotes: string[] = [resource.text],
+    ) => {
+      const dated = structuredClone(map);
+      dated.sections[0].teachingDates = { start, end };
+      dated.sections[0].evidence = quotes.map((quote) => ({
+        sourceId: resource.id,
+        quote,
+      }));
+      return dropUnsupportedDates(dated, 2026).sections[0].teachingDates;
+    };
+    for (const date of ["2024-09-08", "2026-02-30", "2026-09-09"])
+      expect(withDates(date, date)).toBeNull();
+    expect(withDates("2026-09-08", "2026-09-08")).toEqual({
       start: "2026-09-08",
       end: "2026-09-08",
+    });
+    // Abbreviated months with periods, as written in real syllabi.
+    expect(
+      withDates("2026-11-23", "2026-11-25", [
+        "Week 13 (Nov 23-27): Mass Media and Ethics",
+        "Nov. 25: Ethics, Effects, and Advertising",
+      ]),
+    ).not.toBeNull();
+    expect(
+      withDates("2026-09-09", "2026-09-11", [
+        "Week 2 (Sep 7-11): The Information Environment",
+        "Sept. 11: Demassifying Communication",
+      ]),
+    ).toBeNull();
+    const dropped = structuredClone(map);
+    dropped.sections[0].teachingDates = {
+      start: "2026-09-09",
+      end: "2026-09-09",
     };
-    valid.sections[0].evidence[0].quote = resource.text;
     expect(
       validateCourseMap(
-        valid,
+        dropUnsupportedDates(dropped, 2026),
         snapshot,
         new Map([[resource.id, resource.text]]),
       ),
