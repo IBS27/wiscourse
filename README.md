@@ -99,7 +99,7 @@ Normal syncs then maintain the summaries. The backfill is safe to rerun.
 
 ### AI course maps (review)
 
-The **Organize this course** link on Overview runs a GPT-5.6 Luna interpreter at medium reasoning using
+The **Organize this course** link on Overview runs a GPT-6 Luna interpreter at medium reasoning using
 AI SDK's `ToolLoopAgent`, with threads and step traces stored by `@convex-dev/agent`.
 Set `OPENAI_API_KEY` in the Convex deployment environment, then choose **Interpret
 course**. This opts that course into refreshes after full syncs when relevant
