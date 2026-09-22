@@ -129,7 +129,6 @@ export interface CourseSnapshot {
   revision: number;
   hash: string;
   resources: CourseResource[];
-  year: number;
 }
 
 const normalize = (text: string) => text.replace(/\s+/g, " ").trim();
@@ -157,11 +156,43 @@ function dateInQuote(date: string, quote: string): boolean {
     quote.includes(date) ||
     new RegExp(`\\b${month}/${day}(?:/${year}|\\b)`).test(quote) ||
     new RegExp(
-      `\\b${months[month - 1]}[a-z]*\\s+(?:${day}\\b|\\d{1,2}\\s*[-–—&]\\s*${day}\\b)`,
+      `\\b${months[month - 1]}[a-z]*\\.?\\s+(?:${day}\\b|\\d{1,2}\\s*[-–—&]\\s*${day}\\b)`,
       "i",
     ).test(quote)
   );
 }
+
+function datesSupported(
+  { teachingDates, evidence }: CourseMap["sections"][number],
+  year: number,
+): boolean {
+  if (!teachingDates) return true;
+  const { start, end } = teachingDates;
+  try {
+    return (
+      start <= end &&
+      Number(start.slice(0, 4)) >= year &&
+      Number(end.slice(0, 4)) <= year + 1 &&
+      evidence.some((e) => dateInQuote(start, e.quote)) &&
+      evidence.some((e) => dateInQuote(end, e.quote))
+    );
+  } catch {
+    return false;
+  }
+}
+
+/** Teaching dates are optional, so unsupported ones are removed rather than failing the map. */
+export const dropUnsupportedDates = (
+  map: CourseMap,
+  year: number,
+): CourseMap => ({
+  ...map,
+  sections: map.sections.map((section) =>
+    datesSupported(section, year)
+      ? section
+      : { ...section, teachingDates: null },
+  ),
+});
 
 /** Structural and provenance checks; semantic accuracy still needs human review. */
 export function validateCourseMap(
@@ -194,24 +225,6 @@ export function validateCourseMap(
   for (const section of map.sections) {
     section.resourceIds.forEach(checkId);
     checkEvidence(section.evidence);
-    if (section.teachingDates) {
-      const { start, end } = section.teachingDates;
-      try {
-        if (
-          start > end ||
-          Number(start.slice(0, 4)) < snapshot.year ||
-          Number(end.slice(0, 4)) > snapshot.year + 1 ||
-          !section.evidence.some((e) => dateInQuote(start, e.quote)) ||
-          !section.evidence.some((e) => dateInQuote(end, e.quote))
-        ) {
-          issues.push(
-            `Teaching dates lack consistent source evidence: ${section.title}`,
-          );
-        }
-      } catch {
-        issues.push(`Invalid teaching date: ${section.title}`);
-      }
-    }
   }
   for (const item of map.essentials) {
     checkId(item.resourceId);
