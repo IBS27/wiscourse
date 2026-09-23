@@ -139,7 +139,9 @@ export const agenda = internalQuery({
     assertDayKey(args.to);
     const span = daysBetween(args.from, args.to);
     if (span < 0) throw new Error("`to` is before `from`");
-    if (span >= MAX_AGENDA_DAYS) throw new Error(`Ask for at most ${MAX_AGENDA_DAYS} days at a time`);
+    if (span >= MAX_AGENDA_DAYS) {
+      throw new Error(`Ask for at most ${MAX_AGENDA_DAYS} days at a time; split longer ranges into several calls`);
+    }
     const tz = args.timeZone;
     const start = zonedToUtc(args.from, 0, tz);
     const end = zonedToUtc(addDaysKey(args.to, 1), 0, tz);
@@ -569,11 +571,105 @@ export const grades = internalQuery({
   },
 });
 
-/** Title search across synced course content. */
+// ── Search ────────────────────────────────────────────────────────────────
+
+const CONTENT_HITS = 6; // per source table
+const MAX_RESULTS = 24;
+
+interface SearchHit {
+  kind: string;
+  title: string;
+  courseId: number;
+  course: string;
+  read?: { kind: string; id?: string };
+  href?: string;
+  due?: string;
+  snippet?: string;
+}
+
+/** A window of plain text around the first query word, so the model sees why it matched. */
+function snippet(text: string, words: string[]): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const lower = flat.toLowerCase();
+  // Exact words first, then their stems: search matches "exams" for "exam".
+  const probes = [...words, ...words.filter((w) => w.length > 4).map((w) => w.slice(0, 4))];
+  let at = -1;
+  for (const probe of probes) {
+    const i = lower.indexOf(probe);
+    if (i !== -1 && (at === -1 || i < at)) at = i;
+  }
+  const from = Math.max(0, (at === -1 ? 0 : at) - 120);
+  const to = Math.min(flat.length, (at === -1 ? 0 : at) + 220);
+  return `${from > 0 ? "…" : ""}${flat.slice(from, to)}${to < flat.length ? "…" : ""}`;
+}
+
+/** Full-text hits inside course content, ranked by Convex's search index. */
+async function searchContent(
+  ctx: QueryCtx,
+  args: { userId: string; query: string; words: string[]; courseCanvasId?: number; timeZone: string },
+  active: Map<number, Doc<"courses">>,
+  label: (c: Doc<"courses">) => string,
+): Promise<SearchHit[]> {
+  const { userId, query, words, courseCanvasId: cid, timeZone: tz } = args;
+  const scoped = <F extends { eq(field: "userId", value: string): F; eq(field: "courseCanvasId", value: number): F }>(f: F): F =>
+    cid === undefined ? f.eq("userId", userId) : f.eq("userId", userId).eq("courseCanvasId", cid);
+  const [pages, assignments, quizzes, discussions, documents, syllabi] = await Promise.all([
+    ctx.db.query("pages").withSearchIndex("search_content", (q) => scoped(q.search("body", query))).take(CONTENT_HITS),
+    ctx.db.query("assignments").withSearchIndex("search_content", (q) => scoped(q.search("description", query))).take(CONTENT_HITS),
+    ctx.db.query("quizzes").withSearchIndex("search_content", (q) => scoped(q.search("description", query))).take(CONTENT_HITS),
+    ctx.db.query("discussions").withSearchIndex("search_content", (q) => scoped(q.search("message", query))).take(CONTENT_HITS),
+    ctx.db.query("courseDocuments").withSearchIndex("search_content", (q) => scoped(q.search("text", query))).take(CONTENT_HITS),
+    ctx.db
+      .query("courses")
+      .withSearchIndex("search_content", (q) => {
+        const f = q.search("syllabusBody", query).eq("userId", userId);
+        return cid === undefined ? f : f.eq("canvasId", cid);
+      })
+      .take(CONTENT_HITS),
+  ]);
+  const hits: SearchHit[] = [];
+  const course = (id: number) => active.get(id);
+  for (const c of syllabi) {
+    if (!active.has(c.canvasId) || !c.syllabusBody) continue;
+    hits.push({ kind: "syllabus", title: "Syllabus", courseId: c.canvasId, course: label(c), read: { kind: "syllabus" }, href: href.syllabus(c.canvasId), snippet: snippet(htmlText(c.syllabusBody, c.canvasId), words) });
+  }
+  for (const p of pages) {
+    const c = course(p.courseCanvasId);
+    if (c === undefined || !p.published || p.lockedForUser || p.contentUnavailable || !p.body) continue;
+    hits.push({ kind: "page", title: p.title, courseId: c.canvasId, course: label(c), read: { kind: "page", id: p.url }, href: href.page(c.canvasId, p.url), snippet: snippet(htmlText(p.body, c.canvasId), words) });
+  }
+  for (const a of assignments) {
+    const c = course(a.courseCanvasId);
+    if (c === undefined || !a.description) continue;
+    hits.push({ kind: "assignment", title: a.name, courseId: c.canvasId, course: label(c), read: { kind: "assignment", id: String(a.canvasId) }, href: href.todo("assignment", a.canvasId), due: a.dueAt === undefined ? undefined : localIso(a.dueAt, tz), snippet: snippet(htmlText(a.description, c.canvasId), words) });
+  }
+  for (const q of quizzes) {
+    const c = course(q.courseCanvasId);
+    if (c === undefined || q.lockedForUser || !q.description) continue;
+    hits.push({ kind: "quiz", title: q.title, courseId: c.canvasId, course: label(c), read: { kind: "quiz", id: String(q.canvasId) }, due: q.dueAt === undefined ? undefined : localIso(q.dueAt, tz), snippet: snippet(htmlText(q.description, c.canvasId), words) });
+  }
+  for (const d of discussions) {
+    const c = course(d.courseCanvasId);
+    if (c === undefined || !d.message) continue;
+    const kind = d.isAnnouncement ? "announcement" : "discussion";
+    hits.push({ kind, title: d.title, courseId: c.canvasId, course: label(c), read: { kind, id: String(d.canvasId) }, href: d.isAnnouncement ? href.announcement(c.canvasId, d.canvasId) : undefined, due: d.dueAt === undefined ? undefined : localIso(d.dueAt, tz), snippet: snippet(htmlText(d.message, c.canvasId), words) });
+  }
+  for (const doc of documents) {
+    const c = course(doc.courseCanvasId);
+    if (c === undefined) continue;
+    const f = await ctx.db.query("files").withIndex("by_user_canvasId", (q) => q.eq("userId", userId).eq("canvasId", doc.fileCanvasId)).unique();
+    if (f === null || f.hidden || f.lockedForUser) continue;
+    hits.push({ kind: "file", title: f.displayName, courseId: c.canvasId, course: label(c), read: { kind: "file", id: String(f.canvasId) }, href: href.file(c.canvasId, f.canvasId), snippet: snippet(doc.text, words) });
+  }
+  return hits;
+}
+
+/** Title matches plus full-text matches inside synced course content. */
 export const search = internalQuery({
   args: { userId: v.string(), timeZone: v.string(), query: v.string(), courseCanvasId: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const words = args.query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+    const query = args.query.trim();
+    const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
     if (words.length === 0) return { results: [] };
     const courses = await coursesOf(ctx, args.userId);
     const active = new Map(courses.active.map((c) => [c.canvasId, c]));
@@ -585,8 +681,8 @@ export const search = internalQuery({
           : q.eq("userId", args.userId).eq("courseCanvasId", args.courseCanvasId),
       )
       .collect();
-    const scored = rows
-      .filter((r) => active.has(r.courseCanvasId))
+    const byTitle: SearchHit[] = rows
+      .filter((r) => active.has(r.courseCanvasId) && r.kind !== "course")
       .map((r) => {
         const title = r.title.toLowerCase();
         const hits = words.filter((w) => title.includes(w)).length;
@@ -594,25 +690,47 @@ export const search = internalQuery({
       })
       .filter((s) => s.score >= 0.5)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 15);
-    return {
-      results: scored.map(({ r }) => {
-        const c = active.get(r.courseCanvasId);
-        const readAs =
+      .slice(0, 15)
+      .map(({ r }) => {
+        const c = active.get(r.courseCanvasId)!;
+        const read =
           r.kind === "page" && r.pageSlug ? { kind: "page", id: r.pageSlug }
           : r.kind === "assignment" ? { kind: "assignment", id: String(r.canvasId) }
           : r.kind === "announcement" ? { kind: "announcement", id: String(r.canvasId) }
           : r.kind === "file" ? { kind: "file", id: String(r.canvasId) }
           : undefined;
+        const link =
+          r.kind === "page" && r.pageSlug ? href.page(c.canvasId, r.pageSlug)
+          : r.kind === "assignment" ? href.todo("assignment", r.canvasId)
+          : r.kind === "announcement" ? href.announcement(c.canvasId, r.canvasId)
+          : r.kind === "file" ? href.file(c.canvasId, r.canvasId)
+          : r.kind === "module" ? href.module(c.canvasId, r.canvasId)
+          : undefined;
         return {
           kind: r.kind,
           title: r.title,
           courseId: r.courseCanvasId,
-          course: c === undefined ? undefined : courses.label(c),
-          read: readAs,
+          course: courses.label(c),
+          read,
+          href: link,
           due: r.dueAt === undefined ? undefined : localIso(r.dueAt, args.timeZone),
         };
-      }),
+      });
+    const inContent = await searchContent(ctx, { ...args, query, words }, active, courses.label);
+    const seen = new Set<string>();
+    const results = [...byTitle, ...inContent]
+      .filter((h) => {
+        const key = `${h.kind}:${h.courseId}:${h.read?.id ?? h.title}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .slice(0, MAX_RESULTS);
+    return {
+      results,
+      ...(results.length === 0
+        ? { note: "No titles or text matched. Try other words, or read the syllabus, home page and schedule pages directly." }
+        : {}),
     };
   },
 });

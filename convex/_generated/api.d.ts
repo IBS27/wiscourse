@@ -17,6 +17,7 @@ import type * as canvas_client from "../canvas/client.js";
 import type * as canvas_syncContent from "../canvas/syncContent.js";
 import type * as canvas_syncCourseMeta from "../canvas/syncCourseMeta.js";
 import type * as canvas_types from "../canvas/types.js";
+import type * as courseDocuments from "../courseDocuments.js";
 import type * as courseInterpretations from "../courseInterpretations.js";
 import type * as courseInterpreter from "../courseInterpreter.js";
 import type * as courseSources from "../courseSources.js";
@@ -82,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "canvas/syncContent": typeof canvas_syncContent;
   "canvas/syncCourseMeta": typeof canvas_syncCourseMeta;
   "canvas/types": typeof canvas_types;
+  courseDocuments: typeof courseDocuments;
   courseInterpretations: typeof courseInterpretations;
   courseInterpreter: typeof courseInterpreter;
   courseSources: typeof courseSources;

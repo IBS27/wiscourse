@@ -299,6 +299,11 @@ async function runFullSync(
         courseUrl: `https://${session.credential.instance}/courses/${course.id}`,
       });
       await ctx.runAction(internal.courseStaff.refresh, {userId,courseCanvasId:course.id});
+      // Off the sync's request budget: PDF text extraction runs in its own job.
+      await ctx.scheduler.runAfter(0, internal.courseDocuments.extractSyllabi, {
+        userId,
+        courseCanvasId: course.id,
+      });
     }
   }
 
