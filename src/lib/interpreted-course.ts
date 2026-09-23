@@ -10,13 +10,36 @@ export type Interpretation = Pick<
   Doc<"courseInterpretations">,
   "map" | "resources" | "sourceRevision" | "resultRevision"
 >;
+const normalizeTitle = (s: string) =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+
+/** False when every section only restates a whole page, which the original Overview already shows better. */
+export function addsStructure(
+  map: CourseMap,
+  resources: MapResource[],
+): boolean {
+  const titles = new Map(resources.map((r) => [r.id, normalizeTitle(r.title)]));
+  return map.sections.some(
+    (s) =>
+      !!s.entries?.length ||
+      !s.resourceIds.some(
+        (id) =>
+          /^(page|course):/.test(id) &&
+          titles.get(id) === normalizeTitle(s.title),
+      ),
+  );
+}
 export function usableInterpretation(
   state: Interpretation | null | undefined,
 ): state is Interpretation & { map: CourseMap; resources: MapResource[] } {
   return (
     !!state?.map?.sections.length &&
     !!state.resources?.length &&
-    state.resultRevision === state.sourceRevision
+    state.resultRevision === state.sourceRevision &&
+    addsStructure(state.map, state.resources)
   );
 }
 export function sectionResources(
@@ -69,30 +92,40 @@ export function sectionResources(
   ids.forEach(add);
   return result;
 }
+/** The current dated section, else the next upcoming one, else the instructor's main group. */
 export function defaultSection(map: CourseMap, today: string): string {
+  const dated = map.sections.filter((s) => s.teachingDates);
   return (
-    map.sections.find(
-      (s) =>
-        s.teachingDates &&
-        s.teachingDates.start <= today &&
-        s.teachingDates.end >= today,
+    dated.find(
+      (s) => s.teachingDates!.start <= today && s.teachingDates!.end >= today,
     ) ??
+    dated
+      .filter((s) => s.teachingDates!.start > today)
+      .sort((a, b) =>
+        a.teachingDates!.start.localeCompare(b.teachingDates!.start),
+      )[0] ??
     map.sections.find((s) => /^chapter\s+\d/i.test(s.title)) ??
     map.sections.find((s) => /^lectures?$/i.test(s.title)) ??
     map.sections[0]
   ).id;
 }
 
+const dayFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+/** "Tue, Sep 22" for a YYYY-MM-DD key, independent of the viewer's zone. */
+export function formatDay(key: string): string {
+  return dayFormat.format(new Date(`${key}T00:00:00Z`));
+}
+
 /** Extract an existing instructor section, never generate or rewrite its content. */
 export function instructorSection(html: string, title: string): string | null {
   const doc = new DOMParser().parseFromString(html, "text/html");
-  const normalize = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, " ")
-      .trim();
   const heading = [...doc.querySelectorAll("h1,h2,h3,h4,h5,h6,p")].find(
-    (e) => normalize(e.textContent ?? "") === normalize(title),
+    (e) => normalizeTitle(e.textContent ?? "") === normalizeTitle(title),
   );
   if (!heading) return null;
   const isHeading = (e: Element) =>

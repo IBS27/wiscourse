@@ -328,6 +328,7 @@ export default defineSchema({
     map: v.optional(courseMapValidator), resources: v.optional(v.array(resultResourceValidator)),
     model: v.string(), promptVersion: v.string(), threadId: v.optional(v.string()),
     inputTokens: v.optional(v.number()), outputTokens: v.optional(v.number()), toolCalls: v.optional(v.number()),
+    reused: v.optional(v.boolean()),
     error: v.optional(v.string()), validationIssues: v.optional(v.array(v.string())),
   }).index("by_user_course", ["userId", "courseCanvasId"]),
   courseDocuments: defineTable({

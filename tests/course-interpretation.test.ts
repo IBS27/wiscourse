@@ -7,11 +7,12 @@ import schema from "../convex/schema";
 import { api, internal } from "../convex/_generated/api";
 import {
   courseMapSchema,
-  dropUnsupportedDates,
   INTERPRETER_MODEL,
   INTERPRETER_VERSION,
+  tidyCourseMap,
   validateCourseMap,
   type CourseMap,
+  type CourseMapDraft,
   type CourseResource,
 } from "../convex/lib/courseMap";
 import { courseText, sourceChanged, sourceFingerprint } from "../convex/lib/courseSource";
@@ -28,7 +29,8 @@ const resource: CourseResource = {
   fingerprint: "f",
   available: true,
 };
-const map: CourseMap = {
+// Valid both as model output and as a stored map.
+const map: CourseMap & CourseMapDraft = {
   organization: "resources",
   summary: "Lecture materials",
   sections: [
@@ -38,6 +40,7 @@ const map: CourseMap = {
       kind: "resources",
       resourceIds: [resource.id],
       teachingDates: null,
+      entries: [],
       evidence: [{ sourceId: resource.id, quote: "Lecture schedule" }],
     },
   ],
@@ -46,6 +49,7 @@ const map: CourseMap = {
   unresolvedResourceIds: [],
 };
 const snapshot = { resources: [resource], hash: "h", revision: 0 };
+const fall = { year: 2026, month: 9 };
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.useRealTimers();
@@ -128,6 +132,15 @@ describe("course source evidence", () => {
     expect(validateCourseMap(map, snapshot, new Map())).toContain(
       "Evidence does not match source: page:home",
     );
+    const typographic = structuredClone(map);
+    typographic.sections[0].evidence[0].quote = `Students' "media diet" - week 1...`;
+    expect(
+      validateCourseMap(
+        typographic,
+        snapshot,
+        new Map([[resource.id, "Students\u2019 \u201cmedia diet\u201d \u2013 week 1\u2026"]]),
+      ),
+    ).toEqual([]);
     const bad = structuredClone(map);
     bad.sections[0].resourceIds = ["page:another-users-page"];
     expect(
@@ -146,7 +159,7 @@ describe("course source evidence", () => {
         sourceId: resource.id,
         quote,
       }));
-      return dropUnsupportedDates(dated, 2026).sections[0].teachingDates;
+      return tidyCourseMap(dated, fall, [resource]).sections[0].teachingDates;
     };
     for (const date of ["2024-09-08", "2026-02-30", "2026-09-09"])
       expect(withDates(date, date)).toBeNull();
@@ -174,7 +187,7 @@ describe("course source evidence", () => {
     };
     expect(
       validateCourseMap(
-        dropUnsupportedDates(dropped, 2026),
+        tidyCourseMap(dropped, fall, [resource]),
         snapshot,
         new Map([[resource.id, resource.text]]),
       ),
@@ -182,6 +195,135 @@ describe("course source evidence", () => {
     expect(courseMapSchema.safeParse({ ...map, sections: [] }).success).toBe(
       false,
     );
+  });
+  it("dates schedule-table entries by their own row and derives the week", () => {
+    const rows = [
+      "2 | \n9/8/26 | \nProcesses | \nlec2.pdf [file:2] |",
+      "2 | \n9/9/26 | \ngetopt() / strtok() |",
+      "P5 | \nConcurrency | \n11/13/2024 |",
+    ];
+    const week: CourseMapDraft = structuredClone(map);
+    week.sections[0] = {
+      ...week.sections[0],
+      kind: "week",
+      entries: (
+        [
+          ["Processes", 9, 8, rows[0]],
+          ["getopt() / strtok()", 9, 9, rows[1]],
+          ["Concurrency", 11, 13, rows[2]],
+          ["Reused slide date", 9, 10, "9/10/24 slides"],
+        ] as const
+      ).map(([title, month, day, quote]) => ({
+        title,
+        date: { month, day },
+        resourceIds: [],
+        evidence: [{ sourceId: resource.id, quote }],
+      })),
+    };
+    const tidy = tidyCourseMap(week, fall, [resource]).sections[0];
+    expect(tidy.entries?.map((e) => e.date)).toEqual([
+      "2026-09-08",
+      "2026-09-09",
+      null,
+      null,
+    ]);
+    expect(tidy.teachingDates).toEqual({
+      start: "2026-09-08",
+      end: "2026-09-09",
+    });
+    const empty = structuredClone(map);
+    empty.sections[0].resourceIds = [];
+    expect(
+      validateCourseMap(empty, snapshot, new Map([[resource.id, resource.text]])),
+    ).toContain("Section has no resources or entries: lectures");
+  });
+  it("never reports placed resources, their module items, or targets as unresolved", () => {
+    const files: CourseResource[] = [
+      resource,
+      { ...resource, id: "module:1", kind: "module", title: "Week 1" },
+      {
+        ...resource,
+        id: "item:2",
+        kind: "item",
+        parentId: "module:1",
+        targetId: "file:3",
+      },
+      { ...resource, id: "file:3", kind: "file" },
+      { ...resource, id: "file:4", kind: "file" },
+      { ...resource, id: "file:5", kind: "file" },
+    ];
+    const placed: CourseMapDraft = structuredClone(map);
+    placed.sections[0].resourceIds = ["module:1"];
+    placed.sections[0].entries = [
+      {
+        title: "Discussion",
+        date: null,
+        resourceIds: ["file:4"],
+        evidence: [{ sourceId: resource.id, quote: "Lecture schedule" }],
+      },
+    ];
+    placed.unresolvedResourceIds = ["file:3", "item:2", "file:4", "file:5", "file:5"];
+    expect(tidyCourseMap(placed, fall, files).unresolvedResourceIds).toEqual([
+      "file:5",
+    ]);
+  });
+  it("restores a module the model left out at its module position", () => {
+    const course: CourseResource[] = [
+      resource,
+      ...[1, 2, 3].map((n) => ({
+        ...resource,
+        id: `module:${n}`,
+        kind: "module" as const,
+        title: `Module ${n}`,
+        position: n,
+      })),
+      ...[1, 2, 3].map((n) => ({
+        ...resource,
+        id: `item:${n}`,
+        kind: "item" as const,
+        parentId: `module:${n}`,
+        targetId: `file:${n}`,
+      })),
+      { ...resource, id: "module:4", kind: "module", title: "Empty", position: 4 },
+    ];
+    const draft: CourseMapDraft = structuredClone(map);
+    draft.sections = [1, 3].map((n) => ({
+      ...map.sections[0],
+      id: `m${n}`,
+      resourceIds: [`module:${n}`],
+    }));
+    draft.unresolvedResourceIds = ["file:2"];
+    const tidy = tidyCourseMap(draft, fall, course);
+    expect(tidy.sections.map((s) => s.resourceIds[0])).toEqual([
+      "module:1",
+      "module:2",
+      "module:3",
+    ]);
+    expect(tidy.unresolvedResourceIds).toEqual([]);
+    const evidence = new Map(course.map((r) => [r.id, [r.title, r.text]]));
+    expect(
+      validateCourseMap(tidy, { ...snapshot, resources: course }, evidence),
+    ).toEqual([]);
+  });
+  it("assigns the term's year to entry months and moves unavailable resources to unresolved", () => {
+    const spring: CourseMapDraft = structuredClone(map);
+    spring.sections[0].entries = [
+      {
+        title: "Final exam",
+        date: { month: 1, day: 12 },
+        resourceIds: ["file:9"],
+        evidence: [{ sourceId: resource.id, quote: "Final exam 1/12/27" }],
+      },
+    ];
+    const tidy = tidyCourseMap(spring, fall, [
+      resource,
+      { ...resource, id: "file:9", kind: "file", available: false },
+    ]);
+    expect(tidy.sections[0].entries?.[0]).toMatchObject({
+      date: "2027-01-12",
+      resourceIds: [],
+    });
+    expect(tidy.unresolvedResourceIds).toEqual(["file:9"]);
   });
 });
 
@@ -402,6 +544,10 @@ describe("course interpretation worker", () => {
           .query(api.courseInterpretations.get, { courseCanvasId: 1 })
       ).state,
     ).toBeNull();
+    // The empty course syllabus is never offered to the model.
+    expect(JSON.stringify(model.doGenerateCalls[0].prompt)).not.toContain(
+      "course:syllabus",
+    );
     // A timestamp-only refresh reuses the existing map without another model call.
     await t.run((ctx) => ctx.db.patch(id, { status: "queued", generation: 2 }));
     await t.action(internal.courseInterpreter.run, {
@@ -409,6 +555,12 @@ describe("course interpretation worker", () => {
       generation: 2,
     });
     expect(model.doGenerateCalls).toHaveLength(2);
+    const reused = (
+      await student.query(api.courseInterpretations.get, { courseCanvasId: 1 })
+    ).state;
+    expect(reused?.reused).toBe(true);
+    expect(reused?.inputTokens).toBe(200);
+    expect(reused?.toolCalls).toBe(1);
   });
   it("preserves the previous map when new evidence fails validation", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-only");

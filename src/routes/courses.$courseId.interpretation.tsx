@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { CourseMap } from "../../convex/lib/courseMap";
+import { formatDay } from "@/lib/interpreted-course";
 
 export const Route = createFileRoute("/courses/$courseId/interpretation")({
   component: CourseInterpretation,
@@ -165,9 +166,32 @@ function CourseInterpretation() {
                 <h2 className="font-semibold">{section.title}</h2>
                 {section.teachingDates && (
                   <p className="mt-1 text-xs text-ink-3">
-                    Teaching dates: {section.teachingDates.start} –{" "}
-                    {section.teachingDates.end}
+                    Teaching dates: {formatDay(section.teachingDates.start)} –{" "}
+                    {formatDay(section.teachingDates.end)}
                   </p>
+                )}
+                {!!section.entries?.length && (
+                  <ol className="mt-3 space-y-2 text-sm">
+                    {section.entries.map((entry, i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="w-24 shrink-0 text-ink-3">
+                          {entry.date ? formatDay(entry.date) : "No date"}
+                        </span>
+                        <span className="min-w-0">
+                          {entry.title}
+                          {entry.resourceIds.map((id) => (
+                            <a
+                              key={id}
+                              className="ml-3 text-xs underline underline-offset-2"
+                              href={links.get(id)?.href}
+                            >
+                              {links.get(id)?.title ?? id}
+                            </a>
+                          ))}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
                 )}
                 <ul className="mt-3 space-y-2 text-sm">
                   {section.resourceIds.map((id, i) => (
@@ -181,7 +205,13 @@ function CourseInterpretation() {
                     </li>
                   ))}
                 </ul>
-                <Evidence items={section.evidence} links={links} />
+                <Evidence
+                  items={[
+                    ...section.evidence,
+                    ...(section.entries ?? []).flatMap((e) => e.evidence),
+                  ]}
+                  links={links}
+                />
               </section>
             ))}
             {map.unresolvedResourceIds.length > 0 && (
@@ -201,8 +231,10 @@ function CourseInterpretation() {
               </details>
             )}
             <p className="text-xs text-ink-3">
-              Last run: {state?.model} · {state?.inputTokens ?? 0} input tokens
-              · {state?.outputTokens ?? 0} output tokens ·{" "}
+              {state?.reused &&
+                "Course material was unchanged, so the last refresh reused this map. "}
+              Last model run: {state?.model} · {state?.inputTokens ?? 0} input
+              tokens · {state?.outputTokens ?? 0} output tokens ·{" "}
               {state?.toolCalls ?? 0} tool calls
             </p>
           </>

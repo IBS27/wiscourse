@@ -211,13 +211,7 @@ export const begin = internalMutation({
       state.status !== "queued"
     )
       return false;
-    await ctx.db.patch(state._id, {
-      status: "running",
-      startedAt: Date.now(),
-      inputTokens: 0,
-      outputTokens: 0,
-      toolCalls: 0,
-    });
+    await ctx.db.patch(state._id, { status: "running", startedAt: Date.now() });
     return true;
   },
 });
@@ -251,6 +245,7 @@ export const finish = internalMutation({
     resources: v.optional(v.array(resultResourceValidator)),
     error: v.optional(v.string()),
     issues: v.optional(v.array(v.string())),
+    reused: v.optional(v.boolean()),
     inputTokens: v.number(),
     outputTokens: v.number(),
     toolCalls: v.number(),
@@ -272,9 +267,15 @@ export const finish = internalMutation({
     await ctx.db.patch(state._id, {
       status: stale ? "stale" : args.error || !args.map ? "failed" : "ready",
       finishedAt: Date.now(),
-      inputTokens: args.inputTokens,
-      outputTokens: args.outputTokens,
-      toolCalls: args.toolCalls,
+      // A reused map keeps the usage of the run that produced it.
+      ...(args.reused
+        ? {}
+        : {
+            inputTokens: args.inputTokens,
+            outputTokens: args.outputTokens,
+            toolCalls: args.toolCalls,
+          }),
+      reused: args.reused ?? false,
       error: args.error,
       validationIssues: args.issues,
       ...(!stale && args.map && !args.error

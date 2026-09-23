@@ -44,6 +44,9 @@ function CourseOverview() {
   const interpreted = usableInterpretation(interpretation?.state)
     ? interpretation.state
     : null;
+  const staleMap =
+    !!interpretation?.state?.map &&
+    interpretation.state.resultRevision !== interpretation.state.sourceRevision;
 
   return (
     <div
@@ -63,7 +66,7 @@ function CourseOverview() {
           />
         ) : (
           <>
-            {interpretation?.state?.map && (
+            {staleMap && (
               <p className="px-5 pb-4 text-xs text-ink-3">
                 Course material changed. Showing the original course
                 organization until its interpretation is refreshed.{" "}
@@ -76,14 +79,16 @@ function CourseOverview() {
                 </Link>
               </p>
             )}
-            {!interpretation?.state?.map && (
+            {!staleMap && (
               <div className="px-5 pb-4">
                 <Link
                   to="/courses/$courseId/interpretation"
                   params={{ courseId }}
                   className="text-xs text-ink-3 underline"
                 >
-                  Organize this course
+                  {interpretation?.state?.map
+                    ? "Review interpretation"
+                    : "Organize this course"}
                 </Link>
               </div>
             )}
