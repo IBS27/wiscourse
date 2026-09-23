@@ -1,6 +1,10 @@
 import { parseDocument } from "htmlparser2";
 import { hashContent } from "./courseMap";
 
+export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+/** Files whose text is extracted right after a full sync, not only on demand. */
+export const SYLLABUS_FILE = /syllabus/i;
+
 /** Text retains table boundaries, headings, and safe Canvas resource references. */
 export function courseText(html: string, courseId: number): string {
   const document = parseDocument(html);

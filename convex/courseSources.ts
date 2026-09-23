@@ -2,7 +2,8 @@ import { v } from "convex/values";
 import { internalQuery, internalMutation } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { resourceValidator, type CourseResource } from "./lib/courseMap";
-import { courseText, sourceFingerprint } from "./lib/courseSource";
+import { courseText, sourceFingerprint, MAX_PDF_BYTES, SYLLABUS_FILE } from "./lib/courseSource";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 const tables = v.union(
   v.literal("pages"),
@@ -203,6 +204,57 @@ export const document = internalQuery({
     return cached?.fingerprint === args.fingerprint ? cached.text : null;
   },
 });
+const documentArgs = {
+  userId: v.string(),
+  courseCanvasId: v.number(),
+  fileCanvasId: v.number(),
+  fingerprint: v.string(),
+  text: v.string(),
+  pages: v.number(),
+};
+
+/** Stores extracted text for a file, if the file is still the one described by `fingerprint`. */
+async function putDocument(
+  ctx: MutationCtx,
+  args: { userId: string; courseCanvasId: number; fileCanvasId: number; fingerprint: string; text: string; pages: number },
+): Promise<void> {
+  if (args.text.length > 150_000) return;
+  const file = await ctx.db
+    .query("files")
+    .withIndex("by_user_canvasId", (q) =>
+      q.eq("userId", args.userId).eq("canvasId", args.fileCanvasId),
+    )
+    .unique();
+  if (
+    !file ||
+    file.courseCanvasId !== args.courseCanvasId ||
+    file.lockedForUser ||
+    file.hidden ||
+    sourceFingerprint("files", file) !== args.fingerprint
+  )
+    return;
+  const existing = await ctx.db
+    .query("courseDocuments")
+    .withIndex("by_user_course_file", (q) =>
+      q
+        .eq("userId", args.userId)
+        .eq("courseCanvasId", args.courseCanvasId)
+        .eq("fileCanvasId", args.fileCanvasId),
+    )
+    .unique();
+  const value = {
+    userId: args.userId,
+    courseCanvasId: args.courseCanvasId,
+    fileCanvasId: args.fileCanvasId,
+    fingerprint: args.fingerprint,
+    text: args.text,
+    pages: args.pages,
+    extractedAt: Date.now(),
+  };
+  if (existing) await ctx.db.replace(existing._id, value);
+  else await ctx.db.insert("courseDocuments", value);
+}
+
 export const cacheDocument = internalMutation({
   args: {
     interpretationId: v.id("courseInterpretations"),
@@ -214,41 +266,58 @@ export const cacheDocument = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const state = await ctx.db.get(args.interpretationId);
-    if (!state?.enabled || args.text.length > 150_000) return null;
-    const file = await ctx.db
-      .query("files")
-      .withIndex("by_user_canvasId", (q) =>
-        q.eq("userId", state.userId).eq("canvasId", args.fileCanvasId),
-      )
-      .unique();
-    if (
-      !file ||
-      file.courseCanvasId !== state.courseCanvasId ||
-      file.lockedForUser ||
-      file.hidden ||
-      sourceFingerprint("files", file) !== args.fingerprint
-    )
-      return null;
-    const existing = await ctx.db
-      .query("courseDocuments")
-      .withIndex("by_user_course_file", (q) =>
-        q
-          .eq("userId", state.userId)
-          .eq("courseCanvasId", state.courseCanvasId)
-          .eq("fileCanvasId", args.fileCanvasId),
-      )
-      .unique();
-    const value = {
-      userId: state.userId,
-      courseCanvasId: state.courseCanvasId,
-      fileCanvasId: args.fileCanvasId,
-      fingerprint: args.fingerprint,
-      text: args.text,
-      pages: args.pages,
-      extractedAt: Date.now(),
-    };
-    if (existing) await ctx.db.replace(existing._id, value);
-    else await ctx.db.insert("courseDocuments", value);
+    if (!state?.enabled) return null;
+    const { interpretationId, ...rest } = args;
+    void interpretationId;
+    await putDocument(ctx, { ...rest, userId: state.userId, courseCanvasId: state.courseCanvasId });
     return null;
+  },
+});
+
+export const storeDocument = internalMutation({
+  args: documentArgs,
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await putDocument(ctx, args);
+    return null;
+  },
+});
+
+const pendingFile = v.object({ canvasId: v.number(), url: v.string(), fingerprint: v.string() });
+
+async function isCached(ctx: QueryCtx, userId: string, courseCanvasId: number, fileCanvasId: number, fingerprint: string) {
+  const cached = await ctx.db
+    .query("courseDocuments")
+    .withIndex("by_user_course_file", (q) =>
+      q.eq("userId", userId).eq("courseCanvasId", courseCanvasId).eq("fileCanvasId", fileCanvasId),
+    )
+    .unique();
+  return cached?.fingerprint === fingerprint;
+}
+
+/** Readable syllabus PDFs in a course whose text isn't extracted yet. */
+export const pendingSyllabusFiles = internalQuery({
+  args: { userId: v.string(), courseCanvasId: v.number() },
+  returns: v.array(pendingFile),
+  handler: async (ctx, args) => {
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_user_course", (q) => q.eq("userId", args.userId).eq("courseCanvasId", args.courseCanvasId))
+      .collect();
+    const pending = [];
+    for (const f of files) {
+      if (
+        f.contentType !== "application/pdf" ||
+        f.hidden ||
+        f.lockedForUser ||
+        f.size > MAX_PDF_BYTES ||
+        !SYLLABUS_FILE.test(f.displayName)
+      )
+        continue;
+      const fingerprint = sourceFingerprint("files", f)!;
+      if (await isCached(ctx, args.userId, args.courseCanvasId, f.canvasId, fingerprint)) continue;
+      pending.push({ canvasId: f.canvasId, url: f.url, fingerprint });
+    }
+    return pending;
   },
 });

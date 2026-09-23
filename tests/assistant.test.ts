@@ -266,6 +266,84 @@ describe("assistant reads", () => {
   });
 });
 
+describe("assistant search", () => {
+  it("finds exam dates inside page bodies and syllabus files, with snippets", async () => {
+    const { t } = await setup();
+    await t.run(async (ctx) => {
+      // convex-test's search fake throws on documents missing the search
+      // field (real Convex skips them), so give the fixtures empty bodies.
+      for (const course of await ctx.db.query("courses").collect()) await ctx.db.patch(course._id, { syllabusBody: "" });
+      for (const a of await ctx.db.query("assignments").collect()) await ctx.db.patch(a._id, { description: "" });
+      await ctx.db.insert("pages", {
+        userId,
+        courseCanvasId: 1,
+        canvasId: 50,
+        syncedAt: 0,
+        url: "exam-information",
+        title: "Exam Information",
+        // Spaces around tags: the convex-test search fake splits on whitespace only.
+        body: "<h2> Exams </h2><p> Exam 1: Wednesday October 7, 7:40-9:00 pm, room TBA </p>",
+        isFrontPage: false,
+        published: true,
+        htmlUrl: "https://canvas.wisc.edu/courses/1/pages/exam-information",
+      });
+      await ctx.db.insert("files", {
+        userId,
+        courseCanvasId: 1,
+        canvasId: 60,
+        syncedAt: 0,
+        displayName: "CS 537 Syllabus.pdf",
+        filename: "syllabus.pdf",
+        contentType: "application/pdf",
+        size: 1000,
+        url: "https://canvas.wisc.edu/files/60/download",
+      });
+      await ctx.db.insert("courseDocuments", {
+        userId,
+        courseCanvasId: 1,
+        fileCanvasId: 60,
+        fingerprint: "fp",
+        text: "Grading. The midterm exam is on October 6 at 7:30 PM in MH 1570.",
+        pages: 1,
+        extractedAt: 0,
+      });
+    });
+    const found = (await t.query(internal.assistantData.search, { userId, timeZone: CHICAGO, query: "exam" })) as {
+      results: Array<{ kind: string; title: string; read?: { kind: string; id?: string }; href?: string; snippet?: string }>;
+    };
+    const page = found.results.find((r) => r.kind === "page");
+    expect(page).toMatchObject({ title: "Exam Information", read: { kind: "page", id: "exam-information" }, href: "/courses/1/pages/exam-information" });
+    expect(page?.snippet).toContain("October 7");
+    const file = found.results.find((r) => r.kind === "file");
+    expect(file).toMatchObject({ title: "CS 537 Syllabus.pdf", read: { kind: "file", id: "60" } });
+    expect(file?.snippet).toContain("October 6");
+    const scoped = (await t.query(internal.assistantData.search, { userId, timeZone: CHICAGO, query: "exam", courseCanvasId: 2 })) as { results: unknown[]; note?: string };
+    expect(scoped.results).toEqual([]);
+    expect(scoped.note).toBeDefined();
+  });
+
+  it("queues only syllabus PDFs whose text isn't extracted yet", async () => {
+    const { t } = await setup();
+    await t.run(async (ctx) => {
+      const base = { userId, courseCanvasId: 1, syncedAt: 0, filename: "f", contentType: "application/pdf", size: 1000, url: "https://x/f" };
+      await ctx.db.insert("files", { ...base, canvasId: 61, displayName: "Fall 2026 Syllabus.pdf" });
+      await ctx.db.insert("files", { ...base, canvasId: 62, displayName: "Lecture 1.pdf" });
+      await ctx.db.insert("files", { ...base, canvasId: 63, displayName: "Syllabus.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    });
+    const pending = await t.query(internal.courseSources.pendingSyllabusFiles, { userId, courseCanvasId: 1 });
+    expect(pending.map((f) => f.canvasId)).toEqual([61]);
+    await t.mutation(internal.courseSources.storeDocument, {
+      userId,
+      courseCanvasId: 1,
+      fileCanvasId: 61,
+      fingerprint: pending[0].fingerprint,
+      text: "Syllabus text",
+      pages: 1,
+    });
+    expect(await t.query(internal.courseSources.pendingSyllabusFiles, { userId, courseCanvasId: 1 })).toEqual([]);
+  });
+});
+
 describe("assistant chats", () => {
   it("starts a chat, blocks a second send while replying, and enforces the daily limit", async () => {
     vi.useFakeTimers();

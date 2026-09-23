@@ -322,7 +322,8 @@ const coursesTable = defineTable({
     syncedAt: v.number(),
   })
     .index("by_user", ["userId"])
-    .index("by_user_canvasId", ["userId", "canvasId"]);
+    .index("by_user_canvasId", ["userId", "canvasId"])
+    .searchIndex("search_content", { searchField: "syllabusBody", filterFields: ["userId", "canvasId"] });
 
 const assignmentsTable = defineTable({
     ...synced,
@@ -355,7 +356,8 @@ const assignmentsTable = defineTable({
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_dueAt", ["userId", "dueAt"])
     .index("by_user_createdAt", ["userId", "canvasCreatedAt"])
-    .index("by_user_postedAt", ["userId", "submission.postedAt"]);
+    .index("by_user_postedAt", ["userId", "submission.postedAt"])
+    .searchIndex("search_content", { searchField: "description", filterFields: ["userId", "courseCanvasId"] });
 
 const quizzesTable = defineTable({
     ...synced,
@@ -375,7 +377,8 @@ const quizzesTable = defineTable({
   })
     .index("by_user_canvasId", ["userId", "canvasId"])
     .index("by_user_course", ["userId", "courseCanvasId"])
-    .index("by_user_dueAt", ["userId", "dueAt"]);
+    .index("by_user_dueAt", ["userId", "dueAt"])
+    .searchIndex("search_content", { searchField: "description", filterFields: ["userId", "courseCanvasId"] });
 
 const discussionsTable = defineTable({
     ...synced,
@@ -402,7 +405,8 @@ const discussionsTable = defineTable({
       "isAnnouncement",
       "postedAt",
     ])
-    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"]);
+    .index("by_user_announcement_postedAt", ["userId", "isAnnouncement", "postedAt"])
+    .searchIndex("search_content", { searchField: "message", filterFields: ["userId", "courseCanvasId"] });
 
 export default defineSchema({
   // Compatible list projections. Original tables remain the source of truth
@@ -453,7 +457,8 @@ export default defineSchema({
   courseDocuments: defineTable({
     userId: v.string(), courseCanvasId: v.number(), fileCanvasId: v.number(), fingerprint: v.string(),
     text: v.string(), pages: v.number(), extractedAt: v.number(),
-  }).index("by_user_course_file", ["userId", "courseCanvasId", "fileCanvasId"]),
+  }).index("by_user_course_file", ["userId", "courseCanvasId", "fileCanvasId"])
+    .searchIndex("search_content", { searchField: "text", filterFields: ["userId", "courseCanvasId"] }),
   searchEntries: defineTable({ userId: v.string(), ...searchFields })
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_kind_canvasId", ["userId", "kind", "canvasId"]),
@@ -589,7 +594,8 @@ export default defineSchema({
     .index("by_user_canvasId", ["userId", "canvasId"])
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_course_url", ["userId", "courseCanvasId", "url"])
-    .index("by_user_course_front", ["userId", "courseCanvasId", "isFrontPage"]),
+    .index("by_user_course_front", ["userId", "courseCanvasId", "isFrontPage"])
+    .searchIndex("search_content", { searchField: "body", filterFields: ["userId", "courseCanvasId"] }),
 
   folders: defineTable({
     ...synced,

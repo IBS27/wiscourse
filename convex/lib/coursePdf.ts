@@ -1,6 +1,7 @@
 import { extractText, getDocumentProxy } from "unpdf";
+import { MAX_PDF_BYTES } from "./courseSource";
 
-export const MAX_PDF_BYTES = 10 * 1024 * 1024;
+export { MAX_PDF_BYTES };
 /** Only accepts a URL from the scoped Canvas file record, never model input. */
 export async function readCoursePdf(
   url: string,

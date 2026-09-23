@@ -6,7 +6,7 @@
 // reaches the model as tool data and the prompt says to treat it as such.
 
 import { v } from "convex/values";
-import { Agent, stepCountIs } from "@convex-dev/agent";
+import { Agent } from "@convex-dev/agent";
 import { openai } from "@ai-sdk/openai";
 import { generateText, tool } from "ai";
 import { z } from "zod";
@@ -19,12 +19,14 @@ import { ASSISTANT_MODEL } from "./lib/assistant";
 import { CAMPUS_TIME_ZONE, isValidTimeZone } from "./lib/zones";
 import { WEEKDAYS, describeNow, parseClock, parseDue, parseLocal, parseTime } from "./lib/assistantTime";
 
-const PROVIDER_OPTIONS = { openai: { reasoningEffort: "low", parallelToolCalls: true } };
+const PROVIDER_OPTIONS = { openai: { reasoningEffort: "medium", parallelToolCalls: true } };
 
 export const assistant = new Agent(components.agent, {
   name: "Ask",
   languageModel: openai(ASSISTANT_MODEL),
-  stopWhen: stepCountIs(10),
+  // No step cap: a turn runs until the model stops calling tools or the
+  // student presses Stop (checked in prepareStep).
+  stopWhen: () => false,
   contextOptions: { recentMessages: 30, searchOtherThreads: false },
   callSettings: { maxOutputTokens: 4000, maxRetries: 2 },
   usageHandler: async (ctx, { userId, usage }) => {
@@ -62,8 +64,10 @@ What you can do
 - Change the student's own wiscourse data with makeChanges: personal tasks; the plan for any task (planned day, notes, done, subtasks); personal calendar events; class meeting times; course nickname, colour and visibility.
 
 How to work
-- Look things up before answering. Never guess dates, points, grades, locations or policies. If the data doesn't say, say that.
-- Use refs and ids exactly as tools return them. One agenda call covering the whole range beats several small ones.
+- Look things up before answering. Never guess dates, points, grades, locations or policies.
+- Exam, midterm and final dates, grading schemes and course policies are usually not Canvas assignments. Start with search, which looks inside pages, syllabi, assignment and quiz descriptions, announcements and extracted files. Then read the syllabus, the course home page and any page or file whose title mentions exams, a schedule or the syllabus. Do this for every course the question covers.
+- Say something isn't there only after you've searched and read the likely sources, and then say what you checked, like "I checked MATH234's assignments, pages and files." If a file couldn't be read, say so and link it.
+- Use refs and ids exactly as tools return them. The agenda covers up to 31 days per call; use several calls for a longer range.
 - Time: the student is in ${c.timeZone}. Resolve words like "tomorrow" or "Friday" from today's date below. Tools take local times as YYYY-MM-DDTHH:mm and days as YYYY-MM-DD.
 - Grades: report only what the grades tool returns. If a grade isn't posted, say it isn't posted yet. Never estimate or reveal one.
 - Changes: only make them when the student asks, or agrees to a plan you suggested. Put everything for one request in a single makeChanges call. Small changes apply at once and the student sees them with Undo. Deletes and anything touching more than two items wait for the student to confirm in the chat: say it's ready to confirm, never that it's done. Check "Changes in this chat" below before assuming a proposal was applied.
@@ -310,7 +314,8 @@ function makeTools(ctx: ActionCtx, env: { userId: string; threadId: string; prom
         attempt(() => ctx.runQuery(internal.assistantData.grades, { userId, courseCanvasId: cid })),
     }),
     search: tool({
-      description: "Find course content by title: assignments, pages, files, announcements, modules.",
+      description:
+        "Find course content by words in titles or text: pages, syllabi, assignment and quiz descriptions, announcements, discussions, extracted files, modules. Each hit has a snippet and what to pass to read for the full text.",
       inputSchema: z.object({ query: z.string(), courseId: courseId.optional() }),
       execute: ({ query, courseId: cid }) =>
         attempt(() => ctx.runQuery(internal.assistantData.search, { userId, timeZone, query, courseCanvasId: cid })),
