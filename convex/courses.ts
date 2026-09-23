@@ -1,7 +1,7 @@
 import { omit } from "convex-helpers";
 import { compactListsEnabled } from "./lib/listSummaries";
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { v, type Infer } from "convex/values";
+import { mutation, query, type MutationCtx } from "./_generated/server";
 import schema, { COURSE_COLORS, courseColor } from "./schema";
 import { requireUserId } from "./lib/auth";
 import { parseSyllabusFacts } from "./lib/syllabusFacts";
@@ -220,6 +220,36 @@ export const hub = query({
   },
 });
 
+export interface CoursePrefsPatch {
+  color?: Infer<typeof courseColor>;
+  nickname?: string | null;
+  hidden?: boolean;
+  position?: number | null;
+}
+
+/** Local presentation only; nothing here reaches Canvas. */
+export async function patchCoursePrefs(
+  ctx: MutationCtx,
+  userId: string,
+  courseCanvasId: number,
+  rest: CoursePrefsPatch,
+): Promise<void> {
+  const patch = {
+    ...(rest.color !== undefined && { color: rest.color }),
+    ...(rest.nickname !== undefined && { nickname: rest.nickname?.trim() || undefined }),
+    ...(rest.hidden !== undefined && { hidden: rest.hidden }),
+    ...(rest.position !== undefined && { position: rest.position ?? undefined }),
+  };
+  const existing = await ctx.db
+    .query("coursePrefs")
+    .withIndex("by_user_course", (q) =>
+      q.eq("userId", userId).eq("courseCanvasId", courseCanvasId),
+    )
+    .unique();
+  if (existing) await ctx.db.patch(existing._id, patch);
+  else await ctx.db.insert("coursePrefs", { userId, courseCanvasId, ...patch });
+}
+
 export const setPrefs = mutation({
   args: {
     courseCanvasId: v.number(),
@@ -232,20 +262,7 @@ export const setPrefs = mutation({
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
     const { courseCanvasId, ...rest } = args;
-    const patch = {
-      ...(rest.color !== undefined && { color: rest.color }),
-      ...(rest.nickname !== undefined && { nickname: rest.nickname ?? undefined }),
-      ...(rest.hidden !== undefined && { hidden: rest.hidden }),
-      ...(rest.position !== undefined && { position: rest.position ?? undefined }),
-    };
-    const existing = await ctx.db
-      .query("coursePrefs")
-      .withIndex("by_user_course", (q) =>
-        q.eq("userId", userId).eq("courseCanvasId", courseCanvasId),
-      )
-      .unique();
-    if (existing) await ctx.db.patch(existing._id, patch);
-    else await ctx.db.insert("coursePrefs", { userId, courseCanvasId, ...patch });
+    await patchCoursePrefs(ctx, userId, courseCanvasId, rest);
     return null;
   },
 });

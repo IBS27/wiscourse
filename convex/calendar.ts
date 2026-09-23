@@ -3,8 +3,10 @@
 // planned todos come from `todos.list`; class meetings from `meetings`.
 
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import type { Doc, Id } from "./_generated/dataModel";
 import { requireUserId } from "./lib/auth";
+import { localEventFields } from "./schema";
 import { DAY_MS } from "./lib/time";
 
 // The longest event we expect to span into a window (a semester break).
@@ -29,17 +31,8 @@ export const range = query({
   },
 });
 
-const localEventFields = {
-  title: v.string(),
-  startAt: v.number(),
-  endAt: v.optional(v.number()),
-  allDay: v.optional(v.boolean()),
-  location: v.optional(v.string()),
-  description: v.optional(v.string()),
-  courseCanvasId: v.optional(v.number()),
-};
 
-function cleanEvent(args: {
+export interface LocalEventFields {
   title: string;
   startAt: number;
   endAt?: number;
@@ -47,7 +40,9 @@ function cleanEvent(args: {
   location?: string;
   description?: string;
   courseCanvasId?: number;
-}) {
+}
+
+function cleanEvent(args: LocalEventFields) {
   const title = args.title.trim();
   if (title === "") throw new Error("Give the event a title");
   if (args.endAt !== undefined && args.endAt < args.startAt) throw new Error("Event ends before it starts");
@@ -63,16 +58,51 @@ function cleanEvent(args: {
   };
 }
 
+/** The user's own local event; Canvas events are a read-only mirror. */
+export async function ownLocalEvent(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  id: Id<"calendarEvents">,
+): Promise<Doc<"calendarEvents">> {
+  const existing = await ctx.db.get(id);
+  if (existing === null || existing.userId !== userId) throw new Error("Event not found");
+  if (existing.source !== "local") throw new Error("Canvas events are read-only");
+  return existing;
+}
+
+export async function insertLocalEvent(
+  ctx: MutationCtx,
+  userId: string,
+  fields: LocalEventFields,
+): Promise<Id<"calendarEvents">> {
+  return await ctx.db.insert("calendarEvents", { userId, source: "local", ...cleanEvent(fields) });
+}
+
+export async function replaceLocalEvent(
+  ctx: MutationCtx,
+  userId: string,
+  id: Id<"calendarEvents">,
+  fields: LocalEventFields,
+): Promise<void> {
+  await ownLocalEvent(ctx, userId, id);
+  await ctx.db.replace(id, { userId, source: "local", ...cleanEvent(fields) });
+}
+
+export async function deleteLocalEvent(
+  ctx: MutationCtx,
+  userId: string,
+  id: Id<"calendarEvents">,
+): Promise<void> {
+  await ownLocalEvent(ctx, userId, id);
+  await ctx.db.delete(id);
+}
+
 export const createEvent = mutation({
   args: localEventFields,
   returns: v.id("calendarEvents"),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    return await ctx.db.insert("calendarEvents", {
-      userId,
-      source: "local",
-      ...cleanEvent(args),
-    });
+    return await insertLocalEvent(ctx, userId, args);
   },
 });
 
@@ -81,10 +111,7 @@ export const updateEvent = mutation({
   returns: v.null(),
   handler: async (ctx, { id, ...args }) => {
     const userId = await requireUserId(ctx);
-    const existing = await ctx.db.get(id);
-    if (existing === null || existing.userId !== userId) throw new Error("Event not found");
-    if (existing.source !== "local") throw new Error("Canvas events are read-only");
-    await ctx.db.replace(id, { userId, source: "local", ...cleanEvent(args) });
+    await replaceLocalEvent(ctx, userId, id, args);
     return null;
   },
 });
@@ -96,8 +123,7 @@ export const deleteEvent = mutation({
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(args.id);
     if (existing === null || existing.userId !== userId) return null;
-    if (existing.source !== "local") throw new Error("Canvas events are read-only");
-    await ctx.db.delete(args.id);
+    await deleteLocalEvent(ctx, userId, args.id);
     return null;
   },
 });

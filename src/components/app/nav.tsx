@@ -6,6 +6,7 @@ import {
   Home,
   Inbox,
   ListChecks,
+  MessageCircle,
 } from "lucide-react";
 import { buildAgenda } from "@/lib/agenda";
 import { useNow, useToday } from "@/lib/hooks";
@@ -17,6 +18,7 @@ export const NAV = [
   { to: "/tasks", label: "Tasks", icon: ListChecks },
   { to: "/grades", label: "Grades", icon: BarChart3 },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
+  { to: "/ask", label: "Ask", icon: MessageCircle },
 ] as const;
 
 export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar", "/tasks"] as const;

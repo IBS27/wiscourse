@@ -8,6 +8,10 @@
  * @module
  */
 
+import type * as assistant from "../assistant.js";
+import type * as assistantAgent from "../assistantAgent.js";
+import type * as assistantChanges from "../assistantChanges.js";
+import type * as assistantData from "../assistantData.js";
 import type * as calendar from "../calendar.js";
 import type * as canvas_client from "../canvas/client.js";
 import type * as canvas_syncContent from "../canvas/syncContent.js";
@@ -26,6 +30,8 @@ import type * as files from "../files.js";
 import type * as grades from "../grades.js";
 import type * as http from "../http.js";
 import type * as inbox from "../inbox.js";
+import type * as lib_assistant from "../lib/assistant.js";
+import type * as lib_assistantTime from "../lib/assistantTime.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_courseMap from "../lib/courseMap.js";
 import type * as lib_coursePdf from "../lib/coursePdf.js";
@@ -67,6 +73,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  assistant: typeof assistant;
+  assistantAgent: typeof assistantAgent;
+  assistantChanges: typeof assistantChanges;
+  assistantData: typeof assistantData;
   calendar: typeof calendar;
   "canvas/client": typeof canvas_client;
   "canvas/syncContent": typeof canvas_syncContent;
@@ -85,6 +95,8 @@ declare const fullApi: ApiFromModules<{
   grades: typeof grades;
   http: typeof http;
   inbox: typeof inbox;
+  "lib/assistant": typeof lib_assistant;
+  "lib/assistantTime": typeof lib_assistantTime;
   "lib/auth": typeof lib_auth;
   "lib/courseMap": typeof lib_courseMap;
   "lib/coursePdf": typeof lib_coursePdf;

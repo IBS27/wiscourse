@@ -153,6 +153,125 @@ export const COURSE_COLORS = [
   "orange",
 ] as const;
 
+// A todo by list key: a Canvas item, or a personal task.
+export const todoRef = v.union(
+  v.object({ kind: todoCanvasKind, canvasId: v.number() }),
+  v.object({ kind: v.literal("local"), todoId: v.id("todos") }),
+);
+
+// A local calendar event as the student (or the assistant) writes it.
+export const localEventFields = {
+  title: v.string(),
+  startAt: v.number(),
+  endAt: v.optional(v.number()),
+  allDay: v.optional(v.boolean()),
+  location: v.optional(v.string()),
+  description: v.optional(v.string()),
+  courseCanvasId: v.optional(v.number()),
+};
+
+export const meetingFields = {
+  courseCanvasId: v.number(),
+  kind: meetingKind,
+  label: v.optional(v.string()),
+  days: v.array(v.number()),
+  startMinute: v.number(),
+  endMinute: v.number(),
+  location: v.optional(v.string()),
+  startsOn: v.optional(v.string()),
+  endsOn: v.optional(v.string()),
+};
+
+// ── Assistant changes ──────────────────────────────────────────────────────
+// Each op records what it touches and, once applied, enough to reverse it:
+// `before` for edits and deletes, `createdId` for creates. `null` in a
+// `set` clears the field.
+
+export const taskSet = v.object({
+  title: v.optional(v.string()),
+  dueAt: v.optional(v.union(v.number(), v.null())),
+  courseCanvasId: v.optional(v.union(v.number(), v.null())),
+  plannedDay: v.optional(v.union(v.string(), v.null())),
+  notes: v.optional(v.union(v.string(), v.null())),
+  done: v.optional(v.boolean()),
+  addSubtasks: v.optional(v.array(v.string())),
+});
+
+export const taskState = v.object({
+  title: v.string(),
+  dueAt: v.optional(v.number()),
+  courseCanvasId: v.optional(v.number()),
+  plannedDay: v.optional(v.string()),
+  notes: v.optional(v.string()),
+  doneAt: v.optional(v.number()),
+  doneBySubmission: v.optional(v.boolean()),
+  subtasks: v.array(subtask),
+});
+
+export const eventSet = v.object({
+  title: v.optional(v.string()),
+  startAt: v.optional(v.number()),
+  endAt: v.optional(v.union(v.number(), v.null())),
+  allDay: v.optional(v.boolean()),
+  location: v.optional(v.union(v.string(), v.null())),
+  description: v.optional(v.union(v.string(), v.null())),
+  courseCanvasId: v.optional(v.union(v.number(), v.null())),
+});
+
+export const coursePrefsSet = v.object({
+  nickname: v.optional(v.union(v.string(), v.null())),
+  color: v.optional(courseColor),
+  hidden: v.optional(v.boolean()),
+});
+
+export const assistantOp = v.union(
+  v.object({
+    type: v.literal("createTask"),
+    title: v.string(),
+    plannedDay: v.optional(v.string()),
+    dueAt: v.optional(v.number()),
+    courseCanvasId: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    subtasks: v.optional(v.array(v.string())),
+    createdId: v.optional(v.id("todos")),
+  }),
+  v.object({
+    type: v.literal("updateTask"),
+    ref: todoRef,
+    local: v.boolean(),
+    set: taskSet,
+    before: taskState,
+    // Ids of the subtasks this op added, so undo removes only those.
+    addedSubtaskIds: v.optional(v.array(v.string())),
+  }),
+  v.object({ type: v.literal("deleteTask"), todoId: v.id("todos"), before: taskState }),
+  v.object({
+    type: v.literal("createEvent"),
+    event: v.object(localEventFields),
+    createdId: v.optional(v.id("calendarEvents")),
+  }),
+  v.object({
+    type: v.literal("updateEvent"),
+    eventId: v.id("calendarEvents"),
+    set: eventSet,
+    event: v.object(localEventFields),
+    before: v.object(localEventFields),
+  }),
+  v.object({ type: v.literal("deleteEvent"), eventId: v.id("calendarEvents"), before: v.object(localEventFields) }),
+  v.object({
+    type: v.literal("createMeeting"),
+    meeting: v.object(meetingFields),
+    createdId: v.optional(v.id("courseMeetings")),
+  }),
+  v.object({ type: v.literal("deleteMeeting"), meetingId: v.id("courseMeetings"), before: v.object(meetingFields) }),
+  v.object({
+    type: v.literal("setCoursePrefs"),
+    courseCanvasId: v.number(),
+    set: coursePrefsSet,
+    before: coursePrefsSet,
+  }),
+);
+
 // Shared column set for per-course synced content.
 const synced = {
   userId: v.string(),
@@ -608,6 +727,62 @@ export default defineSchema({
     // synced scheme and the UW fallback.
     gradeCutoffs: v.optional(v.array(gradingSchemeEntry)),
   }).index("by_user_course", ["userId", "courseCanvasId"]),
+
+  // -------------------------------------------------------------------------
+  // Ask (the assistant)
+  //
+  // Messages live in the agent component; this is the user-facing list of
+  // chats, with what the component does not track: archiving, the course a
+  // chat is about, and whether a reply is being written right now.
+  assistantThreads: defineTable({
+    userId: v.string(),
+    threadId: v.string(), // agent component thread
+    title: v.string(),
+    // False until a generated or hand-written title replaces the first words.
+    titled: v.boolean(),
+    courseCanvasId: v.optional(v.number()),
+    lastMessageAt: v.number(),
+    archivedAt: v.optional(v.number()),
+    // The latest turn, kept so a failed reply can be retried as-is.
+    promptMessageId: v.optional(v.string()),
+    timeZone: v.optional(v.string()),
+    // Set while a reply is being written; a stale value (crashed action)
+    // stops blocking after ASSISTANT_TURN_TIMEOUT_MS.
+    runningSince: v.optional(v.number()),
+    // The scheduled reply, so a crashed one stops blocking straight away.
+    turnJobId: v.optional(v.id("_scheduled_functions")),
+    stopRequested: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+  })
+    .index("by_user_lastMessageAt", ["userId", "lastMessageAt"])
+    .index("by_threadId", ["threadId"]),
+
+  // Every write the assistant makes, as one reviewable unit. Small, additive
+  // changes apply at once and can be undone; deletes and larger sets wait
+  // as proposals until the student confirms them in the chat.
+  assistantChanges: defineTable({
+    userId: v.string(),
+    threadId: v.string(),
+    status: v.union(
+      v.literal("proposed"),
+      v.literal("applied"),
+      v.literal("dismissed"),
+      v.literal("undone"),
+    ),
+    summary: v.string(),
+    ops: v.array(assistantOp),
+    // The student message whose reply made this change; auto-applied ops
+    // are counted per reply so a turn can't slip many past confirmation.
+    promptMessageId: v.optional(v.string()),
+    settledAt: v.optional(v.number()),
+  }).index("by_thread", ["threadId"]),
+
+  // Tokens per user per campus day, for the daily allowance.
+  assistantUsage: defineTable({
+    userId: v.string(),
+    day: v.string(),
+    tokens: v.number(),
+  }).index("by_user_day", ["userId", "day"]),
 
   // One row per kind + canvasId. For assignment changes, seenVersion is the
   // newest changedAt acknowledged.
