@@ -2,7 +2,7 @@ import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { ChevronDown, ChevronRight, Megaphone, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Megaphone, MessageCircle, Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { TodoItem } from "../../convex/todos";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,13 @@ function Home() {
           <Kbd className="ml-auto">N</Kbd>
         </button>
         <div className="flex items-center gap-3 md:hidden">
+          <Link
+            to="/ask"
+            aria-label="Ask"
+            className="grid size-8 place-items-center rounded-lg border border-line text-ink-2"
+          >
+            <MessageCircle className="size-[15px]" />
+          </Link>
           <button
             type="button"
             onClick={quickAdd.open}

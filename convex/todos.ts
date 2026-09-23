@@ -25,7 +25,7 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { subtask, todoCanvasKind } from "./schema";
+import { subtask, todoCanvasKind, todoRef } from "./schema";
 import { requireUserId } from "./lib/auth";
 import { DAY_MS } from "./lib/time";
 import { activeCourseIds } from "./lib/courses";
@@ -74,11 +74,8 @@ export const todoItem = v.object({
 export type TodoItem = Infer<typeof todoItem>;
 
 /** Parse a list key back into its lookup. */
-export const todoRef = v.union(
-  v.object({ kind: todoCanvasKind, canvasId: v.number() }),
-  v.object({ kind: v.literal("local"), todoId: v.id("todos") }),
-);
-type TodoRef = Infer<typeof todoRef>;
+export { todoRef };
+export type TodoRef = Infer<typeof todoRef>;
 
 // ---------------------------------------------------------------------------
 // Reads
@@ -419,6 +416,130 @@ async function compact(ctx: MutationCtx, id: Id<"todos">): Promise<void> {
 
 const dayKey = v.string(); // "YYYY-MM-DD"
 
+export interface LocalTaskFields {
+  title: string;
+  plannedDay?: string;
+  dueAt?: number;
+  courseCanvasId?: number;
+  notes?: string;
+}
+
+/** Shared by the UI mutations and the assistant; `userId` is already verified. */
+export async function insertLocalTask(
+  ctx: MutationCtx,
+  userId: string,
+  args: LocalTaskFields,
+): Promise<Id<"todos">> {
+  const title = args.title.trim();
+  if (title.length === 0) throw new Error("Title is required");
+  const notes = args.notes?.trim();
+  return await ctx.db.insert("todos", {
+    userId,
+    source: "local",
+    title,
+    plannedDay: args.plannedDay,
+    dueAt: args.dueAt,
+    courseCanvasId: args.courseCanvasId,
+    notes: notes === "" ? undefined : notes,
+    subtasks: [],
+  });
+}
+
+export async function ownLocalTask(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  todoId: Id<"todos">,
+): Promise<Doc<"todos">> {
+  const t = await ctx.db.get(todoId);
+  if (!t || t.userId !== userId) throw new Error("Todo not found");
+  if (t.source !== "local") throw new Error("Canvas todos cannot be edited this way");
+  return t;
+}
+
+/** `null` clears a field. */
+export async function patchLocalTask(
+  ctx: MutationCtx,
+  userId: string,
+  todoId: Id<"todos">,
+  args: { title?: string; dueAt?: number | null; courseCanvasId?: number | null },
+): Promise<void> {
+  await ownLocalTask(ctx, userId, todoId);
+  const patch: Partial<Doc<"todos">> = {};
+  if (args.title !== undefined) {
+    const title = args.title.trim();
+    if (title.length === 0) throw new Error("Title is required");
+    patch.title = title;
+  }
+  if (args.dueAt !== undefined) patch.dueAt = args.dueAt ?? undefined;
+  if (args.courseCanvasId !== undefined) {
+    patch.courseCanvasId = args.courseCanvasId ?? undefined;
+  }
+  await ctx.db.patch(todoId, patch);
+}
+
+export async function deleteLocalTask(
+  ctx: MutationCtx,
+  userId: string,
+  todoId: Id<"todos">,
+): Promise<void> {
+  await ownLocalTask(ctx, userId, todoId);
+  await ctx.db.delete(todoId);
+}
+
+export interface PlanPatch {
+  plannedDay?: string | null;
+  notes?: string | null;
+  /** When it was done; `null` reopens it. */
+  doneAt?: number | null;
+  /** Restores "done by submission" alongside `doneAt` (undo only). */
+  doneBySubmission?: boolean;
+  subtasks?: Doc<"todos">["subtasks"];
+}
+
+/**
+ * The student's plan for any todo, Canvas or local: planned day, notes,
+ * done and subtasks. Creates the plan row for a Canvas item on first write
+ * and drops it again when it no longer carries anything.
+ */
+export async function patchPlan(
+  ctx: MutationCtx,
+  userId: string,
+  ref: TodoRef,
+  args: PlanPatch,
+): Promise<void> {
+  const t = await ensureTodo(ctx, userId, ref);
+  const patch: Partial<Doc<"todos">> = {};
+  if (args.plannedDay !== undefined) patch.plannedDay = args.plannedDay ?? undefined;
+  if (args.notes !== undefined) {
+    const notes = args.notes?.trim();
+    patch.notes = notes === undefined || notes.length === 0 ? undefined : notes;
+  }
+  if (args.doneAt !== undefined) {
+    patch.doneAt = args.doneAt ?? undefined;
+    patch.doneBySubmission = args.doneAt === null ? undefined : args.doneBySubmission;
+  }
+  if (args.subtasks !== undefined) patch.subtasks = args.subtasks;
+  await ctx.db.patch(t._id, patch);
+  await compact(ctx, t._id);
+}
+
+/** One todo as the list shows it, or null when it is gone or not the user's. */
+export async function todoItemOf(
+  ctx: QueryCtx | MutationCtx,
+  userId: string,
+  ref: TodoRef,
+): Promise<TodoItem | null> {
+  if (ref.kind === "local") {
+    const t = await ctx.db.get(ref.todoId);
+    if (!t || t.userId !== userId || t.source !== "local") return null;
+    return toLocalItem(t);
+  }
+  const r = await findCanvasRow(ctx, userId, ref.kind, ref.canvasId);
+  if (r === null || !isTodo(r)) return null;
+  const todo = (await findCanvasTodo(ctx, userId, r.kind, r.row.canvasId)) ?? undefined;
+  return toCanvasItem(r, todo);
+}
+
 export const createLocal = mutation({
   args: {
     title: v.string(),
@@ -430,18 +551,7 @@ export const createLocal = mutation({
   returns: v.id("todos"),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const title = args.title.trim();
-    if (title.length === 0) throw new Error("Title is required");
-    return await ctx.db.insert("todos", {
-      userId,
-      source: "local",
-      title,
-      plannedDay: args.plannedDay,
-      dueAt: args.dueAt,
-      courseCanvasId: args.courseCanvasId,
-      notes: args.notes,
-      subtasks: [],
-    });
+    return await insertLocalTask(ctx, userId, args);
   },
 });
 
@@ -453,23 +563,9 @@ export const updateLocal = mutation({
     courseCanvasId: v.optional(v.union(v.number(), v.null())),
   },
   returns: v.null(),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { todoId, ...args }) => {
     const userId = await requireUserId(ctx);
-    const t = await ctx.db.get(args.todoId);
-    if (!t || t.userId !== userId || t.source !== "local") {
-      throw new Error("Todo not found");
-    }
-    const patch: Partial<Doc<"todos">> = {};
-    if (args.title !== undefined) {
-      const title = args.title.trim();
-      if (title.length === 0) throw new Error("Title is required");
-      patch.title = title;
-    }
-    if (args.dueAt !== undefined) patch.dueAt = args.dueAt ?? undefined;
-    if (args.courseCanvasId !== undefined) {
-      patch.courseCanvasId = args.courseCanvasId ?? undefined;
-    }
-    await ctx.db.patch(args.todoId, patch);
+    await patchLocalTask(ctx, userId, todoId, args);
     return null;
   },
 });
@@ -479,10 +575,7 @@ export const deleteLocal = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const t = await ctx.db.get(args.todoId);
-    if (!t || t.userId !== userId) throw new Error("Todo not found");
-    if (t.source !== "local") throw new Error("Canvas todos cannot be deleted");
-    await ctx.db.delete(args.todoId);
+    await deleteLocalTask(ctx, userId, args.todoId);
     return null;
   },
 });
@@ -492,9 +585,7 @@ export const setPlannedDay = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const t = await ensureTodo(ctx, userId, args.ref);
-    await ctx.db.patch(t._id, { plannedDay: args.plannedDay ?? undefined });
-    await compact(ctx, t._id);
+    await patchPlan(ctx, userId, args.ref, { plannedDay: args.plannedDay });
     return null;
   },
 });
@@ -519,10 +610,7 @@ export const setNotes = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const t = await ensureTodo(ctx, userId, args.ref);
-    const notes = args.notes.trim();
-    await ctx.db.patch(t._id, { notes: notes.length === 0 ? undefined : notes });
-    await compact(ctx, t._id);
+    await patchPlan(ctx, userId, args.ref, { notes: args.notes });
     return null;
   },
 });

@@ -1,26 +1,17 @@
 // Class meetings the student enters (Canvas has no meeting times). Wall-clock
 // in the campus zone; convex/lib/meetings.ts expands them into instants.
 
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { meetingKind } from "./schema";
+import { v, type ObjectType } from "convex/values";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { meetingFields } from "./schema";
 import { requireUserId } from "./lib/auth";
 
-const meetingFields = {
-  courseCanvasId: v.number(),
-  kind: meetingKind,
-  label: v.optional(v.string()),
-  days: v.array(v.number()),
-  startMinute: v.number(),
-  endMinute: v.number(),
-  location: v.optional(v.string()),
-  startsOn: v.optional(v.string()),
-  endsOn: v.optional(v.string()),
-};
+export type MeetingFields = ObjectType<typeof meetingFields>;
 
 const DAY_KEY = /^\d{4}-\d{2}-\d{2}$/;
 
-function validate(args: {
+export function validateMeeting(args: {
   days: number[];
   startMinute: number;
   endMinute: number;
@@ -76,19 +67,38 @@ export const forCourse = query({
   },
 });
 
+export async function insertMeeting(
+  ctx: MutationCtx,
+  userId: string,
+  args: MeetingFields,
+): Promise<Id<"courseMeetings">> {
+  validateMeeting(args);
+  return await ctx.db.insert("courseMeetings", {
+    userId,
+    ...args,
+    days: [...args.days].sort((a, b) => a - b),
+    label: clean(args.label),
+    location: clean(args.location),
+  });
+}
+
+/** Deletes the user's meeting; a missing one is already gone. */
+export async function deleteMeeting(
+  ctx: MutationCtx,
+  userId: string,
+  id: Id<"courseMeetings">,
+): Promise<void> {
+  const existing = await ctx.db.get(id);
+  if (existing === null || existing.userId !== userId) return;
+  await ctx.db.delete(id);
+}
+
 export const create = mutation({
   args: meetingFields,
   returns: v.id("courseMeetings"),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    validate(args);
-    return await ctx.db.insert("courseMeetings", {
-      userId,
-      ...args,
-      days: [...args.days].sort((a, b) => a - b),
-      label: clean(args.label),
-      location: clean(args.location),
-    });
+    return await insertMeeting(ctx, userId, args);
   },
 });
 
@@ -99,7 +109,7 @@ export const update = mutation({
     const userId = await requireUserId(ctx);
     const existing = await ctx.db.get(id);
     if (existing === null || existing.userId !== userId) throw new Error("Meeting not found");
-    validate(args);
+    validateMeeting(args);
     await ctx.db.replace(id, {
       userId,
       ...args,
@@ -116,9 +126,7 @@ export const remove = mutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const userId = await requireUserId(ctx);
-    const existing = await ctx.db.get(args.id);
-    if (existing === null || existing.userId !== userId) return null;
-    await ctx.db.delete(args.id);
+    await deleteMeeting(ctx, userId, args.id);
     return null;
   },
 });

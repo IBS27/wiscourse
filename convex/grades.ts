@@ -21,7 +21,7 @@ import type { GradeCourse, GradeGroup, GradeRow, Gradebook } from "./lib/grades"
 const UNGROUPED_CANVAS_ID = 0; // Canvas ids start at 1, so 0 is free
 const UNGROUPED_NAME = "Assignments";
 
-function gradeRow(assignment: Doc<"assignments">): GradeRow {
+export function gradeRow(assignment: Doc<"assignments">): GradeRow {
   const submission = assignment.submission;
   const posted = submission?.postedAt !== undefined;
   // An excusal is a grading decision like any other: it shows once posted.

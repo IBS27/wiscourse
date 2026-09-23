@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AskRouteImport } from './routes/ask'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as AskIndexRouteImport } from './routes/ask.index'
+import { Route as AskThreadIdRouteImport } from './routes/ask.$threadId'
 import { Route as CoursesIndexRouteImport } from './routes/courses.index'
 import { Route as CoursesCourseIdRouteImport } from './routes/courses.$courseId'
 import { Route as GradesIndexRouteImport } from './routes/grades.index'
@@ -31,6 +34,11 @@ import { Route as CoursesCourseIdPagesSlugRouteImport } from './routes/courses.$
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AskRoute = AskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalendarRoute = CalendarRouteImport.update({
@@ -52,6 +60,16 @@ const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AskIndexRoute = AskIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AskRoute,
+} as any)
+const AskThreadIdRoute = AskThreadIdRouteImport.update({
+  id: '/$threadId',
+  path: '/$threadId',
+  getParentRoute: () => AskRoute,
 } as any)
 const CoursesIndexRoute = CoursesIndexRouteImport.update({
   id: '/courses/',
@@ -124,13 +142,16 @@ const CoursesCourseIdPagesSlugRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ask': typeof AskRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/ask/$threadId': typeof AskThreadIdRoute
   '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
   '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
+  '/ask/': typeof AskIndexRoute
   '/courses/': typeof CoursesIndexRoute
   '/grades/': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
@@ -148,8 +169,10 @@ export interface FileRoutesByTo {
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/ask/$threadId': typeof AskThreadIdRoute
   '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
+  '/ask': typeof AskIndexRoute
   '/courses': typeof CoursesIndexRoute
   '/grades': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
@@ -164,13 +187,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ask': typeof AskRouteWithChildren
   '/calendar': typeof CalendarRoute
   '/inbox': typeof InboxRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/ask/$threadId': typeof AskThreadIdRoute
   '/courses/$courseId': typeof CoursesCourseIdRouteWithChildren
   '/grades/$courseId': typeof GradesCourseIdRoute
   '/todo/$key': typeof TodoKeyRoute
+  '/ask/': typeof AskIndexRoute
   '/courses/': typeof CoursesIndexRoute
   '/grades/': typeof GradesIndexRoute
   '/courses/$courseId/announcements': typeof CoursesCourseIdAnnouncementsRoute
@@ -186,13 +212,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ask'
     | '/calendar'
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/ask/$threadId'
     | '/courses/$courseId'
     | '/grades/$courseId'
     | '/todo/$key'
+    | '/ask/'
     | '/courses/'
     | '/grades/'
     | '/courses/$courseId/announcements'
@@ -210,8 +239,10 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/ask/$threadId'
     | '/grades/$courseId'
     | '/todo/$key'
+    | '/ask'
     | '/courses'
     | '/grades'
     | '/courses/$courseId/announcements'
@@ -225,13 +256,16 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ask'
     | '/calendar'
     | '/inbox'
     | '/settings'
     | '/tasks'
+    | '/ask/$threadId'
     | '/courses/$courseId'
     | '/grades/$courseId'
     | '/todo/$key'
+    | '/ask/'
     | '/courses/'
     | '/grades/'
     | '/courses/$courseId/announcements'
@@ -246,6 +280,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AskRoute: typeof AskRouteWithChildren
   CalendarRoute: typeof CalendarRoute
   InboxRoute: typeof InboxRoute
   SettingsRoute: typeof SettingsRoute
@@ -264,6 +299,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ask': {
+      id: '/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calendar': {
@@ -293,6 +335,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/ask/': {
+      id: '/ask/'
+      path: '/'
+      fullPath: '/ask/'
+      preLoaderRoute: typeof AskIndexRouteImport
+      parentRoute: typeof AskRoute
+    }
+    '/ask/$threadId': {
+      id: '/ask/$threadId'
+      path: '/$threadId'
+      fullPath: '/ask/$threadId'
+      preLoaderRoute: typeof AskThreadIdRouteImport
+      parentRoute: typeof AskRoute
     }
     '/courses/': {
       id: '/courses/'
@@ -388,6 +444,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AskRouteChildren {
+  AskThreadIdRoute: typeof AskThreadIdRoute
+  AskIndexRoute: typeof AskIndexRoute
+}
+
+const AskRouteChildren: AskRouteChildren = {
+  AskThreadIdRoute: AskThreadIdRoute,
+  AskIndexRoute: AskIndexRoute,
+}
+
+const AskRouteWithChildren = AskRoute._addFileChildren(AskRouteChildren)
+
 interface CoursesCourseIdRouteChildren {
   CoursesCourseIdAnnouncementsRoute: typeof CoursesCourseIdAnnouncementsRoute
   CoursesCourseIdFilesRoute: typeof CoursesCourseIdFilesRoute
@@ -416,6 +484,7 @@ const CoursesCourseIdRouteWithChildren = CoursesCourseIdRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AskRoute: AskRouteWithChildren,
   CalendarRoute: CalendarRoute,
   InboxRoute: InboxRoute,
   SettingsRoute: SettingsRoute,
