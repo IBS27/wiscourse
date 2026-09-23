@@ -212,3 +212,65 @@ it("expands native modules, keeps ordering and removes duplicate page pointers",
     },
   ]);
 });
+it("shows the upcoming week's dated entries with their linked materials", () => {
+  const entry = (title: string, date: string, resourceIds: string[] = []) => ({
+    title,
+    date,
+    resourceIds,
+    evidence: proof,
+  });
+  const weeks: CourseMap = {
+    ...map,
+    sections: [
+      {
+        ...map.sections[0],
+        id: "w1",
+        title: "Week 1",
+        kind: "week",
+        resourceIds: [],
+        teachingDates: { start: "2026-09-01", end: "2026-09-03" },
+        entries: [entry("Introduction", "2026-09-03")],
+      },
+      {
+        ...map.sections[0],
+        id: "w2",
+        title: "Week 2",
+        kind: "week",
+        resourceIds: [],
+        teachingDates: { start: "2026-09-08", end: "2026-09-10" },
+        entries: [
+          entry("Processes", "2026-09-08", ["page:extra"]),
+          entry("Scheduling", "2026-09-10"),
+        ],
+      },
+    ],
+  };
+  render(
+    <InterpretedOverview
+      map={weeks}
+      resources={resources}
+      modules={[]}
+      courseId="1"
+      today="2026-09-05"
+    />,
+  );
+  expect(screen.getByText("Weekly course plan")).toBeTruthy();
+  expect(
+    screen.getByRole("button", { name: /Week 2/ }).getAttribute("aria-pressed"),
+  ).toBe("true");
+  const schedule = screen.getByRole("list", { name: "Week 2 schedule" });
+  expect(schedule.textContent).toContain("Tue, Sep 8");
+  expect(schedule.textContent).toContain("Scheduling");
+  expect(
+    screen.getByRole("link", { name: "Extra reading" }).getAttribute("href"),
+  ).toBe("/courses/1/pages/extra");
+});
+it("keeps the original Overview when every section only restates a page", () => {
+  const flat: CourseMap = {
+    ...map,
+    sections: [{ ...map.sections[0], id: "home", title: "Homepage" }],
+  };
+  const fresh = { resources, sourceRevision: 1, resultRevision: 1 };
+  expect(usableInterpretation({ ...fresh, map: flat })).toBe(false);
+  expect(usableInterpretation({ ...fresh, map })).toBe(true);
+});

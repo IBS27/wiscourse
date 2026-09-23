@@ -7,6 +7,7 @@ import type { CourseMap } from "../../../convex/lib/courseMap";
 import { CanvasHtml } from "@/components/reader/canvas-html";
 import {
   defaultSection,
+  formatDay,
   instructorSection,
   sectionResources,
   type MapResource,
@@ -68,16 +69,15 @@ export function InterpretedOverview({
     map.sections.find((s) => s.id === selection) ??
     map.sections.find((s) => s.id === defaultSection(map, today))!;
   const byId = new Map(resources.map((r) => [r.id, r]));
-  const rows = sectionResources(
-    active.resourceIds,
-    resources,
-    modules,
-    courseId,
-  );
+  const resolve = (ids: string[]) =>
+    sectionResources(ids, resources, modules, courseId);
+  const rows = resolve(active.resourceIds);
   const chapterLayout = map.sections.some((s) =>
     /^chapter\s+\d/i.test(s.title),
   );
-  const weekly = map.organization === "weekly";
+  const weekly =
+    map.organization === "weekly" ||
+    map.sections.some((s) => s.kind === "week" && s.entries?.length);
   const cards = map.organization === "resources";
   const source = active.evidence.find((e) =>
     e.sourceId.startsWith("page:"),
@@ -85,9 +85,10 @@ export function InterpretedOverview({
   const shownPage = page ?? source;
   const covered = new Set(
     map.sections.flatMap((s) =>
-      sectionResources(s.resourceIds, resources, modules, courseId).map(
-        (r) => r.href,
-      ),
+      resolve([
+        ...s.resourceIds,
+        ...(s.entries ?? []).flatMap((e) => e.resourceIds),
+      ]).map((r) => r.href),
     ),
   );
   map.essentials.forEach((e) => {
@@ -172,8 +173,10 @@ export function InterpretedOverview({
             >
               <span className="line-clamp-2">{s.title}</span>
               {s.teachingDates && (
-                <span className="mt-1 block text-xs font-normal">
-                  {s.teachingDates.start} – {s.teachingDates.end}
+                <span className="mt-1 block text-xs font-normal text-ink-3">
+                  {formatDay(s.teachingDates.start)}
+                  {s.teachingDates.end !== s.teachingDates.start &&
+                    ` – ${formatDay(s.teachingDates.end)}`}
                 </span>
               )}
             </button>
@@ -185,50 +188,83 @@ export function InterpretedOverview({
           </h3>
           {active.teachingDates && (
             <p className="mt-1 text-xs text-ink-3">
-              Teaching dates: {active.teachingDates.start} –{" "}
-              {active.teachingDates.end}
+              {formatDay(active.teachingDates.start)}
+              {active.teachingDates.end !== active.teachingDates.start &&
+                ` – ${formatDay(active.teachingDates.end)}`}
             </p>
           )}
-          <ul className="mt-2 max-h-80 overflow-y-auto divide-y divide-line rounded-lg border border-line">
-            {rows.map((r) => (
-              <li key={r.href}>
-                {r.id.startsWith("page:") ? (
-                  <button
-                    type="button"
-                    className={`group flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-[13px] leading-[18px] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c/40 ${page === r.id ? "bg-hover" : ""}`}
-                    onClick={() => setPage(r.id)}
-                    aria-pressed={page === r.id}
-                    aria-label={`Read ${r.title}`}
-                  >
-                    <FileText
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1">{r.title}</span>
-                    <ChevronRight
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3 group-hover:text-ink-2"
-                      aria-hidden
-                    />
-                  </button>
-                ) : (
-                  <Link
-                    to={r.href}
-                    className="flex items-start gap-2.5 px-3 py-2.5 text-[13px] leading-[18px] hover:bg-hover"
-                  >
-                    <FileText
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1">{r.title}</span>
-                    <ArrowUpRight
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+          {!!active.entries?.length && (
+            <ol
+              className="mt-2 divide-y divide-line rounded-lg border border-line"
+              aria-label={`${active.title} schedule`}
+            >
+              {active.entries.map((e, i) => (
+                <li
+                  key={i}
+                  className={`flex gap-3 px-3 py-2.5 text-[13px] leading-[18px] ${e.date && e.date < today ? "text-ink-3" : ""}`}
+                >
+                  <span className="w-[88px] shrink-0 text-[12px] text-ink-3 tabular-nums">
+                    {e.date ? formatDay(e.date) : ""}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p>{e.title}</p>
+                    {resolve(e.resourceIds).map((r) => (
+                      <Link
+                        key={r.href}
+                        to={r.href}
+                        className="mt-1 mr-3 inline-flex items-center gap-1 text-[12px] text-ink-2 hover:text-ink"
+                      >
+                        <FileText className="size-3 shrink-0" aria-hidden />
+                        {r.title}
+                      </Link>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+          {rows.length > 0 && (
+            <ul className="mt-2 max-h-80 overflow-y-auto divide-y divide-line rounded-lg border border-line">
+              {rows.map((r) => (
+                <li key={r.href}>
+                  {r.id.startsWith("page:") ? (
+                    <button
+                      type="button"
+                      className={`group flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-[13px] leading-[18px] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c/40 ${page === r.id ? "bg-hover" : ""}`}
+                      onClick={() => setPage(r.id)}
+                      aria-pressed={page === r.id}
+                      aria-label={`Read ${r.title}`}
+                    >
+                      <FileText
+                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">{r.title}</span>
+                      <ChevronRight
+                        className="mt-0.5 size-3.5 shrink-0 text-ink-3 group-hover:text-ink-2"
+                        aria-hidden
+                      />
+                    </button>
+                  ) : (
+                    <Link
+                      to={r.href}
+                      className="flex items-start gap-2.5 px-3 py-2.5 text-[13px] leading-[18px] hover:bg-hover"
+                    >
+                      <FileText
+                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 flex-1">{r.title}</span>
+                      <ArrowUpRight
+                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                        aria-hidden
+                      />
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
           {shownPage && (
             <PageReader
               key={`${active.id}:${shownPage}`}

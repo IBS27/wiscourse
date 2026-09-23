@@ -145,7 +145,10 @@ export const batch = internalQuery({
 });
 export const course = internalQuery({
   args: { interpretationId: v.id("courseInterpretations") },
-  returns: v.object({ resource: resourceValidator, year: v.number() }),
+  returns: v.object({
+    resource: resourceValidator,
+    term: v.object({ year: v.number(), month: v.number() }),
+  }),
   handler: async (ctx, args) => {
     const state = await ctx.db.get(args.interpretationId);
     if (!state?.enabled) throw new Error("Interpretation cancelled");
@@ -157,10 +160,14 @@ export const course = internalQuery({
       .unique();
     if (!r || r.enrollmentState === "completed")
       throw new Error("Active course not found");
+    const startAt = r.startAt ?? r.termStartAt;
+    const start = new Date(startAt ?? state.requestedAt);
     return {
-      year: new Date(
-        r.startAt ?? r.termStartAt ?? state.requestedAt,
-      ).getUTCFullYear(),
+      // Without a start date, every month stays in the request's year.
+      term: {
+        year: start.getUTCFullYear(),
+        month: startAt === undefined ? 1 : start.getUTCMonth() + 1,
+      },
       resource: {
         id: "course:syllabus",
         kind: "course" as const,
