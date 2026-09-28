@@ -1,5 +1,4 @@
 import { ClerkProvider } from "@clerk/clerk-react";
-import { ConvexReactClient } from "convex/react";
 import { AuthProvider } from "@/components/app/auth-provider";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
@@ -17,7 +16,6 @@ declare module "@tanstack/react-router" {
   }
 }
 
-const convex = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 function MissingEnv({ names }: { names: string[] }) {
   return (
@@ -42,7 +40,7 @@ function MissingEnv({ names }: { names: string[] }) {
 }
 
 export default function App() {
-  if (!convex || !clerkPublishableKey) {
+  if (!convexUrl || !clerkPublishableKey) {
     return (
       <MissingEnv
         names={[
@@ -54,7 +52,7 @@ export default function App() {
   }
   return (
     <ClerkProvider publishableKey={clerkPublishableKey}>
-      <AuthProvider client={convex}>
+      <AuthProvider url={convexUrl}>
         <RouterProvider router={router} />
       </AuthProvider>
     </ClerkProvider>

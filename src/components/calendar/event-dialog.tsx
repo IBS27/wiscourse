@@ -1,6 +1,7 @@
 // New / edit / delete for the student's own events, and a read-only detail
 // for the ones Canvas owns (sync is their only writer).
 
+import { useDraft, useDiscardDrafts } from "@/lib/drafts";
 import { useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
@@ -42,18 +43,20 @@ export function EventDialog({
   defaultDay?: string;
   defaultMinute?: number;
 }) {
+  const discard = useDiscardDrafts(`event:${event?._id ?? "new"}`);
+  const changeOpen = (next: boolean) => { if (!next) discard(); onOpenChange(next); };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-w-[520px]">
         {open &&
           (event !== undefined && event.source === "canvas" ? (
-            <CanvasEventDetail event={event} onClose={() => onOpenChange(false)} />
+            <CanvasEventDetail event={event} onClose={() => changeOpen(false)} />
           ) : (
             <EventForm
               event={event}
               defaultDay={defaultDay}
               defaultMinute={defaultMinute}
-              onClose={() => onOpenChange(false)}
+              onClose={() => changeOpen(false)}
             />
           ))}
       </DialogContent>
@@ -79,28 +82,31 @@ function EventForm({
   const updateEvent = useMutation(api.calendar.updateEvent);
   const deleteEvent = useMutation(api.calendar.deleteEvent);
 
-  const [title, setTitle] = useState(event?.title ?? "");
-  const [day, setDay] = useState(() => {
+  const group = `event:${event?._id ?? "new"}`;
+  const discard = useDiscardDrafts(group);
+  const close = () => { discard(); onClose(); };
+  const [title, setTitle] = useDraft(`${group}:title`, event?.title ?? "");
+  const [day, setDay] = useDraft(`${group}:day`, () => {
     if (event === undefined) return defaultDay ?? today;
     // All-day events are keyed to the campus day, the way the feed keys them.
     return event.allDay === true ? allDayKey(event.startAt) : dayKeyOf(event.startAt);
   });
-  const [allDay, setAllDay] = useState(event?.allDay === true);
-  const [start, setStart] = useState(
+  const [allDay, setAllDay] = useDraft(`${group}:allDay`, event?.allDay === true);
+  const [start, setStart] = useDraft(`${group}:start`,
     timeInputValue(event === undefined ? (defaultMinute ?? 12 * 60) : minuteOf(event.startAt, zone)),
   );
-  const [end, setEnd] = useState(
+  const [end, setEnd] = useDraft(`${group}:end`,
     timeInputValue(
       event?.endAt !== undefined
         ? minuteOf(event.endAt, zone)
         : (event === undefined ? (defaultMinute ?? 12 * 60) : minuteOf(event.startAt, zone)) + 60,
     ),
   );
-  const [location, setLocation] = useState(event?.location ?? "");
-  const [course, setCourse] = useState(
+  const [location, setLocation] = useDraft(`${group}:location`, event?.location ?? "");
+  const [course, setCourse] = useDraft(`${group}:course`,
     event?.courseCanvasId === undefined ? "" : String(event.courseCanvasId),
   );
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useDraft(`${group}:busy`, false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async (e: FormEvent) => {
@@ -121,7 +127,7 @@ function EventForm({
     try {
       if (event === undefined) await createEvent(fields);
       else await updateEvent({ id: event._id as Id<"calendarEvents">, ...fields });
-      onClose();
+      close();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save the event");
     } finally {
@@ -134,7 +140,7 @@ function EventForm({
     setBusy(true);
     try {
       await deleteEvent({ id: event._id as Id<"calendarEvents"> });
-      onClose();
+      close();
     } finally {
       setBusy(false);
     }
@@ -238,7 +244,7 @@ function EventForm({
           </Button>
         )}
         <div className="ml-auto flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+          <Button type="button" variant="outline" size="sm" onClick={close}>
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy || title.trim() === ""}>

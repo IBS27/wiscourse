@@ -1,3 +1,4 @@
+import { DraftScope } from "@/lib/drafts";
 import { useEffect } from "react";
 import { createRootRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Sidebar } from "@/components/app/sidebar";
@@ -13,9 +14,10 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   // Chats own the full screen on mobile: the composer sits where the tabs would.
-  const inAsk = useRouterState({ select: (s) => s.location.pathname.startsWith("/ask") });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const inAsk = pathname.startsWith("/ask");
   return (
-    <>
+    <DraftScope value={pathname}>
       <TimeZoneSync />
       <AskShortcut />
       <QuickAddProvider>
@@ -28,7 +30,7 @@ function RootLayout() {
         {!inAsk && <BottomTabs />}
         <CommandPalette />
       </QuickAddProvider>
-    </>
+    </DraftScope>
   );
 }
 

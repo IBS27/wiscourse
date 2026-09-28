@@ -1,3 +1,4 @@
+import { useDraft } from "@/lib/drafts";
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
@@ -56,9 +57,9 @@ function NewChat() {
   const navigate = useNavigate();
   const { color } = useCourses();
   const suggestions = useSuggestions();
-  const [course, setCourse] = useState<number | undefined>();
+  const [course, setCourse] = useDraft<number | undefined>("chat:course", undefined);
   const [error, setError] = useState<string | undefined>();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useDraft("chat:starting", false);
 
   const start = async (prompt: string, courseCanvasId = course) => {
     setError(undefined);

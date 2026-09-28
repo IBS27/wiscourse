@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useDraft } from "@/lib/drafts";
+import { useEffect, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -339,7 +340,7 @@ function submissionTitle(item: TodoItem): string {
 
 // Keyed on the incoming value by the caller, so a server update resets the draft.
 function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => void }) {
-  const [value, setValue] = useState(title);
+  const [value, setValue] = useDraft(`todo:title:${title}`, title);
   return (
     <input
       value={value}
@@ -360,7 +361,7 @@ function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) =
 }
 
 function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useDraft("todo:subtask", "");
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const t = value.trim();
@@ -382,7 +383,7 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
 }
 
 function Notes({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
+  const [draft, setDraft] = useDraft(`todo:notes:${value}`, value);
   return (
     <textarea
       value={draft}

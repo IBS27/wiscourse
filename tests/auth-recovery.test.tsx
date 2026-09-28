@@ -3,9 +3,15 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { StrictMode, type ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
+import { tokenFor } from "./helpers/auth-server";
+import { useDraft } from "../src/lib/drafts";
 import { AuthProvider } from "../src/components/app/auth-provider";
 
 const clerk = vi.hoisted(() => ({
+  status: "ready",
+  userId: "user-1",
+  sessionStatus: "active",
+  signOut: vi.fn<() => Promise<void>>(),
   isLoaded: true,
   isSignedIn: true,
   sessionId: "session-1" as string | null,
@@ -16,43 +22,55 @@ const clerk = vi.hoisted(() => ({
 }));
 vi.mock("@clerk/clerk-react", () => ({
   useAuth: () => clerk,
+  useClerk: () => clerk,
+  useSession: () => ({ session: clerk.sessionId ? { status: clerk.sessionStatus } : null }),
+  RedirectToTasks: () => <div>Complete sign-in tasks</div>,
   SignInButton: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
 let client: ConvexReactClient;
 let reportAuth: ((authenticated: boolean) => void) | undefined;
 let acceptToken: boolean;
+const clients: ConvexReactClient[] = [];
 
-beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
-  Object.assign(clerk, {
-    isLoaded: true, isSignedIn: true, sessionId: "session-1",
-    sessionClaims: { aud: "convex" }, orgId: null, orgRole: null,
-  });
-  clerk.getToken.mockReset().mockResolvedValue("test-token");
-  vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
-  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+function createClient() {
   client = new ConvexReactClient("https://example.convex.cloud", { logger: false });
-  acceptToken = true;
-  reportAuth = undefined;
-  // Keep the real React auth provider and its callback/cleanup lifecycle.
-  // Only replace the network handshake so failures and delays are deterministic.
+  clients.push(client);
   vi.spyOn(client, "setAuth").mockImplementation((fetchToken, onChange) => {
     reportAuth = onChange;
     void fetchToken({ forceRefreshToken: false }).then((token) => onChange?.(Boolean(token) && acceptToken));
   });
   vi.spyOn(client, "clearAuth").mockImplementation(() => {});
+  vi.spyOn(client, "close");
+  return client;
+}
+
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+  Object.assign(clerk, {
+    status: "ready", userId: "user-1", sessionStatus: "active",
+    isLoaded: true, isSignedIn: true, sessionId: "session-1",
+    sessionClaims: { aud: "convex" }, orgId: null, orgRole: null,
+  });
+  clerk.signOut.mockReset().mockResolvedValue(undefined);
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  clients.length = 0;
+  clerk.getToken.mockReset().mockImplementation(async () => tokenFor(clerk.userId));
+  vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+  acceptToken = true;
+  reportAuth = undefined;
 });
 
 afterEach(async () => {
   cleanup();
-  await client.close();
+  await Promise.all(clients.map(client => client.close()));
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
 
 function App() {
-  return <StrictMode><AuthProvider client={client}><div>Protected app</div></AuthProvider></StrictMode>;
+  return <StrictMode><AuthProvider url="https://example.convex.cloud" createClient={createClient}><div>Protected app</div></AuthProvider></StrictMode>;
 }
 
 async function flush() {
@@ -73,7 +91,7 @@ it("waits for Clerk and only shows sign-in for a confirmed signed-out session", 
   view.rerender(<App />);
   await flush();
   expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
-  expect(client.setAuth).not.toHaveBeenCalled();
+  expect(clients).toHaveLength(0);
 });
 
 it("recovers dropped backend auth with a fresh token and preserves the URL", async () => {
@@ -106,7 +124,7 @@ it("bounds failed refresh retries and lets the user retry after exhaustion", asy
   expect(screen.queryByText("Sign in")).toBeNull();
   await advance(120_000);
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls + 3);
-  clerk.getToken.mockResolvedValue("fresh-token");
+  clerk.getToken.mockResolvedValue(tokenFor(clerk.userId));
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await flush();
   expect(screen.getByText("Protected app")).toBeTruthy();
@@ -142,7 +160,7 @@ it("does not retry offline and resumes automatically when connectivity returns",
   await advance(120_000);
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls);
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
-  clerk.getToken.mockResolvedValue("fresh-token");
+  clerk.getToken.mockResolvedValue(tokenFor(clerk.userId));
   fireEvent(window, new Event("online"));
   await flush();
   expect(screen.getByText("Protected app")).toBeTruthy();
@@ -192,12 +210,12 @@ it("bounds a hung token request and ignores its stale result after recovery", as
   render(<App />);
   for (let attempt = 0; attempt < 4; attempt++) await advance(10_000);
   expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
-  clerk.getToken.mockResolvedValue("fresh-token");
+  clerk.getToken.mockResolvedValue(tokenFor(clerk.userId));
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   await flush();
   expect(screen.getByText("Protected app")).toBeTruthy();
   acceptToken = false;
-  await act(async () => resolveOldToken?.("stale-token"));
+  await act(async () => resolveOldToken?.(tokenFor("previous-user")));
   expect(screen.getByText("Protected app")).toBeTruthy();
 });
 
@@ -237,4 +255,136 @@ it("supports the legacy Convex JWT template and restarts for organization/sessio
   view.rerender(<App />);
   await flush();
   expect(clerk.getToken).toHaveBeenLastCalledWith({ skipCache: false });
+});
+
+
+it("preserves drafts through recovery and clears them on account change", async () => {
+  function Draft() {
+    const [value, setValue] = useDraft("text", "");
+    return <input aria-label="Draft" value={value} onChange={event => setValue(event.target.value)} />;
+  }
+  const app = <AuthProvider url="https://example.convex.cloud" createClient={createClient}><Draft /></AuthProvider>;
+  const view = render(app);
+  await flush();
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsaved question" } });
+  const firstClient = client;
+  act(() => reportAuth?.(false));
+  await advance(1_000);
+  expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("Unsaved question");
+  expect(client).toBe(firstClient);
+  clerk.userId = "user-2";
+  clerk.sessionId = "session-2";
+  view.rerender(<AuthProvider url="https://example.convex.cloud" createClient={createClient}><Draft /></AuthProvider>);
+  await flush();
+  expect(firstClient.close).toHaveBeenCalledOnce();
+  expect(client).not.toBe(firstClient);
+  expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("");
+});
+
+it("disposes the client on confirmed logout, including outstanding token work", async () => {
+  clerk.getToken.mockReturnValue(new Promise<string>(() => {}));
+  const view = render(<App />);
+  await flush();
+  const firstClient = client;
+  clerk.isSignedIn = false;
+  clerk.sessionId = null;
+  view.rerender(<App />);
+  await flush();
+  expect(firstClient.close).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+});
+
+it("offers reload after stalled or failed Clerk initialization", async () => {
+  clerk.isLoaded = false;
+  clerk.isSignedIn = false;
+  const view = render(<App />);
+  await advance(10_000);
+  expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  expect(screen.queryByText("Sign in")).toBeNull();
+  clerk.status = "error";
+  view.rerender(<App />);
+  expect(screen.getByText(/couldn't load your sign-in session/)).toBeTruthy();
+});
+
+it("does not label degraded or pending Clerk sessions as signed out", async () => {
+  clerk.isSignedIn = false;
+  clerk.status = "degraded";
+  const view = render(<App />);
+  expect(screen.queryByText("Sign in")).toBeNull();
+  clerk.status = "ready";
+  clerk.sessionStatus = "pending";
+  view.rerender(<App />);
+  expect(screen.getByText("Complete sign-in tasks")).toBeTruthy();
+});
+
+it("reports sign-out errors and prevents duplicate sign-out attempts", async () => {
+  acceptToken = false;
+  let reject: (reason: Error) => void = () => {};
+  clerk.signOut.mockReturnValue(new Promise<void>((_, fail) => { reject = fail; }));
+  render(<App />);
+  await flush();
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  fireEvent.click(screen.getByRole("button", { name: "Signing out…" }));
+  expect(clerk.signOut).toHaveBeenCalledOnce();
+  await act(async () => reject(new Error("private provider details")));
+  expect(screen.getByRole("alert").textContent).toContain("Couldn't sign out");
+  expect(screen.queryByText(/private provider details/)).toBeNull();
+  clerk.signOut.mockResolvedValue(undefined);
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  await flush();
+  expect(clerk.signOut).toHaveBeenCalledTimes(2);
+});
+
+it("does not keep bypassing the token cache after a recovery or session change", async () => {
+  const view = render(<App />);
+  await flush();
+  act(() => reportAuth?.(false));
+  await advance(1_000);
+  const fetch = vi.mocked(client.setAuth).mock.calls.at(-1)![0];
+  await act(async () => { await fetch({ forceRefreshToken: false }); });
+  expect(clerk.getToken).toHaveBeenLastCalledWith({ skipCache: false });
+  clerk.sessionId = "session-2";
+  view.rerender(<App />);
+  await flush();
+  expect(clerk.getToken).toHaveBeenLastCalledWith({ skipCache: false });
+});
+
+it("stops automatic retries for configuration failures and keeps escape actions available", async () => {
+  clerk.getToken.mockRejectedValue({ status: 404, message: "sensitive SDK details" });
+  render(<App />);
+  await flush();
+  const calls = clerk.getToken.mock.calls.length;
+  await advance(120_000);
+  expect(clerk.getToken).toHaveBeenCalledTimes(calls);
+  expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+  expect(JSON.stringify(vi.mocked(console.info).mock.calls)).not.toContain("sensitive SDK details");
+});
+
+it("bounds a stalled sign-out request so the user can retry", async () => {
+  acceptToken = false;
+  clerk.signOut.mockReturnValue(new Promise<void>(() => {}));
+  render(<App />);
+  await flush();
+  fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
+  await advance(10_000);
+  expect(screen.getByRole("alert").textContent).toContain("Couldn't sign out");
+  expect(screen.getByRole("button", { name: "Sign out" }).hasAttribute("disabled")).toBe(false);
+});
+
+it("retains the same user's client during a temporary Clerk loading state", async () => {
+  const view = render(<App />);
+  await flush();
+  const owner = client;
+  clerk.isLoaded = false;
+  view.rerender(<App />);
+  await flush();
+  expect(owner.close).not.toHaveBeenCalled();
+  expect(screen.queryByText("Protected app")).toBeNull();
+  clerk.isLoaded = true;
+  view.rerender(<App />);
+  await flush();
+  expect(client).toBe(owner);
+  expect(screen.getByText("Protected app")).toBeTruthy();
 });

@@ -1,3 +1,4 @@
+import { useDraft } from "@/lib/drafts";
 import { useState, type FormEvent } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/page-header";
@@ -27,9 +28,9 @@ function Settings() {
   const requestSync = useMutation(api.sync.requestSync);
   const disconnect = useMutation(api.credentials.disconnect);
 
-  const [token, setToken] = useState("");
-  const [instance, setInstance] = useState("canvas.wisc.edu");
-  const [busy, setBusy] = useState(false);
+  const [token, setToken] = useDraft("canvas:token", "");
+  const [instance, setInstance] = useDraft("canvas:instance", "canvas.wisc.edu");
+  const [busy, setBusy] = useDraft("canvas:connecting", false);
   const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async (event: FormEvent) => {
