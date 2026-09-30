@@ -9,10 +9,6 @@ const timeFormat = new Intl.DateTimeFormat("en-US", {
   minute: "2-digit",
 });
 
-export function formatDate(ms: number): string {
-  return dateFormat.format(new Date(ms));
-}
-
 export function formatDateTime(ms: number): string {
   return `${dateFormat.format(new Date(ms))} at ${timeFormat.format(new Date(ms))}`;
 }
