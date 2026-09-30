@@ -10,6 +10,8 @@ export type ClientMessage =
 export function createAuthServer() {
   const messages: ClientMessage[] = [];
   const sockets: Socket[] = [];
+  // The identity each mutation arrived under; null is anonymous.
+  const mutationOwners: (string | null)[] = [];
   let confirmAuth = true;
   class Socket {
     onopen: (() => void) | null = null;
@@ -17,6 +19,9 @@ export function createAuthServer() {
     onmessage: ((event: { data: string }) => void) | null = null;
     onerror: (() => void) | null = null;
     closed = false;
+    /** This socket's frames, in order, for per-connection auth checks. */
+    sent: ClientMessage[] = [];
+    private subject: string | null = null;
     private version: Version = { querySet: 0, identity: 0, ts: "AAAAAAAAAAA=" };
     private next = { ...this.version };
     private scheduled = false;
@@ -27,11 +32,20 @@ export function createAuthServer() {
     send(raw: string) {
       const message = JSON.parse(raw) as ClientMessage;
       messages.push(message);
+      this.sent.push(message);
       if (message.type === "Authenticate") {
+        this.subject = message.tokenType === "User" && message.value ? subjectOf(message.value) : null;
         if (!confirmAuth) return;
         this.next.identity = message.baseVersion + 1;
       } else if (message.type === "ModifyQuerySet") {
         this.next.querySet = message.newVersion;
+      } else if (message.type === "Mutation") {
+        mutationOwners.push(this.subject);
+        // Like convex/lib/auth.ts: an anonymous write fails for good.
+        if (this.subject === null) queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({
+          type: "MutationResponse", requestId: message.requestId, success: false, result: "Not signed in", logLines: [],
+        }) }));
+        return;
       } else return;
       if (!this.scheduled) {
         this.scheduled = true;
@@ -60,10 +74,15 @@ export function createAuthServer() {
     // This fixture implements the subset of the browser socket used by Convex.
     WebSocket: Socket as unknown as typeof WebSocket,
     messages,
+    mutationOwners,
     sockets,
     setConfirmAuth: (value: boolean) => { confirmAuth = value; },
     latest: () => sockets.at(-1)!,
   };
+}
+
+export function subjectOf(token: string): string {
+  return (JSON.parse(atob(token.split(".")[1])) as { sub: string }).sub;
 }
 
 let sequence = 0;

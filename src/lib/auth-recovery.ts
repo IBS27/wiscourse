@@ -31,44 +31,107 @@ function belongsToUser(token: string, userId: string | null | undefined): boolea
   }
 }
 
-/** Bounds every fetch, including the SDK's otherwise invisible background refresh. */
-export function createTokenFetcher({ getToken, userId, nativeToken, forceFresh, onFailure }: {
+/**
+ * Holds requests while closed. A pending token request keeps the Convex socket
+ * paused, so queued writes wait instead of going out without auth.
+ */
+export function createGate(open: boolean) {
+  let waiters: (() => void)[] = [];
+  return {
+    set(next: boolean) {
+      open = next;
+      if (!open) return;
+      const ready = waiters;
+      waiters = [];
+      for (const resolve of ready) resolve();
+    },
+    wait: (): Promise<void> => open ? Promise.resolve() : new Promise(resolve => { waiters.push(resolve); }),
+  };
+}
+
+/**
+ * Bounds every fetch, including the SDK's otherwise invisible background
+ * refresh: past the bound, or on an error, the failure goes to the recovery
+ * UI and the request is held. The bound starts once `whenReady` settles;
+ * waiting for it is not a failure.
+ *
+ * A request is never answered with null: Convex would drop to anonymous
+ * auth and send the owner's queued writes without it. It stays pending,
+ * keeping the socket paused or stopped, until it or `retryPending` gets a
+ * token, a new fetcher replaces it, or the client is disposed. Retrying in
+ * place also lets the SDK finish its own reauthentication, which is what
+ * restarts a stopped socket.
+ */
+export function createTokenFetcher({ getToken, userId, nativeToken, forceFresh, onFailure, whenReady }: {
   getToken: (options: { template?: string; skipCache: boolean }) => Promise<string | null>;
   userId: string | null | undefined;
   nativeToken: boolean;
   forceFresh: boolean;
   onFailure: (failure: AuthFailure | null) => void;
+  whenReady?: () => Promise<void>;
 }) {
-  const pending = new Set<() => void>();
+  const pending = new Map<() => void, () => void>(); // cancel -> retry
   let requestId = 0;
   const fetchAccessToken = ({ forceRefreshToken }: { forceRefreshToken: boolean }): Promise<string | null> => {
     const id = ++requestId;
-    const skipCache = forceRefreshToken || forceFresh;
+    let skipCache = forceRefreshToken || forceFresh;
     forceFresh = false;
     return new Promise((resolve) => {
       let settled = false;
-      const finish = (token: string | null, failure?: AuthFailure, cancelled = false) => {
+      let round = 0;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      // Only a token or a cancellation settles the request.
+      const finish = (token: string | null) => {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
         pending.delete(cancel);
-        if (!cancelled && id === requestId) {
-          onFailure(failure ?? null);
-          if (failure) reportAuthEvent("token-fetch-failed", failure);
-        }
+        if (token !== null && id === requestId) onFailure(null);
         resolve(token);
       };
-      const cancel = () => finish(null, undefined, true);
-      const timer = setTimeout(() => finish(null, "timeout"), AUTH_TIMEOUT);
-      pending.add(cancel);
-      // The microtask also catches synchronous SDK errors. Late results are ignored.
-      void Promise.resolve().then(() => settled ? null : getToken({
-        ...(nativeToken ? {} : { template: "convex" }), skipCache,
-      })).then(
-        (token) => token && belongsToUser(token, userId) ? finish(token) : finish(null, "session"),
-        (error: unknown) => finish(null, classifyFailure(error)),
-      );
+      // A superseded attempt's failure is ignored; any valid token is taken.
+      const fail = (failure: AuthFailure, attempt: number) => {
+        if (settled || attempt !== round) return;
+        clearTimeout(timer);
+        if (id === requestId) {
+          onFailure(failure);
+          reportAuthEvent("token-fetch-failed", failure);
+        }
+      };
+      const request = () => {
+        const attempt = ++round;
+        clearTimeout(timer);
+        // The microtask also catches synchronous SDK errors.
+        void (whenReady?.() ?? Promise.resolve()).then(() => {
+          if (settled || attempt !== round) return undefined;
+          timer = setTimeout(() => fail("timeout", attempt), AUTH_TIMEOUT);
+          return getToken({ ...(nativeToken ? {} : { template: "convex" }), skipCache });
+        }).then(
+          (token) => {
+            if (token === undefined) return;
+            if (token && belongsToUser(token, userId)) finish(token);
+            else fail("session", attempt);
+          },
+          (error: unknown) => fail(classifyFailure(error), attempt),
+        );
+      };
+      const retry = () => {
+        skipCache = true;
+        request();
+      };
+      const cancel = () => finish(null);
+      pending.set(cancel, retry);
+      request();
     });
   };
-  return { fetchAccessToken, cancelPending: () => { for (const cancel of pending) cancel(); } };
+  return {
+    fetchAccessToken,
+    cancelPending: () => { for (const cancel of [...pending.keys()]) cancel(); },
+    /** Requests every unsettled token again. False when none is pending. */
+    retryPending: () => {
+      if (pending.size === 0) return false;
+      for (const retry of [...pending.values()]) retry();
+      return true;
+    },
+  };
 }
