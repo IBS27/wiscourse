@@ -121,6 +121,26 @@ it("keeps an unsaved edit through a remount but never resurfaces it over a later
   expect(notes()).toBe("A");
 });
 
+it("moves the draft to each new server value, so returning to an old one shows it", () => {
+  const store = new DraftStore();
+  function Notes({ source }: { source: string }) {
+    const [value, setValue] = useSourcedDraft("notes", source);
+    return <textarea aria-label="Notes" value={value} onChange={(e) => setValue(e.target.value)} />;
+  }
+  function App({ source, visible = true }: { source: string; visible?: boolean }) {
+    return <DraftContext value={store}>{visible && <Notes source={source} />}</DraftContext>;
+  }
+  const notes = () => (screen.getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement).value;
+  const view = render(<App source="A" />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "AB" } });
+  view.rerender(<App source="AB" />); // this tab's save lands
+  view.rerender(<App source="A" />); // another tab restores A; no new local edit
+  expect(notes()).toBe("A");
+  view.rerender(<App source="A" visible={false} />);
+  view.rerender(<App source="A" />);
+  expect(notes()).toBe("A");
+});
+
 it("drops a route's drafts on navigation but not on an auth remount", () => {
   const store = new DraftStore();
   function Draft() {
