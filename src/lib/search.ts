@@ -56,14 +56,15 @@ function matchTerm(term: string, text: string): Match | null {
   if (text === term) return { score: EXACT, ranges: [range(0, text.length)] };
   if (text.startsWith(term)) return { score: PREFIX, ranges: [range(0, term.length)] };
 
-  for (let i = 1; i <= text.length - term.length; i += 1) {
-    if (!WORD_BREAK.test(text[i - 1])) continue;
-    if (text.startsWith(term, i)) {
+  // Only inspect boundaries where the term occurs. A later word match still
+  // outranks an earlier substring, including overlapping occurrences.
+  const at = text.indexOf(term);
+  for (let i = at; i >= 0; i = text.indexOf(term, i + 1)) {
+    if (WORD_BREAK.test(text[i - 1])) {
       return { score: WORD - Math.min(i, 100), ranges: [range(i, i + term.length)] };
     }
   }
 
-  const at = text.indexOf(term);
   if (at >= 0) {
     return { score: SUBSTRING - Math.min(at, 100), ranges: [range(at, at + term.length)] };
   }
