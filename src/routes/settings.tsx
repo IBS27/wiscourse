@@ -134,7 +134,7 @@ function Settings() {
               {status.credentialStatus !== "active" && (
                 <p className="text-sm text-destructive">
                   Canvas rejected the stored token (UW-issued tokens expire
-                  after at most 120 days). Disconnect and connect a new one.
+                  after at most 90 days). Disconnect and connect a new one.
                 </p>
               )}
 

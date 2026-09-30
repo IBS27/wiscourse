@@ -5,6 +5,8 @@ import { Sidebar } from "@/components/app/sidebar";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import { QuickAddProvider } from "@/components/app/quick-add";
 import { CommandPalette } from "@/components/search/command-palette";
+import { ConnectionBanner } from "@/components/app/connection-banner";
+import { useActivityHeartbeat } from "@/lib/activity";
 import { useTimeZonePreference } from "@/lib/time-zone";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +23,7 @@ function RootLayout() {
   return (
     <QuickAddProvider>
       <TimeZoneSync />
+      <ActivityHeartbeat />
       <AskShortcut />
       <DraftRoute path={pathname}>
         <div className="flex min-h-dvh">
@@ -31,6 +34,7 @@ function RootLayout() {
         </div>
         {!inAsk && <BottomTabs />}
         <CommandPalette />
+        <ConnectionBanner />
       </DraftRoute>
     </QuickAddProvider>
   );
@@ -55,5 +59,11 @@ function AskShortcut() {
 /** Keeps the display zone in step with the saved preference. Renders nothing. */
 function TimeZoneSync() {
   useTimeZonePreference();
+  return null;
+}
+
+/** Speeds Canvas polling while the app is in use. Renders nothing. */
+function ActivityHeartbeat() {
+  useActivityHeartbeat();
   return null;
 }

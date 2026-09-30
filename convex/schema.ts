@@ -492,6 +492,18 @@ export default defineSchema({
     lastError: v.optional(v.string()),
   }).index("by_user", ["userId"]),
 
+  // The tripwire queue: one row per user with an active Canvas credential.
+  // Kept apart from syncState so heartbeats never re-run status queries.
+  syncSchedule: defineTable({
+    userId: v.string(),
+    dueAt: v.number(),
+    // Extended by client heartbeats; the faster cadence applies until then.
+    activeUntil: v.optional(v.number()),
+    lastDispatchedAt: v.optional(v.number()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_dueAt", ["dueAt"]),
+
   // -------------------------------------------------------------------------
   // Courses
 

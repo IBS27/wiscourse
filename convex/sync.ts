@@ -1,7 +1,8 @@
 // Three-tier Canvas sync.
 //
-// Tier 1 (tripwire, every 5 min): GET /users/self/activity_stream/summary —
-// a tiny payload. Only when it changes do we run a delta sync.
+// Tier 1 (tripwire, every 2 min while the user has the app open, else every
+// 15 min; see syncSchedule.ts): GET /users/self/activity_stream/summary — a
+// tiny payload. Only when it changes do we run a delta sync.
 // Tier 2 (delta): the cheap, frequently-changing slice. Per course, two
 // filtered submission calls (submitted_since / graded_since) plus recently
 // active discussion topics and the content refresh; globally, one
@@ -40,7 +41,13 @@ import {
 } from "./_generated/server";
 import { components, internal } from "./_generated/api";
 import { requireUserId } from "./lib/auth";
-import { getCanvasClient, type CanvasSession } from "./credentials";
+import {
+  CanvasReconnectRequired,
+  getCanvasClient,
+  type CanvasSession,
+} from "./credentials";
+import { ensureSyncSchedule } from "./syncSchedule";
+import { DISPATCH_TICK_MS, nextTripwireAt } from "./lib/syncCadence";
 import {
   CanvasAuthError,
   tolerateDisabledTab,
@@ -81,17 +88,39 @@ export const syncPool = new Workpool(components.syncWorkpool, {
 // ---------------------------------------------------------------------------
 // Dispatch
 
+// Bounds one dispatcher transaction; a full batch continues immediately.
+const TRIPWIRE_BATCH = 100;
+
 export const dispatchTripwire = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
     if (process.env.WISCOURSE_BACKGROUND_SYNC === "false") return null;
-    const userIds: string[] = await ctx.runQuery(
-      internal.syncStore.listActiveUserIds,
-      {},
-    );
-    for (const userId of userIds) {
-      await syncPool.enqueueAction(ctx, internal.sync.tripwireUser, { userId });
+    const now = Date.now();
+    const due = await ctx.db
+      .query("syncSchedule")
+      .withIndex("by_dueAt", (q) => q.lte("dueAt", now))
+      .take(TRIPWIRE_BATCH);
+    for (const row of due) {
+      const credential = await ctx.db
+        .query("canvasCredentials")
+        .withIndex("by_user", (q) => q.eq("userId", row.userId))
+        .unique();
+      if (credential?.status !== "active") {
+        await ctx.db.delete(row._id);
+        continue;
+      }
+      const active = row.activeUntil !== undefined && row.activeUntil > now;
+      await ctx.db.patch(row._id, {
+        dueAt: nextTripwireAt(now, active),
+        lastDispatchedAt: now,
+      });
+      await syncPool.enqueueAction(ctx, internal.sync.tripwireUser, {
+        userId: row.userId,
+      });
+    }
+    if (due.length === TRIPWIRE_BATCH) {
+      await ctx.scheduler.runAfter(0, internal.sync.dispatchTripwire, {});
     }
     return null;
   },
@@ -107,6 +136,10 @@ export const dispatchFullSync = internalMutation({
       {},
     );
     for (const userId of userIds) {
+      // Self-healing: an account missing from the tripwire queue rejoins it.
+      await ensureSyncSchedule(ctx, userId, {
+        dueAt: Date.now() + DISPATCH_TICK_MS,
+      });
       await syncPool.enqueueAction(ctx, internal.sync.fullSyncUser, { userId });
     }
     return null;
@@ -486,20 +519,32 @@ async function syncCalendarEvents(
 // ---------------------------------------------------------------------------
 // Helpers
 
+const RECONNECT_MESSAGE = "Canvas rejected the token. Reconnect in Settings.";
+
 async function handleSyncError(
   ctx: ActionCtx,
   userId: string,
   error: unknown,
 ): Promise<void> {
+  if (error instanceof CanvasReconnectRequired) {
+    // Disconnected or invalidated while the job was queued. Retrying cannot
+    // help, and the dispatcher has already dropped or will drop the user.
+    await ctx.runMutation(internal.syncStore.setSyncStatus, {
+      userId,
+      status: "error",
+      lastError: RECONNECT_MESSAGE,
+    });
+    return;
+  }
   if (error instanceof CanvasAuthError) {
-    // Token revoked or expired (UW-issued manual tokens live max 120 days).
+    // Token revoked or expired (UW-issued manual tokens live max 90 days).
     // Mark invalid so dispatchers skip this user until reconnect; do not
     // rethrow, retrying an invalid token is pointless.
     await ctx.runMutation(internal.credentials.markInvalid, { userId });
     await ctx.runMutation(internal.syncStore.setSyncStatus, {
       userId,
       status: "error",
-      lastError: "Canvas rejected the token. Reconnect in Settings.",
+      lastError: RECONNECT_MESSAGE,
     });
     return;
   }

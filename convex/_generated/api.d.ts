@@ -49,6 +49,7 @@ import type * as lib_meetings from "../lib/meetings.js";
 import type * as lib_searchEntries from "../lib/searchEntries.js";
 import type * as lib_searchFields from "../lib/searchFields.js";
 import type * as lib_syllabusFacts from "../lib/syllabusFacts.js";
+import type * as lib_syncCadence from "../lib/syncCadence.js";
 import type * as lib_terms from "../lib/terms.js";
 import type * as lib_time from "../lib/time.js";
 import type * as lib_upsert from "../lib/upsert.js";
@@ -64,6 +65,7 @@ import type * as seenState from "../seenState.js";
 import type * as storeContent from "../storeContent.js";
 import type * as storeCourseMeta from "../storeCourseMeta.js";
 import type * as sync from "../sync.js";
+import type * as syncSchedule from "../syncSchedule.js";
 import type * as syncStore from "../syncStore.js";
 import type * as todos from "../todos.js";
 
@@ -115,6 +117,7 @@ declare const fullApi: ApiFromModules<{
   "lib/searchEntries": typeof lib_searchEntries;
   "lib/searchFields": typeof lib_searchFields;
   "lib/syllabusFacts": typeof lib_syllabusFacts;
+  "lib/syncCadence": typeof lib_syncCadence;
   "lib/terms": typeof lib_terms;
   "lib/time": typeof lib_time;
   "lib/upsert": typeof lib_upsert;
@@ -130,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   storeContent: typeof storeContent;
   storeCourseMeta: typeof storeCourseMeta;
   sync: typeof sync;
+  syncSchedule: typeof syncSchedule;
   syncStore: typeof syncStore;
   todos: typeof todos;
 }>;

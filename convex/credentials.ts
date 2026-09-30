@@ -19,6 +19,8 @@ import { requireUserId } from "./lib/auth";
 import { decryptSecret, encryptSecret } from "./lib/crypto";
 import { CanvasClient } from "./canvas/client";
 import type { CanvasUser } from "./canvas/types";
+import { ensureSyncSchedule, removeSyncSchedule } from "./syncSchedule";
+import { DISPATCH_TICK_MS } from "./lib/syncCadence";
 
 const DEFAULT_INSTANCE = "canvas.wisc.edu";
 
@@ -93,6 +95,8 @@ export const save = internalMutation({
     if (!syncState) {
       await ctx.db.insert("syncState", { userId: args.userId, status: "idle" });
     }
+    // The caller enqueues a full sync now; the tripwire starts a tick later.
+    await ensureSyncSchedule(ctx, args.userId, { dueAt: Date.now() + DISPATCH_TICK_MS });
     return null;
   },
 });
@@ -142,6 +146,7 @@ export const disconnect = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
     if (credential) await ctx.db.delete(credential._id);
+    await removeSyncSchedule(ctx, userId);
     const interpretations = await ctx.db.query("courseInterpretations").withIndex("by_user_course", q => q.eq("userId", userId)).paginate({ cursor: null, numItems: 100 });
     for (const state of interpretations.page) await ctx.db.patch(state._id, { enabled: false, generation: state.generation + 1, status: state.map ? "ready" : "stale" });
     if (!interpretations.isDone) await ctx.scheduler.runAfter(0, internal.courseInterpretations.disableUser, { userId, cursor: interpretations.continueCursor });
@@ -168,9 +173,22 @@ export const markInvalid = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
     if (credential) await ctx.db.patch(credential._id, { status: "invalid" });
+    await removeSyncSchedule(ctx, args.userId);
     return null;
   },
 });
+
+/**
+ * The user has no usable Canvas credential: never connected, disconnected,
+ * or rejected by Canvas. Only reconnecting in Settings fixes it, so callers
+ * report it rather than retry.
+ */
+export class CanvasReconnectRequired extends Error {
+  constructor(public readonly reason: "missing" | "invalid") {
+    super(reason === "missing" ? "Canvas is not connected" : "Canvas needs to be reconnected");
+    this.name = "CanvasReconnectRequired";
+  }
+}
 
 export interface CanvasSession {
   client: CanvasClient;
@@ -181,7 +199,9 @@ export interface CanvasSession {
 
 /**
  * The single entry point for reaching Canvas on behalf of a user.
- * Actions only (decryption needs Web Crypto).
+ * Actions only (decryption needs Web Crypto). Throws CanvasReconnectRequired
+ * without a usable credential. A CanvasAuthError from a request means Canvas
+ * rejected the token: run `internal.credentials.markInvalid` for the user.
  */
 export async function getCanvasClient(
   ctx: ActionCtx,
@@ -190,12 +210,8 @@ export async function getCanvasClient(
   const credential = await ctx.runQuery(internal.credentials.getForUser, {
     userId,
   });
-  if (!credential) {
-    throw new Error(`No Canvas credential for user ${userId}`);
-  }
-  if (credential.status !== "active") {
-    throw new Error(`Canvas credential for user ${userId} is ${credential.status}`);
-  }
+  if (!credential) throw new CanvasReconnectRequired("missing");
+  if (credential.status !== "active") throw new CanvasReconnectRequired("invalid");
 
   // Phase 3 (OAuth): when kind === "oauth" and expiresAt is within a skew
   // window, refresh via /login/oauth2/token here and persist the new token

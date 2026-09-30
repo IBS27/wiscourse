@@ -1,6 +1,6 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef,
-  useState, useSyncExternalStore, type ReactNode,
+  useState, type ReactNode,
 } from "react";
 import { RedirectToTasks, SignInButton, useAuth, useClerk, useSession } from "@clerk/clerk-react";
 import { ConvexProviderWithAuth, ConvexReactClient, useConvexAuth } from "convex/react";
@@ -9,6 +9,7 @@ import { Logo } from "@/components/logo";
 import { AUTH_TIMEOUT, createTokenFetcher, reportAuthEvent, type AuthFailure } from "@/lib/auth-recovery";
 import { DraftContext, DraftStore } from "@/lib/drafts";
 import { useSignOut } from "@/lib/sign-out";
+import { useOnline } from "@/lib/online";
 
 const RecoveryContext = createContext<{
   generation: number;
@@ -119,18 +120,6 @@ function AuthBoundary({ children }: { children: ReactNode }) {
   // still reports authenticated. Protected queries/writes are unmounted meanwhile.
   if (!isAuthenticated || isRefreshing) return <ConnectionRecovery isLoading={isLoading || isRefreshing} initialLoading={isLoading && !isRefreshing} />;
   return children;
-}
-
-function subscribeOnline(notify: () => void) {
-  window.addEventListener("online", notify);
-  window.addEventListener("offline", notify);
-  return () => {
-    window.removeEventListener("online", notify);
-    window.removeEventListener("offline", notify);
-  };
-}
-function useOnline() {
-  return useSyncExternalStore(subscribeOnline, () => navigator.onLine);
 }
 
 function Loading() {
