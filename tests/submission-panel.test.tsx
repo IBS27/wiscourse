@@ -74,6 +74,14 @@ it("offers a check, and a resend only through a warned confirmation, while Canva
   expect(sendAgain).toHaveBeenCalledExactlyOnceWith({ id: "row", confirmed: true });
 });
 
+it("tells a student that Send again after a conflict makes a new attempt", () => {
+  mocks.panel = panel({ status: "unconfirmed", errorKind: "conflict", error: "Canvas shows a newer submission that is not this one." });
+  show();
+  fireEvent.click(screen.getByRole("button", { name: "Send again…" }));
+  expect(screen.getByRole("dialog").textContent).toContain("Sending makes a new attempt after it");
+  expect(screen.getByRole("dialog").textContent).not.toContain("could make a second");
+});
+
 it("sends a student to reconnect instead of offering a retry", () => {
   mocks.panel = panel({ status: "failed", errorKind: "reconnect", error: "Canvas needs to be reconnected." }, "invalid");
   show();

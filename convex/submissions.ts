@@ -52,7 +52,7 @@ import {
   CanvasRateLimitError,
   type CanvasUploadSlot,
 } from "./canvas/client";
-import type { CanvasSubmission } from "./canvas/types";
+import { toMillis, type CanvasSubmission } from "./canvas/types";
 import { outboxErrorKind, submissionFields } from "./schema";
 import { mapSubmission } from "./sync";
 import { applySubmissionUpdate, claimCanvasLease, releaseCanvasLease } from "./syncStore";
@@ -93,6 +93,7 @@ type Progress = {
   baselineAttempt?: number;
   mayHavePosted?: boolean;
   uploaded?: { index: number; canvasFileId: number };
+  replaced?: true;
 };
 
 function fail(message: string): never {
@@ -433,6 +434,8 @@ export const sendAgain = mutation({
       status: "queued",
       checkOnly: undefined,
       mayHavePosted: undefined,
+      // The student chose to send after the conflicting attempt they were shown.
+      replaceConfirmed: row.errorKind === "conflict" && row.conflictAttempt !== undefined ? true : undefined,
       attemptsLeft: AUTO_ATTEMPTS,
       nextAttemptAt: undefined,
       error: undefined,
@@ -532,6 +535,8 @@ export const progress = internalMutation({
     baselineAttempt: v.optional(v.number()),
     mayHavePosted: v.optional(v.boolean()),
     uploaded: v.optional(v.object({ index: v.number(), canvasFileId: v.number() })),
+    // The confirmed replacement was used; it does not carry to later attempts.
+    replaced: v.optional(v.literal(true)),
   },
   returns: v.boolean(),
   handler: async (ctx, args) => {
@@ -544,6 +549,7 @@ export const progress = internalMutation({
       ...(args.step !== undefined && { step: args.step }),
       ...(args.baselineAttempt !== undefined && { baselineAttempt: args.baselineAttempt }),
       ...(args.mayHavePosted !== undefined && { mayHavePosted: args.mayHavePosted }),
+      ...(args.replaced && { conflictAttempt: undefined, replaceConfirmed: undefined }),
       files,
       updatedAt: Date.now(),
     });
@@ -567,6 +573,8 @@ const outcome = v.union(
     // Canvas answered the send and did not take it (throttled, token
     // replaced): this attempt's send is known not to have landed.
     notSent: v.optional(v.boolean()),
+    // With `conflict`: Canvas's latest attempt at the time.
+    observedAttempt: v.optional(v.number()),
   }),
 );
 type Outcome = Infer<typeof outcome>;
@@ -612,6 +620,8 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
       mayHavePosted: undefined,
       canvasAttempt: result.canvasAttempt,
       canvasSubmittedAt: result.canvasSubmittedAt,
+      conflictAttempt: undefined,
+      replaceConfirmed: undefined,
       files: await releaseFiles(ctx, row),
     });
     await applySubmissionUpdate(ctx, row.userId, row.assignmentCanvasId, result.submission);
@@ -626,6 +636,8 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
       // While Canvas may have it, "failed" would invite a duplicate.
       status: mayHavePosted || kind === "conflict" ? "unconfirmed" : "failed",
       mayHavePosted: mayHavePosted || undefined,
+      // A new conflict needs a new confirmation.
+      ...(kind === "conflict" && { conflictAttempt: result.observedAttempt, replaceConfirmed: undefined }),
       error: result.error,
       errorKind: kind,
     });
@@ -705,13 +717,22 @@ async function deliver(ctx: ActionCtx, row: Claimed, state: AttemptState): Promi
   } else {
     const contentSent: OutboxContent = { kind: row.kind, text: row.text, url: row.url, canvasFileIds };
     const delivery = findDelivery(current, row.baselineAttempt, contentSent);
-    if (delivery.kind === "ours") return submitted(current, delivery.attempt);
+    // The receipt is the matched attempt's; the mirror stays Canvas's latest.
+    if (delivery.kind === "ours") return submitted(current, delivery.attempt, toMillis(delivery.submittedAt));
     if (delivery.kind === "other") {
-      return {
-        type: "error",
-        kind: "conflict",
-        error: "Canvas shows a newer submission that is not this one. Check Canvas before sending again.",
-      };
+      const latest = current.attempt ?? 0;
+      // Our payload did not show up, and Canvas's latest is the attempt the
+      // student confirmed sending after: send after it, this once.
+      if (row.replaceConfirmed === true && row.conflictAttempt === latest) {
+        await record({ baselineAttempt: latest, replaced: true });
+      } else {
+        return {
+          type: "error",
+          kind: "conflict",
+          observedAttempt: latest,
+          error: "Canvas shows a newer submission that is not this one. Check Canvas before sending again.",
+        };
+      }
     }
   }
   if (row.checkOnly === true) {
@@ -748,16 +769,12 @@ async function deliver(ctx: ActionCtx, row: Claimed, state: AttemptState): Promi
 
   await record({ step: "submitting", mayHavePosted: true });
   const result = await client.post<CanvasSubmission>(base, params, { timeoutMs: POST_TIMEOUT_MS });
-  return submitted(result, result.attempt ?? 0);
+  return submitted(result, result.attempt ?? 0, toMillis(result.submitted_at));
 }
 
-function submitted(submission: CanvasSubmission, attempt: number): Outcome {
-  return {
-    type: "submitted",
-    canvasAttempt: attempt,
-    canvasSubmittedAt: mapSubmission(submission).submittedAt,
-    submission: mapSubmission(submission),
-  };
+/** `current` updates the assignment mirror; `attempt` and `submittedAt` are this row's receipt. */
+function submitted(current: CanvasSubmission, attempt: number, submittedAt: number | undefined): Outcome {
+  return { type: "submitted", canvasAttempt: attempt, canvasSubmittedAt: submittedAt, submission: mapSubmission(current) };
 }
 
 /** What an error means for the row, given how far the attempt got. */

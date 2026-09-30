@@ -187,6 +187,97 @@ it("retries throttling and outages without a second submission", async () => {
   expect(canvas.attempts(essay)).toHaveLength(1);
 });
 
+it("dates a receipt found in history by its own attempt, and mirrors the latest one", async () => {
+  const { t, row, drain, text } = await setup();
+  canvas.fail("post", "acceptThenTimeout");
+  const id = await text("history");
+  await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
+  const ours = Date.parse(canvas.attempts(essay)[0].submitted_at);
+  // Before the check, a different attempt lands a minute later and is graded.
+  vi.setSystemTime(ours + 60_000);
+  canvas.seed(essay, {
+    submission_type: "online_text_entry", body: "<p>A later answer</p>", url: null, attachments: [],
+    graded: { score: 9, grade: "9", posted_at: new Date(ours + 120_000).toISOString() },
+  });
+  await drain();
+
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 1, canvasSubmittedAt: ours });
+  const mirror = await t.run((ctx) => ctx.db.query("assignments").withIndex("by_user_canvasId", (q) => q.eq("userId", userId).eq("canvasId", essay)).unique());
+  expect(mirror?.submission).toMatchObject({ submittedAt: ours + 60_000, workflowState: "graded", score: 9, postedAt: ours + 120_000 });
+  expect(posts()).toHaveLength(1);
+});
+
+it("lets a confirmed Send again replace a conflicting Canvas attempt, once", async () => {
+  const { student, row, drain, text } = await setup();
+  canvas.fail("post", "networkError");
+  const id = await text("conflict");
+  await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
+  canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Typed straight into Canvas</p>", url: null, attachments: [] });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "conflict" });
+
+  // A check alone never replaces anything.
+  await student.mutation(api.submissions.resume, { id });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "conflict", baselineAttempt: 0 });
+
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 2 });
+  expect(posts()).toHaveLength(2);
+  expect(canvas.attempts(essay).map((a) => a.body)).toEqual(["<p>Typed straight into Canvas</p>", "<p>My essay</p><p>Second paragraph</p>"]);
+});
+
+it("finds a late delivery before replacing, and asks again if Canvas moved on", async () => {
+  const { student, row, drain, text } = await setup();
+  canvas.fail("post", "networkError");
+  const id = await text("late");
+  await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
+  canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Other</p>", url: null, attachments: [] });
+  await drain();
+  expect((await row(id))?.errorKind).toBe("conflict");
+
+  // After the student confirms, yet another attempt appears: that needs a new confirmation.
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
+  canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Another</p>", url: null, attachments: [] });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "conflict" });
+  expect(posts()).toHaveLength(1);
+
+  // The original payload then shows up after all: confirmed without sending.
+  canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>My essay</p><p>Second paragraph</p>", url: null, attachments: [] });
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 3 });
+  expect(posts()).toHaveLength(1);
+});
+
+it.each(["rateLimit", "tooManyRequests"] as const)("retries a throttled file upload (%s) instead of failing it", async (fault) => {
+  const { student, row, drain, upload } = await setup();
+  const storageId = await upload(student, new Blob(["%PDF-1 throttled"], { type: "application/pdf" }));
+  canvas.fail("upload", fault);
+  const id = await student.mutation(api.submissions.submit, {
+    clientKey: "throttled", assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId, name: "report.pdf" }] },
+  });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "submitted", attempt: 2 });
+  expect(canvas.attempts(report)).toHaveLength(1);
+  expect(canvas.log.filter((r) => r.host === MOCK_UPLOAD_HOST).every((r) => !r.authorized)).toBe(true);
+});
+
+it("still fails a file upload the upload host refuses outright", async () => {
+  const { student, row, drain, upload, credential } = await setup();
+  const storageId = await upload(student, new Blob(["%PDF-1 denied"], { type: "application/pdf" }));
+  canvas.fail("upload", "forbidden");
+  const id = await student.mutation(api.submissions.submit, {
+    clientKey: "denied", assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId, name: "report.pdf" }] },
+  });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "failed", errorKind: "rejected", attempt: 1 });
+  expect(posts()).toHaveLength(0);
+  expect((await credential())?.status).toBe("active");
+});
+
 it("checks Canvas instead of resending when a reply is lost", async () => {
   const { row, drain, text } = await setup();
   canvas.fail("post", "acceptThenTimeout");
