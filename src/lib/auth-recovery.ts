@@ -19,7 +19,7 @@ export function reportAuthEvent(event: string, reason?: AuthFailure) {
 // A continuity check, not JWT verification. Convex still verifies the signature.
 // Clerk's global getToken helper can observe a new account before React commits
 // that account's new client. Never feed that token to the previous user's queue.
-function belongsToUser(token: string, userId: string | null | undefined): boolean {
+export function belongsToUser(token: string, userId: string | null | undefined): boolean {
   try {
     const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
     const bytes = Uint8Array.from(atob(payload), char => char.charCodeAt(0));

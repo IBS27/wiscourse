@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useDiscardDrafts, useDraft } from "@/lib/drafts";
-import { UploadError, useSubmissionUpload } from "@/lib/submission-upload";
+import { UploadError, useOwnerBoundUploads } from "@/lib/submission-upload";
 import { dayKeyOf, formatDayShort, formatTime } from "@/lib/dates";
 import { errorMessage } from "@/lib/ask";
 import { useNow } from "@/lib/hooks";
@@ -269,7 +269,11 @@ function FilePicker({ files, setFiles, allowed }: { files: File[]; setFiles: (ne
 
 type Upload = (file: File) => Promise<Id<"_storage">>;
 
-/** Stores the files in Convex first, so delivery does not depend on this tab. */
+/**
+ * Stores the files in Convex first, so delivery does not depend on this tab.
+ * `upload` is owner-bound: if the account changes it throws, and no later
+ * file is sent.
+ */
 async function uploadFiles(files: File[], report: (status: string) => void, upload: Upload) {
   const stored = [];
   for (const [i, file] of files.entries()) {
@@ -308,7 +312,7 @@ function ConfirmDialog({
 }) {
   const submit = useMutation(api.submissions.submit);
   const sendAgain = useMutation(api.submissions.sendAgain);
-  const upload = useSubmissionUpload();
+  const beginUploads = useOwnerBoundUploads();
   const online = useOnline();
   const group = `submission:${item.canvasId}`;
   const [status, setStatus] = useDraft<string | null>(`${group}:status`, null);
@@ -321,8 +325,16 @@ function ConfirmDialog({
     setError(null);
     setStatus("Preparing…");
     try {
-      if (resend !== undefined) await sendAgain({ id: resend.id, confirmed: true });
-      else await submit({ ...(await send!(setStatus, upload)), assignmentCanvasId: item.canvasId!, confirmed: true });
+      // Everything after this belongs to the owner who confirmed.
+      const run = beginUploads();
+      if (resend !== undefined) {
+        run.ensureCurrent();
+        await sendAgain({ id: resend.id, confirmed: true });
+      } else {
+        const args = await send!(setStatus, run.upload);
+        run.ensureCurrent();
+        await submit({ ...args, assignmentCanvasId: item.canvasId!, confirmed: true });
+      }
       setStatus(null);
       onQueued();
     } catch (e) {
