@@ -140,3 +140,33 @@ it("reports a missing credential without asking the Workpool to retry", async ()
   expect(state?.status).toBe("error");
   expect(state?.syncLeaseStartedAt).toBeUndefined();
 });
+
+it("holds a steady cadence under cron jitter: 2 min active, never over 15 idle", async () => {
+  const { connect, dispatch, enqueue, student } = setup();
+  await connect();
+  // Crons fire slightly late by varying amounts; one tick every DISPATCH_TICK_MS.
+  const jitter = (tick: number) => ((tick * 7919) % 900);
+  const probes: number[] = [];
+  const beats = new Set([46, 48, 51, 53]); // active from tick 46 to 56 (heartbeats every <=5 min)
+  for (let tick = 1; tick <= 90; tick++) {
+    vi.setSystemTime(now + tick * DISPATCH_TICK_MS + jitter(tick));
+    if (beats.has(tick)) await student.mutation(api.syncSchedule.heartbeat, {});
+    const before = enqueue.mock.calls.length;
+    await dispatch();
+    if (enqueue.mock.calls.length > before) probes.push(tick);
+  }
+  const gaps = probes.slice(1).map((tick, i) => (tick - probes[i]) * DISPATCH_TICK_MS);
+  const idle = [
+    ...gaps.slice(0, probes.indexOf(46) - 1),
+    ...gaps.slice(probes.indexOf(57)),
+  ];
+  // Idle probes keep one steady spacing, never over the 15-minute period.
+  expect(new Set(idle).size).toBe(1);
+  expect(idle[0]).toBeLessThanOrEqual(IDLE_TRIPWIRE_MS);
+  // The return is probed on its own tick, then every tick while active.
+  expect(probes).toContain(46);
+  const active = probes.filter((tick) => tick >= 46 && tick <= 56);
+  expect(active).toEqual([46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56].filter((tick) => active.includes(tick)));
+  expect(active.slice(1).every((tick, i) => tick - active[i] === ACTIVE_TRIPWIRE_MS / DISPATCH_TICK_MS)).toBe(true);
+  expect(active.length).toBeGreaterThanOrEqual(10);
+});

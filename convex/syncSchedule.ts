@@ -8,10 +8,9 @@ import { v } from "convex/values";
 import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { requireUserId } from "./lib/auth";
 import {
-  ACTIVE_TRIPWIRE_MS,
   ACTIVE_WINDOW_MS,
-  DISPATCH_TICK_MS,
   HEARTBEAT_DEDUPE_MS,
+  nextTripwireAt,
 } from "./lib/syncCadence";
 
 async function findSchedule(ctx: MutationCtx, userId: string) {
@@ -68,10 +67,7 @@ export const heartbeat = mutation({
       return null;
     }
     // Back from idle: probe on the next tick, unless one ran moments ago.
-    const promoted = Math.max(
-      now,
-      (row.lastDispatchedAt ?? 0) + ACTIVE_TRIPWIRE_MS - DISPATCH_TICK_MS / 2,
-    );
+    const promoted = Math.max(now, nextTripwireAt(row.lastDispatchedAt ?? 0, true));
     await ctx.db.patch(row._id, { activeUntil, dueAt: Math.min(row.dueAt, promoted) });
     return null;
   },

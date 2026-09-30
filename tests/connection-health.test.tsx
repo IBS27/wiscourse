@@ -59,6 +59,17 @@ it("beats promptly on return, never while hidden or offline", () => {
   expect(beat).toHaveBeenCalledTimes(2);
 });
 
+it("never beats more often than the heartbeat period, however often the user switches back", () => {
+  render(<Heartbeat />);
+  for (let n = 0; n < 6; n++) {
+    vi.advanceTimersByTime(90_000);
+    fireEvent(window, new Event("focus"));
+    fireEvent.keyDown(window);
+  }
+  // Nine minutes of tab switching: the opening beat plus one past five minutes.
+  expect(beat).toHaveBeenCalledTimes(2);
+});
+
 it("reports a lost connection only after a grace period, and clears on reconnect", () => {
   const view = render(<ConnectionBanner />);
   Object.assign(connection, { isWebSocketConnected: false });
