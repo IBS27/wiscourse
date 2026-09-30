@@ -19,7 +19,12 @@ at `/home/srinivasib/Developer/wiscourse` sits at `914e68c`, an ancestor of
 | `70ecd51` | docs: this report (reviewed head) |
 | `0481b9f` | fix(auth): P1 from review, retained client authenticated as another account |
 | `33b5678` | fix(sync): steady idle cadence and a hard 5-minute heartbeat bound |
-| (this doc update) | docs: repair round |
+| `841f0f5` | docs: repair round (published head of PR #11) |
+| `e1ab764` | fix(auth): Bugbot HIGH / Astra P1, retained owner's queued writes sent without auth |
+| `2af8bf1` | fix(drafts): Astra P2, stale saved draft revived by a source cycle |
+| `edc2d63` | docs: review round 2 |
+| `1ab754a` | fix(drafts): Astra recheck, residual P2, saved edit acknowledged while hidden |
+| (this doc update) | docs: review round 3 |
 
 ### Review of `3b5d8d0`
 
@@ -340,6 +345,212 @@ plus two ticks).
 - The Tailscale preview serves this worktree's current files through Vite.
   The dev backend still lacks the new functions.
 
+## Review round 2 (PR #11 at `841f0f5`)
+
+Same worktree and branch, on Fedora, mocked only: jsdom, fake Clerk, the
+installed Convex 1.43.0 `ConvexReactClient` over the controlled peer in
+`tests/helpers/auth-server.ts`. No push, backend, credentials or Canvas.
+
+Inputs: the only PR review comment, Bugbot HIGH
+[discussion_r4149537499](https://github.com/IBS27/wiscourse/pull/11#discussion_r4149537499);
+the other PR comments are the Vercel deploy notice and Bugbot's summary. Also
+Astra's independent review (`/tmp/pr-babysit-20260930/reviews/wiscourse-11/`
+`review.md`, `urgent.md`, `auth-gap-observations.jsonl`,
+`snapshot/tests/reviewer-*.test.tsx`), which confirms the Bugbot finding as
+P1 and adds a P2 on drafts. I read their tests but did not edit anything in
+that directory.
+
+### P1: a retained owner's queued writes went out without auth (`e1ab764`)
+
+Cause. The installed `ConvexProviderWithAuth` calls `client.clearAuth()` in
+an effect cleanup whenever `isLoading`, `isAuthenticated` or `fetchAccessToken`
+changes, or when it unmounts. During a Clerk gap the provider kept A's client,
+but `useClerkAuth` changed its flags (`isLoading: !isLoaded`,
+`isAuthenticated: isSignedIn`), and a missing `sessionId` also remounted
+`BackendSession`. After `clearAuth`, the next socket replayed A's queue with
+no `Authenticate`, and the server's `requireUserId` rejects that permanently.
+A second path had the same result: with Clerk ready, a failed or timed-out
+token refresh resolved `null`, so the SDK sent `Authenticate None` and replayed
+the queue anonymously.
+
+Reproduced on `841f0f5`: authenticate A, close the socket, queue
+`todos.createLocal`, enter the gap, reconnect. Frames per socket:
+
+```
+degraded, no user      [Connect, Auth:A, ModifyQuerySet, Auth:A], [Connect, ModifyQuerySet, Mutation]
+error, no user         [Connect, Auth:A, ModifyQuerySet, Auth:A], [Connect, ModifyQuerySet, Mutation]
+not loaded             [Connect, Auth:A, ModifyQuerySet, Auth:A], [Connect, ModifyQuerySet, Mutation]
+gap past token expiry  [Connect, Auth:A, ModifyQuerySet, Auth:A, Auth:none], [Connect, ModifyQuerySet], [Connect, ModifyQuerySet, Mutation]
+failed refresh, Clerk ready
+                       [Connect, Auth:A, ModifyQuerySet, Auth:A, Auth:none], [Connect, ModifyQuerySet, Mutation, Auth:none]
+```
+
+After the fix, every mutation follows `Auth:user-A` on its own socket, and
+no `Auth:none` is ever sent:
+
+```
+degraded / error / not loaded  [..., Auth:A], [Connect, Auth:A, ModifyQuerySet, Mutation]
+gap past token expiry          [...], [Connect, Auth:A, ModifyQuerySet], [Connect, Auth:A, ModifyQuerySet, Mutation, Auth:A]
+```
+
+Fix, in `src/components/app/auth-provider.tsx` and `src/lib/auth-recovery.ts`:
+
+- Through a gap, `useClerkAuth` keeps reporting the owner as authenticated
+  with the same fetcher, so the Convex provider's inputs don't change and it
+  never calls `clearAuth`. `UserSession` keeps the last non-empty
+  session/org key, and the hook keeps the last token template. Protected UI
+  is still hidden by `AuthBoundary` (`SessionLoading`).
+- Token requests made during a gap wait on a gate until Clerk returns; the
+  10-second bound starts after that.
+- The fetcher answers `null` only on cancellation (the client is disposed or
+  the fetcher replaced). A failure or timeout goes to the recovery UI through
+  the existing `failure` state, and the request stays pending, which keeps
+  the socket paused or stopped.
+- Retry (automatic, Retry button, focus, online) re-requests pending tokens
+  in place. The SDK then finishes its own reauthentication, which is the only
+  path that restarts a stopped socket. A new fetcher (the old generation bump)
+  is used only when nothing is pending, e.g. after the server rejects tokens.
+- Kept: immediate disposal on confirmed logout or on any other signed-in
+  user, resolved or not (`0481b9f`), owner-bound token `sub` checks, and
+  restarts on a real session or organisation change.
+
+Regressions (`tests/auth-transport.test.tsx`, "a retained owner's queued
+write"). The peer now records who sent each mutation and rejects anonymous
+ones with "Not signed in", following Astra's peer. The tests cover Astra's
+five variants (error, degraded and loading with the session missing; error
+and loading with the session unchanged), a gap past token expiry, and a
+failed refresh while Clerk is ready. Each asserts exactly one mutation, sent
+as `user-A`, no rejection, one client, no `clearAuth` in the gap variants,
+and that the draft is kept. All 7 fail on `841f0f5` and pass now. Astra's own
+defect test, run unmodified against the fix, fails all 5 cases (`clearAuth`
+is no longer called). Inverted, it passes all 5 with `mutationOwners:
+["user-A"]`. I removed the temporary copies afterwards. Existing tests for
+foreign-owner switching (ready and unresolved), confirmed logout, late tokens
+after logout, session/org restarts, bounded recovery and exhaustion, offline
+resume, and same-owner loading/error all still pass.
+
+### P2: a saved draft came back after a remote restore (`2af8bf1`)
+
+`useSourcedDraft` chose the new server value for display but kept its stored
+`{source, value}` pair. Title or notes `A`, edit to `AB` and save, server
+confirms `AB`, another tab restores `A`: the old `{A, AB}` pair matched again,
+so TodoDetail showed `AB` and blurring saved it. The pair now moves to each
+new server value the component renders, so an edit lasts only while the value
+it was made against is unchanged. Unsaved edits still survive remounts while
+the server value stays the same.
+
+Coverage: `tests/todo-detail-drafts.test.tsx` runs the actual `TodoDetail` for
+title and notes. It checks that the restore is shown, blur issues no stale
+mutation, an auth remount still shows the server value, and an unsaved edit
+survives a remount. `tests/drafts.test.tsx` adds the hook-level cycle. The 3
+cycle tests fail on `841f0f5` and pass now; the 2 unsaved-edit tests pass on
+both. Astra's three defect repros (`reviewer-todo-draft` title/notes,
+`reviewer-sourced-draft`) now fail as intended: the fix shows `A` where they
+expect `AB`.
+
+### Checks at `2af8bf1`
+
+- `bun run typecheck`, `bun run lint`, `git diff --check`: clean.
+- `bun run test`: 35 files, 286 tests passing.
+
+### Interface notes for task03 and the stack
+
+- `createTokenFetcher` now returns `{ fetchAccessToken, cancelPending,
+  retryPending }`, takes an optional `whenReady`, and never resolves `null`
+  except on cancellation. `createGate` is new. Both are internal to the auth
+  provider.
+- A queued write from task03's submission UI now waits through a Clerk gap
+  or a failed refresh and is sent once as its owner. It is still dropped,
+  never sent, if the owner changes or signs out. Confirmed outbox rows remain
+  the source of truth for pending/failed states.
+- `tests/helpers/auth-server.ts` adds `mutationOwners`, per-socket `sent`,
+  `subjectOf`, and rejects anonymous mutations. Stack tests that rely on
+  anonymous mutations being ignored would need updating; none do in this
+  branch.
+- No backend or cadence file changed in this round.
+
+### Remaining limits
+
+- Mocked only. Not checked in a signed-in browser against real Clerk
+  outages, expiry or cross-tab session changes.
+- On reconnect, Convex re-sends its cached token even if it has expired. The
+  mock accepts it, but a real server answers `AuthError`, and the SDK then
+  reauthenticates using the held-request path above. The server's handling of
+  a mutation that arrives right after an expired `Authenticate` belongs to the
+  SDK and server, and I did not observe it.
+- If the server rejects freshly fetched tokens repeatedly (a configuration
+  fault), the SDK itself gives up and clears auth after its attempt limit.
+  Writes would fail in that state anyway.
+- A held request has no automatic end. The recovery screen offers Retry,
+  Reload and Sign out, and SessionLoading offers Reload.
+- Drafts: a source cycle that finished while the view was hidden was not
+  seen. Fixed in round 3 (`1ab754a`).
+
+## Review round 3 (Astra recheck of `edc2d63`)
+
+Input: `/tmp/pr-babysit-20260930/reviews/wiscourse-11/urgent-recheck.md`,
+`recheck.md` and `candidate/tests/reviewer-todo-draft.test.tsx`. The recheck
+passes the five original auth-gap cases, strict expiry, rejection with manual
+Retry, and foreign-owner expiry. One residual P2 remained.
+
+### Saved title/notes edit revived after a hidden acknowledgement (`1ab754a`)
+
+`useSourcedDraft` reconciled only server values the view rendered. In the
+actual TodoDetail: server `A`, edit `AB`, blur (save pending), auth recovery
+hides the view, the save succeeds, the server goes `AB` then `A` (another
+tab), the view returns. It showed `AB`, and blurring saved it again. The
+app already had the save's promise, so it could retire the edit without
+seeing those values.
+
+Fix (`src/lib/drafts.ts`, `src/components/todo/todo-detail.tsx`):
+
+- `useSourcedDraft` returns `save(sent, send)`. The stored pair records
+  `sent` as in flight. On success, the pair moves onto `sent` through the
+  store, even while unmounted. On failure, the unsaved edit stays, and the
+  next blur retries it. The title sends its trimmed value.
+- When the server returns a value that is in flight (our own save), the draft
+  is rebased onto it, not replaced. An edit typed during the save therefore
+  survives, whether the view is mounted or hidden. Any other new server value
+  still replaces the draft.
+- A save that fails is now caught in the component instead of leaving an
+  unhandled rejection; the edit stays visible.
+
+Regressions (`tests/todo-detail-drafts.test.tsx`, actual TodoDetail, title and
+notes):
+
+- a hidden deferred success followed by a server `AB → A` cycle shows `A`
+  with no stale save on blur;
+- a hidden deferred failure keeps `AB`, and blur retries it;
+- a newer edit typed during the save survives the save's echo and its
+  acknowledgement, in both the mounted and the hidden case.
+
+The first and third fail on `edc2d63` (4 failures); the failure case passes on
+both, as a preservation check. The reviewer's candidate test (2 visible and 2
+hidden cases) passes 4/4, where the 2 hidden cases failed on `edc2d63`.
+
+Checks at `1ab754a`: typecheck, lint and `git diff --check` clean;
+`bun run test` 35 files, 292 tests.
+
+### Not changed, by instruction
+
+- The reviewer's conditional auth probe: a forced refresh returning the
+  earlier, already-expired JWT late, after a newer attempt has started.
+  Accepting a superseded success is a possible hardening. But real Clerk
+  doing this is unverified, the same case also fails on published `841f0f5`,
+  and the instruction was not to widen scope. It stays a documented limit.
+- Repeated rejection of fresh tokens ends in anonymous replay in this
+  candidate, in published `841f0f5`, and in bare Convex 1.43.0 alike. That is
+  inherited SDK terminal-auth behaviour.
+
+### Stack integration note
+
+`git merge-tree 841f0f5 edc2d63 58a53cd9` (reviewer) shows a conflict in
+`src/components/app/auth-provider.tsx`: this branch keeps the `sessionKey`
+while #12 adds its `OwnerSession` upload wrapper. Keep both, and keep #12's
+exported `belongsToUser` used by uploads. This round did not touch
+`auth-provider.tsx`; round 3 changes only `drafts.ts`, `todo-detail.tsx` and
+the TodoDetail test.
+
 ## Draft PR body (not opened; waiting for coordinator review)
 
 Title: Auth session recovery, draft preservation, and adaptive Canvas polling
@@ -354,9 +565,13 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 >   keeps the previous owner's client; token fetchers are bound to their
 >   client's owner, so a queued mutation can never replay under another
 >   account.
+> - Fix: a Clerk gap (loading, error or degraded with no user) or a failed
+>   token refresh no longer drops the owner's client to anonymous auth;
+>   queued writes wait and are sent once, as the owner.
 > - Fix: todo title/notes drafts no longer resurrect an older edit after a
->   later save; route drafts drop on navigation but survive auth remounts;
->   quick-add stays app-wide.
+>   later save or a remote restore, including a save acknowledged while the
+>   view was hidden; edits typed during a save survive it; route drafts drop on navigation but
+>   survive auth remounts; quick-add stays app-wide.
 >
 > **Adaptive polling**
 > - Tripwire queue (`syncSchedule`) read by due time: 2 min while the app is
@@ -375,5 +590,5 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 > **Rollout**: push backend, run `syncSchedule:backfill` once, ship frontend.
 > Run `convex codegen` first; `_generated/api.d.ts` was edited by hand.
 >
-> **Checks**: typecheck, lint, 274 tests. Signed-in browser verification is
+> **Checks**: typecheck, lint, 292 tests. Signed-in browser verification is
 > still pending.

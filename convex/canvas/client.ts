@@ -134,6 +134,9 @@ export class CanvasClient {
       return await this.confirmUpload<T>(response.headers.get("Location"));
     }
     const body = await response.text();
+    // The upload host throttles like Canvas does. Anything else, including a
+    // 401 for the upload grant, is about this upload, never the Canvas token.
+    if (isThrottled(response.status, body)) throw new CanvasRateLimitError(response.status);
     if (!response.ok) {
       throw new CanvasApiError(`Canvas file upload ${response.status}: ${body.slice(0, 200)}`, response.status, body);
     }
@@ -186,10 +189,7 @@ export class CanvasClient {
     ) {
       throw new CanvasAuthError();
     }
-    if (
-      response.status === 429 ||
-      (response.status === 403 && body.includes("Rate Limit Exceeded"))
-    ) {
+    if (isThrottled(response.status, body)) {
       throw new CanvasRateLimitError(response.status);
     }
     throw new CanvasApiError(
@@ -198,6 +198,11 @@ export class CanvasClient {
       body,
     );
   }
+}
+
+/** Canvas throttling: 429, or a 403 whose body says "Rate Limit Exceeded". */
+function isThrottled(status: number, body: string): boolean {
+  return status === 429 || (status === 403 && body.includes("Rate Limit Exceeded"));
 }
 
 function appendParams(target: URLSearchParams, params: QueryParams): void {

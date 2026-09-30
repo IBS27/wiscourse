@@ -366,7 +366,13 @@ function ConfirmDialog({
         </div>
 
         <ul className="mt-3 flex flex-col gap-1 text-[12.5px] text-ink-2">
-          {resend?.status === "unconfirmed" && (
+          {resend?.status === "unconfirmed" && resend.errorKind === "conflict" && (
+            <li className="text-red">
+              Canvas has a newer submission that is not this one. Sending makes a new attempt after it. wiscourse
+              checks Canvas first, and stops if this submission appears or Canvas changes again.
+            </li>
+          )}
+          {resend?.status === "unconfirmed" && resend.errorKind !== "conflict" && (
             <li className="text-red">
               Canvas may already have the earlier send and not show it yet. Sending again could make a second
               attempt. wiscourse checks Canvas first and stops if the earlier send appears.

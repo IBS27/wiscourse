@@ -862,6 +862,11 @@ export default defineSchema({
     canvasSubmittedAt: v.optional(v.number()),
     // The per-user Canvas lease the current attempt holds (see syncStore).
     canvasLease: v.optional(v.number()),
+    // On a conflict: Canvas's latest attempt when it was seen. `sendAgain`
+    // then sets `replaceConfirmed`, and the next attempt sends after that
+    // attempt only if it is still the latest and this payload has not shown up.
+    conflictAttempt: v.optional(v.number()),
+    replaceConfirmed: v.optional(v.boolean()),
     updatedAt: v.number(),
     dismissed: v.optional(v.boolean()),
   })
