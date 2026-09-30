@@ -20,7 +20,9 @@ head as the task03 integration point). The first round was reviewed as
 | `026c177` | fix(submissions): review repairs (was `5185156` before the rebase) |
 | `3772d21` | docs: repair round (reviewed head for the P2 round) |
 | `eed2c6e` | fix(submissions,sync): exact credential identity and server-bound uploads (P2 round) |
-| (this doc) | docs: P2 round |
+| `e0cc6d2` | docs: P2 round (reviewed head for the upload-owner round) |
+| `3199abe` | fix(submissions): bind file uploads to the confirming owner |
+| (this doc) | docs: upload-owner round |
 
 The rebase had no conflicts: task02's round touched `auth-provider.tsx`,
 `activity.ts`, `syncCadence.ts`, `syncSchedule.ts` and their tests; task03
@@ -82,6 +84,64 @@ size too. B cannot attach either, B's own upload of the same bytes gets a
 new id, and A cannot attach the stray blob either. There is no Canvas
 request, no row, and both of A's blobs remain. Unauthenticated uploads get
 401. A then submits the proper upload, and it is freed after Canvas confirms.
+
+### Upload owner binding on the client (upload-owner round)
+
+Review of `e0cc6d2` (a static finding, not reproduced at runtime): the
+upload hook called Clerk's global `getToken` and posted the file without
+checking whose token came back. Clerk can report the next account before
+React disposes the old one (`auth-recovery.ts` already says so), so a
+pending token request, or a multi-file loop still running, could upload A's
+bytes with B's token into B-owned storage. Closing A's Convex client stops
+only the later `submit`, not the HTTP upload.
+
+- `OwnerSession` (`src/lib/owner-session.ts`) wraps each owner's
+  `UserSession` subtree, which the provider keys by owner. It holds an
+  `AbortSignal` that aborts when that owner's session is disposed. Same-owner
+  recovery remounts `BackendSession` below it and leaves the signal alone. A
+  new session for the same account gets a new signal, so work from the old
+  one stays dead.
+- `useOwnerBoundUploads()` (replacing `useSubmissionUpload`) starts one run
+  per confirmation and captures the owner and signal at that point. For each
+  file it:
+  1. checks that the signal is live and that Clerk's live user is still the
+     owner;
+  2. waits for the token but gives up on disposal, ignoring a late result;
+  3. checks again, and refuses a token whose `sub` is not the owner (the
+     existing `belongsToUser` continuity check, now exported);
+  4. posts with the signal, so disposal aborts the request in flight;
+  5. checks again before accepting the result.
+  Any failure throws and stops the remaining files.
+- The dialog calls `run.ensureCurrent()` before `submit` and before
+  `sendAgain`, so a text or URL submission is checked too.
+- Server authentication and the upload ownership registry are unchanged.
+  The client check only decides whether to send; Convex still verifies the
+  token and records its subject.
+
+Regressions (`tests/submission-upload.test.tsx`) use the real hook,
+`OwnerSession` and panel, with Clerk, `fetch` and Convex mocked:
+- A's token request is held, A is disposed for B, and the request resolves
+  with B's token: zero uploads and no submit, even after A signs back in.
+- A leaves and returns, and the old request resolves with A's own token:
+  still zero uploads. Only disposal can stop this one.
+- Clerk reports B while A's panel is still mounted: B's token is refused,
+  nothing is uploaded, and a retry is refused too.
+- Three files, with A disposed during the first upload: that request's
+  signal aborts, a late reply is ignored, and there is no second file and no
+  submit.
+- Same owner with re-renders: both files go up with A's token to
+  `/submissions/upload`, then one submit.
+- Text submission: `submit` is refused while Clerk reports B, and allowed
+  once A is current again.
+
+Removing each guard fails at least one of these tests:
+- the token-subject and Clerk checks: 2 tests;
+- disposal aborting the signal: 2;
+- the signal passed to `fetch`: 1;
+- the check before `submit`: 1.
+
+The mock preview still replaces this hook (it has no Clerk), and so does the
+panel unit test. The owner binding is covered by the test above.
 
 ### Credential invalidation (reworked in the P2 round)
 
@@ -192,33 +252,44 @@ retried; review and cancel in the UI calling nothing.
 - New client env use: `VITE_CONVEX_SITE_URL`, which the ICS feed already
   needs. No new dependency; `@noble/hashes` is no longer imported by the
   panel.
+- Client: `useOwnerBoundUploads(): () => OwnerRun` (`{ upload(file),
+  ensureCurrent() }`) replaces `useSubmissionUpload`. `OwnerSession`,
+  `OwnerSessionContext`, `OwnerLifetime` and `useOwnerLifetime` are new in
+  `src/lib/owner-session.ts`, and `belongsToUser` is exported from
+  `auth-recovery.ts`. `auth-provider.tsx` only adds the `OwnerSession`
+  wrapper; the token fetcher and owner derivation from task02 are unchanged.
+  No backend interface changed in this round.
 
 ## Checks
 
-On `eed2c6e` (the P2 fix; this doc adds no code):
+On `3199abe` (the upload-owner fix; this doc adds no code):
 
 | Check | Result |
 | --- | --- |
 | `bun run typecheck` (app, convex, tests) | passed |
 | `bun run lint` | passed |
-| `bun run test` | passed: 36 files, 295 tests; 12 full runs after the wait fix, the last 5 on the final test code |
-| `tests/submissions.test.ts` | 18 passed, including the ABA (submission and sync) and upload provenance regressions |
-| `tests/sync-schedule.test.ts` | passed with the identity-carrying `markInvalid` call |
-| `tests/submission-panel.test.tsx` | 3 passed (upload hook mocked) |
-| reverting fixes | with `markInvalid` comparing revision only, both ABA tests fail; with `submit` skipping the owner check, the provenance test fails |
-| preview API smoke (mock) | the preview's upload runs the real HTTP action as the preview student, then one submit (upload host sent no token) |
-| `convex codegen` | not run; `_generated/api.d.ts` still hand-edited (no new modules this round) |
-| production build, `tests/browser`, UI or CUA pass | not run (UI verification belongs to the coordinator) |
+| focused: submission-upload, submission-panel, submissions, auth-transport, auth-recovery, profile-menu-auth, drafts, sync-schedule | 8 files, 69 tests passed |
+| `bun run test` | passed: 37 files, 301 tests, 3 consecutive full runs |
+| `bun run build` (local production build, `dist/` ignored) | passed |
+| removing each guard | the new tests fail as listed above |
+| `convex codegen` | not run: blocked, see below |
+| UI or CUA pass | not run (belongs to the coordinator) |
 
-One flaky wait was found and fixed. Under full-suite load, the lease test
-gave the other user's submission a fixed 10 event-loop turns, and its real
-Web Crypto decrypt could take longer; it failed in 1 of about 6 full runs.
-It now waits for the condition, yielding real time without moving the fake
-clock. Two other waits in that test were tightened to wait for the busy
-claim itself.
+Codegen blocker. For an app with components, `convex codegen` loads
+deployment credentials (`loadSelectedDeploymentCredentials`) and runs
+`startComponentsPushAndCodegen` against the deployment URL and admin key
+(`node_modules/convex/dist/esm/cli/codegen.js`, `lib/components.js`).
+There is no offline mode. This worktree has no `CONVEX_DEPLOYMENT` or other
+Convex environment. Providing one, or starting a local backend with
+`convex dev --local`, is outside what this task may do. Whether the
+hand-edited `convex/_generated/api.d.ts` matches generated output is
+therefore unverified. This round changes nothing under `convex/`.
 
-Detailed execution evidence (commands, outputs, logs) is outside the repo:
-`/home/srinivasib/.local/state/wiscourse-evidence/task03-p2/`.
+Earlier rounds' checks and flaky-wait notes: `eed2c6e` passed the full
+suite (295 tests, 12 runs), with the ABA and provenance tests shown to fail
+when their fixes were removed. Evidence:
+`/home/srinivasib/.local/state/wiscourse-evidence/task03-p2/` and, for this
+round, `/home/srinivasib/.local/state/wiscourse-evidence/task03-upload-owner/`.
 
 ## Mock versus real evidence
 
@@ -255,6 +326,11 @@ check-only behaviour; the browser pass is the coordinator's.
   submission by up to its length (polled every 20 s), and a dead holder
   blocks for up to 15 minutes. A dead submission attempt stays "sending"
   for up to 11 minutes before the watchdog moves it on.
+- The client owner check reads Clerk's live `user` and the token's `sub`
+  (continuity, not signature verification). It is verified only against a
+  Clerk mock; real Clerk multi-session switching is unverified. An upload
+  already accepted by the server before disposal stays recorded for its
+  owner (A's own storage) and expires unattached.
 - Upload and record happen in one HTTP request, but not one transaction.
   If the action dies between `store` and `recordUpload`, the blob has no
   owner record and nothing deletes it. Nobody can attach it either.
@@ -276,7 +352,9 @@ Title: Assignment submissions through a confirmed, durable outbox
 > **Flow**
 > - Compose, review in a confirmation dialog, submit. Files go to Convex
 >   storage first through an authenticated upload endpoint that records the
->   uploader; a scheduled action delivers the outbox row.
+>   uploader. The client binds each upload to the confirming account and
+>   stops, aborting any request in flight, if that account's session ends.
+>   A scheduled action delivers the outbox row.
 > - The panel shows queued, checking, uploading, sending, waiting,
 >   confirmed (Canvas's attempt number), failed and not confirmed. Nothing
 >   is marked submitted until Canvas confirms.
@@ -298,7 +376,7 @@ Title: Assignment submissions through a confirmed, durable outbox
 >   also across disconnect and reconnect) does not invalidate the new one,
 >   in submissions or sync.
 >
-> **Testing**: typecheck, lint, 295 tests including 21 for submissions
+> **Testing**: typecheck, lint, build, 301 tests including 27 for submissions
 > against a mock Canvas. A mock-only preview (`tests/submission-preview`)
 > covers each scenario. Nothing has been sent to a real Canvas.
 >
