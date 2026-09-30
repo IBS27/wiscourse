@@ -1,4 +1,4 @@
-import { useDraft } from "@/lib/drafts";
+import { useDraft, useSourcedDraft } from "@/lib/drafts";
 import { useEffect, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
@@ -96,7 +96,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           </span>
         </div>
         {isLocal ? (
-          <EditableTitle key={item.title} title={item.title} onSave={(title) => void updateLocal({ todoId: item.todoId!, title })} />
+          <EditableTitle title={item.title} onSave={(title) => void updateLocal({ todoId: item.todoId!, title })} />
         ) : (
           <h1 className="mt-[7px] mb-[11px] text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">{item.title}</h1>
         )}
@@ -186,7 +186,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Notes */}
       <Block title="Notes">
-        <Notes key={item.notes ?? ""} value={item.notes ?? ""} onSave={(notes) => void setNotes({ ref, notes })} />
+        <Notes value={item.notes ?? ""} onSave={(notes) => void setNotes({ ref, notes })} />
       </Block>
 
       {/* Description (Canvas) */}
@@ -338,9 +338,8 @@ function submissionTitle(item: TodoItem): string {
   }
 }
 
-// Keyed on the incoming value by the caller, so a server update resets the draft.
 function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => void }) {
-  const [value, setValue] = useDraft(`todo:title:${title}`, title);
+  const [value, setValue] = useSourcedDraft("todo:title", title);
   return (
     <input
       value={value}
@@ -383,7 +382,7 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
 }
 
 function Notes({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useDraft(`todo:notes:${value}`, value);
+  const [draft, setDraft] = useSourcedDraft("todo:notes", value);
   return (
     <textarea
       value={draft}

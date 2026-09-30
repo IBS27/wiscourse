@@ -1,4 +1,4 @@
-import { DraftScope } from "@/lib/drafts";
+import { DraftRoute } from "@/lib/drafts";
 import { useEffect } from "react";
 import { createRootRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Sidebar } from "@/components/app/sidebar";
@@ -16,11 +16,13 @@ function RootLayout() {
   // Chats own the full screen on mobile: the composer sits where the tabs would.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const inAsk = pathname.startsWith("/ask");
+  // Quick-add is app-wide: its draft stays outside the route scope, so it
+  // stays open across navigation as before.
   return (
-    <DraftScope value={pathname}>
+    <QuickAddProvider>
       <TimeZoneSync />
       <AskShortcut />
-      <QuickAddProvider>
+      <DraftRoute path={pathname}>
         <div className="flex min-h-dvh">
           <Sidebar />
           <main className={cn("flex min-h-dvh min-w-0 flex-1 flex-col md:h-dvh md:overflow-y-auto md:pb-0", inAsk ? "h-dvh" : "pb-[72px]")}>
@@ -29,8 +31,8 @@ function RootLayout() {
         </div>
         {!inAsk && <BottomTabs />}
         <CommandPalette />
-      </QuickAddProvider>
-    </DraftScope>
+      </DraftRoute>
+    </QuickAddProvider>
   );
 }
 

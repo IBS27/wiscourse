@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { DraftContext, DraftScope, DraftStore, useDraft } from "../src/lib/drafts";
+import { DraftContext, DraftRoute, DraftScope, DraftStore, useDraft, useSourcedDraft } from "../src/lib/drafts";
 import { Composer } from "../src/components/ask/composer";
 import { QuickAddProvider } from "../src/components/app/quick-add";
 import { EventDialog } from "../src/components/calendar/event-dialog";
@@ -98,4 +98,45 @@ it("restores an event draft after recovery but discards it on intentional cancel
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   fireEvent.click(screen.getByRole("button", { name: "Open event" }));
   expect((screen.getByRole("textbox", { name: "Event title" }) as HTMLInputElement).value).toBe("");
+});
+
+it("keeps an unsaved edit through a remount but never resurfaces it over a later server value", () => {
+  const store = new DraftStore();
+  function Notes({ source }: { source: string }) {
+    const [value, setValue] = useSourcedDraft("notes", source);
+    return <textarea aria-label="Notes" value={value} onChange={(e) => setValue(e.target.value)} />;
+  }
+  function App({ source, visible = true }: { source: string; visible?: boolean }) {
+    return <DraftContext value={store}>{visible && <Notes source={source} />}</DraftContext>;
+  }
+  const notes = () => (screen.getByRole("textbox", { name: "Notes" }) as HTMLTextAreaElement).value;
+  const view = render(<App source="A" />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "AB" } });
+  view.rerender(<App source="A" visible={false} />);
+  view.rerender(<App source="A" />);
+  expect(notes()).toBe("AB");
+  view.rerender(<App source="AB" />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "A" } });
+  view.rerender(<App source="A" />);
+  expect(notes()).toBe("A");
+});
+
+it("drops a route's drafts on navigation but not on an auth remount", () => {
+  const store = new DraftStore();
+  function Draft() {
+    const [text, setText] = useDraft("text", "");
+    return <input aria-label="Draft" value={text} onChange={(e) => setText(e.target.value)} />;
+  }
+  function App({ path, visible = true }: { path: string; visible?: boolean }) {
+    return <DraftContext value={store}>{visible && <DraftRoute path={path}><Draft /></DraftRoute>}</DraftContext>;
+  }
+  const text = () => (screen.getByRole("textbox", { name: "Draft" }) as HTMLInputElement).value;
+  const view = render(<App path="/calendar" />);
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Study group" } });
+  view.rerender(<App path="/calendar" visible={false} />);
+  view.rerender(<App path="/calendar" />);
+  expect(text()).toBe("Study group");
+  view.rerender(<App path="/tasks" />);
+  view.rerender(<App path="/calendar" />);
+  expect(text()).toBe("");
 });

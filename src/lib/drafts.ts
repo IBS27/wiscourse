@@ -1,4 +1,7 @@
-import { createContext, useCallback, useContext, useState, useSyncExternalStore, type SetStateAction } from "react";
+import {
+  createContext, createElement, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore,
+  type ReactNode, type SetStateAction,
+} from "react";
 
 /** Memory only, owned by one signed-in user. Also carries pending form submissions. */
 export class DraftStore {
@@ -38,6 +41,32 @@ export function useDraft<T>(name: string, initial: T | (() => T)) {
   const value = useSyncExternalStore(store.subscribe, () => store.read(key, initial));
   const setValue = useCallback((next: SetStateAction<T>) => store.update(key, next), [store, key]);
   return [value, setValue] as const;
+}
+
+/**
+ * An edit of a server value. The draft survives remounts, but a new server
+ * value replaces it, so a stale edit never resurfaces after a later save.
+ */
+export function useSourcedDraft(name: string, source: string) {
+  const [draft, setDraft] = useDraft(name, { source, value: source });
+  const value = draft.source === source ? draft.value : source;
+  const setValue = useCallback((next: string) => setDraft({ source, value: next }), [setDraft, source]);
+  return [value, setValue] as const;
+}
+
+/**
+ * Scopes drafts to a route. They survive auth remounts on that route and are
+ * dropped when the user navigates away, as component state was before.
+ */
+export function DraftRoute({ path, children }: { path: string; children: ReactNode }) {
+  const store = useContext(DraftContext);
+  const previous = useRef(path);
+  useEffect(() => {
+    // Not a cleanup: an auth remount unmounts this component without leaving the route.
+    if (previous.current !== path) store?.discard(`${previous.current}:`);
+    previous.current = path;
+  }, [store, path]);
+  return createElement(DraftScope, { value: path }, children);
 }
 
 export function useDiscardDrafts(group: string) {
