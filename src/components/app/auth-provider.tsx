@@ -12,6 +12,7 @@ import { useSignOut } from "@/lib/sign-out";
 import { useOnline } from "@/lib/online";
 
 const RecoveryContext = createContext<{
+  owner: string;
   generation: number;
   retry: () => void;
   failure: AuthFailure | null;
@@ -31,19 +32,21 @@ export function AuthProvider({ url, createClient = createConvexClient, children 
   const resolved = isLoaded && status !== "error" && !(status === "degraded" && !isSignedIn);
   const identity = isSignedIn ? userId ?? null : null;
   const [lastOwner, setLastOwner] = useState<string | null>(identity);
-  if (resolved && lastOwner !== identity) setLastOwner(identity);
-  // A temporary Clerk loading/error state hides the app but retains its owner.
-  // Only a confirmed logout or different user disposes of the client's queue.
-  const owner = resolved ? identity : lastOwner;
+  // A temporary Clerk loading/error state that reports no user hides the app
+  // but retains its owner, queue and drafts. A confirmed logout, or any report
+  // of a different user, even an unresolved one, disposes of them.
+  const owner = resolved || identity !== null ? identity : lastOwner;
+  if (lastOwner !== owner) setLastOwner(owner);
   if (owner) {
-    return <UserSession key={JSON.stringify([owner, url])} url={url} createClient={createClient}>{children}</UserSession>;
+    return <UserSession key={JSON.stringify([owner, url])} owner={owner} url={url} createClient={createClient}>{children}</UserSession>;
   }
   if (!resolved) return <SessionLoading failed={status === "error" || status === "degraded"} />;
   if (session?.status === "pending") return <RedirectToTasks />;
   return <SignIn />;
 }
 
-function UserSession({ url, createClient, children }: {
+function UserSession({ owner, url, createClient, children }: {
+  owner: string;
   url: string;
   createClient: (url: string) => ConvexReactClient;
   children: ReactNode;
@@ -64,14 +67,14 @@ function UserSession({ url, createClient, children }: {
   if (!client) return <Loading />;
   return (
     <DraftContext value={drafts}>
-      <BackendSession key={JSON.stringify([sessionId, orgId, orgRole])} client={client}>
+      <BackendSession key={JSON.stringify([sessionId, orgId, orgRole])} owner={owner} client={client}>
         {children}
       </BackendSession>
     </DraftContext>
   );
 }
 
-function BackendSession({ client, children }: { client: ConvexReactClient; children: ReactNode }) {
+function BackendSession({ owner, client, children }: { owner: string; client: ConvexReactClient; children: ReactNode }) {
   const [generation, setGeneration] = useState(0);
   const [failure, reportFailure] = useState<AuthFailure | null>(null);
   const retry = useCallback(() => {
@@ -79,7 +82,7 @@ function BackendSession({ client, children }: { client: ConvexReactClient; child
     setGeneration(value => value + 1);
     reportAuthEvent("retry");
   }, []);
-  const recovery = useMemo(() => ({ generation, retry, failure, reportFailure }), [generation, retry, failure]);
+  const recovery = useMemo(() => ({ owner, generation, retry, failure, reportFailure }), [owner, generation, retry, failure]);
   return (
     <RecoveryContext value={recovery}>
       <ConvexProviderWithAuth client={client} useAuth={useClerkAuth}>
@@ -91,18 +94,23 @@ function BackendSession({ client, children }: { client: ConvexReactClient; child
 
 function useClerkAuth() {
   const { isLoaded, isSignedIn, userId, getToken, sessionClaims } = useAuth();
-  const { generation, reportFailure } = useContext(RecoveryContext)!;
+  const { owner, generation, reportFailure } = useContext(RecoveryContext)!;
   const audience = sessionClaims?.aud;
   const nativeToken = audience === "convex" || (Array.isArray(audience) && audience.includes("convex"));
+  // Bound to the client's owner, never to whoever Clerk reports right now:
+  // Clerk can report the next account before this client is disposed.
   const fetcher = useMemo(() => createTokenFetcher({
-    getToken, userId, nativeToken, forceFresh: generation > 0, onFailure: reportFailure,
-  }), [getToken, userId, nativeToken, generation, reportFailure]);
+    getToken, userId: owner, nativeToken, forceFresh: generation > 0, onFailure: reportFailure,
+  }), [getToken, owner, nativeToken, generation, reportFailure]);
   useEffect(() => () => fetcher.cancelPending(), [fetcher]);
+  // While Clerk reports another account, leave this client's auth untouched;
+  // the provider above disposes of it in the same render.
+  const foreign = isSignedIn === true && userId !== owner;
   return useMemo(() => ({
-    isLoading: !isLoaded,
+    isLoading: !isLoaded || foreign,
     isAuthenticated: isSignedIn ?? false,
     fetchAccessToken: fetcher.fetchAccessToken,
-  }), [isLoaded, isSignedIn, fetcher]);
+  }), [isLoaded, foreign, isSignedIn, fetcher]);
 }
 
 function AuthBoundary({ children }: { children: ReactNode }) {

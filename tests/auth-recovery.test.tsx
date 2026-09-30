@@ -388,3 +388,25 @@ it("retains the same user's client during a temporary Clerk loading state", asyn
   expect(client).toBe(owner);
   expect(screen.getByText("Protected app")).toBeTruthy();
 });
+
+it("keeps the same user's client and drafts through a Clerk error", async () => {
+  function Draft() {
+    const [value, setValue] = useDraft("text", "");
+    return <input aria-label="Draft" value={value} onChange={event => setValue(event.target.value)} />;
+  }
+  const app = () => <AuthProvider url="https://example.convex.cloud" createClient={createClient}><Draft /></AuthProvider>;
+  const view = render(app());
+  await flush();
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsaved question" } });
+  const owner = client;
+  clerk.status = "error";
+  view.rerender(app());
+  await flush();
+  expect(screen.queryByRole("textbox")).toBeNull();
+  clerk.status = "ready";
+  view.rerender(app());
+  await flush();
+  expect(client).toBe(owner);
+  expect(owner.close).not.toHaveBeenCalled();
+  expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("Unsaved question");
+});

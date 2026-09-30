@@ -150,3 +150,37 @@ it("never gives an old user's client a token from Clerk's newly switched account
   expect(server.messages.some(message => message.type === "Authenticate" && message.value === newToken)).toBe(false);
   expect(screen.queryByRole("textbox")).toBeNull();
 });
+
+it("never lets an unresolved Clerk state carry another user's token onto a retained client", async () => {
+  // One controlled peer per client, so every frame is attributed to the client that sent it.
+  const peers: ReturnType<typeof createAuthServer>[] = [];
+  const createOwnedClient = (url: string) => {
+    const peer = createAuthServer();
+    peers.push(peer);
+    const owned = new ConvexReactClient(url, { webSocketConstructor: peer.WebSocket, logger: false, unsavedChangesWarning: false });
+    clients.push(owned);
+    return owned;
+  };
+  const subjects = (peer: ReturnType<typeof createAuthServer>) => peer.messages.flatMap(message =>
+    message.type === "Authenticate" && message.value ? [(JSON.parse(atob(message.value.split(".")[1])) as { sub: string }).sub] : []);
+  const Owned = () => <AuthProvider url="https://test.convex.cloud" createClient={createOwnedClient}><Draft /></AuthProvider>;
+  const view = render(<Owned />);
+  await flush();
+  expect(new Set(subjects(peers[0]))).toEqual(new Set(["user-A"]));
+  act(() => peers[0].latest().close());
+  await flush();
+  void clients[0].mutation(api.todos.createLocal, { title: "Private queued A mutation" }).catch(() => {});
+  // Loaded and signed in, but Clerk's status is an error while it reports account B.
+  Object.assign(clerk, { status: "error", userId: "user-B", sessionId: "session-B" });
+  view.rerender(<Owned />);
+  await flush();
+  await advance(2_000);
+  expect(subjects(peers[0]).every(subject => subject === "user-A")).toBe(true);
+  expect(peers[0].messages.some(message => message.type === "Mutation")).toBe(false);
+  // B gets its own client and socket; A's is closed with its queue unsent.
+  expect(peers).toHaveLength(2);
+  expect(peers[1].messages.some(message => message.type === "Mutation")).toBe(false);
+  expect(new Set(subjects(peers[1]))).toEqual(new Set(["user-B"]));
+  expect(peers[0].sockets.every(socket => socket.closed)).toBe(true);
+  expect(screen.queryByRole("textbox")).toBeNull();
+});
