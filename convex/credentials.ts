@@ -12,6 +12,7 @@ import {
   mutation,
   query,
   type ActionCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
@@ -177,6 +178,18 @@ export const markInvalid = internalMutation({
     return null;
   },
 });
+
+/** Whether the user can reach Canvas right now. Never exposes token material. */
+export async function credentialState(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<"active" | "invalid" | "missing"> {
+  const credential = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return credential === null ? "missing" : credential.status;
+}
 
 /**
  * The user has no usable Canvas credential: never connected, disconnected,

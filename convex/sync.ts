@@ -737,6 +737,7 @@ function mapAssignment(
     position: assignment.position,
     htmlUrl: assignment.html_url,
     submissionTypes: assignment.submission_types ?? [],
+    allowedExtensions: assignment.allowed_extensions?.length ? assignment.allowed_extensions : undefined,
     quizCanvasId: assignment.quiz_id,
     discussionCanvasId: assignment.discussion_topic?.id,
     lockedForUser: assignment.locked_for_user,
@@ -757,7 +758,7 @@ function mapAssignment(
   };
 }
 
-function mapSubmission(submission: CanvasSubmission) {
+export function mapSubmission(submission: CanvasSubmission) {
   return {
     submittedAt: toMillis(submission.submitted_at),
     workflowState: submission.workflow_state,

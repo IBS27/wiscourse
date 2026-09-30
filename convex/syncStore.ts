@@ -71,6 +71,7 @@ const assignmentUpsert = v.object({
   position: v.optional(v.number()),
   htmlUrl: v.string(),
   submissionTypes: v.array(v.string()),
+  allowedExtensions: v.optional(v.array(v.string())),
   quizCanvasId: v.optional(v.number()),
   discussionCanvasId: v.optional(v.number()),
   lockedForUser: v.optional(v.boolean()),
@@ -358,40 +359,40 @@ export const applySubmissionUpdates = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const now = Date.now();
     for (const update of args.updates) {
-      const existing = await ctx.db
-        .query("assignments")
-        .withIndex("by_user_canvasId", (q) =>
-          q.eq("userId", args.userId).eq("canvasId", update.assignmentCanvasId),
-        )
-        .unique();
-      await markDoneIfNewlySubmitted(
-        ctx,
-        args.userId,
-        existing,
-        update.submission,
-      );
-      if (existing) {
-        const submission = {
-          ...update.submission,
-          comments: update.submission.comments ?? existing.submission?.comments,
-        };
-        if (!sameValue(existing.submission, submission)) {
-          await ctx.db.patch(existing._id, { submission, syncedAt: now });
-        }
-        await syncListSummary(ctx, "assignments", { ...existing, submission });
-        await updateSearchEntry(ctx, "assignments", {
-          ...existing,
-          submission,
-        });
-      }
-      // An update for an unknown assignment is dropped here; the nightly
-      // full sync will pick the assignment itself up.
+      await applySubmissionUpdate(ctx, args.userId, update.assignmentCanvasId, update.submission);
     }
     return null;
   },
 });
+
+/** Writes the student's submission onto the assignment mirror. */
+export async function applySubmissionUpdate(
+  ctx: MutationCtx,
+  userId: string,
+  assignmentCanvasId: number,
+  update: Infer<typeof submissionFields>,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("assignments")
+    .withIndex("by_user_canvasId", (q) =>
+      q.eq("userId", userId).eq("canvasId", assignmentCanvasId),
+    )
+    .unique();
+  await markDoneIfNewlySubmitted(ctx, userId, existing, update);
+  // An update for an unknown assignment is dropped here; the nightly full
+  // sync will pick the assignment itself up.
+  if (!existing) return;
+  const submission = {
+    ...update,
+    comments: update.comments ?? existing.submission?.comments,
+  };
+  if (!sameValue(existing.submission, submission)) {
+    await ctx.db.patch(existing._id, { submission, syncedAt: Date.now() });
+  }
+  await syncListSummary(ctx, "assignments", { ...existing, submission });
+  await updateSearchEntry(ctx, "assignments", { ...existing, submission });
+}
 
 export const upsertCalendarEvents = internalMutation({
   args: { userId: v.string(), events: v.array(calendarEventUpsert) },
