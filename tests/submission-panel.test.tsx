@@ -53,11 +53,21 @@ it("sends nothing until the student confirms, and reuses the key when confirming
   expect(screen.queryByRole("dialog")).toBeNull();
 });
 
-it("offers a check, not a resend, while Canvas may already have the submission", () => {
-  mocks.panel = panel({ status: "unconfirmed", errorKind: "exhausted", error: "Canvas did not confirm in time." });
+it("offers a check, and a resend only through a warned confirmation, while Canvas may have it", async () => {
+  mocks.panel = panel({ status: "unconfirmed", errorKind: "exhausted", error: "Canvas has not shown this submission yet." });
   show();
   expect(screen.getByRole("button", { name: "Check Canvas again" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: /Submit|Try again/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Submit…|Try again/ })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Send again…" }));
+  expect(screen.getByRole("dialog").textContent).toContain("could make a second");
+  const sendAgain = mocks.mutations.get("submissions:sendAgain")!;
+  expect(sendAgain).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(sendAgain).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Send again…" }));
+  sendAgain.mockResolvedValueOnce(null);
+  await act(async () => fireEvent.click(screen.getByRole("button", { name: "Submit to Canvas" })));
+  expect(sendAgain).toHaveBeenCalledExactlyOnceWith({ id: "row", confirmed: true });
 });
 
 it("sends a student to reconnect instead of offering a retry", () => {

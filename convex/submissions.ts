@@ -12,16 +12,23 @@
 //   a stale action or watchdog with an older number changes nothing.
 // - Canvas has no idempotency key, so each attempt first reads the student's
 //   submission and compares it with the attempt number seen before the
-//   first send. An attempt that may have reached Canvas is checked, never
-//   repeated blindly; if a check is impossible the row ends `unconfirmed`.
+//   first send. Once a send may have reached Canvas (a lost reply, a
+//   timeout, a 5xx, a dead action), the row only checks: a check that finds
+//   nothing is not proof, because Canvas can show a new attempt late. Only
+//   the student sends again, through `sendAgain` and a second confirmation.
+//
+// Every attempt holds the user's Canvas lease (shared with sync, see
+// syncStore), so one token never has two requests in flight.
 //
 // A missing or rejected credential ends the attempt at once: the student
-// reconnects in Settings, then retries. Retrying a dead token cannot help.
+// reconnects in Settings, then retries. A 401 for a token that a reconnect
+// has since replaced does not invalidate the new one.
 
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   internalAction,
   internalMutation,
+  internalQuery,
   mutation,
   query,
   type ActionCtx,
@@ -45,7 +52,7 @@ import {
 import type { CanvasSubmission } from "./canvas/types";
 import { outboxErrorKind, submissionFields } from "./schema";
 import { mapSubmission } from "./sync";
-import { applySubmissionUpdate } from "./syncStore";
+import { applySubmissionUpdate, claimCanvasLease, releaseCanvasLease } from "./syncStore";
 import {
   AUTO_ATTEMPTS,
   CANVAS_TYPE,
@@ -67,8 +74,11 @@ import {
 // Convex stops an action after 10 minutes, so an attempt still marked
 // `sending` after this is dead and the watchdog may start the next one.
 export const LEASE_MS = 11 * 60_000;
+// How long an attempt waits when a sync or another attempt holds the lease.
+export const BUSY_RETRY_MS = 20_000;
 const POST_TIMEOUT_MS = 90_000;
 const UPLOAD_TIMEOUT_MS = 3 * 60_000;
+const UPLOAD_TICKET_MS = 60 * 60_000;
 
 export const RECONNECT_MESSAGE = "Canvas needs to be reconnected. Reconnect in Settings, then try again.";
 
@@ -102,7 +112,7 @@ function view(row: Row) {
     status: row.status,
     step: row.step,
     checkOnly: row.checkOnly,
-    // The next attempt must look before sending.
+    // Canvas may already have it: the next attempt only looks.
     awaitingCheck: row.mayHavePosted === true,
     nextAttemptAt: row.nextAttemptAt,
     error: row.error,
@@ -166,17 +176,82 @@ async function ownRow(ctx: MutationCtx, id: Id<"submissionOutbox">): Promise<Row
 }
 
 // ---------------------------------------------------------------------------
-// Student actions
+// Uploads
+//
+// A storage id alone proves nothing, so files are claimed by content: the
+// signed-in user first declares the file's SHA-256 and size, and only a
+// stored file with that hash and size can be registered to them.
+
+async function uploadOf(ctx: QueryCtx, storageId: Id<"_storage">) {
+  return await ctx.db
+    .query("submissionUploads")
+    .withIndex("by_storage", (q) => q.eq("storageId", storageId))
+    .unique();
+}
 
 /** Files go to Convex storage first so delivery survives a closed tab. */
 export const generateUploadUrl = mutation({
-  args: {},
+  args: { sha256: v.string(), size: v.number() },
   returns: v.string(),
-  handler: async (ctx) => {
-    await requireUserId(ctx);
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    if (!/^[A-Za-z0-9+/]{43}=$/.test(args.sha256)) fail("This file could not be read. Choose it again.");
+    if (!(args.size > 0 && args.size <= MAX_FILE_BYTES)) fail("Files must be between 1 byte and 20 MB.");
+    const now = Date.now();
+    // Uploads never attached to a submission expire; clear a few each time.
+    const stale = await ctx.db
+      .query("submissionUploads")
+      .withIndex("by_user_sha256", (q) => q.eq("userId", userId))
+      .filter((q) => q.and(q.lt(q.field("expiresAt"), now), q.eq(q.field("outboxId"), undefined)))
+      .take(20);
+    for (const upload of stale) {
+      if (upload.storageId !== undefined && (await ctx.db.system.get(upload.storageId)) !== null) {
+        await ctx.storage.delete(upload.storageId);
+      }
+      await ctx.db.delete(upload._id);
+    }
+    await ctx.db.insert("submissionUploads", { userId, sha256: args.sha256, size: args.size, expiresAt: now + UPLOAD_TICKET_MS });
     return await ctx.storage.generateUploadUrl();
   },
 });
+
+/** Records the signed-in user as the owner of a file they just stored. */
+export const registerUpload = mutation({
+  args: { storageId: v.id("_storage") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const userId = await requireUserId(ctx);
+    const stored = await ctx.db.system.get(args.storageId);
+    if (stored === null) fail("This upload did not finish. Choose the file again.");
+    const existing = await uploadOf(ctx, args.storageId);
+    if (existing !== null) {
+      if (existing.userId !== userId) fail("This upload could not be verified. Choose the file again.");
+      return null;
+    }
+    const now = Date.now();
+    const tickets = await ctx.db
+      .query("submissionUploads")
+      .withIndex("by_user_sha256", (q) => q.eq("userId", userId).eq("sha256", stored.sha256))
+      .collect();
+    const ticket = tickets.find((t) => t.storageId === undefined && t.size === stored.size && t.expiresAt > now);
+    if (ticket === undefined) fail("This upload could not be verified. Choose the file again.");
+    await ctx.db.patch(ticket._id, { storageId: args.storageId });
+    return null;
+  },
+});
+
+/** Whether `storageId` belongs to this user and this outbox row. */
+export const uploadOwned = internalQuery({
+  args: { storageId: v.id("_storage"), userId: v.string(), outboxId: v.id("submissionOutbox") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const upload = await uploadOf(ctx, args.storageId);
+    return upload !== null && upload.userId === args.userId && upload.outboxId === args.outboxId;
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Student actions
 
 const content = v.union(
   v.object({ kind: v.literal("text"), text: v.string() }),
@@ -220,7 +295,7 @@ export const submit = mutation({
       fail("A submission for this assignment is already in progress.");
     }
 
-    const fields = await validContent(ctx, args.content, assignment.allowedExtensions);
+    const fields = await validContent(ctx, userId, args.content, assignment.allowedExtensions);
     // A new submission replaces earlier failed ones.
     const earlier = await ctx.db
       .query("submissionOutbox")
@@ -241,12 +316,21 @@ export const submit = mutation({
       attemptsLeft: AUTO_ATTEMPTS,
       updatedAt: Date.now(),
     });
+    for (const file of fields.files ?? []) {
+      const upload = await uploadOf(ctx, file.storageId);
+      await ctx.db.patch(upload!._id, { outboxId: id });
+    }
     await scheduleSend(ctx, id, 0);
     return id;
   },
 });
 
-async function validContent(ctx: MutationCtx, input: Infer<typeof content>, allowedExtensions: string[] | undefined) {
+async function validContent(
+  ctx: MutationCtx,
+  userId: string,
+  input: Infer<typeof content>,
+  allowedExtensions: string[] | undefined,
+): Promise<{ kind: Row["kind"]; text?: string; url?: string; files?: Array<{ storageId: Id<"_storage">; name: string; size: number; contentType: string }> }> {
   switch (input.kind) {
     case "text": {
       const text = input.text.trim();
@@ -266,6 +350,11 @@ async function validContent(ctx: MutationCtx, input: Infer<typeof content>, allo
       const files = [];
       for (const file of input.files) {
         const name = file.name.trim();
+        // Ownership first: nothing about another user's file is read or revealed.
+        const upload = await uploadOf(ctx, file.storageId);
+        if (upload === null || upload.userId !== userId || upload.outboxId !== undefined) {
+          fail(`"${name}" could not be verified as your upload. Choose it again.`);
+        }
         const stored = await ctx.db.system.get(file.storageId);
         if (stored === null) fail(`"${name}" did not finish uploading. Choose it again.`);
         if (name.length === 0 || name.length > 255) fail("A file needs a name under 256 characters.");
@@ -279,8 +368,8 @@ async function validContent(ctx: MutationCtx, input: Infer<typeof content>, allo
 }
 
 /**
- * Moves a stalled row forward, by state: a queued retry runs now, a failed
- * row is sent again, an unconfirmed row is checked against Canvas.
+ * Moves a stalled row forward without sending anything new: a queued retry
+ * runs now, and an unconfirmed row is checked against Canvas once.
  */
 export const resume = mutation({
   args: { id: v.id("submissionOutbox") },
@@ -295,20 +384,46 @@ export const resume = mutation({
       await scheduleSend(ctx, row._id, 0, row.jobId);
       return null;
     }
-    if (row.status !== "failed" && row.status !== "unconfirmed") fail("There is nothing to retry.");
+    if (row.status !== "unconfirmed") fail("There is nothing to check.");
     if ((await credentialState(ctx, row.userId)) !== "active") fail(RECONNECT_MESSAGE);
-    if (row.status === "failed") {
-      if ((await openRow(ctx, row.userId, row.assignmentCanvasId, row._id)) !== null) {
-        fail("A submission for this assignment is already in progress.");
-      }
-      if (row.files?.some((f) => f.canvasFileId === undefined && f.storageId === undefined)) {
-        fail("The files for this submission are gone. Submit them again.");
-      }
+    await ctx.db.patch(row._id, {
+      status: "queued",
+      checkOnly: true,
+      attemptsLeft: 1,
+      nextAttemptAt: undefined,
+      error: undefined,
+      errorKind: undefined,
+      updatedAt: Date.now(),
+    });
+    await scheduleSend(ctx, row._id, 0, row.jobId);
+    return null;
+  },
+});
+
+/**
+ * Sends a failed or unconfirmed row again, after the student confirmed it.
+ * The attempt still reads Canvas first and stops if the earlier send shows.
+ * For an unconfirmed row this can make a second Canvas attempt if the first
+ * is still invisible; the dialog says so.
+ */
+export const sendAgain = mutation({
+  args: { id: v.id("submissionOutbox"), confirmed: v.literal(true) },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const row = await ownRow(ctx, args.id);
+    if (row.dismissed === true) fail("This submission was dismissed.");
+    if (row.status !== "failed" && row.status !== "unconfirmed") fail("This submission is not waiting to be sent again.");
+    if ((await credentialState(ctx, row.userId)) !== "active") fail(RECONNECT_MESSAGE);
+    if ((await openRow(ctx, row.userId, row.assignmentCanvasId, row._id)) !== null) {
+      fail("A submission for this assignment is already in progress.");
+    }
+    if (row.files?.some((f) => f.canvasFileId === undefined && f.storageId === undefined)) {
+      fail("The files for this submission are gone. Submit them again.");
     }
     await ctx.db.patch(row._id, {
       status: "queued",
-      // An unconfirmed row may already be in Canvas: look before sending.
-      checkOnly: row.status === "unconfirmed" ? true : undefined,
+      checkOnly: undefined,
+      mayHavePosted: undefined,
       attemptsLeft: AUTO_ATTEMPTS,
       nextAttemptAt: undefined,
       error: undefined,
@@ -336,12 +451,15 @@ async function dismissRow(ctx: MutationCtx, row: Row) {
   await ctx.db.patch(row._id, { dismissed: true, files: await releaseFiles(ctx, row), updatedAt: Date.now() });
 }
 
+/** Deletes only files registered to this row's owner and this row. */
 async function releaseFiles(ctx: MutationCtx, row: Row) {
   if (row.files === undefined) return undefined;
   for (const file of row.files) {
-    if (file.storageId !== undefined && (await ctx.db.system.get(file.storageId)) !== null) {
-      await ctx.storage.delete(file.storageId);
-    }
+    if (file.storageId === undefined) continue;
+    const upload = await uploadOf(ctx, file.storageId);
+    if (upload === null || upload.userId !== row.userId || upload.outboxId !== row._id) continue;
+    if ((await ctx.db.system.get(file.storageId)) !== null) await ctx.storage.delete(file.storageId);
+    await ctx.db.delete(upload._id);
   }
   return row.files.map((file) => ({ ...file, storageId: undefined }));
 }
@@ -358,7 +476,11 @@ async function scheduleSend(ctx: MutationCtx, id: Id<"submissionOutbox">, delayM
 // ---------------------------------------------------------------------------
 // Delivery
 
-/** Starts an attempt: marks the row `sending` and arms its watchdog. */
+/**
+ * Starts an attempt: takes the user's Canvas lease, marks the row `sending`
+ * and arms its watchdog. While a sync or another attempt holds the lease the
+ * row waits, without using up an attempt.
+ */
 export const claim = internalMutation({
   args: { id: v.id("submissionOutbox") },
   handler: async (ctx, args) => {
@@ -366,6 +488,16 @@ export const claim = internalMutation({
     if (row === null || row.status !== "queued" || row.dismissed === true) return null;
     // A job that `resume` replaced may still fire; only a due row is sent.
     if (row.nextAttemptAt !== undefined && row.nextAttemptAt > Date.now()) return null;
+    const lease = await claimCanvasLease(ctx, row.userId);
+    if (lease === null) {
+      await ctx.db.patch(row._id, {
+        nextAttemptAt: Date.now() + BUSY_RETRY_MS,
+        error: row.error ?? "Waiting for another Canvas request to finish.",
+        updatedAt: Date.now(),
+      });
+      await scheduleSend(ctx, row._id, BUSY_RETRY_MS, row.jobId);
+      return null;
+    }
     const attempt = row.attempt + 1;
     await ctx.db.patch(row._id, {
       status: "sending",
@@ -374,10 +506,11 @@ export const claim = internalMutation({
       attemptsLeft: row.attemptsLeft - 1,
       nextAttemptAt: undefined,
       jobId: undefined,
+      canvasLease: lease,
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(LEASE_MS, internal.submissions.recover, { id: row._id, attempt });
-    return { ...row, attempt };
+    return { ...row, attempt, canvasLease: lease };
   },
 });
 
@@ -418,9 +551,13 @@ const outcome = v.union(
   }),
   v.object({
     type: v.literal("error"),
-    // `retry`: nothing reached Canvas. `check`: it may have; look first.
+    // `retry`: try again as before. `check`: the send may have landed, so
+    // from now on the row only checks.
     kind: v.union(v.literal("retry"), v.literal("check"), outboxErrorKind),
     error: v.string(),
+    // Canvas answered the send and did not take it (throttled, token
+    // replaced): this attempt's send is known not to have landed.
+    notSent: v.optional(v.boolean()),
   }),
 );
 type Outcome = Infer<typeof outcome>;
@@ -455,7 +592,8 @@ export const recover = internalMutation({
 
 async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
   const now = Date.now();
-  const cleared = { step: undefined, checkOnly: undefined, nextAttemptAt: undefined, updatedAt: now };
+  if (row.canvasLease !== undefined) await releaseCanvasLease(ctx, row.userId, row.canvasLease);
+  const cleared = { step: undefined, checkOnly: undefined, nextAttemptAt: undefined, canvasLease: undefined, updatedAt: now };
   if (result.type === "submitted") {
     await ctx.db.patch(row._id, {
       ...cleared,
@@ -470,25 +608,26 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
     await applySubmissionUpdate(ctx, row.userId, row.assignmentCanvasId, result.submission);
     return;
   }
-  const mayHavePosted = row.mayHavePosted === true;
-  const final = (kind: ErrorKind) => {
-    // A refusal is proof Canvas did not take it. Otherwise, while Canvas may
-    // have it, "failed" would invite a duplicate.
-    const definite = kind === "rejected";
-    return ctx.db.patch(row._id, {
+  // A refusal of the send proves Canvas did not take it.
+  const notSent = result.kind === "rejected" || result.notSent === true;
+  const mayHavePosted = row.mayHavePosted === true && !notSent;
+  const final = (kind: ErrorKind) =>
+    ctx.db.patch(row._id, {
       ...cleared,
-      status: !definite && (mayHavePosted || kind === "conflict") ? "unconfirmed" : "failed",
-      mayHavePosted: definite ? undefined : row.mayHavePosted,
+      // While Canvas may have it, "failed" would invite a duplicate.
+      status: mayHavePosted || kind === "conflict" ? "unconfirmed" : "failed",
+      mayHavePosted: mayHavePosted || undefined,
       error: result.error,
       errorKind: kind,
     });
-  };
   if (result.kind !== "retry" && result.kind !== "check") return await final(result.kind);
   if (row.attemptsLeft <= 0) return await final("exhausted");
   const delay = retryDelay(AUTO_ATTEMPTS - row.attemptsLeft, mayHavePosted);
   await ctx.db.patch(row._id, {
     ...cleared,
-    checkOnly: row.checkOnly,
+    // Once a send may have landed, only a confirmed `sendAgain` sends again.
+    checkOnly: result.kind === "check" || row.checkOnly || undefined,
+    mayHavePosted: mayHavePosted || undefined,
     status: "queued",
     nextAttemptAt: now + delay,
     error: result.error,
@@ -497,38 +636,45 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
   await scheduleSend(ctx, row._id, delay);
 }
 
-type Claimed = Row & { attempt: number };
+type Claimed = Row & { attempt: number; canvasLease: number };
+type AttemptState = { step: Step; mayHavePosted: boolean; revision?: number };
 
 class Superseded extends Error {}
 
-/** One delivery attempt. Scheduled by `submit`, `resume` and retries. */
+/** One delivery attempt. Scheduled by `submit`, `resume`, `sendAgain` and retries. */
 export const send = internalAction({
   args: { id: v.id("submissionOutbox") },
   returns: v.null(),
   handler: async (ctx, args) => {
     const row: Claimed | null = await ctx.runMutation(internal.submissions.claim, { id: args.id });
     if (row === null) return null;
-    const state = { step: "checking" as Step, mayHavePosted: row.mayHavePosted === true };
-    let result: Outcome;
+    const state: AttemptState = { step: "checking", mayHavePosted: row.mayHavePosted === true };
     try {
-      result = await deliver(ctx, row, state);
-    } catch (error) {
-      if (error instanceof Superseded) return null;
-      if (error instanceof CanvasAuthError) {
-        await ctx.runMutation(internal.credentials.markInvalid, { userId: row.userId });
+      let result: Outcome;
+      try {
+        result = await deliver(ctx, row, state);
+      } catch (error) {
+        if (error instanceof Superseded) return null;
+        result = classify(error, state);
+        if (error instanceof CanvasAuthError) {
+          // Only the token this attempt used; a reconnect since then stands.
+          const current = await ctx.runMutation(internal.credentials.markInvalid, { userId: row.userId, revision: state.revision });
+          if (!current) {
+            result = { type: "error", kind: "retry", notSent: state.step === "submitting", error: "Canvas was reconnected during this attempt. Trying again." };
+          }
+        }
       }
-      result = classify(error, state);
+      await ctx.runMutation(internal.submissions.finish, { id: row._id, attempt: row.attempt, outcome: result });
+    } finally {
+      // `finish` and the watchdog release the lease; this covers a failure
+      // between them. A stale lease value changes nothing.
+      await ctx.runMutation(internal.syncStore.releaseSync, { userId: row.userId, lease: row.canvasLease });
     }
-    await ctx.runMutation(internal.submissions.finish, { id: row._id, attempt: row.attempt, outcome: result });
     return null;
   },
 });
 
-async function deliver(
-  ctx: ActionCtx,
-  row: Claimed,
-  state: { step: Step; mayHavePosted: boolean },
-): Promise<Outcome> {
+async function deliver(ctx: ActionCtx, row: Claimed, state: AttemptState): Promise<Outcome> {
   const record = async (fields: Progress) => {
     if (fields.step !== undefined) state.step = fields.step;
     if (fields.mayHavePosted !== undefined) state.mayHavePosted = fields.mayHavePosted;
@@ -536,7 +682,8 @@ async function deliver(
     if (!held) throw new Superseded();
   };
 
-  const { client } = await getCanvasClient(ctx, row.userId);
+  const { client, revision } = await getCanvasClient(ctx, row.userId);
+  state.revision = revision;
   const base = `/courses/${row.courseCanvasId}/assignments/${row.assignmentCanvasId}/submissions`;
   const files = row.files ?? [];
   const canvasFileIds = files.flatMap((f) => (f.canvasFileId === undefined ? [] : [f.canvasFileId]));
@@ -555,10 +702,10 @@ async function deliver(
         error: "Canvas shows a newer submission that is not this one. Check Canvas before sending again.",
       };
     }
-    if (state.mayHavePosted) await record({ mayHavePosted: false });
   }
   if (row.checkOnly === true) {
-    return { type: "error", kind: "notReceived", error: "Canvas has no record of this submission. You can send it again." };
+    // Canvas can show a new attempt late, so not seeing it proves nothing.
+    return { type: "error", kind: "check", error: "Canvas has not shown this submission yet." };
   }
 
   const params: Record<string, string | number[]> = { "submission[submission_type]": CANVAS_TYPE[row.kind] };
@@ -572,7 +719,9 @@ async function deliver(
         continue;
       }
       await record({ step: "uploading" });
-      const blob = file.storageId === undefined ? null : await ctx.storage.get(file.storageId);
+      const owned = file.storageId !== undefined &&
+        (await ctx.runQuery(internal.submissions.uploadOwned, { storageId: file.storageId, userId: row.userId, outboxId: row._id }));
+      const blob = owned ? await ctx.storage.get(file.storageId!) : null;
       if (blob === null) return { type: "error", kind: "rejected", error: `"${file.name}" is no longer stored. Submit it again.` };
       const slot = await client.post<CanvasUploadSlot>(`${base}/self/files`, {
         name: file.name,
@@ -601,16 +750,17 @@ function submitted(submission: CanvasSubmission, attempt: number): Outcome {
 }
 
 /** What an error means for the row, given how far the attempt got. */
-export function classify(error: unknown, state: { step: Step; mayHavePosted: boolean }): Outcome {
-  const outcomeOf = (kind: Extract<Outcome, { type: "error" }>["kind"], message: string): Outcome => ({ type: "error", kind, error: message });
+export function classify(error: unknown, state: AttemptState): Outcome {
+  const outcomeOf = (kind: Extract<Outcome, { type: "error" }>["kind"], message: string, notSent?: boolean): Outcome =>
+    ({ type: "error", kind, error: message, ...(notSent && { notSent }) });
+  const posting = state.step === "submitting";
   if (error instanceof CanvasReconnectRequired || error instanceof CanvasAuthError) {
-    return outcomeOf("reconnect", RECONNECT_MESSAGE);
+    return outcomeOf("reconnect", RECONNECT_MESSAGE, posting);
   }
   // Canvas throttles before doing any work.
   if (error instanceof CanvasRateLimitError) {
-    return outcomeOf(state.mayHavePosted ? "check" : "retry", "Canvas is busy. Trying again shortly.");
+    return outcomeOf("retry", "Canvas is busy. Trying again shortly.", posting);
   }
-  const posting = state.step === "submitting";
   if (error instanceof CanvasApiError && error.status >= 400 && error.status < 500 && error.status !== 408) {
     // A refusal of the send itself, or of any step before a possible send, is final.
     if (posting || !state.mayHavePosted) {
@@ -621,7 +771,7 @@ export function classify(error: unknown, state: { step: Step; mayHavePosted: boo
   }
   // Timeouts, network errors and 5xx: if the send went out, it may have landed.
   if (posting || state.mayHavePosted) {
-    return outcomeOf("check", "Canvas did not confirm in time. Checking whether it arrived before trying again.");
+    return outcomeOf("check", "Canvas did not confirm in time. wiscourse will check whether it arrived; it will not send again on its own.");
   }
   return outcomeOf("retry", "Could not reach Canvas. Trying again shortly.");
 }

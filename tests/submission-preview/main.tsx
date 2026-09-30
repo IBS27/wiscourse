@@ -21,13 +21,14 @@ const ASSIGNMENTS = [
   [8108, "Canvas-only type"],
 ] as const;
 
-type Scenario = { label: string; detail: string; faults: Array<{ operation: Operation; fault: Fault; times?: number }> };
+type Scenario = { label: string; detail: string; faults: Array<{ operation: Operation; fault: Fault; times?: number }>; lag?: number };
 const SCENARIOS: Scenario[] = [
   { label: "Canvas accepts", detail: "Check, send, confirmed.", faults: [] },
   { label: "Rate limited twice", detail: "403 Rate Limit Exceeded on the send, twice; retries at 30 s, then 2 min.", faults: [{ operation: "post", fault: "rateLimit", times: 2 }] },
   { label: "Canvas down", detail: "503 on every check: four tries, then failed (nothing was sent).", faults: [{ operation: "check", fault: "serverError", times: 4 }] },
   { label: "Reply lost, Canvas saved it", detail: "Canvas records the attempt but the reply never comes. The next try checks and finds it; no second send.", faults: [{ operation: "post", fault: "acceptThenTimeout" }] },
-  { label: "Send lost, Canvas never saw it", detail: "The send times out without reaching Canvas. The next try checks, finds nothing, sends once more.", faults: [{ operation: "post", fault: "timeout" }] },
+  { label: "Send lost, Canvas never saw it", detail: "The send times out without reaching Canvas. Three checks find nothing; it ends 'Not confirmed yet' and never resends on its own. 'Send again…' asks first.", faults: [{ operation: "post", fault: "timeout" }] },
+  { label: "Reply lost, Canvas slow to show it", detail: "Canvas saves it but hides it from the next 4 checks: three automatic checks, then 'Not confirmed yet'. 'Check Canvas again' twice finds it; one Canvas attempt.", faults: [{ operation: "post", fault: "acceptThenTimeout" }], lag: 4 },
   { label: "Ambiguous, Canvas unreachable", detail: "Reply lost after Canvas saved it, then three failed checks: ends 'Not confirmed yet'. Use 'Check Canvas again'.", faults: [{ operation: "check", fault: "ok" }, { operation: "post", fault: "acceptThenTimeout" }, { operation: "check", fault: "serverError", times: 3 }] },
   { label: "Canvas refuses", detail: "400 on the send: failed at once, no retry.", faults: [{ operation: "post", fault: "reject" }] },
   { label: "Token revoked", detail: "401 on the first check: credential marked invalid, failed with reconnect, no retry.", faults: [{ operation: "check", fault: "unauthenticated" }] },
@@ -81,7 +82,9 @@ function Controls() {
       <Section title="Next Canvas behaviour">
         <div className="flex flex-col gap-1">
           {SCENARIOS.map((s) => (
-            <button key={s.label} className={button} title={s.detail} onClick={() => void control({ action: "clearFaults" }).then(() => control({ action: "fault", faults: s.faults }))}>
+            <button key={s.label} className={button} title={s.detail} onClick={() => void control({ action: "clearFaults" })
+              .then(() => control({ action: "visibilityLag", checks: s.lag ?? 0 }))
+              .then(() => control({ action: "fault", faults: s.faults }))}>
               <span className="font-medium">{s.label}</span>
               <span className="block text-ink-3">{s.detail}</span>
             </button>

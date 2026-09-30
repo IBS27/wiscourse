@@ -4,6 +4,7 @@ import schema from "../convex/schema";
 import { api, internal } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { encryptSecret } from "../convex/lib/crypto";
+import { BUSY_RETRY_MS } from "../convex/submissions";
 import { createMockCanvas, MOCK_INSTANCE, MOCK_UPLOAD_HOST, type MockCanvas } from "./helpers/mock-canvas";
 
 const modules = import.meta.glob("../convex/**/*.{ts,js}");
@@ -11,6 +12,7 @@ const userId = "student";
 const course = 501;
 const essay = 7001; // text or URL
 const report = 7002; // files, pdf only
+const reflection = 7003; // text
 
 let canvas: MockCanvas;
 
@@ -27,18 +29,27 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+async function sha256(blob: Blob) {
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
+  return btoa(String.fromCharCode(...digest));
+}
+
 async function setup() {
   const t = convexTest(schema, modules);
-  const connect = async () => t.mutation(internal.credentials.save, {
-    userId, instance: MOCK_INSTANCE, canvasUserId: 1, canvasUserName: "Student",
-    accessTokenEncrypted: await encryptSecret("mock-token"),
+  // Each connect stores a new token and so a new credential revision.
+  let tokens = 0;
+  const connectAs = async (user: string) => t.mutation(internal.credentials.save, {
+    userId: user, instance: MOCK_INSTANCE, canvasUserId: 1, canvasUserName: user,
+    accessTokenEncrypted: await encryptSecret(`mock-token-${user}-${++tokens}`),
   });
-  await connect();
-  await t.run(async (ctx) => {
-    const base = { userId, courseCanvasId: course, syncedAt: 0, htmlUrl: `https://${MOCK_INSTANCE}/a`, dueAt: Date.now() + 86_400_000 };
+  const seed = (user: string) => t.run(async (ctx) => {
+    const base = { userId: user, courseCanvasId: course, syncedAt: 0, htmlUrl: `https://${MOCK_INSTANCE}/a`, dueAt: Date.now() + 86_400_000 };
     await ctx.db.insert("assignments", { ...base, canvasId: essay, name: "Essay", submissionTypes: ["online_text_entry", "online_url"] });
     await ctx.db.insert("assignments", { ...base, canvasId: report, name: "Report", submissionTypes: ["online_upload"], allowedExtensions: ["pdf"] });
+    await ctx.db.insert("assignments", { ...base, canvasId: reflection, name: "Reflection", submissionTypes: ["online_text_entry"] });
   });
+  await connectAs(userId);
+  await seed(userId);
   const student = t.withIdentity({ subject: userId });
   const row = (id: Id<"submissionOutbox">) => t.run((ctx) => ctx.db.get(id));
   // Runs every due scheduled function, one timer at a time, until none is left.
@@ -51,9 +62,16 @@ async function setup() {
     }
     throw new Error("scheduled work did not settle");
   };
-  const text = (clientKey: string, body = "My essay\n\nSecond paragraph") =>
-    student.mutation(api.submissions.submit, { clientKey, assignmentCanvasId: essay, content: { kind: "text", text: body }, confirmed: true });
-  return { t, student, row, drain, text, connect };
+  const text = (clientKey: string, assignmentCanvasId = essay, as = student) =>
+    as.mutation(api.submissions.submit, { clientKey, assignmentCanvasId, content: { kind: "text", text: "My essay\n\nSecond paragraph" }, confirmed: true });
+  // The client's upload flow: declare the hash, store, register.
+  const upload = async (as: typeof student, blob: Blob) => {
+    await as.mutation(api.submissions.generateUploadUrl, { sha256: await sha256(blob), size: blob.size });
+    const storageId = await t.run((ctx) => ctx.storage.store(blob));
+    await as.mutation(api.submissions.registerUpload, { storageId });
+    return storageId;
+  };
+  return { t, student, row, drain, text, upload, seed, connect: () => connectAs(userId), connectAs };
 }
 
 const posts = () => canvas.log.filter((r) => r.operation === "post");
@@ -86,13 +104,13 @@ it("queues a confirmed submission once and delivers it once", async () => {
 });
 
 it("refuses to queue what Canvas would refuse", async () => {
-  const { t, student, text } = await setup();
+  const { t, student, text, upload } = await setup();
   const submit = (content: Parameters<typeof student.mutation<typeof api.submissions.submit>>[1]["content"], assignmentCanvasId = essay) =>
     student.mutation(api.submissions.submit, { clientKey: crypto.randomUUID(), assignmentCanvasId, content, confirmed: true });
   await expect(submit({ kind: "url", url: "javascript:alert(1)" })).rejects.toThrow("http");
   await expect(submit({ kind: "text", text: "   " })).rejects.toThrow("Write something");
   await expect(submit({ kind: "text", text: "x" }, report)).rejects.toThrow("does not take");
-  const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["x"])));
+  const storageId = await upload(student, new Blob(["x"]));
   await expect(submit({ kind: "file", files: [{ storageId, name: "notes.docx" }] }, report)).rejects.toThrow("does not accept");
 
   await t.run(async (ctx) => {
@@ -103,6 +121,35 @@ it("refuses to queue what Canvas would refuse", async () => {
   expect(await t.run((ctx) => ctx.db.query("submissionOutbox").collect())).toHaveLength(0);
 });
 
+it("lets only the uploader attach, read or free an upload", async () => {
+  const { t, student, row, drain, upload, seed, connectAs } = await setup();
+  await connectAs("other");
+  await seed("other");
+  const other = t.withIdentity({ subject: "other" });
+  const pdf = new Blob(["%PDF-1 A's report"], { type: "application/pdf" });
+  const mine = await upload(student, pdf);
+  const attach = (as: typeof student, clientKey: string) => as.mutation(api.submissions.submit, {
+    clientKey, assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId: mine, name: "report.pdf" }] },
+  });
+
+  // B knows the storage id but not the bytes: every path is refused.
+  await expect(attach(other, "b")).rejects.toThrow("could not be verified");
+  await expect(other.mutation(api.submissions.registerUpload, { storageId: mine })).rejects.toThrow("could not be verified");
+  await other.mutation(api.submissions.generateUploadUrl, { sha256: await sha256(new Blob(["guess"])), size: pdf.size });
+  await expect(other.mutation(api.submissions.registerUpload, { storageId: mine })).rejects.toThrow("could not be verified");
+  await drain();
+  expect(canvas.log).toHaveLength(0);
+  expect(await t.run((ctx) => ctx.db.system.get(mine))).not.toBeNull();
+  expect(await t.run((ctx) => ctx.db.query("submissionOutbox").collect())).toHaveLength(0);
+
+  // A, the uploader, submits it; storage is freed after Canvas confirms.
+  const id = await attach(student, "a");
+  await drain();
+  expect((await row(id))?.status).toBe("submitted");
+  expect(canvas.attempts(report)).toHaveLength(1);
+  expect(await t.run((ctx) => ctx.db.system.get(mine))).toBeNull();
+});
+
 it("retries throttling and outages without a second submission", async () => {
   const { row, drain, text } = await setup();
   canvas.fail("check", "serverError");
@@ -111,6 +158,8 @@ it("retries throttling and outages without a second submission", async () => {
   const id = await text("k");
   await drain();
   expect((await row(id))?.status).toBe("submitted");
+  // A throttled send is known not to have landed, so it is sent again.
+  expect(posts()).toHaveLength(2);
   expect(canvas.attempts(essay)).toHaveLength(1);
 });
 
@@ -124,6 +173,28 @@ it("checks Canvas instead of resending when a reply is lost", async () => {
   expect(canvas.attempts(essay)).toHaveLength(1);
 });
 
+it("keeps only checking while Canvas is slow to show an accepted send", async () => {
+  const { student, row, drain, text } = await setup();
+  canvas.setVisibilityLag(4);
+  canvas.fail("post", "acceptThenTimeout");
+  const id = await text("k");
+  await drain();
+  // Three automatic checks see nothing; absence is not proof, so no resend.
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "exhausted" });
+  expect(posts()).toHaveLength(1);
+
+  // Repeated "Check Canvas again" only looks, until Canvas shows it.
+  await student.mutation(api.submissions.resume, { id });
+  await drain();
+  expect((await row(id))?.status).toBe("unconfirmed");
+  await student.mutation(api.submissions.resume, { id });
+  await student.mutation(api.submissions.resume, { id }).catch(() => undefined);
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 1 });
+  expect(posts()).toHaveLength(1);
+  expect(canvas.attempts(essay)).toHaveLength(1);
+});
+
 it("does not let the student skip the wait before checking a lost send", async () => {
   const { student, row, text } = await setup();
   canvas.fail("post", "timeout");
@@ -133,10 +204,17 @@ it("does not let the student skip the wait before checking a lost send", async (
   await expect(student.mutation(api.submissions.resume, { id })).rejects.toThrow("check Canvas at the time shown");
 });
 
-it("sends again only after Canvas shows the lost send never arrived", async () => {
-  const { row, drain, text } = await setup();
+it("never resends a lost send on its own; the student can, once, after confirming", async () => {
+  const { student, row, drain, text } = await setup();
   canvas.fail("post", "timeout");
   const id = await text("k");
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "exhausted" });
+  expect(posts()).toHaveLength(1);
+  expect(canvas.attempts(essay)).toHaveLength(0);
+
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
+  await expect(student.mutation(api.submissions.sendAgain, { id, confirmed: true })).rejects.toThrow("not waiting");
   await drain();
   expect((await row(id))?.status).toBe("submitted");
   expect(posts()).toHaveLength(2);
@@ -160,24 +238,6 @@ it("leaves a possibly delivered submission unconfirmed until a check settles it"
   expect(posts()).toHaveLength(1);
 });
 
-it("reports a check that finds nothing as failed, and a retry then sends", async () => {
-  const { student, row, drain, text } = await setup();
-  canvas.fail("check", "ok");
-  canvas.fail("post", "timeout");
-  canvas.fail("check", "serverError", 3);
-  const id = await text("k");
-  await drain();
-  expect((await row(id))?.status).toBe("unconfirmed");
-  await student.mutation(api.submissions.resume, { id });
-  await drain();
-  expect(await row(id)).toMatchObject({ status: "failed", errorKind: "notReceived" });
-  expect(posts()).toHaveLength(1);
-  await student.mutation(api.submissions.resume, { id });
-  await drain();
-  expect((await row(id))?.status).toBe("submitted");
-  expect(canvas.attempts(essay)).toHaveLength(1);
-});
-
 it("stops at reconnect-required instead of retrying", async () => {
   const { t, student, row, drain, text, connect } = await setup();
   canvas.fail("check", "unauthenticated");
@@ -187,11 +247,11 @@ it("stops at reconnect-required instead of retrying", async () => {
   expect(canvas.log).toHaveLength(1);
   const credential = await t.run((ctx) => ctx.db.query("canvasCredentials").first());
   expect(credential?.status).toBe("invalid");
-  await expect(student.mutation(api.submissions.resume, { id })).rejects.toThrow("Reconnect");
+  await expect(student.mutation(api.submissions.sendAgain, { id, confirmed: true })).rejects.toThrow("Reconnect");
   await expect(text("new")).rejects.toThrow("Reconnect");
 
   await connect();
-  await student.mutation(api.submissions.resume, { id });
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
   await drain();
   expect((await row(id))?.status).toBe("submitted");
 
@@ -204,14 +264,34 @@ it("stops at reconnect-required instead of retrying", async () => {
   expect(canvas.log).toHaveLength(requests);
 });
 
+it("ignores a late 401 for a token that a reconnect replaced", async () => {
+  const { t, row, drain, text, connect } = await setup();
+  const held = canvas.gate("check");
+  const id = await text("k");
+  await vi.advanceTimersByTimeAsync(0);
+  await held.reached; // the attempt's check, with the first token, is in flight
+
+  await connect(); // the student reconnects with a new token
+  canvas.fail("check", "unauthenticated"); // Canvas rejects the old token
+  held.open();
+  await drain();
+
+  const credential = await t.run((ctx) => ctx.db.query("canvasCredentials").first());
+  expect(credential).toMatchObject({ status: "active", revision: 2 });
+  expect(await t.run((ctx) => ctx.db.query("syncSchedule").first())).not.toBeNull();
+  expect(await row(id)).toMatchObject({ status: "submitted", attempt: 2 });
+  expect(posts()).toHaveLength(1);
+});
+
 it("keeps a submission that may have landed unconfirmed when the token dies mid-check", async () => {
-  const { row, drain, text } = await setup();
+  const { t, row, drain, text } = await setup();
   canvas.fail("post", "acceptThenTimeout");
   canvas.fail("check", "ok");
   canvas.fail("check", "unauthenticated");
   const id = await text("k");
   await drain();
   expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "reconnect" });
+  expect((await t.run((ctx) => ctx.db.query("canvasCredentials").first()))?.status).toBe("invalid");
 });
 
 it("recovers a dead attempt with a check, and ignores the dead action", async () => {
@@ -223,7 +303,7 @@ it("recovers a dead attempt with a check, and ignores the dead action", async ()
   expect((await row(id))?.status).toBe("sending");
 
   await t.mutation(internal.submissions.recover, { id, attempt: 1 });
-  expect((await row(id))?.status).toBe("queued");
+  expect(await row(id)).toMatchObject({ status: "queued", checkOnly: true });
   canvas.releaseStalls();
   await drain();
   expect(await row(id)).toMatchObject({ status: "submitted", attempt: 2 });
@@ -231,12 +311,59 @@ it("recovers a dead attempt with a check, and ignores the dead action", async ()
   expect(canvas.attempts(essay)).toHaveLength(1);
 });
 
+it("keeps one Canvas request in flight per user across submissions and sync", async () => {
+  const { t, row, drain, text, seed, connectAs } = await setup();
+  await connectAs("other");
+  await seed("other");
+  const other = t.withIdentity({ subject: "other" });
+  await t.run(async (ctx) => {
+    const state = await ctx.db.query("syncState").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+    await ctx.db.patch(state!._id, { tripwireSnapshot: "[]" }); // no delta sync
+  });
+  const checks = () => canvas.log.filter((r) => r.operation === "check").length;
+  const tripwires = () => canvas.log.filter((r) => r.operation === "tripwire").length;
+
+  // A sync holds the lease: a submission waits without spending an attempt.
+  const syncHeld = canvas.gate("tripwire");
+  const sync = t.action(internal.sync.tripwireUser, { userId });
+  await syncHeld.reached;
+  const first = await text("first");
+  await vi.advanceTimersByTimeAsync(0);
+  expect(checks()).toBe(0);
+  expect(await row(first)).toMatchObject({ status: "queued", attempt: 0, attemptsLeft: 4 });
+  syncHeld.open();
+  await sync;
+
+  // The submission holds it: a second submission and the sync wait, while
+  // another user's submission goes ahead.
+  const checkHeld = canvas.gate("check");
+  await vi.advanceTimersByTimeAsync(BUSY_RETRY_MS);
+  await checkHeld.reached;
+  const second = await text("second", reflection);
+  await vi.advanceTimersByTimeAsync(0);
+  await t.action(internal.sync.tripwireUser, { userId });
+  expect(tripwires()).toBe(1);
+  const theirs = await text("theirs", essay, other);
+  for (let i = 0; i < 10 && (await row(theirs))?.status !== "submitted"; i++) await vi.advanceTimersByTimeAsync(0);
+  expect((await row(theirs))?.status).toBe("submitted");
+  expect(await row(second)).toMatchObject({ status: "queued", attempt: 0 });
+
+  checkHeld.open();
+  await drain();
+  expect((await row(first))?.status).toBe("submitted");
+  expect((await row(second))?.status).toBe("submitted");
+  await t.action(internal.sync.tripwireUser, { userId });
+  expect(tripwires()).toBe(2);
+  expect(Math.max(...canvas.peakInFlightPerToken())).toBe(1);
+  expect(canvas.peakInFlight()).toBe(2); // the two users did overlap
+});
+
 it("uploads files without the token, once, and frees storage after", async () => {
-  const { t, student, row, drain } = await setup();
-  const a = await t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1 a"], { type: "application/pdf" })));
-  const b = await t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1 b"], { type: "application/pdf" })));
+  const { t, student, row, drain, upload } = await setup();
+  const a = await upload(student, new Blob(["%PDF-1 a"], { type: "application/pdf" }));
+  const b = await upload(student, new Blob(["%PDF-1 b"], { type: "application/pdf" }));
   canvas.setUploadReply("created");
-  canvas.fail("post", "timeout");
+  canvas.fail("post", "rateLimit");
   const id = await student.mutation(api.submissions.submit, {
     clientKey: "files", assignmentCanvasId: report, confirmed: true,
     content: { kind: "file", files: [{ storageId: a, name: "part1.pdf" }, { storageId: b, name: "Part2.PDF" }] },
@@ -250,11 +377,12 @@ it("uploads files without the token, once, and frees storage after", async () =>
   expect(canvas.attempts(report)[0].attachments.map((f) => f.display_name)).toEqual(["part1.pdf", "Part2.PDF"]);
   expect(done?.files?.every((f) => f.storageId === undefined && f.canvasFileId !== undefined)).toBe(true);
   expect(await t.run((ctx) => ctx.db.system.get(a))).toBeNull();
+  expect(await t.run((ctx) => ctx.db.query("submissionUploads").collect())).toHaveLength(0);
 });
 
 it("confirms a redirected upload on the Canvas host only", async () => {
-  const { t, student, row, drain } = await setup();
-  const a = await t.run((ctx) => ctx.storage.store(new Blob(["%PDF-1"], { type: "application/pdf" })));
+  const { student, row, drain, upload } = await setup();
+  const a = await upload(student, new Blob(["%PDF-1"], { type: "application/pdf" }));
   const id = await student.mutation(api.submissions.submit, {
     clientKey: "files", assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId: a, name: "r.pdf" }] },
   });

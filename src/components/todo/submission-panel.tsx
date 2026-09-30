@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { AlertTriangle, Check, FileUp, Link2, Loader2, RotateCw, Type, X } from "lucide-react";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { OutboxView } from "../../../convex/submissions";
@@ -179,9 +180,9 @@ function Composer({ item, panel }: { item: TodoItem; panel: Panel }) {
           panel={panel}
           content={pending}
           onCancel={() => setConfirming(null)}
-          send={async (report, generateUploadUrl) => {
+          send={async (report, uploads) => {
             const content = kind === "file"
-              ? { kind, files: await uploadFiles(files, report, generateUploadUrl) }
+              ? { kind, files: await uploadFiles(files, report, uploads) }
               : kind === "text" ? { kind, text } : { kind, url };
             report("Adding to the outbox…");
             return { clientKey: confirming, content };
@@ -268,21 +269,39 @@ function FilePicker({ files, setFiles, allowed }: { files: File[]; setFiles: (ne
 
 class UploadError extends Error {}
 
-/** Stores the files in Convex first, so delivery does not depend on this tab. */
-async function uploadFiles(files: File[], report: (status: string) => void, generateUploadUrl: () => Promise<string>) {
+type Uploads = {
+  generateUploadUrl: (args: { sha256: string; size: number }) => Promise<string>;
+  registerUpload: (args: { storageId: Id<"_storage"> }) => Promise<null>;
+};
+
+/**
+ * Stores the files in Convex first, so delivery does not depend on this tab.
+ * The server takes a file as this user's only if its hash matches the one
+ * declared here, so a storage id alone cannot claim someone else's upload.
+ */
+async function uploadFiles(files: File[], report: (status: string) => void, uploads: Uploads) {
   const stored = [];
   for (const [i, file] of files.entries()) {
     report(`Uploading ${i + 1} of ${files.length}…`);
-    const response = await fetch(await generateUploadUrl(), {
+    const url = await uploads.generateUploadUrl({ sha256: base64Sha256(new Uint8Array(await file.arrayBuffer())), size: file.size });
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": file.type || "application/octet-stream" },
       body: file,
     });
     if (!response.ok) throw new UploadError(`"${file.name}" did not upload (error ${response.status}). Try again.`);
     const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
+    await uploads.registerUpload({ storageId });
     stored.push({ storageId, name: file.name });
   }
   return stored;
+}
+
+// Web Crypto needs a secure origin; this hash does not.
+function base64Sha256(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of sha256(bytes)) binary += String.fromCharCode(byte);
+  return btoa(binary);
 }
 
 // ---------------------------------------------------------------------------
@@ -292,7 +311,8 @@ type SubmitArgs = Parameters<ReturnType<typeof useMutation<typeof api.submission
 
 /**
  * The explicit confirmation before any Canvas write. `send` prepares the
- * mutation arguments (uploading files first); `retry` resends an outbox row.
+ * mutation arguments (uploading files first); `resend` sends an outbox row
+ * again, warning when Canvas may already have it.
  */
 function ConfirmDialog({
   item,
@@ -300,23 +320,21 @@ function ConfirmDialog({
   content,
   onCancel,
   send,
-  retry,
+  resend,
   onQueued,
 }: {
   item: TodoItem;
   panel: Panel;
   content: Pending;
   onCancel: () => void;
-  send?: (
-    report: (status: string) => void,
-    generateUploadUrl: () => Promise<string>,
-  ) => Promise<Omit<SubmitArgs, "assignmentCanvasId" | "confirmed">>;
-  retry?: Id<"submissionOutbox">;
+  send?: (report: (status: string) => void, uploads: Uploads) => Promise<Omit<SubmitArgs, "assignmentCanvasId" | "confirmed">>;
+  resend?: OutboxView;
   onQueued: () => void;
 }) {
   const submit = useMutation(api.submissions.submit);
-  const resume = useMutation(api.submissions.resume);
+  const sendAgain = useMutation(api.submissions.sendAgain);
   const generateUploadUrl = useMutation(api.submissions.generateUploadUrl);
+  const registerUpload = useMutation(api.submissions.registerUpload);
   const online = useOnline();
   const group = `submission:${item.canvasId}`;
   const [status, setStatus] = useDraft<string | null>(`${group}:status`, null);
@@ -329,8 +347,8 @@ function ConfirmDialog({
     setError(null);
     setStatus("Preparing…");
     try {
-      if (retry !== undefined) await resume({ id: retry });
-      else await submit({ ...(await send!(setStatus, () => generateUploadUrl())), assignmentCanvasId: item.canvasId!, confirmed: true });
+      if (resend !== undefined) await sendAgain({ id: resend.id, confirmed: true });
+      else await submit({ ...(await send!(setStatus, { generateUploadUrl, registerUpload })), assignmentCanvasId: item.canvasId!, confirmed: true });
       setStatus(null);
       onQueued();
     } catch (e) {
@@ -347,7 +365,7 @@ function ConfirmDialog({
     <Dialog open onOpenChange={(next) => { if (!next && !busy) close(); }}>
       <DialogContent className="max-w-[480px] p-5">
         <DialogTitle className="text-[15px] font-semibold tracking-[-0.015em]">
-          {retry !== undefined ? "Send this submission again?" : "Submit to Canvas?"}
+          {resend !== undefined ? "Send this submission again?" : "Submit to Canvas?"}
         </DialogTitle>
         <DialogDescription className="mt-1 text-[12.5px] text-ink-3">
           {item.title}
@@ -362,6 +380,12 @@ function ConfirmDialog({
         </div>
 
         <ul className="mt-3 flex flex-col gap-1 text-[12.5px] text-ink-2">
+          {resend?.status === "unconfirmed" && (
+            <li className="text-red">
+              Canvas may already have the earlier send and not show it yet. Sending again could make a second
+              attempt. wiscourse checks Canvas first and stops if the earlier send appears.
+            </li>
+          )}
           {panel.submittedAt !== undefined && <li>Canvas keeps your earlier submission. This becomes a new attempt.</li>}
           {late && <li className="text-red">The due date has passed. Canvas may mark this late.</li>}
           <li>wiscourse sends it in the background and shows here when Canvas confirms it.</li>
@@ -412,7 +436,7 @@ function ContentPreview({ content }: { content: Pending }) {
 function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem; panel: Panel; now: number }) {
   const resume = useMutation(api.submissions.resume);
   const dismiss = useMutation(api.submissions.dismiss);
-  const [retrying, setRetrying] = useState(false);
+  const [resending, setResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reconnect = panel.credential !== "active";
   const act = (run: () => Promise<unknown>) => {
@@ -476,7 +500,7 @@ function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem
           {reconnect ? (
             <Button size="xs" variant="outline" asChild><Link to="/settings">Reconnect in Settings</Link></Button>
           ) : (
-            <Button size="xs" variant="outline" onClick={() => setRetrying(true)}>Try again…</Button>
+            <Button size="xs" variant="outline" onClick={() => setResending(true)}>Try again…</Button>
           )}
           {dismissButton}
         </>
@@ -488,7 +512,7 @@ function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem
       title = row.errorKind === "conflict" ? "Canvas has a different submission" : "Not confirmed yet";
       detail = (
         <>
-          {row.error} Canvas may already have this. Check again before sending anything new.
+          {row.error} Canvas may already have this. wiscourse will not send it again unless you choose to.
         </>
       );
       actions = (
@@ -496,7 +520,10 @@ function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem
           {reconnect ? (
             <Button size="xs" variant="outline" asChild><Link to="/settings">Reconnect in Settings</Link></Button>
           ) : (
-            <Button size="xs" variant="outline" onClick={() => act(() => resume({ id: row.id }))}>Check Canvas again</Button>
+            <>
+              <Button size="xs" variant="outline" onClick={() => act(() => resume({ id: row.id }))}>Check Canvas again</Button>
+              <Button size="xs" variant="ghost" onClick={() => setResending(true)}>Send again…</Button>
+            </>
           )}
           {item.htmlUrl && (
             <Button size="xs" variant="ghost" asChild>
@@ -538,14 +565,14 @@ function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem
           {actions && <div className="mt-2 flex flex-wrap items-center gap-1">{actions}</div>}
         </div>
       </div>
-      {retrying && (
+      {resending && (
         <ConfirmDialog
           item={item}
           panel={panel}
           content={row.kind === "text" ? { kind: "text", text: row.text ?? "" } : row.kind === "url" ? { kind: "url", url: row.url ?? "" } : { kind: "file", files: row.files ?? [] }}
-          retry={row.id}
-          onCancel={() => setRetrying(false)}
-          onQueued={() => setRetrying(false)}
+          resend={row}
+          onCancel={() => setResending(false)}
+          onQueued={() => setResending(false)}
         />
       )}
     </div>
@@ -556,7 +583,6 @@ const FAILED_TITLE = {
   rejected: "Canvas refused this submission",
   reconnect: "Canvas needs to be reconnected",
   exhausted: "Could not reach Canvas",
-  notReceived: "Canvas did not receive it",
   conflict: "Canvas has a different submission",
 } as const;
 

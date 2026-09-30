@@ -297,8 +297,7 @@ export const outboxStatus = v.union(
 export const outboxErrorKind = v.union(
   v.literal("rejected"), // Canvas refused it
   v.literal("reconnect"), // no usable credential
-  v.literal("exhausted"), // automatic retries ran out
-  v.literal("notReceived"), // a check found nothing in Canvas
+  v.literal("exhausted"), // automatic retries or checks ran out
   v.literal("conflict"), // Canvas has a newer submission that is not this one
 );
 
@@ -507,6 +506,9 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     scope: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("invalid")),
+    // Bumped on every save, so a request made with an older token cannot
+    // invalidate the one that replaced it. Unset reads as 0.
+    revision: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   syncState: defineTable({
@@ -858,11 +860,29 @@ export default defineSchema({
     errorKind: v.optional(outboxErrorKind),
     canvasAttempt: v.optional(v.number()),
     canvasSubmittedAt: v.optional(v.number()),
+    // The per-user Canvas lease the current attempt holds (see syncStore).
+    canvasLease: v.optional(v.number()),
     updatedAt: v.number(),
     dismissed: v.optional(v.boolean()),
   })
     .index("by_user_clientKey", ["userId", "clientKey"])
     .index("by_user_assignment", ["userId", "assignmentCanvasId"]),
+
+  // Who uploaded each submission file. `generateUploadUrl` records a ticket
+  // for the signed-in user and the file's SHA-256; `registerUpload` binds a
+  // stored file to the ticket whose hash and size it matches, so only a
+  // user who had the bytes can claim the storage id. Attaching, reading and
+  // deleting a file all check this owner.
+  submissionUploads: defineTable({
+    userId: v.string(),
+    sha256: v.string(), // base64, as Convex records it
+    size: v.number(),
+    expiresAt: v.number(),
+    storageId: v.optional(v.id("_storage")),
+    outboxId: v.optional(v.id("submissionOutbox")),
+  })
+    .index("by_user_sha256", ["userId", "sha256"])
+    .index("by_storage", ["storageId"]),
 
   // Tokens per user per campus day, for the daily allowance.
   assistantUsage: defineTable({

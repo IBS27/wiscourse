@@ -82,6 +82,7 @@ export const save = internalMutation({
       canvasUserName: args.canvasUserName,
       accessTokenEncrypted: args.accessTokenEncrypted,
       status: "active" as const,
+      revision: (existing?.revision ?? 0) + 1,
     };
     if (existing) {
       await ctx.db.patch(existing._id, fields);
@@ -165,17 +166,25 @@ export const getForUser = internalQuery({
   },
 });
 
+/**
+ * Canvas rejected a token. With `revision`, only that credential is marked:
+ * a request that started before a reconnect must not invalidate the new
+ * token. Returns whether anything was marked.
+ */
 export const markInvalid = internalMutation({
-  args: { userId: v.string() },
-  returns: v.null(),
+  args: { userId: v.string(), revision: v.optional(v.number()) },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     const credential = await ctx.db
       .query("canvasCredentials")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
+    if (args.revision !== undefined && (credential === null || (credential.revision ?? 0) !== args.revision)) {
+      return false;
+    }
     if (credential) await ctx.db.patch(credential._id, { status: "invalid" });
     await removeSyncSchedule(ctx, args.userId);
-    return null;
+    return credential !== null;
   },
 });
 
@@ -206,6 +215,8 @@ export class CanvasReconnectRequired extends Error {
 export interface CanvasSession {
   client: CanvasClient;
   credential: Doc<"canvasCredentials">;
+  /** The credential revision this client's token belongs to; not secret. */
+  revision: number;
   /** Latest X-Rate-Limit-Remaining seen on this session, if any. */
   rateLimitRemaining: () => number | undefined;
 }
@@ -214,7 +225,8 @@ export interface CanvasSession {
  * The single entry point for reaching Canvas on behalf of a user.
  * Actions only (decryption needs Web Crypto). Throws CanvasReconnectRequired
  * without a usable credential. A CanvasAuthError from a request means Canvas
- * rejected the token: run `internal.credentials.markInvalid` for the user.
+ * rejected the token: run `internal.credentials.markInvalid` for the user,
+ * passing the session's `revision`.
  */
 export async function getCanvasClient(
   ctx: ActionCtx,
@@ -239,5 +251,5 @@ export async function getCanvasClient(
       remaining = value;
     },
   });
-  return { client, credential, rateLimitRemaining: () => remaining };
+  return { client, credential, revision: credential.revision ?? 0, rateLimitRemaining: () => remaining };
 }

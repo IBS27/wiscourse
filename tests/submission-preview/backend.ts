@@ -94,9 +94,13 @@ export const UPLOAD_PATH = "/__mock/upload";
 /** A call from the page, as the signed-in preview student. */
 export async function call(type: "query" | "mutation" | "action", name: string, args: Record<string, unknown>) {
   await ready;
-  // Uploads go to this server, never to a Convex deployment.
-  if (name === "submissions:generateUploadUrl") return { value: UPLOAD_PATH };
   try {
+    // The real mutation records the upload ticket; the bytes then go to this
+    // server, never to a Convex deployment.
+    if (name === "submissions:generateUploadUrl") {
+      await student.mutation(makeFunctionReference<"mutation">(name), args);
+      return { value: UPLOAD_PATH };
+    }
     const value = type === "query"
       ? await student.query(makeFunctionReference<"query">(name), args)
       : type === "mutation"
@@ -119,6 +123,7 @@ export type Control =
   | { action: "fault"; faults: Array<{ operation: Operation; fault: Fault; times?: number }> }
   | { action: "clearFaults" }
   | { action: "delay"; ms: number }
+  | { action: "visibilityLag"; checks: number }
   | { action: "uploadReply"; mode: "redirect" | "created" }
   | { action: "credential"; state: "active" | "invalid" | "missing" }
   | { action: "expireLease" }
@@ -133,6 +138,9 @@ export async function control(command: Control) {
       break;
     case "clearFaults":
       canvas.clearFaults();
+      break;
+    case "visibilityLag":
+      canvas.setVisibilityLag(command.checks);
       break;
     case "delay":
       canvas.setDelay(command.ms);

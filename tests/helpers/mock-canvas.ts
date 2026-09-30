@@ -6,7 +6,7 @@
 export const MOCK_INSTANCE = "canvas.mock.invalid";
 export const MOCK_UPLOAD_HOST = "upload.mock.invalid";
 
-export type Operation = "check" | "slot" | "upload" | "confirm" | "post";
+export type Operation = "check" | "slot" | "upload" | "confirm" | "post" | "tripwire";
 
 export type Fault =
   | "ok" // a normal reply, to aim a later fault at a later request
@@ -26,6 +26,8 @@ export interface MockSubmission {
   body: string | null;
   url: string | null;
   attachments: Array<{ id: number; display_name: string }>;
+  // Checks left before this attempt shows in `submissions/self` (Canvas lag).
+  hiddenForChecks?: number;
 }
 
 export interface LoggedRequest {
@@ -57,21 +59,35 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
   let delayMs = 0;
   let uploadReply: "redirect" | "created" = "redirect";
   let stalls: Array<() => void> = [];
+  let visibilityLag = 0;
+  const gates: Array<{ operation: Operation; arrived: () => void; opened: Promise<void> }> = [];
+  // In-flight requests per access token, keyed by an opaque label so no
+  // token value is kept or shown.
+  const tokenLabels = new Map<string, string>();
+  const inFlight = new Map<string, number>();
+  const peakPerToken = new Map<string, number>();
+  let inFlightTotal = 0;
+  let peakTotal = 0;
 
-  function submissionJson(assignmentId: number) {
-    const history = attempts.get(assignmentId) ?? [];
+  function submissionJson(assignmentId: number, visibleOnly = false) {
+    const all = attempts.get(assignmentId) ?? [];
+    const history = visibleOnly ? all.filter((s) => !(s.hiddenForChecks! > 0)) : all;
     const latest = history.at(-1);
     const base = { id: assignmentId * 10, assignment_id: assignmentId, score: null, grade: null, posted_at: null, late: false, missing: false };
     if (latest === undefined) {
       return { ...base, attempt: null, workflow_state: "unsubmitted", submitted_at: null, submission_type: null, body: null, url: null, attachments: [], submission_history: [] };
     }
-    const versions = history.map((s) => ({ ...base, ...s, workflow_state: "submitted" }));
+    const versions = history.map((s) => {
+      const { hiddenForChecks, ...shown } = s;
+      void hiddenForChecks;
+      return { ...base, ...shown, workflow_state: "submitted" };
+    });
     return { ...versions.at(-1)!, submission_history: versions };
   }
 
   function record(assignmentId: number, submission: Omit<MockSubmission, "attempt" | "submitted_at">) {
     const history = attempts.get(assignmentId) ?? [];
-    history.push({ ...submission, attempt: history.length + 1, submitted_at: new Date(now()).toISOString() });
+    history.push({ ...submission, attempt: history.length + 1, submitted_at: new Date(now()).toISOString(), hiddenForChecks: visibilityLag });
     attempts.set(assignmentId, history);
   }
 
@@ -101,9 +117,32 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
       authorized: headers.has("Authorization"), status: 404,
     };
     log.push(entry);
-    if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
-    if (route === undefined) return json({ errors: [{ message: "Not found" }] }, 404);
+    const auth = headers.get("Authorization");
+    const label = auth === null ? null : (tokenLabels.get(auth) ?? `token-${tokenLabels.size + 1}`);
+    if (auth !== null && label !== null) tokenLabels.set(auth, label);
+    if (label !== null) {
+      const count = (inFlight.get(label) ?? 0) + 1;
+      inFlight.set(label, count);
+      peakPerToken.set(label, Math.max(peakPerToken.get(label) ?? 0, count));
+    }
+    peakTotal = Math.max(peakTotal, ++inFlightTotal);
+    try {
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (route === undefined) return json({ errors: [{ message: "Not found" }] }, 404);
+      const gate = gates.findIndex((g) => g.operation === route.operation);
+      if (gate >= 0) {
+        const [{ arrived, opened }] = gates.splice(gate, 1);
+        arrived();
+        await opened;
+      }
+      return await respond(route, init, entry);
+    } finally {
+      inFlightTotal -= 1;
+      if (label !== null) inFlight.set(label, inFlight.get(label)! - 1);
+    }
+  }
 
+  async function respond(route: NonNullable<ReturnType<typeof matchRoute>>, init: RequestInit, entry: LoggedRequest): Promise<Response> {
     const fault = takeFault(route.operation);
     entry.fault = fault;
     const reply = (response: Response) => {
@@ -161,6 +200,9 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
       };
     }
     const path = url.pathname.replace(/^\/api\/v1/, "");
+    if (method === "GET" && path === "/users/self/activity_stream/summary") {
+      return { operation: "tripwire", handle: async () => json([]) };
+    }
     const confirm = path.match(/^\/files\/(\d+)\/create_success$/);
     if (confirm && method === "GET") {
       return { operation: "confirm", handle: async () => json(files.get(Number(confirm[1])) ?? {}, files.has(Number(confirm[1])) ? 200 : 404) };
@@ -169,7 +211,14 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
     if (!match) return undefined;
     const assignmentId = Number(match[2]);
     if (method === "GET" && match[3] === "/self") {
-      return { operation: "check", handle: async () => json(submissionJson(assignmentId)) };
+      return {
+        operation: "check",
+        handle: async () => {
+          const body = submissionJson(assignmentId, true);
+          for (const s of attempts.get(assignmentId) ?? []) if (s.hiddenForChecks! > 0) s.hiddenForChecks! -= 1;
+          return json(body);
+        },
+      };
     }
     if (method === "POST" && match[4] !== undefined) {
       return {
@@ -219,6 +268,24 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
     pendingFaults: () => faults.map((f) => `${f.operation}:${f.fault}`),
     clearFaults: () => void faults.splice(0),
     setDelay: (ms: number) => void (delayMs = ms),
+    /** New attempts stay out of `submissions/self` for this many checks. */
+    setVisibilityLag: (checks: number) => void (visibilityLag = checks),
+    /**
+     * Holds the next request for `operation` until `open()`; `arrived`
+     * resolves once it is waiting. For slow-transport races.
+     */
+    gate: (operation: Operation) => {
+      let arrived!: () => void;
+      let open!: () => void;
+      const reached = new Promise<void>((resolve) => { arrived = resolve; });
+      const opened = new Promise<void>((resolve) => { open = resolve; });
+      gates.push({ operation, arrived, opened });
+      return { reached, open };
+    },
+    /** Most requests one token ever had in flight at once, per token. */
+    peakInFlightPerToken: () => [...peakPerToken.values()],
+    /** Most requests in flight at once across all tokens. */
+    peakInFlight: () => peakTotal,
     /** Ends stalled requests, as a dead action's sockets would close. */
     releaseStalls: () => {
       for (const release of stalls) release();
@@ -232,6 +299,13 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
       faults.splice(0);
       log.splice(0);
       delayMs = 0;
+      visibilityLag = 0;
+      gates.splice(0);
+      tokenLabels.clear();
+      inFlight.clear();
+      peakPerToken.clear();
+      inFlightTotal = 0;
+      peakTotal = 0;
       stalls = []; // left hanging: their actions belong to a discarded backend
     },
   };

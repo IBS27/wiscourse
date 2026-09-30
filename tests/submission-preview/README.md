@@ -14,5 +14,9 @@ credential, and shows Canvas's own attempts, the outbox rows and every Canvas
 request. "Canvas attempts" is the ground truth for duplicates.
 
 Retries run on real time: 30 s, 2 min, 8 min, and at least 90 s before checking
-a send whose reply was lost. "Try now" skips a wait unless the send may have
-landed. "Expire lease" does what the 11-minute watchdog does.
+a send whose reply was lost. After such a send the row only checks Canvas; it
+sends again only when the student chooses "Send again…" and confirms. "Try
+now" skips a wait unless the send may have landed. "Expire lease" does what
+the 11-minute watchdog does. Submissions share the per-user Canvas lease with
+sync, so a second submission for the same user waits 20 s at a time while
+one is in flight.
