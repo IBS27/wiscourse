@@ -4,6 +4,7 @@ import schema from "../convex/schema";
 import { api, internal } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import { encryptSecret } from "../convex/lib/crypto";
+import * as submissionsModule from "../convex/submissions";
 import { BUSY_RETRY_MS } from "../convex/submissions";
 import { createMockCanvas, MOCK_INSTANCE, MOCK_UPLOAD_HOST, type MockCanvas } from "./helpers/mock-canvas";
 
@@ -15,6 +16,18 @@ const report = 7002; // files, pdf only
 const reflection = 7003; // text
 
 let canvas: MockCanvas;
+// Captured before fake timers: Web Crypto finishes on real time.
+const realSetTimeout = globalThis.setTimeout;
+
+/** Waits for `condition` without moving the fake clock (no retry fires). */
+async function until(condition: () => Promise<boolean>) {
+  for (let i = 0; i < 400; i++) {
+    if (await condition()) return;
+    await vi.advanceTimersByTimeAsync(0);
+    await new Promise((resolve) => realSetTimeout(resolve, 5));
+  }
+  throw new Error("condition not reached");
+}
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -28,11 +41,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
-
-async function sha256(blob: Blob) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", await blob.arrayBuffer()));
-  return btoa(String.fromCharCode(...digest));
-}
 
 async function setup() {
   const t = convexTest(schema, modules);
@@ -64,14 +72,17 @@ async function setup() {
   };
   const text = (clientKey: string, assignmentCanvasId = essay, as = student) =>
     as.mutation(api.submissions.submit, { clientKey, assignmentCanvasId, content: { kind: "text", text: "My essay\n\nSecond paragraph" }, confirmed: true });
-  // The client's upload flow: declare the hash, store, register.
+  // The client's upload flow: the authenticated upload HTTP action.
+  const post = (as: Pick<typeof student, "fetch"> | typeof t, blob: Blob) =>
+    as.fetch("/submissions/upload", { method: "POST", headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob });
   const upload = async (as: typeof student, blob: Blob) => {
-    await as.mutation(api.submissions.generateUploadUrl, { sha256: await sha256(blob), size: blob.size });
-    const storageId = await t.run((ctx) => ctx.storage.store(blob));
-    await as.mutation(api.submissions.registerUpload, { storageId });
-    return storageId;
+    const response = await post(as, blob);
+    expect(response.status).toBe(200);
+    return ((await response.json()) as { storageId: Id<"_storage"> }).storageId;
   };
-  return { t, student, row, drain, text, upload, seed, connect: () => connectAs(userId), connectAs };
+  const credential = () => t.run((ctx) => ctx.db.query("canvasCredentials").withIndex("by_user", (q) => q.eq("userId", userId)).unique());
+  const schedule = () => t.run((ctx) => ctx.db.query("syncSchedule").withIndex("by_user", (q) => q.eq("userId", userId)).unique());
+  return { t, student, row, drain, text, upload, post, seed, credential, schedule, connect: () => connectAs(userId), connectAs };
 }
 
 const posts = () => canvas.log.filter((r) => r.operation === "post");
@@ -121,33 +132,46 @@ it("refuses to queue what Canvas would refuse", async () => {
   expect(await t.run((ctx) => ctx.db.query("submissionOutbox").collect())).toHaveLength(0);
 });
 
-it("lets only the uploader attach, read or free an upload", async () => {
-  const { t, student, row, drain, upload, seed, connectAs } = await setup();
+it("accepts only files the upload action stored for the caller", async () => {
+  const { t, student, row, drain, upload, post, seed, connectAs } = await setup();
   await connectAs("other");
   await seed("other");
   const other = t.withIdentity({ subject: "other" });
-  const pdf = new Blob(["%PDF-1 A's report"], { type: "application/pdf" });
-  const mine = await upload(student, pdf);
-  const attach = (as: typeof student, clientKey: string) => as.mutation(api.submissions.submit, {
-    clientKey, assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId: mine, name: "report.pdf" }] },
+  const bytes = "%PDF-1 A's report";
+  const attach = (as: typeof student, storageId: Id<"_storage">, clientKey: string) => as.mutation(api.submissions.submit, {
+    clientKey, assignmentCanvasId: report, confirmed: true, content: { kind: "file", files: [{ storageId, name: "report.pdf" }] },
   });
 
-  // B knows the storage id but not the bytes: every path is refused.
-  await expect(attach(other, "b")).rejects.toThrow("could not be verified");
-  await expect(other.mutation(api.submissions.registerUpload, { storageId: mine })).rejects.toThrow("could not be verified");
-  await other.mutation(api.submissions.generateUploadUrl, { sha256: await sha256(new Blob(["guess"])), size: pdf.size });
-  await expect(other.mutation(api.submissions.registerUpload, { storageId: mine })).rejects.toThrow("could not be verified");
+  // No function takes a storage id (or a hash) as proof of upload.
+  expect(Object.keys(submissionsModule)).not.toContain("registerUpload");
+  expect(Object.keys(submissionsModule)).not.toContain("generateUploadUrl");
+  expect((await post(t, new Blob([bytes]))).status).toBe(401);
+
+  // A blob A stored outside the upload action, and one A uploaded properly.
+  const stray = await t.run((ctx) => ctx.storage.store(new Blob([bytes], { type: "application/pdf" })));
+  const mine = await upload(student, new Blob([bytes], { type: "application/pdf" }));
+
+  // B knows both ids and the bytes (so the hash and size) and still gets nothing.
+  await expect(attach(other, stray, "b1")).rejects.toThrow("could not be verified");
+  await expect(attach(other, mine, "b2")).rejects.toThrow("could not be verified");
+  const theirs = await upload(other, new Blob([bytes], { type: "application/pdf" }));
+  expect(theirs).not.toBe(stray);
+  expect(theirs).not.toBe(mine);
+  // A stray blob is not an upload for its owner either.
+  await expect(attach(student, stray, "a0")).rejects.toThrow("could not be verified");
   await drain();
   expect(canvas.log).toHaveLength(0);
-  expect(await t.run((ctx) => ctx.db.system.get(mine))).not.toBeNull();
   expect(await t.run((ctx) => ctx.db.query("submissionOutbox").collect())).toHaveLength(0);
+  expect(await t.run((ctx) => ctx.db.system.get(stray))).not.toBeNull();
+  expect(await t.run((ctx) => ctx.db.system.get(mine))).not.toBeNull();
 
-  // A, the uploader, submits it; storage is freed after Canvas confirms.
-  const id = await attach(student, "a");
+  // A's own upload submits; storage is freed after Canvas confirms.
+  const id = await attach(student, mine, "a");
   await drain();
   expect((await row(id))?.status).toBe("submitted");
   expect(canvas.attempts(report)).toHaveLength(1);
   expect(await t.run((ctx) => ctx.db.system.get(mine))).toBeNull();
+  expect(await t.run((ctx) => ctx.db.system.get(stray))).not.toBeNull();
 });
 
 it("retries throttling and outages without a second submission", async () => {
@@ -283,6 +307,56 @@ it("ignores a late 401 for a token that a reconnect replaced", async () => {
   expect(posts()).toHaveLength(1);
 });
 
+it("ignores a late 401 for a deleted and recreated credential", async () => {
+  const { student, row, drain, text, connect, credential, schedule } = await setup();
+  const old = await credential();
+  const held = canvas.gate("check");
+  const id = await text("k");
+  await vi.advanceTimersByTimeAsync(0);
+  await held.reached; // in flight with the first record's token
+
+  await student.mutation(api.credentials.disconnect, {});
+  await connect(); // a new record, back at revision 1
+  const fresh = await credential();
+  expect(fresh).toMatchObject({ revision: old!.revision, status: "active" });
+  expect(fresh!._id).not.toBe(old!._id);
+  canvas.fail("check", "unauthenticated");
+  held.open();
+  await drain();
+
+  expect(await credential()).toMatchObject({ _id: fresh!._id, status: "active" });
+  expect(await schedule()).not.toBeNull();
+  expect((await row(id))?.status).toBe("submitted");
+});
+
+it("lets sync invalidate only the credential it used", async () => {
+  const { t, student, connect, credential, schedule } = await setup();
+  await t.run(async (ctx) => {
+    const state = await ctx.db.query("syncState").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+    await ctx.db.patch(state!._id, { tripwireSnapshot: "[]" });
+  });
+  const tripwire = () => t.action(internal.sync.tripwireUser, { userId });
+
+  // Late 401 for a disconnected-and-recreated credential: the new one stands.
+  const held = canvas.gate("tripwire");
+  const running = tripwire();
+  await held.reached;
+  await student.mutation(api.credentials.disconnect, {});
+  await connect();
+  const fresh = await credential();
+  canvas.fail("tripwire", "unauthenticated");
+  held.open();
+  await expect(running).rejects.toThrow("credential changed");
+  expect(await credential()).toMatchObject({ _id: fresh!._id, status: "active" });
+  expect(await schedule()).not.toBeNull();
+
+  // A 401 for the current credential still invalidates it.
+  canvas.fail("tripwire", "unauthenticated");
+  await tripwire();
+  expect((await credential())?.status).toBe("invalid");
+  expect(await schedule()).toBeNull();
+});
+
 it("keeps a submission that may have landed unconfirmed when the token dies mid-check", async () => {
   const { t, row, drain, text } = await setup();
   canvas.fail("post", "acceptThenTimeout");
@@ -328,7 +402,8 @@ it("keeps one Canvas request in flight per user across submissions and sync", as
   const sync = t.action(internal.sync.tripwireUser, { userId });
   await syncHeld.reached;
   const first = await text("first");
-  await vi.advanceTimersByTimeAsync(0);
+  // `claim` found the lease taken and set the next try.
+  await until(async () => (await row(first))?.nextAttemptAt !== undefined);
   expect(checks()).toBe(0);
   expect(await row(first)).toMatchObject({ status: "queued", attempt: 0, attemptsLeft: 4 });
   syncHeld.open();
@@ -340,12 +415,11 @@ it("keeps one Canvas request in flight per user across submissions and sync", as
   await vi.advanceTimersByTimeAsync(BUSY_RETRY_MS);
   await checkHeld.reached;
   const second = await text("second", reflection);
-  await vi.advanceTimersByTimeAsync(0);
+  await until(async () => (await row(second))?.nextAttemptAt !== undefined);
   await t.action(internal.sync.tripwireUser, { userId });
   expect(tripwires()).toBe(1);
   const theirs = await text("theirs", essay, other);
-  for (let i = 0; i < 10 && (await row(theirs))?.status !== "submitted"; i++) await vi.advanceTimersByTimeAsync(0);
-  expect((await row(theirs))?.status).toBe("submitted");
+  await until(async () => (await row(theirs))?.status === "submitted");
   expect(await row(second)).toMatchObject({ status: "queued", attempt: 0 });
 
   checkHeld.open();

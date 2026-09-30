@@ -1,6 +1,7 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { uploadFile, uploadPreflight } from "./submissions";
 
 const http = httpRouter();
 
@@ -30,5 +31,10 @@ http.route({
     });
   }),
 });
+
+// POST /submissions/upload — a submission file, stored and recorded for the
+// signed-in user (Authorization: Bearer <Convex token>).
+http.route({ path: "/submissions/upload", method: "POST", handler: uploadFile });
+http.route({ path: "/submissions/upload", method: "OPTIONS", handler: uploadPreflight });
 
 export default http;

@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import { AlertTriangle, Check, FileUp, Link2, Loader2, RotateCw, Type, X } from "lucide-react";
-import { sha256 } from "@noble/hashes/sha2.js";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { OutboxView } from "../../../convex/submissions";
@@ -19,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useDiscardDrafts, useDraft } from "@/lib/drafts";
+import { UploadError, useSubmissionUpload } from "@/lib/submission-upload";
 import { dayKeyOf, formatDayShort, formatTime } from "@/lib/dates";
 import { errorMessage } from "@/lib/ask";
 import { useNow } from "@/lib/hooks";
@@ -180,9 +180,9 @@ function Composer({ item, panel }: { item: TodoItem; panel: Panel }) {
           panel={panel}
           content={pending}
           onCancel={() => setConfirming(null)}
-          send={async (report, uploads) => {
+          send={async (report, upload) => {
             const content = kind === "file"
-              ? { kind, files: await uploadFiles(files, report, uploads) }
+              ? { kind, files: await uploadFiles(files, report, upload) }
               : kind === "text" ? { kind, text } : { kind, url };
             report("Adding to the outbox…");
             return { clientKey: confirming, content };
@@ -267,41 +267,16 @@ function FilePicker({ files, setFiles, allowed }: { files: File[]; setFiles: (ne
   );
 }
 
-class UploadError extends Error {}
+type Upload = (file: File) => Promise<Id<"_storage">>;
 
-type Uploads = {
-  generateUploadUrl: (args: { sha256: string; size: number }) => Promise<string>;
-  registerUpload: (args: { storageId: Id<"_storage"> }) => Promise<null>;
-};
-
-/**
- * Stores the files in Convex first, so delivery does not depend on this tab.
- * The server takes a file as this user's only if its hash matches the one
- * declared here, so a storage id alone cannot claim someone else's upload.
- */
-async function uploadFiles(files: File[], report: (status: string) => void, uploads: Uploads) {
+/** Stores the files in Convex first, so delivery does not depend on this tab. */
+async function uploadFiles(files: File[], report: (status: string) => void, upload: Upload) {
   const stored = [];
   for (const [i, file] of files.entries()) {
     report(`Uploading ${i + 1} of ${files.length}…`);
-    const url = await uploads.generateUploadUrl({ sha256: base64Sha256(new Uint8Array(await file.arrayBuffer())), size: file.size });
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
-      body: file,
-    });
-    if (!response.ok) throw new UploadError(`"${file.name}" did not upload (error ${response.status}). Try again.`);
-    const { storageId } = (await response.json()) as { storageId: Id<"_storage"> };
-    await uploads.registerUpload({ storageId });
-    stored.push({ storageId, name: file.name });
+    stored.push({ storageId: await upload(file), name: file.name });
   }
   return stored;
-}
-
-// Web Crypto needs a secure origin; this hash does not.
-function base64Sha256(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of sha256(bytes)) binary += String.fromCharCode(byte);
-  return btoa(binary);
 }
 
 // ---------------------------------------------------------------------------
@@ -327,14 +302,13 @@ function ConfirmDialog({
   panel: Panel;
   content: Pending;
   onCancel: () => void;
-  send?: (report: (status: string) => void, uploads: Uploads) => Promise<Omit<SubmitArgs, "assignmentCanvasId" | "confirmed">>;
+  send?: (report: (status: string) => void, upload: Upload) => Promise<Omit<SubmitArgs, "assignmentCanvasId" | "confirmed">>;
   resend?: OutboxView;
   onQueued: () => void;
 }) {
   const submit = useMutation(api.submissions.submit);
   const sendAgain = useMutation(api.submissions.sendAgain);
-  const generateUploadUrl = useMutation(api.submissions.generateUploadUrl);
-  const registerUpload = useMutation(api.submissions.registerUpload);
+  const upload = useSubmissionUpload();
   const online = useOnline();
   const group = `submission:${item.canvasId}`;
   const [status, setStatus] = useDraft<string | null>(`${group}:status`, null);
@@ -348,7 +322,7 @@ function ConfirmDialog({
     setStatus("Preparing…");
     try {
       if (resend !== undefined) await sendAgain({ id: resend.id, confirmed: true });
-      else await submit({ ...(await send!(setStatus, { generateUploadUrl, registerUpload })), assignmentCanvasId: item.canvasId!, confirmed: true });
+      else await submit({ ...(await send!(setStatus, upload)), assignmentCanvasId: item.canvasId!, confirmed: true });
       setStatus(null);
       onQueued();
     } catch (e) {

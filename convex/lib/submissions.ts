@@ -7,8 +7,9 @@ export type SubmissionKind = "text" | "url" | "file";
 export const MAX_TEXT_CHARS = 100_000;
 export const MAX_URL_CHARS = 2_048;
 export const MAX_FILES = 10;
-// One file is held in memory while it goes to Canvas; Convex actions have 64 MB.
-export const MAX_FILE_BYTES = 20 * 1024 * 1024;
+// Uploads go through an HTTP action, whose request body Convex caps at
+// 20 MB; one file is then held in action memory while it goes to Canvas.
+export const MAX_FILE_BYTES = 20_000_000;
 
 export const CANVAS_TYPE: Record<SubmissionKind, string> = {
   text: "online_text_entry",

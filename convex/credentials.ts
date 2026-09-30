@@ -4,7 +4,7 @@
 // UW-Madison issues a developer key). Nothing outside this file may read
 // or decrypt tokens.
 
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import {
   action,
   internalMutation,
@@ -167,24 +167,37 @@ export const getForUser = internalQuery({
 });
 
 /**
- * Canvas rejected a token. With `revision`, only that credential is marked:
- * a request that started before a reconnect must not invalidate the new
- * token. Returns whether anything was marked.
+ * Exactly one stored token: the credential row and its revision. Convex never
+ * reuses a document id, so a row deleted by `disconnect` and created again at
+ * revision 1 still differs. Not secret.
+ */
+export const credentialIdentity = v.object({ credentialId: v.id("canvasCredentials"), revision: v.number() });
+export type CredentialIdentity = Infer<typeof credentialIdentity>;
+
+/**
+ * Canvas rejected the token identified by `credential`. Marks it invalid and
+ * takes the user out of the tripwire queue only if it is still the stored
+ * token: a request that started before a reconnect (or a disconnect and new
+ * connect) must not invalidate its replacement. Returns whether it marked.
  */
 export const markInvalid = internalMutation({
-  args: { userId: v.string(), revision: v.optional(v.number()) },
+  args: { userId: v.string(), credential: credentialIdentity },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const credential = await ctx.db
+    const current = await ctx.db
       .query("canvasCredentials")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
-    if (args.revision !== undefined && (credential === null || (credential.revision ?? 0) !== args.revision)) {
+    if (
+      current === null ||
+      current._id !== args.credential.credentialId ||
+      (current.revision ?? 0) !== args.credential.revision
+    ) {
       return false;
     }
-    if (credential) await ctx.db.patch(credential._id, { status: "invalid" });
+    await ctx.db.patch(current._id, { status: "invalid" });
     await removeSyncSchedule(ctx, args.userId);
-    return credential !== null;
+    return true;
   },
 });
 
@@ -215,8 +228,8 @@ export class CanvasReconnectRequired extends Error {
 export interface CanvasSession {
   client: CanvasClient;
   credential: Doc<"canvasCredentials">;
-  /** The credential revision this client's token belongs to; not secret. */
-  revision: number;
+  /** Which stored token this client uses; pass it to `markInvalid`. */
+  identity: CredentialIdentity;
   /** Latest X-Rate-Limit-Remaining seen on this session, if any. */
   rateLimitRemaining: () => number | undefined;
 }
@@ -225,8 +238,8 @@ export interface CanvasSession {
  * The single entry point for reaching Canvas on behalf of a user.
  * Actions only (decryption needs Web Crypto). Throws CanvasReconnectRequired
  * without a usable credential. A CanvasAuthError from a request means Canvas
- * rejected the token: run `internal.credentials.markInvalid` for the user,
- * passing the session's `revision`.
+ * rejected the token: run `internal.credentials.markInvalid` with the
+ * session's `identity`.
  */
 export async function getCanvasClient(
   ctx: ActionCtx,
@@ -251,5 +264,10 @@ export async function getCanvasClient(
       remaining = value;
     },
   });
-  return { client, credential, revision: credential.revision ?? 0, rateLimitRemaining: () => remaining };
+  return {
+    client,
+    credential,
+    identity: { credentialId: credential._id, revision: credential.revision ?? 0 },
+    rateLimitRemaining: () => remaining,
+  };
 }

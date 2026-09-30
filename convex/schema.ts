@@ -868,20 +868,18 @@ export default defineSchema({
     .index("by_user_clientKey", ["userId", "clientKey"])
     .index("by_user_assignment", ["userId", "assignmentCanvasId"]),
 
-  // Who uploaded each submission file. `generateUploadUrl` records a ticket
-  // for the signed-in user and the file's SHA-256; `registerUpload` binds a
-  // stored file to the ticket whose hash and size it matches, so only a
-  // user who had the bytes can claim the storage id. Attaching, reading and
-  // deleting a file all check this owner.
+  // Who uploaded each submission file. Rows are written only by the
+  // authenticated upload HTTP action, in the request that stored the bytes
+  // (see convex/submissions.ts). Attaching, reading and deleting a file all
+  // check this owner.
   submissionUploads: defineTable({
     userId: v.string(),
-    sha256: v.string(), // base64, as Convex records it
-    size: v.number(),
+    storageId: v.id("_storage"),
+    // Unattached uploads are deleted after this.
     expiresAt: v.number(),
-    storageId: v.optional(v.id("_storage")),
     outboxId: v.optional(v.id("submissionOutbox")),
   })
-    .index("by_user_sha256", ["userId", "sha256"])
+    .index("by_user", ["userId"])
     .index("by_storage", ["storageId"]),
 
   // Tokens per user per campus day, for the daily allowance.

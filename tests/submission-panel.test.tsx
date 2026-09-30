@@ -20,6 +20,7 @@ vi.mock("convex/react", () => ({
 }));
 vi.mock("@tanstack/react-router", () => ({ Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a> }));
 vi.mock("@/lib/hooks", () => ({ useNow: () => Date.UTC(2026, 8, 30, 15) }));
+vi.mock("@/lib/submission-upload", () => ({ UploadError: class extends Error {}, useSubmissionUpload: () => vi.fn() }));
 afterEach(() => { cleanup(); mocks.mutations.clear(); });
 
 const item = { key: "assignment:1", kind: "assignment", canvasId: 1, title: "Essay", dueAt: Date.UTC(2026, 9, 2), submission: "unsubmitted", subtasks: [] } as TodoItem;

@@ -22,13 +22,15 @@
 //
 // A missing or rejected credential ends the attempt at once: the student
 // reconnects in Settings, then retries. A 401 for a token that a reconnect
-// has since replaced does not invalidate the new one.
+// (or a disconnect and new connect) has since replaced does not invalidate
+// the new one: `markInvalid` compares the exact credential row and revision.
 
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   internalAction,
   internalMutation,
   internalQuery,
+  httpAction,
   mutation,
   query,
   type ActionCtx,
@@ -42,6 +44,7 @@ import {
   CanvasReconnectRequired,
   credentialState,
   getCanvasClient,
+  type CredentialIdentity,
 } from "./credentials";
 import {
   CanvasApiError,
@@ -78,7 +81,7 @@ export const LEASE_MS = 11 * 60_000;
 export const BUSY_RETRY_MS = 20_000;
 const POST_TIMEOUT_MS = 90_000;
 const UPLOAD_TIMEOUT_MS = 3 * 60_000;
-const UPLOAD_TICKET_MS = 60 * 60_000;
+const UPLOAD_TTL_MS = 24 * 60 * 60_000;
 
 export const RECONNECT_MESSAGE = "Canvas needs to be reconnected. Reconnect in Settings, then try again.";
 
@@ -178,9 +181,11 @@ async function ownRow(ctx: MutationCtx, id: Id<"submissionOutbox">): Promise<Row
 // ---------------------------------------------------------------------------
 // Uploads
 //
-// A storage id alone proves nothing, so files are claimed by content: the
-// signed-in user first declares the file's SHA-256 and size, and only a
-// stored file with that hash and size can be registered to them.
+// A storage id alone proves nothing, and neither does knowing a file's hash.
+// Submission files therefore enter storage only through `uploadFile`, an
+// authenticated HTTP action that stores the bytes itself and records the
+// resulting storage id for the signed-in user in the same request. No
+// function takes a caller's storage id as proof of upload.
 
 async function uploadOf(ctx: QueryCtx, storageId: Id<"_storage">) {
   return await ctx.db
@@ -189,53 +194,57 @@ async function uploadOf(ctx: QueryCtx, storageId: Id<"_storage">) {
     .unique();
 }
 
-/** Files go to Convex storage first so delivery survives a closed tab. */
-export const generateUploadUrl = mutation({
-  args: { sha256: v.string(), size: v.number() },
-  returns: v.string(),
+// Bearer-token requests from the app's origin; no cookies are involved, so
+// any origin may call it but only with the caller's own Convex token.
+const UPLOAD_CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Max-Age": "86400",
+};
+
+function uploadReply(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), { status, headers: { ...UPLOAD_CORS, "Content-Type": "application/json" } });
+}
+
+/**
+ * POST /submissions/upload with the file as the body and the user's Convex
+ * token. Files go to Convex storage first so delivery survives a closed tab.
+ */
+export const uploadFile = httpAction(async (ctx, request) => {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity === null) return uploadReply({ error: "Sign in to upload files." }, 401);
+  const declared = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declared) && declared > MAX_FILE_BYTES) {
+    return uploadReply({ error: "Files must be 20 MB or smaller." }, 413);
+  }
+  const blob = await request.blob();
+  if (blob.size === 0) return uploadReply({ error: "This file is empty." }, 400);
+  if (blob.size > MAX_FILE_BYTES) return uploadReply({ error: "Files must be 20 MB or smaller." }, 413);
+  const storageId = await ctx.storage.store(blob);
+  await ctx.runMutation(internal.submissions.recordUpload, { userId: identity.subject, storageId });
+  return uploadReply({ storageId }, 200);
+});
+
+export const uploadPreflight = httpAction(async () => new Response(null, { status: 204, headers: UPLOAD_CORS }));
+
+/** Records who stored a file; only `uploadFile` calls this. */
+export const recordUpload = internalMutation({
+  args: { userId: v.string(), storageId: v.id("_storage") },
+  returns: v.null(),
   handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    if (!/^[A-Za-z0-9+/]{43}=$/.test(args.sha256)) fail("This file could not be read. Choose it again.");
-    if (!(args.size > 0 && args.size <= MAX_FILE_BYTES)) fail("Files must be between 1 byte and 20 MB.");
     const now = Date.now();
     // Uploads never attached to a submission expire; clear a few each time.
     const stale = await ctx.db
       .query("submissionUploads")
-      .withIndex("by_user_sha256", (q) => q.eq("userId", userId))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .filter((q) => q.and(q.lt(q.field("expiresAt"), now), q.eq(q.field("outboxId"), undefined)))
       .take(20);
     for (const upload of stale) {
-      if (upload.storageId !== undefined && (await ctx.db.system.get(upload.storageId)) !== null) {
-        await ctx.storage.delete(upload.storageId);
-      }
+      if ((await ctx.db.system.get(upload.storageId)) !== null) await ctx.storage.delete(upload.storageId);
       await ctx.db.delete(upload._id);
     }
-    await ctx.db.insert("submissionUploads", { userId, sha256: args.sha256, size: args.size, expiresAt: now + UPLOAD_TICKET_MS });
-    return await ctx.storage.generateUploadUrl();
-  },
-});
-
-/** Records the signed-in user as the owner of a file they just stored. */
-export const registerUpload = mutation({
-  args: { storageId: v.id("_storage") },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const userId = await requireUserId(ctx);
-    const stored = await ctx.db.system.get(args.storageId);
-    if (stored === null) fail("This upload did not finish. Choose the file again.");
-    const existing = await uploadOf(ctx, args.storageId);
-    if (existing !== null) {
-      if (existing.userId !== userId) fail("This upload could not be verified. Choose the file again.");
-      return null;
-    }
-    const now = Date.now();
-    const tickets = await ctx.db
-      .query("submissionUploads")
-      .withIndex("by_user_sha256", (q) => q.eq("userId", userId).eq("sha256", stored.sha256))
-      .collect();
-    const ticket = tickets.find((t) => t.storageId === undefined && t.size === stored.size && t.expiresAt > now);
-    if (ticket === undefined) fail("This upload could not be verified. Choose the file again.");
-    await ctx.db.patch(ticket._id, { storageId: args.storageId });
+    await ctx.db.insert("submissionUploads", { userId: args.userId, storageId: args.storageId, expiresAt: now + UPLOAD_TTL_MS });
     return null;
   },
 });
@@ -637,7 +646,7 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
 }
 
 type Claimed = Row & { attempt: number; canvasLease: number };
-type AttemptState = { step: Step; mayHavePosted: boolean; revision?: number };
+type AttemptState = { step: Step; mayHavePosted: boolean; credential?: CredentialIdentity };
 
 class Superseded extends Error {}
 
@@ -658,7 +667,9 @@ export const send = internalAction({
         result = classify(error, state);
         if (error instanceof CanvasAuthError) {
           // Only the token this attempt used; a reconnect since then stands.
-          const current = await ctx.runMutation(internal.credentials.markInvalid, { userId: row.userId, revision: state.revision });
+          // A CanvasAuthError comes from a request, so `credential` is set.
+          const current = state.credential !== undefined &&
+            (await ctx.runMutation(internal.credentials.markInvalid, { userId: row.userId, credential: state.credential }));
           if (!current) {
             result = { type: "error", kind: "retry", notSent: state.step === "submitting", error: "Canvas was reconnected during this attempt. Trying again." };
           }
@@ -682,8 +693,8 @@ async function deliver(ctx: ActionCtx, row: Claimed, state: AttemptState): Promi
     if (!held) throw new Superseded();
   };
 
-  const { client, revision } = await getCanvasClient(ctx, row.userId);
-  state.revision = revision;
+  const { client, identity } = await getCanvasClient(ctx, row.userId);
+  state.credential = identity;
   const base = `/courses/${row.courseCanvasId}/assignments/${row.assignmentCanvasId}/submissions`;
   const files = row.files ?? [];
   const canvasFileIds = files.flatMap((f) => (f.canvasFileId === undefined ? [] : [f.canvasFileId]));

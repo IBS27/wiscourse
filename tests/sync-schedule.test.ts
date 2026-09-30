@@ -92,7 +92,8 @@ it("keeps the queue in step with the credential", async () => {
 
   await connect();
   expect(await schedule()).not.toBeNull();
-  await t.mutation(internal.credentials.markInvalid, { userId });
+  const credential = await t.run((ctx) => ctx.db.query("canvasCredentials").first());
+  await t.mutation(internal.credentials.markInvalid, { userId, credential: { credentialId: credential!._id, revision: credential!.revision ?? 0 } });
   expect(await schedule()).toBeNull();
   await student.mutation(api.syncSchedule.heartbeat, {});
   expect(await schedule()).toBeNull();

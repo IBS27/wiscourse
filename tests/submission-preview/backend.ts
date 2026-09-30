@@ -89,18 +89,10 @@ export async function reset() {
   await ready;
 }
 
-export const UPLOAD_PATH = "/__mock/upload";
-
 /** A call from the page, as the signed-in preview student. */
 export async function call(type: "query" | "mutation" | "action", name: string, args: Record<string, unknown>) {
   await ready;
   try {
-    // The real mutation records the upload ticket; the bytes then go to this
-    // server, never to a Convex deployment.
-    if (name === "submissions:generateUploadUrl") {
-      await student.mutation(makeFunctionReference<"mutation">(name), args);
-      return { value: UPLOAD_PATH };
-    }
     const value = type === "query"
       ? await student.query(makeFunctionReference<"query">(name), args)
       : type === "mutation"
@@ -113,10 +105,15 @@ export async function call(type: "query" | "mutation" | "action", name: string, 
   }
 }
 
+/** The real upload HTTP action, called as the signed-in preview student. */
 export async function upload(blob: Blob) {
   await ready;
-  const storageId = await t.run((ctx) => ctx.storage.store(blob));
-  return { storageId };
+  const response = await student.fetch("/submissions/upload", {
+    method: "POST",
+    headers: { "Content-Type": blob.type || "application/octet-stream" },
+    body: blob,
+  });
+  return { status: response.status, body: await response.text() };
 }
 
 export type Control =
@@ -150,7 +147,10 @@ export async function control(command: Control) {
       break;
     case "credential":
       if (command.state === "active") await connect();
-      else if (command.state === "invalid") await t.mutation(internal.credentials.markInvalid, { userId: USER });
+      else if (command.state === "invalid") {
+        const row = await t.run((ctx) => ctx.db.query("canvasCredentials").withIndex("by_user", (q) => q.eq("userId", USER)).unique());
+        if (row) await t.mutation(internal.credentials.markInvalid, { userId: USER, credential: { credentialId: row._id, revision: row.revision ?? 0 } });
+      }
       else await t.run(async (ctx) => {
         const row = await ctx.db.query("canvasCredentials").withIndex("by_user", (q) => q.eq("userId", USER)).unique();
         if (row) await ctx.db.delete(row._id);

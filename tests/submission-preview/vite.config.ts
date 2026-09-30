@@ -10,6 +10,7 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), mockBackend()],
   resolve: { alias: [
     { find: /^convex\/react$/, replacement: path.resolve(import.meta.dirname, "convex-react.ts") },
+    { find: "@/lib/submission-upload", replacement: path.resolve(import.meta.dirname, "submission-upload.ts") },
     { find: "@", replacement: path.resolve(import.meta.dirname, "../../src") },
   ] },
   server: { fs: { allow: [path.resolve(import.meta.dirname, "../..")] } },
@@ -40,7 +41,10 @@ function mockBackend(): Plugin {
           }
           if (req.method === "POST" && req.url === "/upload") {
             const type = req.headers["content-type"] ?? "application/octet-stream";
-            return send(await backend.upload(new Blob([new Uint8Array(await body(req))], { type })));
+            const reply = await backend.upload(new Blob([new Uint8Array(await body(req))], { type }));
+            res.statusCode = reply.status;
+            res.setHeader("Content-Type", "application/json");
+            return res.end(reply.body);
           }
           if (req.method === "POST" && req.url === "/control") {
             return send(await backend.control(JSON.parse((await body(req)).toString()) as import("./backend").Control));
