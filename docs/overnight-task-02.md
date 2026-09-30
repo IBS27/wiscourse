@@ -16,7 +16,10 @@ at `/home/srinivasib/Developer/wiscourse` sits at `914e68c`, an ancestor of
 | `3b5d8d0` | Existing `t3code/review-auth-state-management` commit, unchanged. It sat directly on `dfc7c0c`, so it fast-forwarded. |
 | `e483252` | fix(drafts): two bugs found reviewing `3b5d8d0` |
 | `05e59b2` | feat(sync): adaptive polling, heartbeat, connection health |
-| (this doc) | docs: this report |
+| `70ecd51` | docs: this report (reviewed head) |
+| `0481b9f` | fix(auth): P1 from review, retained client authenticated as another account |
+| `33b5678` | fix(sync): steady idle cadence and a hard 5-minute heartbeat bound |
+| (this doc update) | docs: repair round |
 
 ### Review of `3b5d8d0`
 
@@ -42,7 +45,8 @@ the in-memory `DraftStore`. Two confirmed bugs, fixed in `e483252`:
 ## Adaptive sync (roadmap M5)
 
 The overview's plan was "tripwire every 2 min while the user is active
-(5-min client heartbeat), else 15 min". That is what now runs.
+(5-min client heartbeat), else 15 min". That is what now runs, with idle
+probes on the last 2-minute tick inside the 15 minutes, a steady 14.
 
 - `syncSchedule` table: one row per user with an active credential, fields
   `dueAt`, `activeUntil`, `lastDispatchedAt`, index `by_dueAt`. It is separate
@@ -56,8 +60,10 @@ The overview's plan was "tripwire every 2 min while the user is active
   now + 7 min; duplicate beats within a minute write nothing. A return from
   idle moves `dueAt` to the next tick unless a probe ran moments ago.
 - Client `useActivityHeartbeat` (mounted in the root layout): beats on open,
-  on return (visibility, focus, online), and on input at most every 5 min.
-  Never while hidden or offline. A tab left open without input lapses to idle.
+  input, return (visibility, focus) and reconnect, never more than once per
+  5 min, never while hidden or offline. The 7-minute server window outlasts
+  that gap, so a return after the window lapsed always beats. A tab left
+  open without input lapses to idle.
 - Queue lifecycle: `credentials.save` adds the row, `markInvalid` and
   `disconnect` remove it, the dispatcher drops orphans, the nightly full-sync
   dispatcher re-adds missing rows, and the first heartbeat enrols a connected
@@ -65,7 +71,7 @@ The overview's plan was "tripwire every 2 min while the user is active
 
 Rough Convex call budget for one user (Workpool overhead taken as ~5 calls per
 job): before, 288 dispatcher runs plus 288 tripwire jobs a day, about 1,700
-calls. Now 720 dispatcher runs plus about 90 active and 84 idle tripwire jobs
+calls. Now 720 dispatcher runs plus about 90 active and 90 idle tripwire jobs
 for 3 active hours, about 1,600 calls. Per-user job cost falls from 288 to
 about 100-175 a day, so the gap widens with users.
 
@@ -115,7 +121,8 @@ about 100-175 a day, so the gap widens with users.
 
 ## Checks
 
-On `05e59b2`, all passing:
+Original round, on `05e59b2`, all passing (see the repair round for the
+current head):
 
 - `bun run typecheck` (app, convex, tests)
 - `bun run lint`
@@ -149,11 +156,11 @@ on the old 5-minute cron until the backend is pushed.
 2. Run `convex run syncSchedule:backfill` once. Without it, existing accounts
    get no tripwires until their next heartbeat or the 03:00 nightly sync.
 3. Ship the frontend. Clients still on the old bundle send no heartbeats, so
-   those users poll at the idle 15-minute cadence until they reload.
+   those users poll at the idle cadence (14 minutes) until they reload.
 
 ## Risks
 
-- Idle polling drops from 5 to 15 minutes. Anything reading data while the
+- Idle polling drops from 5 to 14 minutes. Anything reading data while the
   user is away (ICS feeds, a future push deliverer) sees it later. The
   constant is `IDLE_TRIPWIRE_MS` in `convex/lib/syncCadence.ts`.
 - Anyone signed in can call `heartbeat`. It affects only their own cadence
@@ -204,6 +211,135 @@ joins before an institution-issued developer key exists.
   documents; privacy policy and terms covering Instructure's notice rules; a
   sponsor if one exists.
 
+## Repair round (after review of `70ecd51`)
+
+Same worktree and branch, on Fedora. Mocked only: jsdom, fake Clerk, the
+installed `ConvexReactClient` over `tests/helpers/auth-server.ts`, and
+`convex-test`. No backend, Canvas, deployment or push.
+
+### P1: retained client authenticated as another account
+
+Cause: `AuthProvider` kept the last owner's client whenever Clerk was
+unresolved (loading, error, degraded), even if Clerk already reported a
+different signed-in user. `BackendSession` remounted for the new session on
+that same client, and `useClerkAuth` checked tokens against the user Clerk
+currently reported. So B's token passed the check on A's client, and A's
+offline-queued mutation went out under B.
+
+Reproduced on the unfixed code with the scenario from the review handoff
+(the Mac fixture file was not needed): authenticate A, close the socket,
+queue `todos.createLocal` for A, report Clerk `status: "error"` with user B
+and session B, rerender, wait 2 s. Frames on the only client:
+
+```
+Connect, Auth:user-A, ModifyQuerySet, Auth:user-A, Connect, Auth:user-B,
+ModifyQuerySet, Mutation:[{"title":"Private queued A mutation"}], Auth:user-B
+```
+
+This matches the recorded evidence (`clients=1`, retained client, A's
+mutation after B's authentication).
+
+Fix (`0481b9f`, `src/components/app/auth-provider.tsx`):
+
+- Any report of a different signed-in user, resolved or not, becomes the
+  owner at once. The previous owner's `UserSession` unmounts, which closes its
+  client, socket and queue, and drops its drafts. Only a report of no user or
+  the same user keeps the previous owner, so same-owner recovery still keeps
+  the client and drafts.
+- Every token fetcher checks tokens against its client's owner (passed down
+  through the recovery context), not against whoever Clerk currently reports.
+- While Clerk reports another account, `useClerkAuth` reports loading, so
+  the client's auth is left alone until it is disposed.
+
+Regression (`tests/auth-transport.test.tsx`, "never lets an unresolved Clerk
+state carry another user's token onto a retained client"): one controlled
+peer per client, so each frame is tied to the client that sent it. It asserts
+that A's client only ever authenticates as A and sends no mutation, all of
+A's sockets are closed, and B's new client authenticates only as B and sends
+no mutation. It fails on `70ecd51` and passes now. Already covered and still
+passing: ordinary ready account switch (queued mutation never sent; drafts
+cleared), temporary same-owner Clerk loading (client kept). Added: a
+same-owner Clerk error keeps the client and drafts.
+
+### Cadence against the 2 / 15 / 5-minute requirements
+
+A new tick simulation (`tests/sync-schedule.test.ts`, "holds a steady cadence
+under cron jitter") runs 90 two-minute cron ticks, each a little late by a
+varying amount, with heartbeats for ticks 46-53. Two defects showed up:
+
+1. Idle due times landed exactly on a tick, so jitter decided whether a
+   probe ran on it or waited another tick. Probe ticks and gaps (minutes) on
+   `70ecd51`:
+
+   ```
+   ticks [1,9,16,24,31,39,46,47,...,57,65,73,80,88]
+   gaps  [16,14,16,14,16,14,2,2,2,2,2,2,2,2,2,2,2,16,16,14,16]
+   ```
+
+   Half the idle gaps broke the 15-minute period. `nextTripwireAt` now puts
+   the due time midway between ticks, on the last tick within the period.
+   After `33b5678`:
+
+   ```
+   ticks [1,8,15,22,29,36,43,46,47,...,57,64,71,78,85]
+   gaps  [14,14,14,14,14,14,6,2,2,2,2,2,2,2,2,2,2,2,14,14,14,14]
+   ```
+
+   Active stays exactly 2 minutes; a return from idle is probed on its own
+   tick (the 6-minute gap at tick 46).
+2. Return events (focus, visibility, online) used a 1-minute gap, so tab
+   switching sent 7 beats in 9 minutes against a 5-minute bound, each a
+   database write. All events now share the 5-minute gap; the result is 2.
+   Because the server's 7-minute active window is longer than the client's
+   gap, a return after the window has lapsed still beats and promotes the
+   next probe.
+
+Not changed, checked as intended: 2-minute active cadence, promotion on
+return, 7-minute active window, 1-minute server dedupe for several tabs, and
+the 20-minute "Sync delayed" threshold (still above the 14-minute idle gap
+plus two ticks).
+
+### Checks at `33b5678`
+
+- `bun run typecheck`, `bun run lint`: clean.
+- `bun run test`: 34 files, 274 tests passing. New in this round: the P1
+  transport regression, the same-owner Clerk error test, the cadence tick
+  simulation, and the tab-switching heartbeat bound. Each new regression
+  was run against the pre-fix file and failed there.
+
+### Integration for task03
+
+- New task02 head: the commit that adds this section, on top of `33b5678`.
+  Task03 (`0969806`) includes `70ecd51`, so it rebases onto this head. Files
+  touched in this round: `src/components/app/auth-provider.tsx`,
+  `convex/lib/syncCadence.ts`, `convex/syncSchedule.ts`, `src/lib/activity.ts`,
+  `tests/auth-transport.test.tsx`, `tests/auth-recovery.test.tsx`,
+  `tests/sync-schedule.test.ts`, `tests/connection-health.test.tsx`, this doc.
+- No exported backend interface changed. `getCanvasClient`,
+  `CanvasReconnectRequired`, `credentials.markInvalid`, the sync lease
+  (`syncStore.claimSync`/`releaseSync`) and `createTokenFetcher`'s signature
+  are unchanged. `nextTripwireAt(now, active)` keeps its signature; only the
+  due time it returns changed. `HEARTBEAT_DEDUPE_MS` is now server-only.
+- Client: the recovery context now carries `owner`. That is internal to
+  `auth-provider.tsx`. Submission UI under the provider gets the same
+  guarantee as any mutation: a queued write is never sent under another
+  account; it is dropped with its owner's client. Its outbox rows must
+  therefore be written by a confirmed mutation before showing "pending", as
+  the task03 interface notes above already say.
+- If task03 edited `auth-provider.tsx`, resolve toward this version's owner
+  derivation and fetcher binding, then rerun the transport regression.
+
+### Remaining limits
+
+- Not verified in a signed-in browser or against a real backend. Real Clerk
+  multi-session switching and cross-tab behaviour are unverified.
+- The Mac fixture `wiscourse-p1-reproduction.cjs` was not run here, because
+  Fedora cannot read that path. The Vitest regression reproduces the same
+  frame sequence. Transfer the file if the exact fixture must be rerun on
+  Fedora.
+- The Tailscale preview serves this worktree's current files through Vite.
+  The dev backend still lacks the new functions.
+
 ## Draft PR body (not opened; waiting for coordinator review)
 
 Title: Auth session recovery, draft preservation, and adaptive Canvas polling
@@ -214,13 +350,18 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 > **Auth and drafts**
 > - Bounded token fetches and sign-out, recovery screens, per-user client and
 >   token isolation (`3b5d8d0`).
+> - Fix: an unresolved Clerk state reporting a different user no longer
+>   keeps the previous owner's client; token fetchers are bound to their
+>   client's owner, so a queued mutation can never replay under another
+>   account.
 > - Fix: todo title/notes drafts no longer resurrect an older edit after a
 >   later save; route drafts drop on navigation but survive auth remounts;
 >   quick-add stays app-wide.
 >
 > **Adaptive polling**
 > - Tripwire queue (`syncSchedule`) read by due time: 2 min while the app is
->   in use, 15 min idle, next tick on return. Cron every 2 min.
+>   in use, 14 min idle (inside the 15-minute budget), next tick on return.
+>   Cron every 2 min.
 > - Input-driven heartbeat, at most every 5 min, only while visible and online.
 > - Queue follows the credential; nightly self-heal; one-off backfill.
 > - `getCanvasClient` throws `CanvasReconnectRequired`; jobs stop retrying a
@@ -234,5 +375,5 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 > **Rollout**: push backend, run `syncSchedule:backfill` once, ship frontend.
 > Run `convex codegen` first; `_generated/api.d.ts` was edited by hand.
 >
-> **Checks**: typecheck, lint, 270 tests. Signed-in browser verification is
+> **Checks**: typecheck, lint, 274 tests. Signed-in browser verification is
 > still pending.
