@@ -26,7 +26,10 @@ head as the task03 integration point). The first round was reviewed as
 | `1094b7c` | fix(submissions): receipt timestamps, confirmed conflict replacement, upload throttling |
 | `c64a7bd` | merge of the #11 auth candidate `edc2d63` (no rebase) |
 | `0271301` | test(auth): owner lifetime through a Clerk gap, switch and logout |
-| (this doc) | docs: PR #12 review round |
+| `7018a98` | docs: PR #12 review round (candidate sent for recheck) |
+| `ee6ccc4` | merge of the final #11 candidate `4c9361c` (acknowledged-save drafts) |
+| `04e9506` | test: acknowledged draft saves and unsent submissions in one TodoDetail |
+| (this doc) | docs: #11 final merge |
 
 The rebase had no conflicts: task02's round touched `auth-provider.tsx`,
 `activity.ts`, `syncCadence.ts`, `syncSchedule.ts` and their tests; task03
@@ -132,6 +135,28 @@ sees no live Clerk user during a gap, so it refuses to upload or submit
 (fail closed while the UI is hidden). `tests/owner-lifetime-auth.test.tsx`
 runs the real provider: the lifetime survives a gap, and aborts on another
 account or a resolved logout.
+
+### Final #11 merge (`4c9361c`)
+
+`1ab754a` retires a saved title/notes edit when its save is acknowledged,
+even while an auth remount hides the view, and keeps newer typing on top. It
+auto-merged. Its `todo-detail.tsx` changes (a promise-returning save, and
+`useSourcedDraft`'s `save`) are in different hunks from the submission panel
+mount. The previous auth resolution is unchanged: `OwnerSession` around the
+`sessionKey`-keyed `BackendSession`, exported `belongsToUser`.
+
+`tests/todo-detail-submission-drafts.test.tsx` renders an assignment's real
+TodoDetail, so both features are on screen. Across a hidden remount, the
+notes save is acknowledged and the server moves back to the old value. The
+saved edit is not revived or re-saved, the unsent submission text survives,
+and nothing is submitted without confirmation. A new owner's store starts
+empty. With the pre-merge drafts code, the test fails because the saved
+"AB" comes back.
+
+On `04e9506`: typecheck and lint pass. The combined auth, draft, owner and
+submission set passes (11 files, 102 tests; the new test is also green on
+its own). The full suite passes (40 files, 329 tests). No build this round.
+Evidence: `/home/srinivasib/.local/state/wiscourse-evidence/pr12-merge-4c93/`.
 
 ### Upload owner binding on the client (upload-owner round)
 
