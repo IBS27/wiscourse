@@ -22,7 +22,14 @@ head as the task03 integration point). The first round was reviewed as
 | `eed2c6e` | fix(submissions,sync): exact credential identity and server-bound uploads (P2 round) |
 | `e0cc6d2` | docs: P2 round (reviewed head for the upload-owner round) |
 | `3199abe` | fix(submissions): bind file uploads to the confirming owner |
-| (this doc) | docs: upload-owner round |
+| `58a53cd` | docs: upload-owner round (published PR #12 head, reviewed by Astra) |
+| `1094b7c` | fix(submissions): receipt timestamps, confirmed conflict replacement, upload throttling |
+| `c64a7bd` | merge of the #11 auth candidate `edc2d63` (no rebase) |
+| `0271301` | test(auth): owner lifetime through a Clerk gap, switch and logout |
+| `7018a98` | docs: PR #12 review round (candidate sent for recheck) |
+| `ee6ccc4` | merge of the final #11 candidate `4c9361c` (acknowledged-save drafts) |
+| `04e9506` | test: acknowledged draft saves and unsent submissions in one TodoDetail |
+| (this doc) | docs: #11 final merge |
 
 The rebase had no conflicts: task02's round touched `auth-provider.tsx`,
 `activity.ts`, `syncCadence.ts`, `syncSchedule.ts` and their tests; task03
@@ -84,6 +91,72 @@ size too. B cannot attach either, B's own upload of the same bytes gets a
 new id, and A cannot attach the stray blob either. There is no Canvas
 request, no row, and both of A's blobs remain. Unauthenticated uploads get
 401. A then submits the proper upload, and it is freed after Canvas confirms.
+
+### PR #12 review round (Astra F2-F4, Bugbot r4149582119)
+
+Review: `/tmp/pr-babysit-20260930/reviews/wiscourse-12/review.md` at
+`58a53cd`. F1 (#11's retained-client auth) was fixed by the #11 owner at
+`edc2d63`, which is merged here.
+
+- F2, receipt time. When a lost send is found in Canvas's history,
+  `canvasSubmittedAt` is now that attempt's own `submitted_at`, not the
+  latest attempt's. The assignment mirror still takes Canvas's latest
+  submission, so a later attempt's time, grade and posting state are not
+  rolled back. (Bugbot's suggestion to mirror the historical attempt is not
+  taken, for that reason.)
+- F3, conflict resend. A conflict records Canvas's latest attempt
+  (`conflictAttempt`). A confirmed Send again sets `replaceConfirmed`. The
+  next attempt:
+  1. looks for this payload first; a late delivery is confirmed without
+     sending;
+  2. sends only if Canvas's latest attempt is still the recorded one,
+     advancing the baseline to it once;
+  3. treats anything newer as a new conflict that needs a new confirmation.
+  "Check Canvas again" and automatic retries never replace. The dialog now
+  says that a conflict resend makes a new attempt.
+- F4, upload throttling. The multipart upload host's 429 and 403 "Rate
+  Limit Exceeded" now throw `CanvasRateLimitError`, which the outbox
+  retries. A plain 403 stays terminal, no token goes to the upload host, and
+  an upload-host error never marks the Canvas credential invalid.
+
+Evidence:
+- The new tests in `tests/submissions.test.ts` failed on `58a53cd` for the
+  reviewed reasons, all 5: the receipt, the confirmed replacement, and the
+  403 and 429 upload throttles. They pass now.
+- The late-delivery and moved-on test, and the permission-403 test, guard
+  the fix and pass both before and after.
+- The reviewer's own repro file, run against the fix, now fails every
+  defect assertion (4 of 4).
+
+Merge. The only conflict was `auth-provider.tsx`: `OwnerSession` wraps
+#11's `BackendSession`, which is now keyed by `sessionKey`. During a Clerk
+gap #11 keeps the owner, so the upload lifetime survives. The upload guard
+sees no live Clerk user during a gap, so it refuses to upload or submit
+(fail closed while the UI is hidden). `tests/owner-lifetime-auth.test.tsx`
+runs the real provider: the lifetime survives a gap, and aborts on another
+account or a resolved logout.
+
+### Final #11 merge (`4c9361c`)
+
+`1ab754a` retires a saved title/notes edit when its save is acknowledged,
+even while an auth remount hides the view, and keeps newer typing on top. It
+auto-merged. Its `todo-detail.tsx` changes (a promise-returning save, and
+`useSourcedDraft`'s `save`) are in different hunks from the submission panel
+mount. The previous auth resolution is unchanged: `OwnerSession` around the
+`sessionKey`-keyed `BackendSession`, exported `belongsToUser`.
+
+`tests/todo-detail-submission-drafts.test.tsx` renders an assignment's real
+TodoDetail, so both features are on screen. Across a hidden remount, the
+notes save is acknowledged and the server moves back to the old value. The
+saved edit is not revived or re-saved, the unsent submission text survives,
+and nothing is submitted without confirmation. A new owner's store starts
+empty. With the pre-merge drafts code, the test fails because the saved
+"AB" comes back.
+
+On `04e9506`: typecheck and lint pass. The combined auth, draft, owner and
+submission set passes (11 files, 102 tests; the new test is also green on
+its own). The full suite passes (40 files, 329 tests). No build this round.
+Evidence: `/home/srinivasib/.local/state/wiscourse-evidence/pr12-merge-4c93/`.
 
 ### Upload owner binding on the client (upload-owner round)
 
@@ -262,34 +335,21 @@ retried; review and cancel in the UI calling nothing.
 
 ## Checks
 
-On `3199abe` (the upload-owner fix; this doc adds no code):
+On `0271301` (candidate code; this doc adds none):
 
 | Check | Result |
 | --- | --- |
-| `bun run typecheck` (app, convex, tests) | passed |
+| `bun run typecheck` | passed |
 | `bun run lint` | passed |
-| focused: submission-upload, submission-panel, submissions, auth-transport, auth-recovery, profile-menu-auth, drafts, sync-schedule | 8 files, 69 tests passed |
-| `bun run test` | passed: 37 files, 301 tests, 3 consecutive full runs |
-| `bun run build` (local production build, `dist/` ignored) | passed |
-| removing each guard | the new tests fail as listed above |
-| `convex codegen` | not run: blocked, see below |
-| UI or CUA pass | not run (belongs to the coordinator) |
+| focused: auth-transport, auth-recovery, drafts, todo-detail-drafts, profile-menu-auth, submission-upload, submission-panel, submissions, sync-schedule, connection-health | 10 files, 94 tests passed (before the new auth test) |
+| `bun run test` | 39 files, 322 tests, 2 runs |
+| `bun run build` | passed |
+| codegen | not rerun. A prior exact-head dry run at `58a53cd` exited 0 with generated files unchanged (`/home/srinivasib/.local/state/wiscourse-evidence/codegen-dry-run-20260930/results.json`); that supersedes the earlier blocker note. This round adds no Convex module, and `dataModel.d.ts` derives from the schema by type. |
+| UI or CUA | not run (coordinator) |
 
-Codegen blocker. For an app with components, `convex codegen` loads
-deployment credentials (`loadSelectedDeploymentCredentials`) and runs
-`startComponentsPushAndCodegen` against the deployment URL and admin key
-(`node_modules/convex/dist/esm/cli/codegen.js`, `lib/components.js`).
-There is no offline mode. This worktree has no `CONVEX_DEPLOYMENT` or other
-Convex environment. Providing one, or starting a local backend with
-`convex dev --local`, is outside what this task may do. Whether the
-hand-edited `convex/_generated/api.d.ts` matches generated output is
-therefore unverified. This round changes nothing under `convex/`.
-
-Earlier rounds' checks and flaky-wait notes: `eed2c6e` passed the full
-suite (295 tests, 12 runs), with the ABA and provenance tests shown to fail
-when their fixes were removed. Evidence:
-`/home/srinivasib/.local/state/wiscourse-evidence/task03-p2/` and, for this
-round, `/home/srinivasib/.local/state/wiscourse-evidence/task03-upload-owner/`.
+Evidence for this round is in
+`/home/srinivasib/.local/state/wiscourse-evidence/pr12-review-fixes/`.
+Earlier rounds are in `task03-p2/` and `task03-upload-owner/`.
 
 ## Mock versus real evidence
 

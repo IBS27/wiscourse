@@ -11,6 +11,8 @@ export type Operation = "check" | "slot" | "upload" | "confirm" | "post" | "trip
 export type Fault =
   | "ok" // a normal reply, to aim a later fault at a later request
   | "rateLimit" // 403 "Rate Limit Exceeded"; nothing happens
+  | "tooManyRequests" // 429; nothing happens
+  | "forbidden" // a real permission 403; nothing happens
   | "serverError" // 503; nothing happens
   | "networkError" // the request never reaches Canvas
   | "reject" // 400 with a Canvas error message
@@ -28,6 +30,8 @@ export interface MockSubmission {
   attachments: Array<{ id: number; display_name: string }>;
   // Checks left before this attempt shows in `submissions/self` (Canvas lag).
   hiddenForChecks?: number;
+  // A grade on this attempt, as a teacher would leave it.
+  graded?: { score: number; grade: string; posted_at: string | null };
 }
 
 export interface LoggedRequest {
@@ -78,9 +82,11 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
       return { ...base, attempt: null, workflow_state: "unsubmitted", submitted_at: null, submission_type: null, body: null, url: null, attachments: [], submission_history: [] };
     }
     const versions = history.map((s) => {
-      const { hiddenForChecks, ...shown } = s;
+      const { hiddenForChecks, graded, ...shown } = s;
       void hiddenForChecks;
-      return { ...base, ...shown, workflow_state: "submitted" };
+      return graded
+        ? { ...base, ...shown, ...graded, workflow_state: "graded" }
+        : { ...base, ...shown, workflow_state: "submitted" };
     });
     return { ...versions.at(-1)!, submission_history: versions };
   }
@@ -152,6 +158,10 @@ export function createMockCanvas(options: { now?: () => number } = {}) {
     switch (fault) {
       case "rateLimit":
         return reply(new Response("403 Forbidden (Rate Limit Exceeded)", { status: 403 }));
+      case "tooManyRequests":
+        return reply(new Response("Too Many Requests", { status: 429 }));
+      case "forbidden":
+        return reply(json({ errors: [{ message: "You are not allowed to upload this file." }] }, 403));
       case "serverError":
         return reply(json({ errors: [{ message: "Service unavailable" }] }, 503));
       case "reject":

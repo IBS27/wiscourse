@@ -97,7 +97,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           </span>
         </div>
         {isLocal ? (
-          <EditableTitle title={item.title} onSave={(title) => void updateLocal({ todoId: item.todoId!, title })} />
+          <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
         ) : (
           <h1 className="mt-[7px] mb-[11px] text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">{item.title}</h1>
         )}
@@ -187,7 +187,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Notes */}
       <Block title="Notes">
-        <Notes value={item.notes ?? ""} onSave={(notes) => void setNotes({ ref, notes })} />
+        <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </Block>
 
       {/* Description (Canvas) */}
@@ -340,15 +340,16 @@ function submissionTitle(item: TodoItem): string {
   }
 }
 
-function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => void }) {
-  const [value, setValue] = useSourcedDraft("todo:title", title);
+function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => Promise<unknown> }) {
+  const [value, setValue, save] = useSourcedDraft("todo:title", title);
   return (
     <input
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
         const t = value.trim();
-        if (t.length > 0 && t !== title) onSave(t);
+        // A failed save keeps the edit on screen; the next blur retries it.
+        if (t.length > 0 && t !== title) save(t, onSave).catch(() => {});
         else setValue(title);
       }}
       onKeyDown={(e) => {
@@ -383,14 +384,15 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
   );
 }
 
-function Notes({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useSourcedDraft("todo:notes", value);
+function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promise<unknown> }) {
+  const [draft, setDraft, save] = useSourcedDraft("todo:notes", value);
   return (
     <textarea
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        if (draft.trim() !== value.trim()) onSave(draft);
+        // A failed save keeps the edit on screen; the next blur retries it.
+        if (draft.trim() !== value.trim()) save(draft, onSave).catch(() => {});
       }}
       placeholder="Add notes…"
       rows={Math.max(2, Math.min(10, draft.split("\n").length + 1))}

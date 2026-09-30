@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
@@ -183,4 +183,116 @@ it("never lets an unresolved Clerk state carry another user's token onto a retai
   expect(new Set(subjects(peers[1]))).toEqual(new Set(["user-B"]));
   expect(peers[0].sockets.every(socket => socket.closed)).toBe(true);
   expect(screen.queryByRole("textbox")).toBeNull();
+});
+
+// A retained owner's client must keep its auth through a Clerk gap: a
+// temporary state that reports no user (loading, error, degraded). Convex
+// clears a client's auth whenever its provider's inputs change, and a client
+// without auth replays queued writes anonymously, where they fail for good.
+describe("a retained owner's queued write", () => {
+  const signedInA = { status: "ready", isLoaded: true, isSignedIn: true, userId: "user-A", sessionId: "session-A", sessionClaims: { aud: "convex" } };
+  const noUser = { isSignedIn: false, userId: null, sessionClaims: null };
+  const gaps = {
+    "error, session missing": { ...noUser, status: "error", isLoaded: true, sessionId: null },
+    "degraded, session missing": { ...noUser, status: "degraded", isLoaded: true, sessionId: null },
+    "loading, session missing": { status: "loading", isLoaded: false, isSignedIn: undefined, userId: undefined, sessionId: undefined, sessionClaims: undefined },
+    "error, session unchanged": { ...noUser, status: "error", isLoaded: true, sessionId: "session-A" },
+    "loading, session unchanged": { ...noUser, status: "loading", isLoaded: false, sessionId: "session-A" },
+  };
+
+  function ownedApp() {
+    const peers: ReturnType<typeof createAuthServer>[] = [];
+    const createOwnedClient = (url: string) => {
+      const peer = createAuthServer();
+      peers.push(peer);
+      const owned = new ConvexReactClient(url, { webSocketConstructor: peer.WebSocket, logger: false, unsavedChangesWarning: false });
+      clients.push(owned);
+      return owned;
+    };
+    const Owned = () => <AuthProvider url="https://test.convex.cloud" createClient={createOwnedClient}><Draft /></AuthProvider>;
+    const owners = () => peers.flatMap(peer => peer.mutationOwners);
+    let result = "pending";
+    const queueWrite = () => {
+      void clients[0].mutation(api.todos.createLocal, { title: "Queued A mutation" })
+        .then(() => { result = "success"; }, (error: unknown) => { result = String(error); });
+    };
+    return { peers, Owned, owners, queueWrite, result: () => result };
+  }
+
+  for (const [name, gap] of Object.entries(gaps)) {
+    it(`is sent once, as the owner, through a Clerk gap (${name})`, async () => {
+      const { peers, Owned, owners, queueWrite, result } = ownedApp();
+      const view = render(<Owned />);
+      await flush();
+      fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsent question" } });
+      const clear = vi.spyOn(clients[0], "clearAuth");
+      act(() => peers[0].latest().close());
+      await flush();
+      queueWrite();
+      Object.assign(clerk, gap);
+      clerk.getToken.mockResolvedValue(null);
+      view.rerender(<Owned />);
+      await flush();
+      await advance(5_000);
+      expect(screen.queryByRole("textbox")).toBeNull();
+      Object.assign(clerk, signedInA);
+      clerk.getToken.mockImplementation(async () => tokenFor(clerk.userId));
+      view.rerender(<Owned />);
+      await flush();
+      await advance(5_000);
+      expect(clients).toHaveLength(1);
+      expect(clear).not.toHaveBeenCalled();
+      expect(owners()).toEqual(["user-A"]);
+      expect(result()).not.toContain("Not signed in");
+      expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("Unsent question");
+    });
+  }
+
+  it("waits for the owner's token when it lapses during a long gap", async () => {
+    const { peers, Owned, owners, queueWrite, result } = ownedApp();
+    const view = render(<Owned />);
+    await flush();
+    Object.assign(clerk, gaps["degraded, session missing"]);
+    clerk.getToken.mockRejectedValue(new TypeError("Clerk is unreachable"));
+    view.rerender(<Owned />);
+    await flush();
+    // Past the token's 60-second life: Convex asks for a fresh one mid-gap.
+    await advance(70_000);
+    act(() => peers[0].latest().close());
+    await flush();
+    queueWrite();
+    await advance(5_000);
+    expect(owners().every(owner => owner === "user-A")).toBe(true);
+    clerk.getToken.mockImplementation(async () => tokenFor(clerk.userId));
+    Object.assign(clerk, signedInA);
+    view.rerender(<Owned />);
+    await flush();
+    await advance(5_000);
+    expect(clients).toHaveLength(1);
+    expect(owners()).toEqual(["user-A"]);
+    expect(result()).not.toContain("Not signed in");
+  });
+
+  it("waits for the owner's token when refresh fails while Clerk is ready", async () => {
+    const { peers, Owned, owners, queueWrite, result } = ownedApp();
+    render(<Owned />);
+    await flush();
+    clerk.getToken.mockRejectedValue(new TypeError("network"));
+    // The scheduled refresh fails; recovery retries until it gives up.
+    await advance(60_000);
+    for (const delay of [1_000, 2_000, 5_000, 10_000]) await advance(delay);
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    act(() => peers[0].latest().close());
+    await flush();
+    queueWrite();
+    await advance(5_000);
+    expect(owners().every(owner => owner === "user-A")).toBe(true);
+    expect(peers[0].messages.some(message => message.type === "Authenticate" && message.tokenType === "None")).toBe(false);
+    clerk.getToken.mockImplementation(async () => tokenFor(clerk.userId));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await advance(5_000);
+    expect(owners()).toEqual(["user-A"]);
+    expect(result()).not.toContain("Not signed in");
+    expect(screen.getByRole("textbox")).toBeTruthy();
+  });
 });
