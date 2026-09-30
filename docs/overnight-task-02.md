@@ -22,7 +22,9 @@ at `/home/srinivasib/Developer/wiscourse` sits at `914e68c`, an ancestor of
 | `841f0f5` | docs: repair round (published head of PR #11) |
 | `e1ab764` | fix(auth): Bugbot HIGH / Astra P1, retained owner's queued writes sent without auth |
 | `2af8bf1` | fix(drafts): Astra P2, stale saved draft revived by a source cycle |
-| (this doc update) | docs: review round 2 |
+| `edc2d63` | docs: review round 2 |
+| `1ab754a` | fix(drafts): Astra recheck, residual P2, saved edit acknowledged while hidden |
+| (this doc update) | docs: review round 3 |
 
 ### Review of `3b5d8d0`
 
@@ -481,10 +483,73 @@ expect `AB`.
   Writes would fail in that state anyway.
 - A held request has no automatic end. The recovery screen offers Retry,
   Reload and Sign out, and SessionLoading offers Reload.
-- Drafts: a source cycle that finishes while the detail view is not rendered,
-  or within one batched update, isn't seen, so an older pair could still
-  match. That needs a save confirmed and reverted entirely while the view is
-  unmounted.
+- Drafts: a source cycle that finished while the view was hidden was not
+  seen. Fixed in round 3 (`1ab754a`).
+
+## Review round 3 (Astra recheck of `edc2d63`)
+
+Input: `/tmp/pr-babysit-20260930/reviews/wiscourse-11/urgent-recheck.md`,
+`recheck.md` and `candidate/tests/reviewer-todo-draft.test.tsx`. The recheck
+passes the five original auth-gap cases, strict expiry, rejection with manual
+Retry, and foreign-owner expiry. One residual P2 remained.
+
+### Saved title/notes edit revived after a hidden acknowledgement (`1ab754a`)
+
+`useSourcedDraft` reconciled only server values the view rendered. In the
+actual TodoDetail: server `A`, edit `AB`, blur (save pending), auth recovery
+hides the view, the save succeeds, the server goes `AB` then `A` (another
+tab), the view returns. It showed `AB`, and blurring saved it again. The
+app already had the save's promise, so it could retire the edit without
+seeing those values.
+
+Fix (`src/lib/drafts.ts`, `src/components/todo/todo-detail.tsx`):
+
+- `useSourcedDraft` returns `save(sent, send)`. The stored pair records
+  `sent` as in flight. On success, the pair moves onto `sent` through the
+  store, even while unmounted. On failure, the unsaved edit stays, and the
+  next blur retries it. The title sends its trimmed value.
+- When the server returns a value that is in flight (our own save), the draft
+  is rebased onto it, not replaced. An edit typed during the save therefore
+  survives, whether the view is mounted or hidden. Any other new server value
+  still replaces the draft.
+- A save that fails is now caught in the component instead of leaving an
+  unhandled rejection; the edit stays visible.
+
+Regressions (`tests/todo-detail-drafts.test.tsx`, actual TodoDetail, title and
+notes):
+
+- a hidden deferred success followed by a server `AB → A` cycle shows `A`
+  with no stale save on blur;
+- a hidden deferred failure keeps `AB`, and blur retries it;
+- a newer edit typed during the save survives the save's echo and its
+  acknowledgement, in both the mounted and the hidden case.
+
+The first and third fail on `edc2d63` (4 failures); the failure case passes on
+both, as a preservation check. The reviewer's candidate test (2 visible and 2
+hidden cases) passes 4/4, where the 2 hidden cases failed on `edc2d63`.
+
+Checks at `1ab754a`: typecheck, lint and `git diff --check` clean;
+`bun run test` 35 files, 292 tests.
+
+### Not changed, by instruction
+
+- The reviewer's conditional auth probe: a forced refresh returning the
+  earlier, already-expired JWT late, after a newer attempt has started.
+  Accepting a superseded success is a possible hardening. But real Clerk
+  doing this is unverified, the same case also fails on published `841f0f5`,
+  and the instruction was not to widen scope. It stays a documented limit.
+- Repeated rejection of fresh tokens ends in anonymous replay in this
+  candidate, in published `841f0f5`, and in bare Convex 1.43.0 alike. That is
+  inherited SDK terminal-auth behaviour.
+
+### Stack integration note
+
+`git merge-tree 841f0f5 edc2d63 58a53cd9` (reviewer) shows a conflict in
+`src/components/app/auth-provider.tsx`: this branch keeps the `sessionKey`
+while #12 adds its `OwnerSession` upload wrapper. Keep both, and keep #12's
+exported `belongsToUser` used by uploads. This round did not touch
+`auth-provider.tsx`; round 3 changes only `drafts.ts`, `todo-detail.tsx` and
+the TodoDetail test.
 
 ## Draft PR body (not opened; waiting for coordinator review)
 
@@ -504,7 +569,8 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 >   token refresh no longer drops the owner's client to anonymous auth;
 >   queued writes wait and are sent once, as the owner.
 > - Fix: todo title/notes drafts no longer resurrect an older edit after a
->   later save or a remote restore; route drafts drop on navigation but
+>   later save or a remote restore, including a save acknowledged while the
+>   view was hidden; edits typed during a save survive it; route drafts drop on navigation but
 >   survive auth remounts; quick-add stays app-wide.
 >
 > **Adaptive polling**
@@ -524,5 +590,5 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 > **Rollout**: push backend, run `syncSchedule:backfill` once, ship frontend.
 > Run `convex codegen` first; `_generated/api.d.ts` was edited by hand.
 >
-> **Checks**: typecheck, lint, 286 tests. Signed-in browser verification is
+> **Checks**: typecheck, lint, 292 tests. Signed-in browser verification is
 > still pending.
