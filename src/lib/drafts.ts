@@ -44,12 +44,18 @@ export function useDraft<T>(name: string, initial: T | (() => T)) {
 }
 
 /**
- * An edit of a server value. The draft survives remounts, but a new server
- * value replaces it, so a stale edit never resurfaces after a later save.
+ * An edit of a server value. The draft survives remounts while the server
+ * value stays the same. Any new server value replaces it, and the stored pair
+ * moves to that value, so an edit never resurfaces when the server later
+ * returns to the value it was made against.
  */
 export function useSourcedDraft(name: string, source: string) {
   const [draft, setDraft] = useDraft(name, { source, value: source });
-  const value = draft.source === source ? draft.value : source;
+  const stale = draft.source !== source;
+  useEffect(() => {
+    if (stale) setDraft({ source, value: source });
+  }, [stale, source, setDraft]);
+  const value = stale ? source : draft.value;
   const setValue = useCallback((next: string) => setDraft({ source, value: next }), [setDraft, source]);
   return [value, setValue] as const;
 }
