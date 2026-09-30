@@ -18,7 +18,9 @@ head as the task03 integration point). The first round was reviewed as
 | `829fed4` | feat(submissions): outbox, delivery, panel, mock Canvas, preview (was `f8fe8f0`) |
 | `8d1bf60` | docs: first report (was `0969806`) |
 | `026c177` | fix(submissions): review repairs (was `5185156` before the rebase) |
-| (this doc) | docs: repair round |
+| `3772d21` | docs: repair round (reviewed head for the P2 round) |
+| `eed2c6e` | fix(submissions,sync): exact credential identity and server-bound uploads (P2 round) |
+| (this doc) | docs: P2 round |
 
 The rebase had no conflicts: task02's round touched `auth-provider.tsx`,
 `activity.ts`, `syncCadence.ts`, `syncSchedule.ts` and their tests; task03
@@ -45,48 +47,71 @@ The assignment view gets a submission panel for assignments whose Canvas
 
 ## Repair round (review of `0969806`)
 
-### Upload ownership
+### Upload ownership (reworked in the P2 round)
 
-The review found that `submit`, the delivery read and file cleanup trusted
-any storage id. A storage id is not proof of anything, and a client-supplied
-owner would not be either, so ownership is now proved by content:
+The first repair proved ownership by content hash. The P2 review pointed
+out that knowing a hash and size is not proof that this user uploaded this
+blob, so hash tickets are gone. Ownership is now bound by the server at the
+moment of storage:
 
-- `generateUploadUrl({ sha256, size })` records a ticket for the
-  authenticated user with the file's SHA-256 (base64, the form Convex keeps
-  in `_storage`) and size, valid for an hour.
-- `registerUpload({ storageId })` binds a stored file to the caller only if
-  one of the caller's open tickets matches that file's hash and size, and
-  only if nobody registered it first. A user who knows another user's
-  storage id but not the bytes cannot produce a matching ticket.
-- `submit` requires each file to be registered to the caller and not yet
-  attached; it then records the outbox row on the registration. Delivery
-  reads a file only if it is registered to the row's user and row
-  (`uploadOwned`), and cleanup deletes only such files.
-- Expired, never-attached uploads are deleted a few at a time on the user's
-  next `generateUploadUrl`.
-- The client hashes with `@noble/hashes` (already a dependency) because Web
-  Crypto is missing on non-HTTPS origins.
+- `POST /submissions/upload` (`submissions.uploadFile`, an HTTP action)
+  takes the file as the body and the user's Convex token as a bearer
+  token. It checks the identity, stores the bytes itself with
+  `ctx.storage.store`, and records `{ userId, storageId }` through the
+  internal `recordUpload` in the same request. The storage id is returned
+  only to that caller.
+- `generateUploadUrl` and `registerUpload` are removed. No function accepts
+  a storage id or a hash as proof of upload.
+- `submit` accepts a file only if its storage id was recorded for the caller
+  and is not yet attached. Delivery reads a file only if it is recorded for
+  the row's user and row (`uploadOwned`), and cleanup deletes only such
+  files. Unattached uploads expire after a day and are deleted a few at a
+  time on that user's next upload.
+- CORS on the endpoint allows any origin but no cookies; only the caller's
+  own bearer token authenticates it. `OPTIONS` answers the preflight.
+- The client (`src/lib/submission-upload.ts`) gets the token from Clerk the
+  way the Convex client does (native audience, else the `convex` template)
+  and posts to `VITE_CONVEX_SITE_URL`. `auth-provider.tsx` is untouched. If
+  Clerk has already switched accounts under an old client, the upload is
+  recorded for the new account and the old client's `submit` fails closed.
+- `MAX_FILE_BYTES` is 20,000,000, inside Convex's 20 MB HTTP body limit.
 
-Regression: B, holding A's storage id, cannot attach it, cannot register
-it, and cannot register it after declaring a guessed hash. None of that
-reaches Canvas, creates a row or deletes A's file. A then submits the same
-file successfully and the file is freed after Canvas confirms.
+Regression: A has one blob stored outside the upload action and one
+uploaded properly. B knows both storage ids and the bytes, so the hash and
+size too. B cannot attach either, B's own upload of the same bytes gets a
+new id, and A cannot attach the stray blob either. There is no Canvas
+request, no row, and both of A's blobs remain. Unauthenticated uploads get
+401. A then submits the proper upload, and it is freed after Canvas confirms.
 
-### Late credential invalidation
+### Credential invalidation (reworked in the P2 round)
 
-`canvasCredentials.revision` is bumped on every `save` (unset reads as 0).
-`getCanvasClient` returns it as `session.revision`. It is a counter, not
-token material. `credentials.markInvalid({ userId, revision? })` now returns
-whether it marked anything; with a revision it does nothing, including
-leaving the tripwire schedule alone, unless that revision is still current.
-Submissions pass the revision they used. A 401 for a token that a reconnect
-has replaced retries with the new token; a 401 for the current token still
-marks it invalid and fails the row with "reconnect", as before.
+`canvasCredentials.revision` is bumped on every `save`, but `disconnect`
+deletes the row, so a new connect starts again at revision 1. Comparing the
+number alone therefore had an ABA race. The identity is now the row id plus
+the revision (`CredentialIdentity`). Convex never reuses a document id.
 
-Regression (slow transport): the attempt's check with the first token is
-held in flight, the student reconnects (revision 2), and Canvas then
-answers the held request with 401. The credential stays active at revision
-2, the schedule row stays, and the next attempt submits once.
+- `getCanvasClient` returns `session.identity`
+  (`{ credentialId, revision }`, not secret).
+- `credentials.markInvalid({ userId, credential })` requires it and returns
+  whether it marked. Unless that exact row and revision are still stored, it
+  changes nothing: the status and the tripwire schedule are left alone.
+- Every caller passes the identity it acquired: submission `send`, sync's
+  `tripwireUser` and `fullSyncUser` (through `handleSyncError`), the preview
+  control, and task02's `sync-schedule` test. No other caller exists.
+- In submissions, a 401 for a replaced credential retries with the current
+  one. In sync, it rethrows so the Workpool retries with the current token,
+  without setting an error status. A 401 for the current credential still
+  invalidates it, removes the schedule, and fails the row with "reconnect".
+
+Regressions (slow transport):
+- A submission check with the old row's token is held; the student
+  disconnects and connects again (new row, revision 1 again); the held
+  request gets 401. The new row stays active and scheduled, and the
+  submission goes through.
+- The same race for a held tripwire request. The new credential and
+  schedule stay; a 401 on the next tripwire, from the current credential,
+  invalidates it and removes the schedule.
+- The earlier reconnect-without-delete race still passes.
 
 ### One Canvas request per user
 
@@ -141,42 +166,59 @@ retried; review and cancel in the UI calling nothing.
 | 5xx, network error, timeout on the POST; dead action | check-only from then on, first check after 90 s or more; "Not confirmed yet" when checks run out |
 | other 4xx on the POST, or before any possible send | failed with Canvas's message, no retry |
 | `CanvasReconnectRequired` | failed with reconnect, no retry, no Canvas request |
-| 401 for the current token | `markInvalid` for that revision, then as above |
-| 401 for a token a reconnect replaced | retry with the new token |
+| 401 for the current credential (row and revision) | `markInvalid`, then as above |
+| 401 for a credential a reconnect or disconnect replaced | retry with the current one; nothing invalidated |
 | reconnect-required after a possible send | "Not confirmed yet" with reconnect |
 
 ## Interfaces
 
-- `submissions.generateUploadUrl({ sha256, size })` then upload, then
-  `submissions.registerUpload({ storageId })`, then
+- Upload with `POST /submissions/upload` (bearer Convex token, file body) →
+  `{ storageId }`, then
   `submissions.submit({ clientKey, assignmentCanvasId, content, confirmed: true })`.
+  `generateUploadUrl` and `registerUpload` no longer exist.
 - `submissions.resume({ id })`: "Try now" for a queued row (refused while a
   send may have landed), or one check for an unconfirmed row. Never sends.
 - `submissions.sendAgain({ id, confirmed: true })`: failed or unconfirmed
   rows only.
-- `credentials.markInvalid({ userId, revision? })` returns `boolean`.
-  `CanvasSession.revision` is new. Sync's callers still pass no revision
-  (see limits).
+- `credentials.markInvalid({ userId, credential: { credentialId, revision } })`
+  returns `boolean`; `credential` is required. `CanvasSession.identity` and
+  the exported `credentialIdentity` / `CredentialIdentity` are new.
 - `syncStore.claimCanvasLease` / `releaseCanvasLease` / `LEASE_STALE_MS`;
   `claimSync` and `releaseSync` keep their contracts.
 - Schema: `canvasCredentials.revision`, `submissionOutbox.canvasLease`, new
-  `submissionUploads` table; `outboxErrorKind` drops `notReceived`.
+  `submissionUploads` table (`userId`, `storageId`, `expiresAt`,
+  `outboxId`; indexes `by_user`, `by_storage`); `outboxErrorKind` drops
+  `notReceived`.
+- New client env use: `VITE_CONVEX_SITE_URL`, which the ICS feed already
+  needs. No new dependency; `@noble/hashes` is no longer imported by the
+  panel.
 
 ## Checks
 
-On `026c177` (the integrated head, before this doc):
+On `eed2c6e` (the P2 fix; this doc adds no code):
 
 | Check | Result |
 | --- | --- |
 | `bun run typecheck` (app, convex, tests) | passed |
 | `bun run lint` | passed |
-| `bun run test` | passed: 36 files, 293 tests |
-| `tests/submissions.test.ts` | 16 passed, including the ownership, late-401, lease and visibility-lag regressions |
-| `tests/submission-panel.test.tsx` | 3 passed: nothing sent without confirmation and the same key reused; unconfirmed offers a check and a warned, confirmed resend; reconnect replaces retry |
-| reverting each fix | the late-401 test fails without the revision check, the lease test without the lease claim, and two ambiguous-send tests without check-only |
-| preview API smoke (mock) | an owned upload registered, and a lost send left the row check-only |
-| `convex codegen` | not run; `_generated/api.d.ts` still hand-edited |
-| production build, `tests/browser`, UI or CUA pass for this round | not run (UI verification belongs to the coordinator) |
+| `bun run test` | passed: 36 files, 295 tests; 12 full runs after the wait fix, the last 5 on the final test code |
+| `tests/submissions.test.ts` | 18 passed, including the ABA (submission and sync) and upload provenance regressions |
+| `tests/sync-schedule.test.ts` | passed with the identity-carrying `markInvalid` call |
+| `tests/submission-panel.test.tsx` | 3 passed (upload hook mocked) |
+| reverting fixes | with `markInvalid` comparing revision only, both ABA tests fail; with `submit` skipping the owner check, the provenance test fails |
+| preview API smoke (mock) | the preview's upload runs the real HTTP action as the preview student, then one submit (upload host sent no token) |
+| `convex codegen` | not run; `_generated/api.d.ts` still hand-edited (no new modules this round) |
+| production build, `tests/browser`, UI or CUA pass | not run (UI verification belongs to the coordinator) |
+
+One flaky wait was found and fixed. Under full-suite load, the lease test
+gave the other user's submission a fixed 10 event-loop turns, and its real
+Web Crypto decrypt could take longer; it failed in 1 of about 6 full runs.
+It now waits for the condition, yielding real time without moving the fake
+clock. Two other waits in that test were tightened to wait for the busy
+claim itself.
+
+Detailed execution evidence (commands, outputs, logs) is outside the repo:
+`/home/srinivasib/.local/state/wiscourse-evidence/task03-p2/`.
 
 ## Mock versus real evidence
 
@@ -185,9 +227,9 @@ Unverified on real Canvas: UW's upload replies (inst-fs 201 versus a 3xx
 confirmation), `redirect: "manual"` in the Convex runtime, the shape and
 timing of `submission_history`, how Canvas rewrites text bodies, and its
 error bodies for locked or over-attempt assignments. Unverified on a real
-Convex deployment: that `_storage.sha256` is the base64 SHA-256 the client
-computes (convex-test and the Convex docs say so), scheduler timing, and
-concurrent actions under the lease. The Mac fixture
+Convex deployment: the upload HTTP action with a real Clerk token and CORS
+preflight from the app origin, the exact HTTP body limit, scheduler timing,
+and concurrent actions under the lease. The Mac fixture
 `wiscourse-p1-reproduction.cjs` concerns task02's auth provider and was not
 run here.
 
@@ -200,11 +242,6 @@ check-only behaviour; the browser pass is the coordinator's.
 
 ## Remaining limits
 
-- Sync's `handleSyncError` still calls `markInvalid` without a revision, so
-  a sync request whose token was replaced mid-flight can still invalidate
-  the new credential. The fix is to pass `session.revision`; it touches
-  `sync.ts`, which I left for task02 or the parent to avoid a cross-branch
-  conflict.
 - If Canvas never shows an accepted send, the row stays "Not confirmed yet"
   until the student checks Canvas and dismisses it or confirms a resend.
   A resend while the first send is still invisible can make a second Canvas
@@ -218,8 +255,14 @@ check-only behaviour; the browser pass is the coordinator's.
   submission by up to its length (polled every 20 s), and a dead holder
   blocks for up to 15 minutes. A dead submission attempt stays "sending"
   for up to 11 minutes before the watchdog moves it on.
-- An upload that is stored but never registered (tab closed between the
-  two calls) leaves an orphan blob with no owner record to clean it up.
+- Upload and record happen in one HTTP request, but not one transaction.
+  If the action dies between `store` and `recordUpload`, the blob has no
+  owner record and nothing deletes it. Nobody can attach it either.
+- Any signed-in user can store up to 20 MB per request, with no rate limit;
+  unattached files are deleted only on that user's next upload after a day.
+- A stale-credential 401 in sync throws a plain error so the Workpool
+  retries; a job with no retries left ends without an error status, and the
+  next tripwire recovers.
 - Files are held in action memory one at a time, capped at 20 MB.
 
 ## Draft PR body (not opened; waiting for coordinator CUA and review)
@@ -232,8 +275,8 @@ Title: Assignment submissions through a confirmed, durable outbox
 >
 > **Flow**
 > - Compose, review in a confirmation dialog, submit. Files go to Convex
->   storage first, registered to the uploader by content hash; a scheduled
->   action delivers the outbox row.
+>   storage first through an authenticated upload endpoint that records the
+>   uploader; a scheduled action delivers the outbox row.
 > - The panel shows queued, checking, uploading, sending, waiting,
 >   confirmed (Canvas's attempt number), failed and not confirmed. Nothing
 >   is marked submitted until Canvas confirms.
@@ -251,12 +294,14 @@ Title: Assignment submissions through a confirmed, durable outbox
 > - Throttling and outages before a send retry at 30 s, 2 min, 8 min.
 > - Refusals are final and show Canvas's message.
 > - A missing or rejected credential stops without retry and points to
->   Settings; a late 401 for a replaced token does not invalidate the new one.
+>   Settings. A late 401 for a replaced credential (row id plus revision,
+>   also across disconnect and reconnect) does not invalidate the new one,
+>   in submissions or sync.
 >
-> **Testing**: typecheck, lint, 293 tests including 19 for submissions
+> **Testing**: typecheck, lint, 295 tests including 21 for submissions
 > against a mock Canvas. A mock-only preview (`tests/submission-preview`)
 > covers each scenario. Nothing has been sent to a real Canvas.
 >
 > **Before merge**: run `convex codegen` (api.d.ts edited by hand). No data
-> migration; `allowedExtensions` fills in on the next full sync. Pass the
-> credential revision from sync's `handleSyncError` too.
+> migration; `allowedExtensions` fills in on the next full sync. Set
+> `VITE_CONVEX_SITE_URL` in the frontend (already needed for ICS).
