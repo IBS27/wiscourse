@@ -24,7 +24,9 @@ at `/home/srinivasib/Developer/wiscourse` sits at `914e68c`, an ancestor of
 | `2af8bf1` | fix(drafts): Astra P2, stale saved draft revived by a source cycle |
 | `edc2d63` | docs: review round 2 |
 | `1ab754a` | fix(drafts): Astra recheck, residual P2, saved edit acknowledged while hidden |
-| (this doc update) | docs: review round 3 |
+| `4c9361c` | docs: review round 3 (published head of PR #11) |
+| `3abeb4f` | fix(drafts): Bugbot r4150325743 disposition, notes sent as the server stores them |
+| (this doc update) | docs: review round 4 |
 
 ### Review of `3b5d8d0`
 
@@ -551,6 +553,83 @@ exported `belongsToUser` used by uploads. This round did not touch
 `auth-provider.tsx`; round 3 changes only `drafts.ts`, `todo-detail.tsx` and
 the TodoDetail test.
 
+## Review round 4 (Bugbot r4150325743 on `4c9361c`)
+
+Inputs:
+[discussion_r4150325743](https://github.com/IBS27/wiscourse/pull/11#discussion_r4150325743)
+("Save success wipes in-flight draft") and Astra's
+`late-query-recheck.md`, with `final-candidate/tests/reviewer-late-query*.tsx`.
+
+### Disposition
+
+Bugbot's premise is a successful save that resolves while the todo query
+still shows the pre-save value. The ACK then moves the stored pair onto the
+sent value, the old query value reads as a remote restore, and an edit typed
+during the save is dropped. With the supported client that ordering does not
+happen, for two reasons I checked in the installed packages:
+
+1. Convex 1.43.0 (`browser/sync/request_manager.js` `onResponse` and
+   `removeCompleted`, `browser/sync/client.js` `Transition` handling) keeps a
+   successful `MutationResponse` pending until a query `Transition` reaches
+   its commit timestamp. It then applies the query results and notifies query
+   listeners before it resolves the mutation's promise. TodoDetail's `item`
+   is `useQuery(api.todos.get)` on the same client, and that query reads the
+   row the mutation writes. No optimistic update touches todos.
+2. `useQuery` updates TodoPage with a default-priority `setState`, and the
+   draft store re-renders TodoDetail at sync priority. React DOM 19.2.8's
+   `getHighestPriorityLanes` returns `lanes & 42` (Sync, InputContinuous,
+   Default), so both updates render in one pass. The view therefore never
+   renders the ACK with the pre-save value. Astra's event-task trace shows
+   exactly this: the store update lands first, then a single parent render
+   with `AB`, and no child-only render with `A`.
+
+Astra's four failing cases feed the pre-save prop after the ACK. That bypasses
+both mechanisms and is outside the supported contract. Their 8 real-SDK cases
+and 8 component controls pass, on this head too. A defensive change for that
+ordering would need to tell a stale pre-save `A` from a genuine later `A`,
+which the hook cannot do without query timestamps. Keeping the pair on the old
+source would reopen the hidden-ACK case that round 3 fixed. I made no such
+change.
+
+### The reachable instance, fixed (`3abeb4f`)
+
+The same mechanism was reachable with no lag. `todos.setNotes` trims what it
+stores (`patchPlan`), but the notes field sent the raw text. With outer
+whitespace, for example `" AB \n"`, the server echoes `AB`. That never
+matches the in-flight `" AB \n"`, so it read as someone else's change and an
+edit typed during the save was dropped. Notes now send `draft.trim()`, the
+value the server stores. The title already sent its trimmed value, and
+`updateLocal` trims the same way.
+
+### Tests
+
+`tests/todo-detail-sdk.test.tsx` uses the real `ConvexReactClient`,
+`ConvexProvider`, `useQuery` and `useMutation` around the actual TodoDetail.
+The peer applies writes the way the server does (trimmed), and the ACK and
+transition arrive in a plain task outside `act`, like a WebSocket message.
+
+- For title and notes, an edit typed during the save survives the save, and
+  the next blur sends only the new edit. This passes on `4c9361c` too, and is
+  the contract evidence against the bot's ordering.
+- For title and notes, the same with outer whitespace in the sent text. The
+  notes case fails on `4c9361c` (`AB` instead of `AB more`) and passes now.
+
+Checks at `3abeb4f`: typecheck, lint and `git diff --check` clean;
+`bun run test` 36 files, 296 tests.
+
+### Limits
+
+- Controlled protocol tests, not hosted Convex or a browser. They establish
+  the SDK and React ordering for this client and React version, not every
+  possible future scheduler. A React or Convex upgrade that splits these
+  lanes or resolves mutations before query transitions would reopen the
+  bot's ordering.
+- Two overlapping saves of different values remain the inherited case Astra
+  already classified: the first echo is not the latest in-flight value.
+- `/tmp` hit the 12.5 GB per-user quota during this round, almost all of it
+  `/tmp/pr-babysit-20260930` (9.9 GB). I deleted only my own scratch files
+  and finished task output, and ran tests with `TMPDIR=~/.cache/wiscourse-tmp`.
+
 ## Draft PR body (not opened; waiting for coordinator review)
 
 Title: Auth session recovery, draft preservation, and adaptive Canvas polling
@@ -590,5 +669,5 @@ Title: Auth session recovery, draft preservation, and adaptive Canvas polling
 > **Rollout**: push backend, run `syncSchedule:backfill` once, ship frontend.
 > Run `convex codegen` first; `_generated/api.d.ts` was edited by hand.
 >
-> **Checks**: typecheck, lint, 292 tests. Signed-in browser verification is
+> **Checks**: typecheck, lint, 296 tests. Signed-in browser verification is
 > still pending.
