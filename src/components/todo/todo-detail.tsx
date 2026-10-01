@@ -389,8 +389,9 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        // A failed save keeps the edit on screen; the next blur retries it.
-        if (draft.trim() !== value.trim()) save(draft, onSave).catch(() => {});
+        // Send what the server stores (it trims), so its echo is recognised
+        // as this save. A failed save keeps the edit; the next blur retries.
+        if (draft.trim() !== value.trim()) save(draft.trim(), onSave).catch(() => {});
       }}
       placeholder="Add notes…"
       rows={Math.max(2, Math.min(10, draft.split("\n").length + 1))}
