@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useDraft, useSourcedDraft } from "@/lib/drafts";
+import { useEffect, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
@@ -13,6 +14,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
 import { Chip, Dot, Kbd, Pill } from "@/components/app/bits";
+import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
 import {
   addDays,
@@ -95,7 +97,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           </span>
         </div>
         {isLocal ? (
-          <EditableTitle key={item.title} title={item.title} onSave={(title) => void updateLocal({ todoId: item.todoId!, title })} />
+          <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
         ) : (
           <h1 className="mt-[7px] mb-[11px] text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">{item.title}</h1>
         )}
@@ -185,7 +187,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Notes */}
       <Block title="Notes">
-        <Notes key={item.notes ?? ""} value={item.notes ?? ""} onSave={(notes) => void setNotes({ ref, notes })} />
+        <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </Block>
 
       {/* Description (Canvas) */}
@@ -207,10 +209,11 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               <div className="mt-[2px] text-xs text-ink-3">
                 {item.submittedAt !== undefined
                   ? `Submitted ${formatDayShort(dayKeyOf(item.submittedAt))}, ${formatTime(item.submittedAt)}`
-                  : "Submitting from wiscourse is coming; for now, submit in Canvas."}
+                  : item.kind === "assignment" ? "As Canvas last reported it." : "Submit this in Canvas."}
               </div>
             </div>
           </div>
+          {item.kind === "assignment" && <SubmissionPanel item={item} />}
           {item.htmlUrl && (
             <a
               href={item.htmlUrl}
@@ -337,16 +340,16 @@ function submissionTitle(item: TodoItem): string {
   }
 }
 
-// Keyed on the incoming value by the caller, so a server update resets the draft.
-function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => void }) {
-  const [value, setValue] = useState(title);
+function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) => Promise<unknown> }) {
+  const [value, setValue, save] = useSourcedDraft("todo:title", title);
   return (
     <input
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
         const t = value.trim();
-        if (t.length > 0 && t !== title) onSave(t);
+        // A failed save keeps the edit on screen; the next blur retries it.
+        if (t.length > 0 && t !== title) save(t, onSave).catch(() => {});
         else setValue(title);
       }}
       onKeyDown={(e) => {
@@ -360,7 +363,7 @@ function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) =
 }
 
 function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
-  const [value, setValue] = useState("");
+  const [value, setValue] = useDraft("todo:subtask", "");
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const t = value.trim();
@@ -381,14 +384,16 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
   );
 }
 
-function Notes({ value, onSave }: { value: string; onSave: (v: string) => void }) {
-  const [draft, setDraft] = useState(value);
+function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promise<unknown> }) {
+  const [draft, setDraft, save] = useSourcedDraft("todo:notes", value);
   return (
     <textarea
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
-        if (draft.trim() !== value.trim()) onSave(draft);
+        // Send what the server stores (it trims), so its echo is recognised
+        // as this save. A failed save keeps the edit; the next blur retries.
+        if (draft.trim() !== value.trim()) save(draft.trim(), onSave).catch(() => {});
       }}
       placeholder="Add notes…"
       rows={Math.max(2, Math.min(10, draft.split("\n").length + 1))}

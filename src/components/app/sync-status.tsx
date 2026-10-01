@@ -1,5 +1,5 @@
 import { RefreshCw } from "lucide-react";
-import { useSyncInfo } from "@/lib/sync-info";
+import { isSyncDelayed, useSyncInfo } from "@/lib/sync-info";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ export function SyncStatusLine({ compact = false, className }: { compact?: boole
   else if (info.syncing) text = info.firstSync ? "First sync in progress…" : "Syncing…";
   else if (info.error) text = "Last sync failed";
   else if (info.lastSyncedAt === undefined) text = "Waiting for first sync";
+  else if (isSyncDelayed(info, now)) text = `Sync delayed · last synced ${formatSince(info.lastSyncedAt, now)}`;
   else text = `Synced ${formatSince(info.lastSyncedAt, now)}`;
 
   return (

@@ -3,6 +3,7 @@
 // The syllabus line ("MWF 9:55-10:45 · CS 1240") is shown as a hint and, when
 // it parses cleanly, prefills the first meeting.
 
+import { useDraft, useDiscardDrafts } from "@/lib/drafts";
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -52,10 +53,16 @@ export function MeetingsEditor({
   /** Fixed when opened from a course; otherwise the dialog asks which one. */
   courseCanvasId?: number;
 }) {
+  const discardEditor = useDiscardDrafts("meetings");
+  const discardForms = useDiscardDrafts("meeting");
+  const changeOpen = (next: boolean) => {
+    if (!next) { discardEditor(); discardForms(); }
+    onOpenChange(next);
+  };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent className="max-w-[560px]">
-        {open && <Editor courseCanvasId={courseCanvasId} onClose={() => onOpenChange(false)} />}
+        {open && <Editor courseCanvasId={courseCanvasId} onClose={() => changeOpen(false)} />}
       </DialogContent>
     </Dialog>
   );
@@ -70,7 +77,7 @@ function Editor({
 }) {
   const { filterable, byId } = useCourses();
   // Derived, not seeded: the dialog can open before `courses.list` answers.
-  const [chosen, setChosen] = useState<number | undefined>(undefined);
+  const [chosen, setChosen] = useDraft<number | undefined>("meetings:chosen", undefined);
   const canvasId = chosen ?? courseCanvasId ?? filterable[0]?.canvasId;
   const meetings = useQuery(
     api.meetings.forCourse,
@@ -78,7 +85,7 @@ function Editor({
   );
   const facts = useQuery(api.courses.facts, canvasId === undefined ? "skip" : { canvasId });
   const remove = useMutation(api.meetings.remove);
-  const [editing, setEditing] = useState<MeetingDoc | "new" | null>(null);
+  const [editing, setEditing] = useDraft<MeetingDoc | "new" | null>(`meetings:editing:${canvasId}`, null);
 
   const hint = useMemo(() => {
     const parts = [facts?.meets, facts?.location].filter((p) => p !== undefined);
@@ -224,17 +231,20 @@ function MeetingForm({
 }) {
   const create = useMutation(api.meetings.create);
   const update = useMutation(api.meetings.update);
-  const [kind, setKind] = useState<MeetingKind>(meeting?.kind ?? "lecture");
-  const [label, setLabel] = useState(meeting?.label ?? "");
-  const [days, setDays] = useState<number[]>(meeting?.days ?? prefill?.days ?? []);
-  const [start, setStart] = useState(
+  const group = `meeting:${courseCanvasId}:${meeting?._id ?? "new"}`;
+  const discard = useDiscardDrafts(group);
+  const done = () => { discard(); onDone(); };
+  const [kind, setKind] = useDraft<MeetingKind>(`${group}:kind`, meeting?.kind ?? "lecture");
+  const [label, setLabel] = useDraft(`${group}:label`, meeting?.label ?? "");
+  const [days, setDays] = useDraft<number[]>(`${group}:days`, meeting?.days ?? prefill?.days ?? []);
+  const [start, setStart] = useDraft(`${group}:start`,
     timeInputValue(meeting?.startMinute ?? prefill?.startMinute ?? 9 * 60),
   );
-  const [end, setEnd] = useState(
+  const [end, setEnd] = useDraft(`${group}:end`,
     timeInputValue(meeting?.endMinute ?? prefill?.endMinute ?? 9 * 60 + 50),
   );
-  const [location, setLocation] = useState(meeting?.location ?? defaultLocation ?? "");
-  const [busy, setBusy] = useState(false);
+  const [location, setLocation] = useDraft(`${group}:location`, meeting?.location ?? defaultLocation ?? "");
+  const [busy, setBusy] = useDraft(`${group}:busy`, false);
   const [error, setError] = useState<string | null>(null);
 
   const toggle = (day: number) =>
@@ -261,7 +271,7 @@ function MeetingForm({
     try {
       if (meeting === undefined) await create(fields);
       else await update({ id: meeting._id, ...fields });
-      onDone();
+      done();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not save");
     } finally {
@@ -340,7 +350,7 @@ function MeetingForm({
       <div className="flex items-center gap-2">
         <span className="text-xs text-ink-3">Repeats weekly for the term</span>
         <div className="ml-auto flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={onDone}>
+          <Button type="button" variant="outline" size="sm" onClick={done}>
             Cancel
           </Button>
           <Button type="submit" size="sm" disabled={busy || days.length === 0}>

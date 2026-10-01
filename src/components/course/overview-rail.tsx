@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useDraft } from "@/lib/drafts";
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -147,7 +148,7 @@ function Fact({
 /** Meeting times live here because Canvas does not carry them. */
 function ClassTimesFact({ canvasId }: { canvasId: number }) {
   const meetings = useQuery(api.meetings.forCourse, { courseCanvasId: canvasId });
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useDraft(`meetings:open:${canvasId}`, false);
   if (meetings === undefined) return null;
   return (
     <>

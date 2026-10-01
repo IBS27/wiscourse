@@ -200,6 +200,13 @@ export interface CanvasSubmission {
   excused?: boolean | null;
   posted_at: string | null;
   submission_comments?: CanvasSubmissionComment[];
+  // Present on the single-submission endpoints used for submitting.
+  attempt?: number | null;
+  submission_type?: string | null;
+  body?: string | null;
+  url?: string | null;
+  attachments?: Array<{ id: number }>;
+  submission_history?: CanvasSubmission[];
 }
 
 export interface CanvasSubmissionComment {
@@ -234,6 +241,7 @@ export interface CanvasAssignment {
   position?: number;
   html_url: string;
   submission_types: string[];
+  allowed_extensions?: string[];
   quiz_id?: number;
   discussion_topic?: { id: number } | null;
   locked_for_user?: boolean;

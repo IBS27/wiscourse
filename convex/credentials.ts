@@ -4,7 +4,7 @@
 // UW-Madison issues a developer key). Nothing outside this file may read
 // or decrypt tokens.
 
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import {
   action,
   internalMutation,
@@ -12,6 +12,7 @@ import {
   mutation,
   query,
   type ActionCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
@@ -19,6 +20,8 @@ import { requireUserId } from "./lib/auth";
 import { decryptSecret, encryptSecret } from "./lib/crypto";
 import { CanvasClient } from "./canvas/client";
 import type { CanvasUser } from "./canvas/types";
+import { ensureSyncSchedule, removeSyncSchedule } from "./syncSchedule";
+import { DISPATCH_TICK_MS } from "./lib/syncCadence";
 
 const DEFAULT_INSTANCE = "canvas.wisc.edu";
 
@@ -79,6 +82,7 @@ export const save = internalMutation({
       canvasUserName: args.canvasUserName,
       accessTokenEncrypted: args.accessTokenEncrypted,
       status: "active" as const,
+      revision: (existing?.revision ?? 0) + 1,
     };
     if (existing) {
       await ctx.db.patch(existing._id, fields);
@@ -93,6 +97,8 @@ export const save = internalMutation({
     if (!syncState) {
       await ctx.db.insert("syncState", { userId: args.userId, status: "idle" });
     }
+    // The caller enqueues a full sync now; the tripwire starts a tick later.
+    await ensureSyncSchedule(ctx, args.userId, { dueAt: Date.now() + DISPATCH_TICK_MS });
     return null;
   },
 });
@@ -142,6 +148,7 @@ export const disconnect = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
     if (credential) await ctx.db.delete(credential._id);
+    await removeSyncSchedule(ctx, userId);
     const interpretations = await ctx.db.query("courseInterpretations").withIndex("by_user_course", q => q.eq("userId", userId)).paginate({ cursor: null, numItems: 100 });
     for (const state of interpretations.page) await ctx.db.patch(state._id, { enabled: false, generation: state.generation + 1, status: state.map ? "ready" : "stale" });
     if (!interpretations.isDone) await ctx.scheduler.runAfter(0, internal.courseInterpretations.disableUser, { userId, cursor: interpretations.continueCursor });
@@ -159,29 +166,80 @@ export const getForUser = internalQuery({
   },
 });
 
+/**
+ * Exactly one stored token: the credential row and its revision. Convex never
+ * reuses a document id, so a row deleted by `disconnect` and created again at
+ * revision 1 still differs. Not secret.
+ */
+export const credentialIdentity = v.object({ credentialId: v.id("canvasCredentials"), revision: v.number() });
+export type CredentialIdentity = Infer<typeof credentialIdentity>;
+
+/**
+ * Canvas rejected the token identified by `credential`. Marks it invalid and
+ * takes the user out of the tripwire queue only if it is still the stored
+ * token: a request that started before a reconnect (or a disconnect and new
+ * connect) must not invalidate its replacement. Returns whether it marked.
+ */
 export const markInvalid = internalMutation({
-  args: { userId: v.string() },
-  returns: v.null(),
+  args: { userId: v.string(), credential: credentialIdentity },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
-    const credential = await ctx.db
+    const current = await ctx.db
       .query("canvasCredentials")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
-    if (credential) await ctx.db.patch(credential._id, { status: "invalid" });
-    return null;
+    if (
+      current === null ||
+      current._id !== args.credential.credentialId ||
+      (current.revision ?? 0) !== args.credential.revision
+    ) {
+      return false;
+    }
+    await ctx.db.patch(current._id, { status: "invalid" });
+    await removeSyncSchedule(ctx, args.userId);
+    return true;
   },
 });
+
+/** Whether the user can reach Canvas right now. Never exposes token material. */
+export async function credentialState(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<"active" | "invalid" | "missing"> {
+  const credential = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return credential === null ? "missing" : credential.status;
+}
+
+/**
+ * The user has no usable Canvas credential: never connected, disconnected,
+ * or rejected by Canvas. Only reconnecting in Settings fixes it, so callers
+ * report it rather than retry.
+ */
+export class CanvasReconnectRequired extends Error {
+  constructor(public readonly reason: "missing" | "invalid") {
+    super(reason === "missing" ? "Canvas is not connected" : "Canvas needs to be reconnected");
+    this.name = "CanvasReconnectRequired";
+  }
+}
 
 export interface CanvasSession {
   client: CanvasClient;
   credential: Doc<"canvasCredentials">;
+  /** Which stored token this client uses; pass it to `markInvalid`. */
+  identity: CredentialIdentity;
   /** Latest X-Rate-Limit-Remaining seen on this session, if any. */
   rateLimitRemaining: () => number | undefined;
 }
 
 /**
  * The single entry point for reaching Canvas on behalf of a user.
- * Actions only (decryption needs Web Crypto).
+ * Actions only (decryption needs Web Crypto). Throws CanvasReconnectRequired
+ * without a usable credential. A CanvasAuthError from a request means Canvas
+ * rejected the token: run `internal.credentials.markInvalid` with the
+ * session's `identity`.
  */
 export async function getCanvasClient(
   ctx: ActionCtx,
@@ -190,12 +248,8 @@ export async function getCanvasClient(
   const credential = await ctx.runQuery(internal.credentials.getForUser, {
     userId,
   });
-  if (!credential) {
-    throw new Error(`No Canvas credential for user ${userId}`);
-  }
-  if (credential.status !== "active") {
-    throw new Error(`Canvas credential for user ${userId} is ${credential.status}`);
-  }
+  if (!credential) throw new CanvasReconnectRequired("missing");
+  if (credential.status !== "active") throw new CanvasReconnectRequired("invalid");
 
   // Phase 3 (OAuth): when kind === "oauth" and expiresAt is within a skew
   // window, refresh via /login/oauth2/token here and persist the new token
@@ -210,5 +264,10 @@ export async function getCanvasClient(
       remaining = value;
     },
   });
-  return { client, credential, rateLimitRemaining: () => remaining };
+  return {
+    client,
+    credential,
+    identity: { credentialId: credential._id, revision: credential.revision ?? 0 },
+    rateLimitRemaining: () => remaining,
+  };
 }

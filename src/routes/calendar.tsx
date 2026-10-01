@@ -3,6 +3,7 @@
 // default and the desktop's third view. The view and the anchor day live in
 // the URL so a link opens exactly what you were looking at.
 
+import { useDraft } from "@/lib/drafts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarClock } from "lucide-react";
@@ -73,9 +74,9 @@ function Calendar() {
   const [showClasses, setShowClasses] = useState(
     () => localStorage.getItem(SHOW_CLASSES_KEY) === "1",
   );
-  const [selected, setSelected] = useState<string | null>(null);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | "new" | null>(null);
-  const [meetingsFor, setMeetingsFor] = useState<number | "any" | null>(null);
+  const [selected, setSelected] = useDraft<string | null>("calendar:selected", null);
+  const [editingEvent, setEditingEvent] = useDraft<CalendarEvent | "new" | null>("calendar:event", null);
+  const [meetingsFor, setMeetingsFor] = useDraft<number | "any" | null>("calendar:meetings", null);
   const [subscribing, setSubscribing] = useState(false);
 
   const days = useMemo(
@@ -105,7 +106,7 @@ function Calendar() {
         go({ date: addDays(anchor, delta) });
       }
     },
-    [anchor, go, view],
+    [anchor, go, view, setSelected],
   );
 
   const setView = useCallback(
@@ -113,7 +114,7 @@ function Calendar() {
       setSelected(null);
       go({ view: next, date: anchor });
     },
-    [anchor, go],
+    [anchor, go, setSelected],
   );
 
   const toggleClasses = () => {
@@ -129,13 +130,13 @@ function Calendar() {
       if (day !== null && mobile) go({ view: "day", date: day });
       else setSelected(day);
     },
-    [go, mobile],
+    [go, mobile, setSelected],
   );
 
   const openBlock = useCallback((block: TimeBlock) => {
     if (block.kind === "meeting") setMeetingsFor(block.courseCanvasId ?? "any");
     else if (block.event !== undefined) setEditingEvent(block.event);
-  }, []);
+  }, [setMeetingsFor, setEditingEvent]);
 
   const modalOpen = editingEvent !== null || meetingsFor !== null || subscribing;
 
@@ -209,7 +210,7 @@ function Calendar() {
 
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [anchor, go, modalOpen, selected, setView, shift, today, view]);
+  }, [anchor, go, modalOpen, selected, setView, shift, today, view, setEditingEvent, setSelected]);
 
   // Only once the meetings query has answered; the nudge must not flash.
   const noMeetings = !loading && meetings.length === 0 && visible.length > 0;

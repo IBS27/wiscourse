@@ -1,4 +1,5 @@
-import { useClerk, useUser } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
+import { useSignOut } from "@/lib/sign-out";
 import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
 import {
@@ -38,7 +39,7 @@ const THEME_ICON: Record<Theme, typeof Sun> = { light: Sun, dark: Moon, system: 
 
 export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "avatar" }) {
   const { user } = useUser();
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
   const theme = useTheme();
   const info = useSyncInfo();
   const now = useNow();
@@ -140,10 +141,11 @@ export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "av
           </DropdownMenuSubContent>
         </DropdownMenuSub>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => void signOut()}>
+        <DropdownMenuItem disabled={signOut.pending} onSelect={(event) => { event.preventDefault(); void signOut.run(); }}>
           <LogOut />
-          Sign out
+          {signOut.pending ? "Signing out…" : "Sign out"}
         </DropdownMenuItem>
+        {signOut.error && <p role="alert" className="max-w-64 px-2 py-1 text-xs text-destructive">{signOut.error}</p>}
       </DropdownMenuContent>
     </DropdownMenu>
   );

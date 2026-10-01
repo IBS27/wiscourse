@@ -6,6 +6,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { useDraft } from "@/lib/drafts";
 import { useMutation } from "convex/react";
 import { CalendarDays, Clock, Plus } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
@@ -18,17 +19,17 @@ import { courseLabel, courseStyle, courseColorVar, useCourses, useToday } from "
 import { cn, isTyping } from "@/lib/utils";
 
 export function QuickAddProvider({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const [prefill, setPrefill] = useState("");
+  const [open, setOpen] = useDraft("quick-add:open", false);
+  const [value, setValue] = useDraft("quick-add:text", "");
   const ctx = useMemo(
     () => ({
       // Tolerant of an event object: `onClick={quickAdd.open}` is a fine caller.
       open: (text?: unknown) => {
-        setPrefill(typeof text === "string" ? text : "");
+        setValue(typeof text === "string" ? text : "");
         setOpen(true);
       },
     }),
-    [],
+    [setValue, setOpen],
   );
 
   useEffect(() => {
@@ -51,20 +52,19 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           <DialogDescription className="sr-only">
             Type a task. Add a day like “fri”, a course like “#cs537”, or “due mon 5pm”.
           </DialogDescription>
-          {/* Remounted per opening, which is how `prefill` seeds the input. */}
-          {open && <QuickAddForm prefill={prefill} onDone={() => setOpen(false)} />}
+          {open && <QuickAddForm value={value} setValue={setValue} onDone={() => setOpen(false)} />}
         </DialogContent>
       </Dialog>
     </QuickAddContext.Provider>
   );
 }
 
-function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void }) {
+function QuickAddForm({ value, setValue, onDone }: { value: string; setValue: (value: string) => void; onDone: () => void }) {
   const { courses } = useCourses();
   const today = useToday();
   const createLocal = useMutation(api.todos.createLocal);
-  const [value, setValue] = useState(prefill);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useDraft("quick-add:busy", false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const parsed = useMemo(
@@ -75,6 +75,7 @@ function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void
   const submit = async (keepOpen: boolean) => {
     if (parsed.title.trim().length === 0 || busy) return;
     setBusy(true);
+    setError(null);
     try {
       await createLocal({
         title: parsed.title,
@@ -85,6 +86,8 @@ function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void
       setValue("");
       if (!keepOpen) onDone();
       else inputRef.current?.focus();
+    } catch {
+      setError("Couldn't add the task. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -121,6 +124,7 @@ function QuickAddForm({ prefill, onDone }: { prefill: string; onDone: () => void
           </div>
         </div>
         <Preview parsed={parsed} />
+        {error && <p role="alert" className="pt-2 text-sm text-destructive">{error}</p>}
       </div>
       <div className="flex flex-wrap gap-[14px] border-t border-line px-4 py-3 text-xs text-ink-3">
         <span><b className="font-semibold text-ink-2">↵</b> add</span>

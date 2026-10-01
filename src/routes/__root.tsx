@@ -1,9 +1,12 @@
+import { DraftRoute } from "@/lib/drafts";
 import { useEffect } from "react";
 import { createRootRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Sidebar } from "@/components/app/sidebar";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import { QuickAddProvider } from "@/components/app/quick-add";
 import { CommandPalette } from "@/components/search/command-palette";
+import { ConnectionBanner } from "@/components/app/connection-banner";
+import { useActivityHeartbeat } from "@/lib/activity";
 import { useTimeZonePreference } from "@/lib/time-zone";
 import { cn } from "@/lib/utils";
 
@@ -13,12 +16,16 @@ export const Route = createRootRoute({
 
 function RootLayout() {
   // Chats own the full screen on mobile: the composer sits where the tabs would.
-  const inAsk = useRouterState({ select: (s) => s.location.pathname.startsWith("/ask") });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const inAsk = pathname.startsWith("/ask");
+  // Quick-add is app-wide: its draft stays outside the route scope, so it
+  // stays open across navigation as before.
   return (
-    <>
+    <QuickAddProvider>
       <TimeZoneSync />
+      <ActivityHeartbeat />
       <AskShortcut />
-      <QuickAddProvider>
+      <DraftRoute path={pathname}>
         <div className="flex min-h-dvh">
           <Sidebar />
           <main className={cn("flex min-h-dvh min-w-0 flex-1 flex-col md:h-dvh md:overflow-y-auto md:pb-0", inAsk ? "h-dvh" : "pb-[72px]")}>
@@ -27,8 +34,9 @@ function RootLayout() {
         </div>
         {!inAsk && <BottomTabs />}
         <CommandPalette />
-      </QuickAddProvider>
-    </>
+        <ConnectionBanner />
+      </DraftRoute>
+    </QuickAddProvider>
   );
 }
 
@@ -51,5 +59,11 @@ function AskShortcut() {
 /** Keeps the display zone in step with the saved preference. Renders nothing. */
 function TimeZoneSync() {
   useTimeZonePreference();
+  return null;
+}
+
+/** Speeds Canvas polling while the app is in use. Renders nothing. */
+function ActivityHeartbeat() {
+  useActivityHeartbeat();
   return null;
 }

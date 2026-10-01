@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import { SYNC_DELAYED_MS } from "../../convex/lib/syncCadence";
 
 export type SyncInfo = {
   connected: boolean;
@@ -36,4 +37,13 @@ export function useSyncInfo(): SyncInfo | undefined {
       invalid: status.credentialStatus === "invalid",
     };
   }, [status]);
+}
+
+/**
+ * Background sync has stopped reporting without an error: the scheduler or
+ * queue is stuck, or polling is switched off.
+ */
+export function isSyncDelayed(info: SyncInfo, now: number): boolean {
+  return info.connected && !info.invalid && !info.syncing && info.error === undefined
+    && info.lastSyncedAt !== undefined && now - info.lastSyncedAt > SYNC_DELAYED_MS;
 }

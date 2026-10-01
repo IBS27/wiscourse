@@ -71,6 +71,7 @@ const assignmentUpsert = v.object({
   position: v.optional(v.number()),
   htmlUrl: v.string(),
   submissionTypes: v.array(v.string()),
+  allowedExtensions: v.optional(v.array(v.string())),
   quizCanvasId: v.optional(v.number()),
   discussionCanvasId: v.optional(v.number()),
   lockedForUser: v.optional(v.boolean()),
@@ -358,40 +359,40 @@ export const applySubmissionUpdates = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const now = Date.now();
     for (const update of args.updates) {
-      const existing = await ctx.db
-        .query("assignments")
-        .withIndex("by_user_canvasId", (q) =>
-          q.eq("userId", args.userId).eq("canvasId", update.assignmentCanvasId),
-        )
-        .unique();
-      await markDoneIfNewlySubmitted(
-        ctx,
-        args.userId,
-        existing,
-        update.submission,
-      );
-      if (existing) {
-        const submission = {
-          ...update.submission,
-          comments: update.submission.comments ?? existing.submission?.comments,
-        };
-        if (!sameValue(existing.submission, submission)) {
-          await ctx.db.patch(existing._id, { submission, syncedAt: now });
-        }
-        await syncListSummary(ctx, "assignments", { ...existing, submission });
-        await updateSearchEntry(ctx, "assignments", {
-          ...existing,
-          submission,
-        });
-      }
-      // An update for an unknown assignment is dropped here; the nightly
-      // full sync will pick the assignment itself up.
+      await applySubmissionUpdate(ctx, args.userId, update.assignmentCanvasId, update.submission);
     }
     return null;
   },
 });
+
+/** Writes the student's submission onto the assignment mirror. */
+export async function applySubmissionUpdate(
+  ctx: MutationCtx,
+  userId: string,
+  assignmentCanvasId: number,
+  update: Infer<typeof submissionFields>,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("assignments")
+    .withIndex("by_user_canvasId", (q) =>
+      q.eq("userId", userId).eq("canvasId", assignmentCanvasId),
+    )
+    .unique();
+  await markDoneIfNewlySubmitted(ctx, userId, existing, update);
+  // An update for an unknown assignment is dropped here; the nightly full
+  // sync will pick the assignment itself up.
+  if (!existing) return;
+  const submission = {
+    ...update,
+    comments: update.comments ?? existing.submission?.comments,
+  };
+  if (!sameValue(existing.submission, submission)) {
+    await ctx.db.patch(existing._id, { submission, syncedAt: Date.now() });
+  }
+  await syncListSummary(ctx, "assignments", { ...existing, submission });
+  await updateSearchEntry(ctx, "assignments", { ...existing, submission });
+}
 
 export const upsertCalendarEvents = internalMutation({
   args: { userId: v.string(), events: v.array(calendarEventUpsert) },
@@ -410,6 +411,16 @@ export const upsertCalendarEvents = internalMutation({
 
 // One background Canvas job per user. The lease outlives Convex's ten-minute
 // action limit, so an abandoned job can recover without overlapping its owner.
+// One Canvas lease per user covers sync jobs and submission attempts, so a
+// token never has two requests in flight (AGENTS.md: sequential per token).
+// A holder that dies stops blocking after LEASE_STALE_MS, longer than any
+// action can run.
+export const LEASE_STALE_MS = 15 * 60_000;
+
+function leaseHeld(state: Doc<"syncState"> | null, now: number): boolean {
+  return state?.syncLeaseStartedAt !== undefined && now - state.syncLeaseStartedAt < LEASE_STALE_MS;
+}
+
 export const claimSync = internalMutation({
   args: { userId: v.string(), full: v.boolean() },
   returns: v.union(v.number(), v.null()),
@@ -419,11 +430,8 @@ export const claimSync = internalMutation({
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
     const now = Date.now();
-    if (
-      state?.syncLeaseStartedAt !== undefined &&
-      now - state.syncLeaseStartedAt < 15 * 60_000
-    ) {
-      if (args.full) await ctx.db.patch(state._id, { syncFullRequested: true });
+    if (leaseHeld(state, now)) {
+      if (args.full) await ctx.db.patch(state!._id, { syncFullRequested: true });
       return null;
     }
     const patch = {
@@ -437,24 +445,46 @@ export const claimSync = internalMutation({
   },
 });
 
+/**
+ * Takes the user's Canvas lease for a submission attempt, or returns null
+ * while a sync or another attempt holds it. Unlike `claimSync` it leaves the
+ * sync status alone. Release with `releaseCanvasLease`.
+ */
+export async function claimCanvasLease(ctx: MutationCtx, userId: string): Promise<number | null> {
+  const state = await ctx.db
+    .query("syncState")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  const now = Date.now();
+  if (leaseHeld(state, now)) return null;
+  if (state) await ctx.db.patch(state._id, { syncLeaseStartedAt: now });
+  else await ctx.db.insert("syncState", { userId, status: "idle", syncLeaseStartedAt: now });
+  return now;
+}
+
 export const releaseSync = internalMutation({
   args: { userId: v.string(), lease: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const state = await ctx.db
-      .query("syncState")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .unique();
-    if (!state || state.syncLeaseStartedAt !== args.lease) return null;
-    await ctx.db.patch(state._id, {
-      syncLeaseStartedAt: undefined,
-      syncFullRequested: undefined,
-      status: state.status === "error" ? "error" : "idle",
-    });
-    if (state.syncFullRequested)
-      await ctx.scheduler.runAfter(0, internal.sync.enqueueFullSync, {
-        userId: args.userId,
-      });
+    await releaseCanvasLease(ctx, args.userId, args.lease);
     return null;
   },
 });
+
+/** Ends a lease if `lease` still holds it; a stale holder changes nothing. */
+export async function releaseCanvasLease(ctx: MutationCtx, userId: string, lease: number): Promise<void> {
+  const state = await ctx.db
+    .query("syncState")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  if (!state || state.syncLeaseStartedAt !== lease) return;
+  await ctx.db.patch(state._id, {
+    syncLeaseStartedAt: undefined,
+    syncFullRequested: undefined,
+    status: state.status === "error" ? "error" : "idle",
+  });
+  // A full sync asked for while the lease was held runs now.
+  if (state.syncFullRequested) {
+    await ctx.scheduler.runAfter(0, internal.sync.enqueueFullSync, { userId });
+  }
+}
