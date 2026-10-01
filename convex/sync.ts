@@ -45,6 +45,7 @@ import {
   CanvasReconnectRequired,
   getCanvasClient,
   type CanvasSession,
+  type CredentialIdentity,
 } from "./credentials";
 import { ensureSyncSchedule } from "./syncSchedule";
 import { DISPATCH_TICK_MS, nextTripwireAt } from "./lib/syncCadence";
@@ -177,8 +178,11 @@ export const tripwireUser = internalAction({
   handler: async (ctx, args) => {
     const lease = await ctx.runMutation(internal.syncStore.claimSync, { userId: args.userId, full: false });
     if (lease === null) return null;
+    // The token this job uses, so a late 401 invalidates only that token.
+    let credential: CredentialIdentity | undefined;
     try {
       const session = await getCanvasClient(ctx, args.userId);
+      credential = session.identity;
       const summary = await session.client.get<CanvasActivityStreamSummaryItem[]>(
         "/users/self/activity_stream/summary",
       );
@@ -197,7 +201,7 @@ export const tripwireUser = internalAction({
         await runDeltaSync(ctx, args.userId, session);
       }
     } catch (error) {
-      await handleSyncError(ctx, args.userId, error);
+      await handleSyncError(ctx, args.userId, error, credential);
     } finally {
       await ctx.runMutation(internal.syncStore.releaseSync, { userId: args.userId, lease });
     }
@@ -211,12 +215,14 @@ export const fullSyncUser = internalAction({
   handler: async (ctx, args) => {
     const lease = await ctx.runMutation(internal.syncStore.claimSync, { userId: args.userId, full: true });
     if (lease === null) return null;
+    let credential: CredentialIdentity | undefined;
     try {
       const session = await getCanvasClient(ctx, args.userId);
+      credential = session.identity;
       await runFullSync(ctx, args.userId, session);
       await ctx.runMutation(internal.courseInterpretations.refreshEnabled, { userId: args.userId });
     } catch (error) {
-      await handleSyncError(ctx, args.userId, error);
+      await handleSyncError(ctx, args.userId, error, credential);
     } finally {
       await ctx.runMutation(internal.syncStore.releaseSync, { userId: args.userId, lease });
     }
@@ -525,6 +531,7 @@ async function handleSyncError(
   ctx: ActionCtx,
   userId: string,
   error: unknown,
+  credential: CredentialIdentity | undefined,
 ): Promise<void> {
   if (error instanceof CanvasReconnectRequired) {
     // Disconnected or invalidated while the job was queued. Retrying cannot
@@ -539,8 +546,15 @@ async function handleSyncError(
   if (error instanceof CanvasAuthError) {
     // Token revoked or expired (UW-issued manual tokens live max 90 days).
     // Mark invalid so dispatchers skip this user until reconnect; do not
-    // rethrow, retrying an invalid token is pointless.
-    await ctx.runMutation(internal.credentials.markInvalid, { userId });
+    // rethrow, retrying an invalid token is pointless. A CanvasAuthError
+    // only comes from a request, so `credential` is set.
+    const marked = credential !== undefined &&
+      (await ctx.runMutation(internal.credentials.markInvalid, { userId, credential }));
+    if (!marked) {
+      // The user reconnected while this job held the old token. The new
+      // credential stands; let the Workpool retry with it.
+      throw new Error("Canvas credential changed during sync; retrying with the current one.");
+    }
     await ctx.runMutation(internal.syncStore.setSyncStatus, {
       userId,
       status: "error",
@@ -737,6 +751,7 @@ function mapAssignment(
     position: assignment.position,
     htmlUrl: assignment.html_url,
     submissionTypes: assignment.submission_types ?? [],
+    allowedExtensions: assignment.allowed_extensions?.length ? assignment.allowed_extensions : undefined,
     quizCanvasId: assignment.quiz_id,
     discussionCanvasId: assignment.discussion_topic?.id,
     lockedForUser: assignment.locked_for_user,
@@ -757,7 +772,7 @@ function mapAssignment(
   };
 }
 
-function mapSubmission(submission: CanvasSubmission) {
+export function mapSubmission(submission: CanvasSubmission) {
   return {
     submittedAt: toMillis(submission.submitted_at),
     workflowState: submission.workflow_state,

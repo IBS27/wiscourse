@@ -4,7 +4,7 @@
 // UW-Madison issues a developer key). Nothing outside this file may read
 // or decrypt tokens.
 
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import {
   action,
   internalMutation,
@@ -12,6 +12,7 @@ import {
   mutation,
   query,
   type ActionCtx,
+  type QueryCtx,
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
@@ -81,6 +82,7 @@ export const save = internalMutation({
       canvasUserName: args.canvasUserName,
       accessTokenEncrypted: args.accessTokenEncrypted,
       status: "active" as const,
+      revision: (existing?.revision ?? 0) + 1,
     };
     if (existing) {
       await ctx.db.patch(existing._id, fields);
@@ -164,19 +166,52 @@ export const getForUser = internalQuery({
   },
 });
 
+/**
+ * Exactly one stored token: the credential row and its revision. Convex never
+ * reuses a document id, so a row deleted by `disconnect` and created again at
+ * revision 1 still differs. Not secret.
+ */
+export const credentialIdentity = v.object({ credentialId: v.id("canvasCredentials"), revision: v.number() });
+export type CredentialIdentity = Infer<typeof credentialIdentity>;
+
+/**
+ * Canvas rejected the token identified by `credential`. Marks it invalid and
+ * takes the user out of the tripwire queue only if it is still the stored
+ * token: a request that started before a reconnect (or a disconnect and new
+ * connect) must not invalidate its replacement. Returns whether it marked.
+ */
 export const markInvalid = internalMutation({
-  args: { userId: v.string() },
-  returns: v.null(),
+  args: { userId: v.string(), credential: credentialIdentity },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
-    const credential = await ctx.db
+    const current = await ctx.db
       .query("canvasCredentials")
       .withIndex("by_user", (q) => q.eq("userId", args.userId))
       .unique();
-    if (credential) await ctx.db.patch(credential._id, { status: "invalid" });
+    if (
+      current === null ||
+      current._id !== args.credential.credentialId ||
+      (current.revision ?? 0) !== args.credential.revision
+    ) {
+      return false;
+    }
+    await ctx.db.patch(current._id, { status: "invalid" });
     await removeSyncSchedule(ctx, args.userId);
-    return null;
+    return true;
   },
 });
+
+/** Whether the user can reach Canvas right now. Never exposes token material. */
+export async function credentialState(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<"active" | "invalid" | "missing"> {
+  const credential = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return credential === null ? "missing" : credential.status;
+}
 
 /**
  * The user has no usable Canvas credential: never connected, disconnected,
@@ -193,6 +228,8 @@ export class CanvasReconnectRequired extends Error {
 export interface CanvasSession {
   client: CanvasClient;
   credential: Doc<"canvasCredentials">;
+  /** Which stored token this client uses; pass it to `markInvalid`. */
+  identity: CredentialIdentity;
   /** Latest X-Rate-Limit-Remaining seen on this session, if any. */
   rateLimitRemaining: () => number | undefined;
 }
@@ -201,7 +238,8 @@ export interface CanvasSession {
  * The single entry point for reaching Canvas on behalf of a user.
  * Actions only (decryption needs Web Crypto). Throws CanvasReconnectRequired
  * without a usable credential. A CanvasAuthError from a request means Canvas
- * rejected the token: run `internal.credentials.markInvalid` for the user.
+ * rejected the token: run `internal.credentials.markInvalid` with the
+ * session's `identity`.
  */
 export async function getCanvasClient(
   ctx: ActionCtx,
@@ -226,5 +264,10 @@ export async function getCanvasClient(
       remaining = value;
     },
   });
-  return { client, credential, rateLimitRemaining: () => remaining };
+  return {
+    client,
+    credential,
+    identity: { credentialId: credential._id, revision: credential.revision ?? 0 },
+    rateLimitRemaining: () => remaining,
+  };
 }

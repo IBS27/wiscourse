@@ -28,7 +28,7 @@ export function summarizeSource(table: ListSource, source: Doc<ListSource>) {
     }
     case "assignments": {
       const row = source as Doc<"assignments">;
-      return { ...omit(row, ["_id", "_creationTime", "description", "submission", "syncedAt", "canvasUpdatedAt"]),
+      return { ...omit(row, ["_id", "_creationTime", "description", "submission", "syncedAt", "canvasUpdatedAt", "allowedExtensions"]),
         submission: row.submission ? omit(row.submission, ["comments"]) : undefined,
         sourceId: row._id, sourceCreatedAt: row._creationTime };
     }

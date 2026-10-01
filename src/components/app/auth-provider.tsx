@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { AUTH_TIMEOUT, createGate, createTokenFetcher, reportAuthEvent, type AuthFailure } from "@/lib/auth-recovery";
 import { DraftContext, DraftStore } from "@/lib/drafts";
+import { OwnerSession } from "@/lib/owner-session";
 import { useSignOut } from "@/lib/sign-out";
 import { useOnline } from "@/lib/online";
 
@@ -75,11 +76,13 @@ function UserSession({ owner, url, createClient, children }: {
   }, [url, createClient]);
   if (!client) return <Loading />;
   return (
-    <DraftContext value={drafts}>
-      <BackendSession key={sessionKey} owner={owner} client={client}>
-        {children}
-      </BackendSession>
-    </DraftContext>
+    <OwnerSession owner={owner}>
+      <DraftContext value={drafts}>
+        <BackendSession key={sessionKey} owner={owner} client={client}>
+          {children}
+        </BackendSession>
+      </DraftContext>
+    </OwnerSession>
   );
 }
 

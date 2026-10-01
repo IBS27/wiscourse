@@ -272,6 +272,39 @@ export const assistantOp = v.union(
   }),
 );
 
+// ── Submission outbox ──────────────────────────────────────────────────────
+
+export const submissionKind = v.union(v.literal("text"), v.literal("url"), v.literal("file"));
+
+export const outboxFile = v.object({
+  // Cleared once Canvas confirms the submission or the row is dismissed.
+  storageId: v.optional(v.id("_storage")),
+  name: v.string(),
+  size: v.number(),
+  contentType: v.string(),
+  // Set after the upload to Canvas, so a retry does not upload again.
+  canvasFileId: v.optional(v.number()),
+});
+
+export const outboxStatus = v.union(
+  v.literal("queued"), // waiting to send, or to retry at `nextAttemptAt`
+  v.literal("sending"), // an attempt holds the row
+  v.literal("submitted"), // Canvas confirmed it
+  v.literal("failed"), // Canvas did not get it
+  v.literal("unconfirmed"), // Canvas may have got it; only a check can tell
+);
+
+export const outboxErrorKind = v.union(
+  v.literal("rejected"), // Canvas refused it
+  v.literal("reconnect"), // no usable credential
+  v.literal("exhausted"), // automatic retries or checks ran out
+  v.literal("conflict"), // Canvas has a newer submission that is not this one
+  // After a send that may have landed, Canvas shows a newer attempt that does
+  // not match exactly. Canvas can store a submission in its own form, so it
+  // may be this one: a resend could duplicate it.
+  v.literal("unmatched"),
+);
+
 // Shared column set for per-course synced content.
 const synced = {
   userId: v.string(),
@@ -338,6 +371,8 @@ const assignmentsTable = defineTable({
     position: v.optional(v.number()),
     htmlUrl: v.string(),
     submissionTypes: v.array(v.string()),
+    // File types an upload may use; unset means any.
+    allowedExtensions: v.optional(v.array(v.string())),
     // Graded quizzes and discussions are also assignments; these link back
     // so the UI can open the right thing.
     quizCanvasId: v.optional(v.number()),
@@ -417,7 +452,7 @@ export default defineSchema({
   }).index("by_user", ["userId"])
     .index("by_user_canvasId", ["userId", "canvasId"]),
   assignmentSummaries: defineTable({
-    ...omit(assignmentsTable.validator.fields, ["description", "submission", "syncedAt", "canvasUpdatedAt"]),
+    ...omit(assignmentsTable.validator.fields, ["description", "submission", "syncedAt", "canvasUpdatedAt", "allowedExtensions"]),
     submission: v.optional(v.object(omit(submissionFields.fields, ["comments"]))),
     sourceId: v.id("assignments"), sourceCreatedAt: v.number(),
   }).index("by_user_canvasId", ["userId", "canvasId"])
@@ -475,6 +510,9 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     scope: v.optional(v.string()),
     status: v.union(v.literal("active"), v.literal("invalid")),
+    // Bumped on every save, so a request made with an older token cannot
+    // invalidate the one that replaced it. Unset reads as 0.
+    revision: v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   syncState: defineTable({
@@ -794,6 +832,64 @@ export default defineSchema({
     promptMessageId: v.optional(v.string()),
     settledAt: v.optional(v.number()),
   }).index("by_thread", ["threadId"]),
+
+  // Assignment submissions, delivered to Canvas in the background after the
+  // student confirms them. The UI shows these states; nothing is optimistic.
+  // See convex/submissions.ts.
+  submissionOutbox: defineTable({
+    userId: v.string(),
+    courseCanvasId: v.number(),
+    assignmentCanvasId: v.number(),
+    // Made by the confirmation dialog; submitting it again returns this row.
+    clientKey: v.string(),
+    kind: submissionKind,
+    text: v.optional(v.string()),
+    url: v.optional(v.string()),
+    files: v.optional(v.array(outboxFile)),
+    status: outboxStatus,
+    step: v.optional(v.union(v.literal("checking"), v.literal("uploading"), v.literal("submitting"))),
+    // Bumped by every attempt; a stale action or watchdog carries an older one.
+    attempt: v.number(),
+    attemptsLeft: v.number(),
+    // The next attempt only checks Canvas and never sends.
+    checkOnly: v.optional(v.boolean()),
+    nextAttemptAt: v.optional(v.number()),
+    jobId: v.optional(v.id("_scheduled_functions")),
+    // Canvas's attempt number before this row first sent anything.
+    baselineAttempt: v.optional(v.number()),
+    // Set before a POST goes out and cleared when a check finds nothing:
+    // while set, a failure may hide a submission Canvas accepted.
+    mayHavePosted: v.optional(v.boolean()),
+    error: v.optional(v.string()),
+    errorKind: v.optional(outboxErrorKind),
+    canvasAttempt: v.optional(v.number()),
+    canvasSubmittedAt: v.optional(v.number()),
+    // The per-user Canvas lease the current attempt holds (see syncStore).
+    canvasLease: v.optional(v.number()),
+    // On a conflict: Canvas's latest attempt when it was seen. `sendAgain`
+    // then sets `replaceConfirmed`, and the next attempt sends after that
+    // attempt only if it is still the latest and this payload has not shown up.
+    conflictAttempt: v.optional(v.number()),
+    replaceConfirmed: v.optional(v.boolean()),
+    updatedAt: v.number(),
+    dismissed: v.optional(v.boolean()),
+  })
+    .index("by_user_clientKey", ["userId", "clientKey"])
+    .index("by_user_assignment", ["userId", "assignmentCanvasId"]),
+
+  // Who uploaded each submission file. Rows are written only by the
+  // authenticated upload HTTP action, in the request that stored the bytes
+  // (see convex/submissions.ts). Attaching, reading and deleting a file all
+  // check this owner.
+  submissionUploads: defineTable({
+    userId: v.string(),
+    storageId: v.id("_storage"),
+    // Unattached uploads are deleted after this.
+    expiresAt: v.number(),
+    outboxId: v.optional(v.id("submissionOutbox")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_storage", ["storageId"]),
 
   // Tokens per user per campus day, for the daily allowance.
   assistantUsage: defineTable({

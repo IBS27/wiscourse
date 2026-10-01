@@ -14,6 +14,7 @@ import {
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
 import { Chip, Dot, Kbd, Pill } from "@/components/app/bits";
+import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
 import {
   addDays,
@@ -208,10 +209,11 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               <div className="mt-[2px] text-xs text-ink-3">
                 {item.submittedAt !== undefined
                   ? `Submitted ${formatDayShort(dayKeyOf(item.submittedAt))}, ${formatTime(item.submittedAt)}`
-                  : "Submitting from wiscourse is coming; for now, submit in Canvas."}
+                  : item.kind === "assignment" ? "As Canvas last reported it." : "Submit this in Canvas."}
               </div>
             </div>
           </div>
+          {item.kind === "assignment" && <SubmissionPanel item={item} />}
           {item.htmlUrl && (
             <a
               href={item.htmlUrl}
