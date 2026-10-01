@@ -82,6 +82,16 @@ it("tells a student that Send again after a conflict makes a new attempt", () =>
   expect(screen.getByRole("dialog").textContent).not.toContain("could make a second");
 });
 
+it("warns about a second attempt when Canvas shows an attempt that may be this one", () => {
+  mocks.panel = panel({ status: "unconfirmed", errorKind: "unmatched", error: "Canvas shows a newer attempt that does not exactly match this submission." });
+  show();
+  expect(screen.getByRole("status").textContent).not.toContain("different submission");
+  fireEvent.click(screen.getByRole("button", { name: "Send again…" }));
+  const dialog = screen.getByRole("dialog").textContent;
+  expect(dialog).toContain("could make a second attempt");
+  expect(dialog).not.toContain("Sending makes a new attempt after it");
+});
+
 it("sends a student to reconnect instead of offering a retry", () => {
   mocks.panel = panel({ status: "failed", errorKind: "reconnect", error: "Canvas needs to be reconnected." }, "invalid");
   show();

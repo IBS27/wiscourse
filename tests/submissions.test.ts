@@ -209,7 +209,8 @@ it("dates a receipt found in history by its own attempt, and mirrors the latest 
 
 it("lets a confirmed Send again replace a conflicting Canvas attempt, once", async () => {
   const { student, row, drain, text } = await setup();
-  canvas.fail("post", "networkError");
+  // Throttled: Canvas answered and did not take it, so a newer attempt is someone else's.
+  canvas.fail("post", "rateLimit");
   const id = await text("conflict");
   await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
   canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Typed straight into Canvas</p>", url: null, attachments: [] });
@@ -230,7 +231,7 @@ it("lets a confirmed Send again replace a conflicting Canvas attempt, once", asy
 
 it("finds a late delivery before replacing, and asks again if Canvas moved on", async () => {
   const { student, row, drain, text } = await setup();
-  canvas.fail("post", "networkError");
+  canvas.fail("post", "rateLimit");
   const id = await text("late");
   await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
   canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Other</p>", url: null, attachments: [] });
@@ -276,6 +277,74 @@ it("still fails a file upload the upload host refuses outright", async () => {
   expect(await row(id)).toMatchObject({ status: "failed", errorKind: "rejected", attempt: 1 });
   expect(posts()).toHaveLength(0);
   expect((await credential())?.status).toBe("active");
+});
+
+// Canvas stores a submission in its own form: here an entity re-encoded and a
+// trailing slash on a URL, so the stored attempt does not match what was sent.
+function storeRewritten() {
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const url = new URL(input instanceof Request ? input.url : input.toString());
+    if (init.method === "POST" && /\/submissions$/.test(url.pathname)) {
+      const form = new URLSearchParams(init.body as URLSearchParams);
+      const body = form.get("submission[body]");
+      if (body !== null) form.set("submission[body]", body.replaceAll("&amp;", "&#38;"));
+      const link = form.get("submission[url]");
+      if (link !== null) form.set("submission[url]", link + "/");
+      return canvas.fetch(input, { ...init, body: form });
+    }
+    return canvas.fetch(input, init);
+  });
+}
+
+it.each(["text", "url"] as const)("keeps an unmatched attempt after a lost reply as possibly this one (%s)", async (kind) => {
+  const { student, row, drain } = await setup();
+  storeRewritten();
+  canvas.fail("post", "acceptThenTimeout");
+  const id = await student.mutation(api.submissions.submit, {
+    clientKey: `rewritten-${kind}`, assignmentCanvasId: essay, confirmed: true,
+    content: kind === "text" ? { kind, text: "Fish & chips" } : { kind, url: "https://example.invalid/work" },
+  });
+  await drain();
+  // Canvas holds one attempt, ours as Canvas stored it: not a "different" submission.
+  expect(canvas.attempts(essay)).toHaveLength(1);
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "unmatched", mayHavePosted: true, conflictAttempt: 1 });
+  expect(posts()).toHaveLength(1);
+
+  // Checking again never sends and still cannot tell.
+  await student.mutation(api.submissions.resume, { id });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "unmatched" });
+  expect(posts()).toHaveLength(1);
+
+  // Only a confirmation that warned about a possible second attempt sends again, once.
+  await student.mutation(api.submissions.sendAgain, { id, confirmed: true });
+  await expect(student.mutation(api.submissions.sendAgain, { id, confirmed: true })).rejects.toThrow("not waiting");
+  await drain();
+  expect(posts()).toHaveLength(2);
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 2 });
+});
+
+it("treats a newer attempt after a known unsent first try as a conflict", async () => {
+  const { row, drain, text } = await setup();
+  canvas.fail("post", "rateLimit");
+  const id = await text("known");
+  await until(async () => (await row(id))?.status === "queued" && posts().length === 1);
+  expect((await row(id))?.mayHavePosted).toBeUndefined();
+  canvas.seed(essay, { submission_type: "online_text_entry", body: "<p>Written elsewhere</p>", url: null, attachments: [] });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "unconfirmed", errorKind: "conflict", conflictAttempt: 1 });
+  expect(posts()).toHaveLength(1);
+});
+
+it("confirms a rewritten submission Canvas acknowledged, without matching content", async () => {
+  const { student, row, drain } = await setup();
+  storeRewritten();
+  const id = await student.mutation(api.submissions.submit, {
+    clientKey: "acknowledged", assignmentCanvasId: essay, confirmed: true, content: { kind: "text", text: "Fish & chips" },
+  });
+  await drain();
+  expect(await row(id)).toMatchObject({ status: "submitted", canvasAttempt: 1 });
+  expect(posts()).toHaveLength(1);
 });
 
 it("checks Canvas instead of resending when a reply is lost", async () => {
