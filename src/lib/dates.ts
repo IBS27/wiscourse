@@ -44,10 +44,6 @@ export function dayDiff(a: string, b: string): number {
   return daysBetween(a, b);
 }
 
-export function today(): string {
-  return dayKeyOf(Date.now());
-}
-
 /** 0 = Sunday. */
 export function weekday(key: string): number {
   return weekdayOfKey(key);
