@@ -435,7 +435,7 @@ export const sendAgain = mutation({
       checkOnly: undefined,
       mayHavePosted: undefined,
       // The student chose to send after the conflicting attempt they were shown.
-      replaceConfirmed: row.errorKind === "conflict" && row.conflictAttempt !== undefined ? true : undefined,
+      replaceConfirmed: (row.errorKind === "conflict" || row.errorKind === "unmatched") && row.conflictAttempt !== undefined ? true : undefined,
       attemptsLeft: AUTO_ATTEMPTS,
       nextAttemptAt: undefined,
       error: undefined,
@@ -634,20 +634,23 @@ async function settle(ctx: MutationCtx, row: Row, result: Outcome) {
     ctx.db.patch(row._id, {
       ...cleared,
       // While Canvas may have it, "failed" would invite a duplicate.
-      status: mayHavePosted || kind === "conflict" ? "unconfirmed" : "failed",
+      status: mayHavePosted || kind === "conflict" || kind === "unmatched" ? "unconfirmed" : "failed",
       mayHavePosted: mayHavePosted || undefined,
       // A new conflict needs a new confirmation.
-      ...(kind === "conflict" && { conflictAttempt: result.observedAttempt, replaceConfirmed: undefined }),
+      ...((kind === "conflict" || kind === "unmatched") && { conflictAttempt: result.observedAttempt, replaceConfirmed: undefined }),
       error: result.error,
       errorKind: kind,
     });
-  if (result.kind !== "retry" && result.kind !== "check") return await final(result.kind);
-  if (row.attemptsLeft <= 0) return await final("exhausted");
+  // An unmatched attempt keeps check-only recovery going: ours may still show.
+  const unmatched = result.kind === "unmatched";
+  if (result.kind !== "retry" && result.kind !== "check" && !unmatched) return await final(result.kind);
+  if (row.attemptsLeft <= 0) return await final(unmatched ? "unmatched" : "exhausted");
   const delay = retryDelay(AUTO_ATTEMPTS - row.attemptsLeft, mayHavePosted);
   await ctx.db.patch(row._id, {
     ...cleared,
     // Once a send may have landed, only a confirmed `sendAgain` sends again.
-    checkOnly: result.kind === "check" || row.checkOnly || undefined,
+    checkOnly: result.kind === "check" || unmatched || row.checkOnly || undefined,
+    ...(unmatched && { conflictAttempt: result.observedAttempt }),
     mayHavePosted: mayHavePosted || undefined,
     status: "queued",
     nextAttemptAt: now + delay,
@@ -725,6 +728,15 @@ async function deliver(ctx: ActionCtx, row: Claimed, state: AttemptState): Promi
       // student confirmed sending after: send after it, this once.
       if (row.replaceConfirmed === true && row.conflictAttempt === latest) {
         await record({ baselineAttempt: latest, replaced: true });
+      } else if (row.mayHavePosted === true) {
+        // Our send may have landed, and Canvas stores submissions in its own
+        // form, so an attempt that does not match may still be ours.
+        return {
+          type: "error",
+          kind: "unmatched",
+          observedAttempt: latest,
+          error: "Canvas shows a newer attempt that does not exactly match this submission. It may be this one, stored in Canvas's own format.",
+        };
       } else {
         return {
           type: "error",
