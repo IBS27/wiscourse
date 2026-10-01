@@ -136,6 +136,36 @@ sees no live Clerk user during a gap, so it refuses to upload or submit
 runs the real provider: the lifetime survives a gap, and aborts on another
 account or a resolved logout.
 
+### F5: unmatched attempt after an uncertain send (Bugbot r4151040175)
+
+Confirmed by the reviewer at `8c5f431`. Canvas accepted a text or URL
+submission, stored it in its own form (an entity re-encoded, a trailing
+slash), and the reply was lost. Recovery then found a newer attempt that did
+not match exactly and labelled it "conflict", meaning definitely someone
+else's. That happened before the check-only path ran. The conflict dialog
+said so and hid the duplicate warning, so a confirmed Send again made a
+second attempt. Nothing resent automatically.
+
+Now, while the row's own send may have landed (`mayHavePosted`), an
+unmatched newer attempt is `unmatched`: "Canvas shows an attempt that may be
+this one".
+- Recovery stays check-only, so ours can still be recognised if it shows.
+- It ends unconfirmed, never failed. "Check Canvas again" never sends.
+- Send again shows the duplicate-risk warning. A confirmed resend still
+  sends only after that exact attempt, once.
+
+A newer attempt after a first try that is known not to have landed (for
+example, throttled) is still `conflict`. Its confirmed replacement is
+unchanged. Two existing conflict tests used a POST network error, which is
+an uncertain send, so they now use a throttled first try.
+
+Before the fix, the two new reproductions (text and URL) failed on `8c5f431`
+with `errorKind: "conflict"`. The reviewer's own fixture file, run against
+the fix, passes all five of its guards. Its two allegation cases now fail
+only on `conflict` becoming `unmatched`. Limit: after a confirmed resend from
+`unmatched`, an attempt that appears later is treated like any newer attempt
+after a known send, so a conflict.
+
 ### Final #11 merge (`4c9361c`)
 
 `1ab754a` retires a saved title/notes edit when its save is acknowledged,

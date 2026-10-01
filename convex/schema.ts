@@ -299,6 +299,10 @@ export const outboxErrorKind = v.union(
   v.literal("reconnect"), // no usable credential
   v.literal("exhausted"), // automatic retries or checks ran out
   v.literal("conflict"), // Canvas has a newer submission that is not this one
+  // After a send that may have landed, Canvas shows a newer attempt that does
+  // not match exactly. Canvas can store a submission in its own form, so it
+  // may be this one: a resend could duplicate it.
+  v.literal("unmatched"),
 );
 
 // Shared column set for per-course synced content.

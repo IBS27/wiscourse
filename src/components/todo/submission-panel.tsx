@@ -372,7 +372,13 @@ function ConfirmDialog({
               checks Canvas first, and stops if this submission appears or Canvas changes again.
             </li>
           )}
-          {resend?.status === "unconfirmed" && resend.errorKind !== "conflict" && (
+          {resend?.status === "unconfirmed" && resend.errorKind === "unmatched" && (
+            <li className="text-red">
+              Canvas shows a newer attempt that may be this submission, stored in its own format. Sending again
+              could make a second attempt. wiscourse checks Canvas first and stops if this one appears.
+            </li>
+          )}
+          {resend?.status === "unconfirmed" && resend.errorKind !== "conflict" && resend.errorKind !== "unmatched" && (
             <li className="text-red">
               Canvas may already have the earlier send and not show it yet. Sending again could make a second
               attempt. wiscourse checks Canvas first and stops if the earlier send appears.
@@ -501,7 +507,8 @@ function OutboxCard({ row, item, panel, now }: { row: OutboxView; item: TodoItem
     case "unconfirmed":
       tone = "warn";
       icon = <AlertTriangle />;
-      title = row.errorKind === "conflict" ? "Canvas has a different submission" : "Not confirmed yet";
+      title = row.errorKind === "conflict" ? "Canvas has a different submission"
+        : row.errorKind === "unmatched" ? "Canvas shows an attempt that may be this one" : "Not confirmed yet";
       detail = (
         <>
           {row.error} Canvas may already have this. wiscourse will not send it again unless you choose to.
@@ -576,6 +583,7 @@ const FAILED_TITLE = {
   reconnect: "Canvas needs to be reconnected",
   exhausted: "Could not reach Canvas",
   conflict: "Canvas has a different submission",
+  unmatched: "Canvas shows an attempt that may be this one",
 } as const;
 
 function summarize(row: OutboxView): string {
