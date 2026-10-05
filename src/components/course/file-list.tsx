@@ -14,6 +14,8 @@ import { formatMonthDayYear } from "@/lib/dates";
 import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_70px_64px_20px] items-center gap-3 px-4";
+
 interface Row {
   file: FileDoc;
   /** Only in search results, where the row is out of its folder's context. */
@@ -32,6 +34,7 @@ export function FileList({
   isNew,
   onSelectFolder,
   onSelectFile,
+  compact = false,
   className,
 }: {
   tree: FolderTree;
@@ -40,6 +43,8 @@ export function FileList({
   isNew: (file: FileDoc) => boolean;
   onSelectFolder: (canvasId: number) => void;
   onSelectFile: (canvasId: number) => void;
+  /** Beside an open preview: one column, size and date under the name. */
+  compact?: boolean;
   className?: string;
 }) {
   const [filter, setFilter] = useState("");
@@ -82,7 +87,7 @@ export function FileList({
             ))
           )}
         </div>
-        <label className="ml-auto flex h-7 w-[150px] shrink-0 items-center gap-[7px] rounded-[7px] border border-line bg-surface px-[9px] focus-within:border-line-2">
+        <label className="ml-auto flex h-7 w-[120px] shrink-0 xl:w-[150px] items-center gap-[7px] rounded-[7px] border border-line bg-surface px-[9px] focus-within:border-line-2">
           <Search className="size-[13px] shrink-0 text-ink-3" aria-hidden />
           <input
             value={filter}
@@ -94,12 +99,14 @@ export function FileList({
         </label>
       </div>
 
-      <div className="eyebrow grid h-8 shrink-0 grid-cols-[minmax(0,1fr)_70px_64px_20px] items-center gap-3 border-b border-line px-4">
-        <span>Name</span>
-        <span>Size</span>
-        <span>Added</span>
-        <span className="sr-only">New</span>
-      </div>
+      {!compact && (
+        <div className={cn("eyebrow h-8 shrink-0 border-b border-line", ROW_GRID)}>
+          <span>Name</span>
+          <span>Size</span>
+          <span>Added</span>
+          <span className="sr-only">New</span>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-[13px] text-ink-2">
@@ -117,7 +124,8 @@ export function FileList({
                 aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectFile(file.canvasId)}
                 className={cn(
-                  "grid min-h-10 w-full grid-cols-[minmax(0,1fr)_70px_64px_20px] items-center gap-3 border-b border-line px-4 py-[7px] text-left text-[13px] hover:bg-hover",
+                  "min-h-10 w-full border-b border-line py-[7px] text-left text-[13px] hover:bg-hover",
+                  compact ? "grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4" : ROW_GRID,
                   selected && "bg-hover shadow-[inset_2px_0_0_var(--c)]",
                 )}
               >
@@ -134,12 +142,21 @@ export function FileList({
                     {path !== undefined && path !== "" && (
                       <span className="block truncate text-[11.5px] text-ink-3">{path}</span>
                     )}
+                    {compact && (
+                      <span className="tabular block truncate text-[11.5px] text-ink-3">
+                        {formatBytes(file.size)} · {formatMonthDayYear(fileAddedAt(file))}
+                      </span>
+                    )}
                   </span>
                 </span>
-                <span className="tabular text-xs text-ink-3">{formatBytes(file.size)}</span>
-                <span className="tabular text-xs text-ink-3">
-                  {formatMonthDayYear(fileAddedAt(file))}
-                </span>
+                {!compact && (
+                  <>
+                    <span className="tabular text-xs text-ink-3">{formatBytes(file.size)}</span>
+                    <span className="tabular text-xs text-ink-3">
+                      {formatMonthDayYear(fileAddedAt(file))}
+                    </span>
+                  </>
+                )}
                 <span className="flex justify-end">{unread && <UnreadDot />}</span>
               </button>
             );

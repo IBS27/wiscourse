@@ -59,6 +59,7 @@ import type * as listMigration from "../listMigration.js";
 import type * as meetings from "../meetings.js";
 import type * as modules from "../modules.js";
 import type * as pages from "../pages.js";
+import type * as pdfCache from "../pdfCache.js";
 import type * as prefs from "../prefs.js";
 import type * as quizzes from "../quizzes.js";
 import type * as search from "../search.js";
@@ -129,6 +130,7 @@ declare const fullApi: ApiFromModules<{
   meetings: typeof meetings;
   modules: typeof modules;
   pages: typeof pages;
+  pdfCache: typeof pdfCache;
   prefs: typeof prefs;
   quizzes: typeof quizzes;
   search: typeof search;

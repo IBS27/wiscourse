@@ -6,16 +6,30 @@ import { requireUserId } from "./lib/auth";
 
 import { readCoursePdf } from "./lib/coursePdf";
 
-const LIMIT = 10 * 1024 * 1024;
-/** Fetch bytes on the server so attachment headers and cross-origin restrictions cannot block rendering. */
+const LIMIT = 50 * 1024 * 1024;
+/**
+ * URL of a PDF preview in the shared Convex-storage cache (convex/pdfCache.ts),
+ * for when `pdfCache.pdfUrl` has none. Canvas confirms the caller's access
+ * and the current version first (the only Canvas call); on a cache miss the
+ * server downloads the bytes, so attachment headers and cross-origin
+ * restrictions cannot block rendering, and stores them for every later view.
+ */
 export const pdf = action({
   args: { fileCanvasId: v.number() },
-  returns: v.bytes(),
-  handler: async (ctx, args): Promise<ArrayBuffer> => {
-    await requireUserId(ctx);
+  returns: v.string(),
+  handler: async (ctx, args): Promise<string> => {
+    const userId = await requireUserId(ctx);
     const file = await ctx.runAction(api.files.freshUrl, args);
     if (file.contentType !== "application/pdf" || file.size > LIMIT)
       throw new Error("PDF exceeds preview limits");
+    const version = {
+      userId,
+      fileCanvasId: args.fileCanvasId,
+      size: file.size,
+      updatedAt: file.updatedAt,
+    };
+    const cached = await ctx.runQuery(internal.pdfCache.lookup, version);
+    if (cached !== null) return cached;
     const response = await fetch(file.url, {
       signal: AbortSignal.timeout(30_000),
     });
@@ -46,7 +60,13 @@ export const pdf = action({
     }
     if (new TextDecoder().decode(bytes.subarray(0, 5)) !== "%PDF-")
       throw new Error("File is not a PDF");
-    return bytes.buffer;
+    const storageId = await ctx.storage.store(
+      new Blob([bytes], { type: "application/pdf" }),
+    );
+    return await ctx.runMutation(internal.pdfCache.record, {
+      ...version,
+      storageId,
+    });
   },
 });
 

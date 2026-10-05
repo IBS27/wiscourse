@@ -1,9 +1,9 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { useAction } from "convex/react";
-import { ArrowLeft, Download, ExternalLink, Lock } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Lock, Maximize2, Minimize2, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { FileTypeIcon } from "./file-icon";
-import { previewKind, typeLabel } from "./file-kinds";
+import { previewKind, typeLabel, type PreviewKind } from "./file-kinds";
 import type { FileDoc } from "./file-tree";
 import { Skeleton } from "@/components/ui/skeleton";
 import { canvasUrl } from "@/lib/course-routes";
@@ -13,13 +13,13 @@ import { useMarkSeenOnMount } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
 
-/** Above this an inline text preview is a wall of characters — offer the file. */
 const PdfPreview = lazy(() => import("./pdf-preview").then(module => ({ default: module.PdfPreview })));
 
+/** Above this an inline text preview is a wall of characters — offer the file. */
 const TEXT_MAX_BYTES = 256 * 1024;
 
 type PreviewFile = Pick<FileDoc, "canvasId"> & Partial<Pick<FileDoc,
-  "displayName" | "filename" | "size" | "lockedForUser" | "updatedAt" | "modifiedAt" | "_creationTime"
+  "displayName" | "filename" | "contentType" | "size" | "lockedForUser" | "updatedAt" | "modifiedAt" | "_creationTime"
 >>;
 type FileName = { displayName: string; filename: string };
 
@@ -32,22 +32,29 @@ type Fetched =
  * Canvas download links carry a short-lived verifier, so every selection
  * asks `files.freshUrl` for a new one. Mount with `key={file.canvasId}`:
  * one instance per selection, so "loading" is the initial state.
+ *
+ * As a desktop `pane` it can expand to fill the window. Expanding restyles
+ * this same element rather than reopening the file, so nothing is fetched
+ * or rendered again and a PDF keeps its page.
  */
 export function FilePreview({
   file,
   courseId,
+  variant = "pane",
   onClose,
   className,
 }: {
   file: PreviewFile;
   courseId: string;
-  /** Rendered as a back arrow on mobile; omitted in the desktop pane. */
+  /** `sheet` is the mobile full-screen view, closed with a back arrow. */
+  variant?: "pane" | "sheet";
   onClose?: () => void;
   className?: string;
 }) {
   const freshUrl = useAction(api.files.freshUrl);
   const sync = useSyncInfo();
   const [fetched, setFetched] = useState<Fetched>({ status: "loading" });
+  const [expanded, setExpanded] = useState(false);
 
   const locked = file.lockedForUser === true;
   const canvasHref = canvasUrl(`courses/${courseId}/files/${file.canvasId}`, sync?.instance);
@@ -71,10 +78,37 @@ export function FilePreview({
     };
   }, [file.canvasId, locked, freshUrl]);
 
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [expanded]);
+
+  // Known from the synced listing, a PDF starts loading alongside the
+  // metadata request instead of after it.
+  const kind =
+    fetched.status === "ready"
+      ? previewKind(fetched.contentType, fetched.filename)
+      : file.contentType !== undefined && file.filename !== undefined
+        ? previewKind(file.contentType, file.filename)
+        : undefined;
+
   return (
-    <div className={cn("flex min-h-0 flex-col bg-sunken", className)}>
+    <div
+      role={expanded ? "dialog" : undefined}
+      aria-modal={expanded || undefined}
+      aria-label={expanded ? name.displayName : undefined}
+      className={cn(
+        "flex min-h-0 flex-col bg-sunken",
+        className,
+        expanded && "fixed inset-0 z-50 border-0",
+      )}
+    >
       <div className="flex shrink-0 items-center gap-[10px] border-b border-line px-[14px] py-[10px]">
-        {onClose !== undefined && (
+        {variant === "sheet" && onClose !== undefined && (
           <button
             type="button"
             onClick={onClose}
@@ -124,6 +158,28 @@ export function FilePreview({
           >
             <ExternalLink className="size-[14px]" />
           </a>
+          {variant === "pane" && (
+            <button
+              type="button"
+              onClick={() => setExpanded((value) => !value)}
+              aria-label={expanded ? "Exit full view" : "Expand to full view"}
+              title={expanded ? "Exit full view (Esc)" : "Expand to full view"}
+              className="grid size-[27px] place-items-center rounded-lg border border-line text-ink-3 hover:bg-hover"
+            >
+              {expanded ? <Minimize2 className="size-[14px]" /> : <Maximize2 className="size-[14px]" />}
+            </button>
+          )}
+          {variant === "pane" && onClose !== undefined && !expanded && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close preview"
+              title="Close preview"
+              className="grid size-[27px] place-items-center rounded-lg text-ink-3 hover:bg-hover"
+            >
+              <X className="size-[15px]" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -134,13 +190,41 @@ export function FilePreview({
           <p className="text-xs text-ink-3">Your instructor hasn’t released this file yet.</p>
         </Centered>
       ) : (
-        <PreviewBody file={name} fetched={fetched} fileCanvasId={file.canvasId} />
+        <PreviewBody file={name} fetched={fetched} kind={kind} fileCanvasId={file.canvasId} />
       )}
     </div>
   );
 }
 
-function PreviewBody({ file, fetched, fileCanvasId }: { file: FileName; fetched: Fetched; fileCanvasId: number }) {
+function PreviewBody({
+  file,
+  fetched,
+  kind,
+  fileCanvasId,
+}: {
+  file: FileName;
+  fetched: Fetched;
+  kind: PreviewKind | undefined;
+  fileCanvasId: number;
+}) {
+  if (fetched.status === "error") {
+    return (
+      <Centered>
+        <p className="text-[13px] font-medium">Preview unavailable</p>
+      </Centered>
+    );
+  }
+  if (kind === "pdf") {
+    return (
+      <Suspense fallback={<Centered><p className="text-xs text-ink-3">Loading PDF…</p></Centered>}>
+        <PdfPreview
+          fileCanvasId={fileCanvasId}
+          title={file.displayName}
+          deferFetch={fetched.status === "loading"}
+        />
+      </Suspense>
+    );
+  }
   if (fetched.status === "loading") {
     return (
       <div className="min-h-0 flex-1 space-y-[10px] p-5">
@@ -151,22 +235,8 @@ function PreviewBody({ file, fetched, fileCanvasId }: { file: FileName; fetched:
       </div>
     );
   }
-  if (fetched.status === "error") {
-    return (
-      <Centered>
-        <p className="text-[13px] font-medium">Preview unavailable</p>
-      </Centered>
-    );
-  }
-
-  const kind = previewKind(fetched.contentType, file.filename);
   const src = inlineUrl(fetched.url);
 
-  if (kind === "pdf") {
-    return (
-      <Suspense fallback={<Centered><p className="text-xs text-ink-3">Loading PDF…</p></Centered>}><PdfPreview key={fileCanvasId} fileCanvasId={fileCanvasId} title={file.displayName}/></Suspense>
-    );
-  }
   if (kind === "image") {
     return (
       <div className="grid min-h-0 flex-1 place-items-center overflow-auto p-5">
@@ -277,17 +347,4 @@ function inlineUrl(url: string): string {
   } catch {
     return url;
   }
-}
-
-export function PreviewEmpty({ className }: { className?: string }) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-0 flex-col items-center justify-center bg-sunken p-6 text-center",
-        className,
-      )}
-    >
-      <p className="text-[13px] text-ink-3">Select a file to preview it</p>
-    </div>
-  );
 }

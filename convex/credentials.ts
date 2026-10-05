@@ -213,6 +213,18 @@ export async function credentialState(
   return credential === null ? "missing" : credential.status;
 }
 
+/** The Canvas host the user is connected to, if any. Never touches token material. */
+export async function canvasInstance(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<string | undefined> {
+  const credential = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return credential?.instance;
+}
+
 /**
  * The user has no usable Canvas credential: never connected, disconnected,
  * or rejected by Canvas. Only reconnecting in Settings fixes it, so callers

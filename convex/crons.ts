@@ -24,4 +24,13 @@ crons.daily(
   {},
 );
 
+// Drop PDF previews cached more than 45 days ago. Walks cache rows in
+// batches (rescheduling itself), not users. 10:00 UTC, after the full sync.
+crons.daily(
+  "pdf preview eviction",
+  { hourUTC: 10, minuteUTC: 0 },
+  internal.pdfCache.evict,
+  {},
+);
+
 export default crons;

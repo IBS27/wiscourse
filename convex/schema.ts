@@ -681,6 +681,21 @@ export default defineSchema({
     .index("by_user_course", ["userId", "courseCanvasId"])
     .index("by_user_folder", ["userId", "folderCanvasId"]),
 
+  // Cached PDF previews in Convex storage (see convex/pdfCache.ts). Shared
+  // across users: on one Canvas instance a file id plus its version (size,
+  // updatedAt) identifies identical bytes. Access is always checked per user
+  // (their own `files` row, or Canvas itself) before a URL is returned.
+  pdfPreviews: defineTable({
+    instance: v.string(),
+    fileCanvasId: v.number(),
+    size: v.number(),
+    updatedAt: v.optional(v.number()),
+    storageId: v.id("_storage"),
+    storedAt: v.number(),
+  })
+    .index("by_file", ["instance", "fileCanvasId"])
+    .index("by_storedAt", ["storedAt"]),
+
   // -------------------------------------------------------------------------
   // Calendar + todos
 
