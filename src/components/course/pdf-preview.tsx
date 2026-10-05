@@ -38,10 +38,22 @@ function openDocument(url: string): Promise<PDFDocumentProxy> {
   return task.promise;
 }
 
+/** How long to wait before asking again while a sync holds Canvas. */
+const BUSY_RETRY_MS = 3000;
+
+interface PdfVersion {
+  size: number;
+  updatedAt?: number;
+}
+
 /**
  * The server copies a PDF into Convex storage once per file version; every
  * later view, by anyone in the course, subscribes straight to that URL and
  * pdf.js streams it over HTTP.
+ *
+ * The cached copy matches the synced listing, so it renders at once. Once
+ * Canvas confirms `version` and it differs (the file changed since the last
+ * sync), the server prepares that version instead.
  *
  * `deferFetch` holds a cache miss until the parent's metadata request settles:
  * Canvas takes one request per user at a time.
@@ -49,37 +61,55 @@ function openDocument(url: string): Promise<PDFDocumentProxy> {
 export function PdfPreview({
   fileCanvasId,
   title,
+  version,
   deferFetch,
 }: {
   fileCanvasId: number;
   title: string;
+  /** What Canvas reports now; undefined until the parent's request settles. */
+  version?: PdfVersion;
   deferFetch: boolean;
 }) {
   const cached = useQuery(api.pdfCache.pdfUrl, { fileCanvasId });
   const prepare = useAction(api.filePreview.pdf);
   const [prepared, setPrepared] = useState<string>();
-  const [doc, setDoc] = useState<PDFDocumentProxy>();
+  const [loaded, setLoaded] = useState<{ url: string; doc: PDFDocumentProxy }>();
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const url = cached ?? prepared;
+  const current =
+    cached &&
+    (version === undefined ||
+      (cached.size === version.size && cached.updatedAt === version.updatedAt))
+      ? cached.url
+      : undefined;
+  const url = current ?? prepared;
+  const doc = loaded?.url === url ? loaded?.doc : undefined;
+  const needsPrepare =
+    cached !== undefined && current === undefined && prepared === undefined && !deferFetch;
 
   useEffect(() => {
-    if (cached !== null || deferFetch || prepared !== undefined) return;
+    if (!needsPrepare) return;
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     prepare({ fileCanvasId }).then(
-      (result) => !cancelled && setPrepared(result),
+      (result) => {
+        if (cancelled) return;
+        if (result.status === "ready") setPrepared(result.url);
+        else timer = setTimeout(() => setAttempt((n) => n + 1), BUSY_RETRY_MS);
+      },
       () => !cancelled && setFailed(true),
     );
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [cached, deferFetch, prepared, prepare, fileCanvasId, attempt]);
+  }, [needsPrepare, prepare, fileCanvasId, attempt]);
 
   useEffect(() => {
     if (url === undefined) return;
     let cancelled = false;
     openDocument(url).then(
-      (result) => !cancelled && setDoc(result),
+      (result) => !cancelled && setLoaded({ url, doc: result }),
       () => !cancelled && setFailed(true),
     );
     return () => {
@@ -96,7 +126,7 @@ export function PdfPreview({
           className="underline"
           onClick={() => {
             setFailed(false);
-            setDoc(undefined);
+            setLoaded(undefined);
             setPrepared(undefined);
             setAttempt((n) => n + 1);
           }}

@@ -3,7 +3,8 @@
 // anyone on the same Canvas instance costs no Canvas call. Entries are keyed
 // by (instance, file id) and matched on the file's version (size,
 // updatedAt); every read checks the caller's own access first. Misses are
-// filled by the `pdf` action in convex/filePreview.ts.
+// filled by the `pdf` action in convex/filePreview.ts, only with what Canvas
+// just reported to a still-current token on that instance.
 
 import { v } from "convex/values";
 import {
@@ -15,7 +16,11 @@ import {
 } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { canvasInstance } from "./credentials";
+import {
+  canvasInstance,
+  credentialIdentity,
+  credentialInstance,
+} from "./credentials";
 import { DAY_MS } from "./lib/time";
 
 const MAX_AGE_MS = 45 * DAY_MS;
@@ -42,18 +47,15 @@ async function entries(
 const matches = (entry: Doc<"pdfPreviews">, version: Version) =>
   entry.size === version.size && entry.updatedAt === version.updatedAt;
 
-async function cachedUrl(
+async function cached(
   ctx: QueryCtx,
-  userId: string,
+  instance: string,
   fileCanvasId: number,
   version: Version,
-): Promise<string | null> {
-  const instance = await canvasInstance(ctx, userId);
-  if (instance === undefined) return null;
-  const entry = (await entries(ctx, instance, fileCanvasId)).find((e) =>
+): Promise<Doc<"pdfPreviews"> | undefined> {
+  return (await entries(ctx, instance, fileCanvasId)).find((e) =>
     matches(e, version),
   );
-  return entry ? await ctx.storage.getUrl(entry.storageId) : null;
 }
 
 async function deleteEntry(ctx: MutationCtx, entry: Doc<"pdfPreviews">) {
@@ -67,13 +69,22 @@ async function deleteBlob(ctx: MutationCtx, storageId: Id<"_storage">) {
 }
 
 /**
- * Fast path the viewer subscribes to: the cached preview URL for a file the
- * caller can see in their synced data, or null (not signed in, no access,
- * or not cached at the synced version). Never calls Canvas.
+ * Fast path the viewer subscribes to: the cached preview for a file the
+ * caller can see in their synced data, at the synced version, or null (not
+ * signed in, no access, or not cached). The viewer compares the version
+ * with the one Canvas confirms and asks `pdf` when they differ. Never calls
+ * Canvas.
  */
 export const pdfUrl = query({
   args: { fileCanvasId: v.number() },
-  returns: v.union(v.string(), v.null()),
+  returns: v.union(
+    v.object({
+      url: v.string(),
+      size: v.number(),
+      updatedAt: v.optional(v.number()),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) return null;
@@ -85,43 +96,52 @@ export const pdfUrl = query({
       .unique();
     if (file === null || file.lockedForUser === true || file.hidden === true)
       return null;
-    return await cachedUrl(ctx, identity.subject, args.fileCanvasId, file);
+    const instance = await canvasInstance(ctx, identity.subject);
+    if (instance === undefined) return null;
+    const entry = await cached(ctx, instance, args.fileCanvasId, file);
+    if (entry === undefined) return null;
+    const url = await ctx.storage.getUrl(entry.storageId);
+    return url === null
+      ? null
+      : { url, size: entry.size, updatedAt: entry.updatedAt };
   },
 });
 
-/** Cached URL at a version Canvas just confirmed the user can access. */
+/** A version Canvas just reported to the stored token `credential`. */
+const confirmed = {
+  userId: v.string(),
+  credential: credentialIdentity,
+  fileCanvasId: v.number(),
+  size: v.number(),
+  updatedAt: v.optional(v.number()),
+};
+
+/** Cached URL at a confirmed version; null if absent or the token changed. */
 export const lookup = internalQuery({
-  args: {
-    userId: v.string(),
-    fileCanvasId: v.number(),
-    size: v.number(),
-    updatedAt: v.optional(v.number()),
-  },
+  args: confirmed,
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, args) =>
-    await cachedUrl(ctx, args.userId, args.fileCanvasId, args),
+  handler: async (ctx, args) => {
+    const instance = await credentialInstance(ctx, args.userId, args.credential);
+    if (instance === undefined) return null;
+    const entry = await cached(ctx, instance, args.fileCanvasId, args);
+    return entry ? await ctx.storage.getUrl(entry.storageId) : null;
+  },
 });
 
 /**
  * Store a freshly downloaded preview and return its URL. A concurrent miss
  * that already stored this version wins (the new blob is dropped); older
- * versions of the file are removed.
+ * versions of the file are removed. Returns null, storing nothing, when
+ * `credential` is no longer the user's active token: the bytes may belong to
+ * another instance. The caller then deletes the blob, as it does when this
+ * throws (which rolls back any deletion here).
  */
 export const record = internalMutation({
-  args: {
-    userId: v.string(),
-    fileCanvasId: v.number(),
-    size: v.number(),
-    updatedAt: v.optional(v.number()),
-    storageId: v.id("_storage"),
-  },
-  returns: v.string(),
+  args: { ...confirmed, storageId: v.id("_storage") },
+  returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
-    const instance = await canvasInstance(ctx, args.userId);
-    if (instance === undefined) {
-      await deleteBlob(ctx, args.storageId);
-      throw new Error("Canvas is not connected");
-    }
+    const instance = await credentialInstance(ctx, args.userId, args.credential);
+    if (instance === undefined) return null;
     let storageId = args.storageId;
     let existing: Doc<"pdfPreviews"> | undefined;
     for (const entry of await entries(ctx, instance, args.fileCanvasId)) {

@@ -220,6 +220,7 @@ function PreviewBody({
         <PdfPreview
           fileCanvasId={fileCanvasId}
           title={file.displayName}
+          version={fetched.status === "ready" ? { size: fetched.size, updatedAt: fetched.updatedAt } : undefined}
           deferFetch={fetched.status === "loading"}
         />
       </Suspense>

@@ -3,12 +3,22 @@ import { convexTest } from "convex-test";
 import schema from "../convex/schema";
 import { api, internal } from "../convex/_generated/api";
 import type { Doc } from "../convex/_generated/dataModel";
+import type { ActionCtx } from "../convex/_generated/server";
 const mock = vi.hoisted(() => ({ get: vi.fn(), sessions: vi.fn() }));
 vi.mock("../convex/credentials", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../convex/credentials")>()),
-  getCanvasClient: async (_ctx: unknown, userId: string) => {
+  getCanvasClient: async (ctx: ActionCtx, userId: string) => {
     mock.sessions(userId);
-    return { client: { get: mock.get } };
+    const credential = await ctx.runQuery(internal.credentials.getForUser, {
+      userId,
+    });
+    return {
+      client: { get: mock.get },
+      identity: credential && {
+        credentialId: credential._id,
+        revision: credential.revision ?? 0,
+      },
+    };
   },
 }));
 const modules = import.meta.glob("../convex/**/*.{ts,js}");
@@ -79,11 +89,36 @@ function stubPdf(body = "%PDF-1.7\ncontent") {
   return fetch;
 }
 
-const view = (t: Convex, subject: string) =>
+const prepare = (t: Convex, subject: string) =>
   t.withIdentity({ subject }).action(api.filePreview.pdf, { fileCanvasId: 10 });
+
+async function view(t: Convex, subject: string) {
+  const result = await prepare(t, subject);
+  if (result.status !== "ready") throw new Error(result.status);
+  return result.url;
+}
 
 const entries = (t: Convex) =>
   t.run((ctx) => ctx.db.query("pdfPreviews").collect());
+
+const blobs = (t: Convex) =>
+  t.run((ctx) => ctx.db.system.query("_storage").collect());
+
+async function credential(t: Convex, userId: string) {
+  const row = await t.query(internal.credentials.getForUser, { userId });
+  return row!;
+}
+
+/** Serves the PDF only after `during` runs, as if mid-download. */
+function stubPdfDuring(during: () => Promise<void>) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      await during();
+      return new Response("%PDF-1.7\nold host");
+    }),
+  );
+}
 
 it("stores the PDF and returns its URL despite a forced-download header", async () => {
   const t = await setup();
@@ -123,7 +158,7 @@ it("pdfUrl returns the cached URL only to users who can see the file", async () 
   expect(await pdfUrl("student")).toBeNull();
   stubPdf();
   const url = await view(t, "student");
-  expect(await pdfUrl("student")).toBe(url);
+  expect(await pdfUrl("student")).toEqual({ url, size: 20, updatedAt: 1000 });
   expect(await t.query(api.pdfCache.pdfUrl, { fileCanvasId: 10 })).toBeNull();
   expect(await pdfUrl("stranger")).toBeNull();
   expect(await pdfUrl("locked")).toBeNull();
@@ -170,4 +205,97 @@ it("rejects login HTML masquerading as a PDF", async () => {
   stubPdf("<html>Login</html>");
   await expect(view(t, "student")).rejects.toThrow("not a PDF");
   expect(await entries(t)).toHaveLength(0);
+});
+
+it("does not cache bytes read before a reconnect to another instance", async () => {
+  const t = await setup();
+  stubPdfDuring(async () => {
+    const row = await credential(t, "student");
+    await t.run((ctx) =>
+      ctx.db.patch(row._id, { instance: "evil.example", revision: 1 }),
+    );
+  });
+  await expect(view(t, "student")).rejects.toThrow("connection changed");
+  expect(await entries(t)).toHaveLength(0);
+  expect(await blobs(t)).toHaveLength(0);
+});
+
+it("does not cache bytes read before a disconnect and reconnect", async () => {
+  const t = await setup();
+  stubPdfDuring(async () => {
+    const row = await credential(t, "student");
+    await t.run(async (ctx) => {
+      await ctx.db.delete(row._id);
+      await ctx.db.insert("canvasCredentials", {
+        userId: row.userId,
+        instance: row.instance,
+        kind: row.kind,
+        accessTokenEncrypted: row.accessTokenEncrypted,
+        status: "active",
+      });
+    });
+  });
+  await expect(view(t, "student")).rejects.toThrow("connection changed");
+  expect(await entries(t)).toHaveLength(0);
+  expect(await blobs(t)).toHaveLength(0);
+});
+
+it("serves a cached version only to the token that confirmed it", async () => {
+  const t = await setup();
+  stubPdf();
+  const url = await view(t, "student");
+  const row = await credential(t, "student");
+  const lookup = (revision: number) =>
+    t.query(internal.pdfCache.lookup, {
+      userId: "student",
+      credential: { credentialId: row._id, revision },
+      fileCanvasId: 10,
+      size: 20,
+      updatedAt: 1000,
+    });
+  expect(await lookup(0)).toBe(url);
+  await t.run((ctx) => ctx.db.patch(row._id, { revision: 1 }));
+  expect(await lookup(0)).toBeNull();
+  expect(await lookup(1)).toBe(url);
+  await t.run((ctx) => ctx.db.patch(row._id, { status: "invalid" }));
+  expect(await lookup(1)).toBeNull();
+});
+
+it("keeps one blob when a concurrent miss stored the same version", async () => {
+  const t = await setup();
+  stubPdf();
+  const first = await view(t, "student");
+  const row = await credential(t, "student");
+  const storageId = await t.run((ctx) =>
+    ctx.storage.store(new Blob(["%PDF-1.7\n"])),
+  );
+  const url = await t.mutation(internal.pdfCache.record, {
+    userId: "student",
+    credential: { credentialId: row._id, revision: 0 },
+    fileCanvasId: 10,
+    size: 20,
+    updatedAt: 1000,
+    storageId,
+  });
+  expect(url).toBe(first);
+  expect(await entries(t)).toHaveLength(1);
+  expect(await blobs(t)).toHaveLength(1);
+});
+
+it("waits for a running sync instead of caching synced metadata", async () => {
+  const t = await setup();
+  const fetch = stubPdf();
+  await t.mutation(internal.syncStore.claimSync, {
+    userId: "student",
+    full: true,
+  });
+  expect(await prepare(t, "student")).toEqual({ status: "busy" });
+  expect(mock.get).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  expect(await entries(t)).toHaveLength(0);
+  // The download link still falls back to the synced listing.
+  const file = await t
+    .withIdentity({ subject: "student" })
+    .action(api.files.freshUrl, { fileCanvasId: 10 });
+  expect(file).toMatchObject({ size: 20, updatedAt: 1000 });
 });
