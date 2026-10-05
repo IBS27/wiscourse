@@ -5,7 +5,7 @@ import { api } from "../../convex/_generated/api";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FileColumn } from "@/components/course/file-column";
 import { FileList } from "@/components/course/file-list";
-import { FilePreview, PreviewEmpty } from "@/components/course/file-preview";
+import { FilePreview } from "@/components/course/file-preview";
 import { FileTreePane } from "@/components/course/file-tree-pane";
 import {
   buildTree,
@@ -37,8 +37,10 @@ export const Route = createFileRoute("/courses/$courseId/files")({
   component: CourseFiles,
 });
 
-/** Wide enough for a PDF page to be readable, narrow enough to keep the list. */
-const PREVIEW_WIDTH = "w-[330px] shrink-0 border-l border-line lg:w-[400px] xl:w-[460px]";
+/** While a file is open the list narrows to names and the preview takes
+ *  the rest; with nothing open the list has the full width. */
+const COMPACT_LIST = "w-[280px] shrink-0 xl:w-[320px]";
+const PREVIEW = "min-w-0 flex-1 border-l border-line";
 
 /**
  * 4-A on desktop (tree · list · preview), 4-B on mobile (one column, the
@@ -79,7 +81,7 @@ function CourseFiles() {
 
   const style = courseStyle(color(valid ? courseCanvasId : undefined));
 
-  if (data === undefined) return <FilesSkeleton mobile={mobile} />;
+  if (data === undefined) return <FilesSkeleton mobile={mobile} previewing={search.file !== undefined} />;
   if (tree.files.length === 0 && previewFile === undefined) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center p-10 text-[13px] text-ink-3">
@@ -118,6 +120,7 @@ function CourseFiles() {
                 key={previewFile.canvasId}
                 file={previewFile}
                 courseId={courseId}
+                variant="sheet"
                 onClose={() => selectFile(undefined)}
                 className="flex-1"
               />
@@ -144,26 +147,27 @@ function CourseFiles() {
         isNew={isNew}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}
-        className="min-h-0 flex-1"
+        compact={previewFile !== undefined}
+        className={cn("min-h-0", previewFile === undefined ? "min-w-0 flex-1" : COMPACT_LIST)}
       />
-      {previewFile === undefined ? (
-        <PreviewEmpty className={PREVIEW_WIDTH} />
-      ) : (
+      {previewFile !== undefined && (
         <FilePreview
           key={previewFile.canvasId}
           file={previewFile}
           courseId={courseId}
-          className={PREVIEW_WIDTH}
+          onClose={() => selectFile(undefined)}
+          className={PREVIEW}
         />
       )}
     </div>
   );
 }
 
-function FilesSkeleton({ mobile }: { mobile: boolean }) {
+function FilesSkeleton({ mobile, previewing }: { mobile: boolean; previewing: boolean }) {
+  const preview = previewing && !mobile;
   return (
     <div className="flex min-h-0 flex-1 animate-pulse">
-      <div className={cn("min-w-0 flex-1", mobile && "w-full")}>
+      <div className={preview ? COMPACT_LIST : "min-w-0 flex-1"}>
         {[0, 1, 2, 3, 4, 5].map((row) => (
           <div key={row} className="flex h-11 items-center gap-[10px] border-b border-line px-4">
             <div className="size-[14px] rounded bg-chip" />
@@ -172,8 +176,8 @@ function FilesSkeleton({ mobile }: { mobile: boolean }) {
           </div>
         ))}
       </div>
-      {!mobile && (
-        <div className={cn(PREVIEW_WIDTH, "space-y-3 bg-sunken p-5")}>
+      {preview && (
+        <div className={cn(PREVIEW, "space-y-3 bg-sunken p-5")}>
           <div className="h-4 w-2/3 rounded bg-chip" />
           <div className="h-[220px] w-full rounded bg-chip" />
         </div>

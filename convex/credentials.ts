@@ -184,22 +184,44 @@ export const markInvalid = internalMutation({
   args: { userId: v.string(), credential: credentialIdentity },
   returns: v.boolean(),
   handler: async (ctx, args) => {
-    const current = await ctx.db
-      .query("canvasCredentials")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
-      .unique();
-    if (
-      current === null ||
-      current._id !== args.credential.credentialId ||
-      (current.revision ?? 0) !== args.credential.revision
-    ) {
-      return false;
-    }
+    const current = await storedCredential(ctx, args.userId, args.credential);
+    if (current === null) return false;
     await ctx.db.patch(current._id, { status: "invalid" });
     await removeSyncSchedule(ctx, args.userId);
     return true;
   },
 });
+
+/** The user's credential row if it still holds the token `credential` names. */
+async function storedCredential(
+  ctx: QueryCtx,
+  userId: string,
+  credential: CredentialIdentity,
+): Promise<Doc<"canvasCredentials"> | null> {
+  const current = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return current !== null &&
+    current._id === credential.credentialId &&
+    (current.revision ?? 0) === credential.revision
+    ? current
+    : null;
+}
+
+/**
+ * The Canvas host the token `credential` names belongs to, while it is still
+ * the user's active token. Data read with a session belongs to this host even
+ * if the user has since reconnected elsewhere. Never touches token material.
+ */
+export async function credentialInstance(
+  ctx: QueryCtx,
+  userId: string,
+  credential: CredentialIdentity,
+): Promise<string | undefined> {
+  const current = await storedCredential(ctx, userId, credential);
+  return current?.status === "active" ? current.instance : undefined;
+}
 
 /** Whether the user can reach Canvas right now. Never exposes token material. */
 export async function credentialState(
@@ -211,6 +233,18 @@ export async function credentialState(
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .unique();
   return credential === null ? "missing" : credential.status;
+}
+
+/** The Canvas host the user is connected to, if any. Never touches token material. */
+export async function canvasInstance(
+  ctx: QueryCtx,
+  userId: string,
+): Promise<string | undefined> {
+  const credential = await ctx.db
+    .query("canvasCredentials")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .unique();
+  return credential?.instance;
 }
 
 /**

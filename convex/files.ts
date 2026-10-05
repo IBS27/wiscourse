@@ -1,9 +1,14 @@
-import { v } from "convex/values";
-import { action, query, internalQuery } from "./_generated/server";
+import { v, type Infer } from "convex/values";
+import {
+  action,
+  query,
+  internalQuery,
+  type ActionCtx,
+} from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import { requireUserId } from "./lib/auth";
-import { getCanvasClient } from "./credentials";
+import { getCanvasClient, type CredentialIdentity } from "./credentials";
 import { CanvasApiError, CanvasRateLimitError } from "./canvas/client";
 import type { CanvasFile } from "./canvas/types";
 import { toMillis } from "./canvas/types";
@@ -84,66 +89,81 @@ export const fresh = query({
   },
 });
 
-export const freshUrl = action({
-  args: { fileCanvasId: v.number() },
-  returns: v.object({
-    url: v.string(),
-    contentType: v.string(),
-    size: v.number(),
-    filename: v.string(),
-    displayName: v.string(),
-    updatedAt: v.optional(v.number()),
-  }),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<{
-    url: string;
-    contentType: string;
-    size: number;
-    filename: string;
-    displayName: string;
-    updatedAt?: number;
-  }> => {
-    const userId = await requireUserId(ctx);
-    const owned = await ctx.runQuery(internal.files.owned, {
-      userId,
-      fileCanvasId: args.fileCanvasId,
-    });
-    if (owned?.locked) throw new Error("File not available");
-    const lease = await ctx.runMutation(internal.syncStore.claimSync, {
-      userId,
-      full: false,
-    });
-    if (lease === null) {
-      if (owned) return owned.cached;
-      throw new Error("Canvas is syncing. Please retry shortly.");
-    }
-    try {
-      const { client } = await getCanvasClient(ctx, userId);
-      const file = await client.get<CanvasFile>(`/files/${args.fileCanvasId}`);
-      if (file.locked_for_user || file.hidden)
-        throw new Error("File not available");
-      return {
+const fileMetadata = v.object({
+  url: v.string(),
+  contentType: v.string(),
+  size: v.number(),
+  filename: v.string(),
+  displayName: v.string(),
+  updatedAt: v.optional(v.number()),
+});
+export type FileMetadata = Infer<typeof fileMetadata>;
+
+export type ResolvedFile =
+  | { status: "live"; file: FileMetadata; credential: CredentialIdentity }
+  | { status: "busy"; synced: FileMetadata | null };
+
+/**
+ * The file as Canvas reports it now, with the stored token that read it.
+ * While a sync holds the user's Canvas lease this makes no request and
+ * returns the synced listing instead, which may be stale or predate a
+ * reconnect: fine to show, never fit to cache under.
+ */
+export async function resolveFile(
+  ctx: ActionCtx,
+  userId: string,
+  fileCanvasId: number,
+): Promise<ResolvedFile> {
+  const owned = await ctx.runQuery(internal.files.owned, {
+    userId,
+    fileCanvasId,
+  });
+  if (owned?.locked) throw new Error("File not available");
+  const lease = await ctx.runMutation(internal.syncStore.claimSync, {
+    userId,
+    full: false,
+  });
+  if (lease === null) return { status: "busy", synced: owned?.cached ?? null };
+  try {
+    const { client, identity } = await getCanvasClient(ctx, userId);
+    const file = await client.get<CanvasFile>(`/files/${fileCanvasId}`);
+    if (file.locked_for_user || file.hidden)
+      throw new Error("File not available");
+    return {
+      status: "live",
+      credential: identity,
+      file: {
         url: file.url,
         contentType: file["content-type"],
         size: file.size,
         filename: file.filename,
         displayName: file.display_name,
         updatedAt: toMillis(file.updated_at),
-      };
-    } catch (error) {
-      if (error instanceof CanvasRateLimitError) throw error;
-      if (
-        error instanceof CanvasApiError &&
-        (error.status === 401 || error.status === 403 || error.status === 404)
-      ) {
-        throw new Error("File not available", { cause: error });
-      }
-      throw error;
-    } finally {
-      await ctx.runMutation(internal.syncStore.releaseSync, { userId, lease });
+      },
+    };
+  } catch (error) {
+    if (error instanceof CanvasRateLimitError) throw error;
+    if (
+      error instanceof CanvasApiError &&
+      (error.status === 401 || error.status === 403 || error.status === 404)
+    ) {
+      throw new Error("File not available", { cause: error });
     }
+    throw error;
+  } finally {
+    await ctx.runMutation(internal.syncStore.releaseSync, { userId, lease });
+  }
+}
+
+export const freshUrl = action({
+  args: { fileCanvasId: v.number() },
+  returns: fileMetadata,
+  handler: async (ctx, args): Promise<FileMetadata> => {
+    const userId = await requireUserId(ctx);
+    const resolved = await resolveFile(ctx, userId, args.fileCanvasId);
+    if (resolved.status === "live") return resolved.file;
+    if (resolved.synced !== null) return resolved.synced;
+    throw new Error("Canvas is syncing. Please retry shortly.");
   },
 });
 
@@ -154,14 +174,7 @@ export const owned = internalQuery({
     v.object({
       courseCanvasId: v.number(),
       locked: v.boolean(),
-      cached: v.object({
-        url: v.string(),
-        contentType: v.string(),
-        size: v.number(),
-        filename: v.string(),
-        displayName: v.string(),
-        updatedAt: v.optional(v.number()),
-      }),
+      cached: fileMetadata,
     }),
   ),
   handler: async (ctx, a) => {
