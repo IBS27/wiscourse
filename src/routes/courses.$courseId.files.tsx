@@ -147,7 +147,6 @@ function CourseFiles() {
         isNew={isNew}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}
-        compact={previewFile !== undefined}
         className={cn("min-h-0", previewFile === undefined ? "min-w-0 flex-1" : COMPACT_LIST)}
       />
       {previewFile !== undefined && (

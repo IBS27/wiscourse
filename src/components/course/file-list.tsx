@@ -3,18 +3,13 @@ import { Lock, Search } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
-  fileAddedAt,
   folderPath,
   folderPathLabel,
   type FileDoc,
   type FolderNode,
   type FolderTree,
 } from "./file-tree";
-import { formatMonthDayYear } from "@/lib/dates";
-import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-const ROW_GRID = "grid grid-cols-[minmax(0,1fr)_70px_64px_20px] items-center gap-3 px-4";
 
 interface Row {
   file: FileDoc;
@@ -34,7 +29,6 @@ export function FileList({
   isNew,
   onSelectFolder,
   onSelectFile,
-  compact = false,
   className,
 }: {
   tree: FolderTree;
@@ -43,8 +37,6 @@ export function FileList({
   isNew: (file: FileDoc) => boolean;
   onSelectFolder: (canvasId: number) => void;
   onSelectFile: (canvasId: number) => void;
-  /** Beside an open preview: one column, size and date under the name. */
-  compact?: boolean;
   className?: string;
 }) {
   const [filter, setFilter] = useState("");
@@ -99,15 +91,6 @@ export function FileList({
         </label>
       </div>
 
-      {!compact && (
-        <div className={cn("eyebrow h-8 shrink-0 border-b border-line", ROW_GRID)}>
-          <span>Name</span>
-          <span>Size</span>
-          <span>Added</span>
-          <span className="sr-only">New</span>
-        </div>
-      )}
-
       {rows.length === 0 ? (
         <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-[13px] text-ink-2">
           {searching ? `No files match “${filter.trim()}”` : "This folder is empty"}
@@ -124,8 +107,7 @@ export function FileList({
                 aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectFile(file.canvasId)}
                 className={cn(
-                  "min-h-10 w-full border-b border-line py-[7px] text-left text-[13px] hover:bg-hover",
-                  compact ? "grid grid-cols-[minmax(0,1fr)_20px] items-center gap-3 px-4" : ROW_GRID,
+                  "grid min-h-10 w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-3 border-b border-line px-4 py-[7px] text-left text-[13px] hover:bg-hover",
                   selected && "bg-hover shadow-[inset_2px_0_0_var(--c)]",
                 )}
               >
@@ -142,21 +124,8 @@ export function FileList({
                     {path !== undefined && path !== "" && (
                       <span className="block truncate text-[11.5px] text-ink-3">{path}</span>
                     )}
-                    {compact && (
-                      <span className="tabular block truncate text-[11.5px] text-ink-3">
-                        {formatBytes(file.size)} · {formatMonthDayYear(fileAddedAt(file))}
-                      </span>
-                    )}
                   </span>
                 </span>
-                {!compact && (
-                  <>
-                    <span className="tabular text-xs text-ink-3">{formatBytes(file.size)}</span>
-                    <span className="tabular text-xs text-ink-3">
-                      {formatMonthDayYear(fileAddedAt(file))}
-                    </span>
-                  </>
-                )}
                 <span className="flex justify-end">{unread && <UnreadDot />}</span>
               </button>
             );
