@@ -1,11 +1,12 @@
 export const AUTH_TIMEOUT = 10_000;
 
-export type AuthFailure = "timeout" | "unavailable" | "configuration" | "session" | "unknown";
+export type AuthFailure = "timeout" | "unavailable" | "configuration" | "expired" | "session" | "unknown";
 
 function classifyFailure(error: unknown): AuthFailure {
   if (typeof error !== "object" || error === null) return "unknown";
   const status = "status" in error ? error.status : undefined;
-  if (status === 401) return "session";
+  // Clerk refuses the session itself: it expired or was revoked.
+  if (status === 401) return "expired";
   if (status === 400 || status === 404) return "configuration";
   if (status === 429 || (typeof status === "number" && status >= 500) || error instanceof TypeError) return "unavailable";
   return "unknown";
@@ -49,6 +50,14 @@ export function createGate(open: boolean) {
   };
 }
 
+/** Holds the newest value for code that must keep its identity when the value changes. */
+export function createLatest<T>(value: T) {
+  return {
+    get: () => value,
+    set(next: T) { value = next; },
+  };
+}
+
 /**
  * Bounds every fetch, including the SDK's otherwise invisible background
  * refresh: past the bound, or on an error, the failure goes to the recovery
@@ -61,17 +70,21 @@ export function createGate(open: boolean) {
  * token, a new fetcher replaces it, or the client is disposed. Retrying in
  * place also lets the SDK finish its own reauthentication, which is what
  * restarts a stopped socket.
+ *
+ * Nor is a forced refresh answered with the token it is meant to replace:
+ * Convex treats that as no token at all. Clerk can issue the same token twice
+ * within one second, so the request is held and tried again.
  */
-export function createTokenFetcher({ getToken, userId, nativeToken, forceFresh, onFailure, whenReady }: {
-  getToken: (options: { template?: string; skipCache: boolean }) => Promise<string | null>;
+export function createTokenFetcher({ getToken, userId, forceFresh, onFailure, whenReady }: {
+  getToken: (options: { skipCache: boolean }) => Promise<string | null>;
   userId: string | null | undefined;
-  nativeToken: boolean;
   forceFresh: boolean;
   onFailure: (failure: AuthFailure | null) => void;
   whenReady?: () => Promise<void>;
 }) {
   const pending = new Map<() => void, () => void>(); // cancel -> retry
   let requestId = 0;
+  let delivered: string | null = null;
   const fetchAccessToken = ({ forceRefreshToken }: { forceRefreshToken: boolean }): Promise<string | null> => {
     const id = ++requestId;
     let skipCache = forceRefreshToken || forceFresh;
@@ -86,7 +99,12 @@ export function createTokenFetcher({ getToken, userId, nativeToken, forceFresh, 
         settled = true;
         clearTimeout(timer);
         pending.delete(cancel);
-        if (token !== null && id === requestId) onFailure(null);
+        // Convex keeps a token only from its newest request, so only that one
+        // can be the token a later refresh is meant to replace.
+        if (token !== null && id === requestId) {
+          delivered = token;
+          onFailure(null);
+        }
         resolve(token);
       };
       // A superseded attempt's failure is ignored; any valid token is taken.
@@ -105,12 +123,13 @@ export function createTokenFetcher({ getToken, userId, nativeToken, forceFresh, 
         void (whenReady?.() ?? Promise.resolve()).then(() => {
           if (settled || attempt !== round) return undefined;
           timer = setTimeout(() => fail("timeout", attempt), AUTH_TIMEOUT);
-          return getToken({ ...(nativeToken ? {} : { template: "convex" }), skipCache });
+          return getToken({ skipCache });
         }).then(
           (token) => {
             if (token === undefined) return;
-            if (token && belongsToUser(token, userId)) finish(token);
-            else fail("session", attempt);
+            if (!token || !belongsToUser(token, userId)) fail("session", attempt);
+            else if (forceRefreshToken && token === delivered) fail("unavailable", attempt);
+            else finish(token);
           },
           (error: unknown) => fail(classifyFailure(error), attempt),
         );

@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { StrictMode, type ReactNode } from "react";
+import { StrictMode, useState, type ReactNode } from "react";
 import { ConvexReactClient } from "convex/react";
 import { tokenFor } from "./helpers/auth-server";
-import { useDraft } from "../src/lib/drafts";
+import { useDraft, useKeptDraft } from "../src/lib/drafts";
 import { AuthProvider } from "../src/components/app/auth-provider";
+import { createTokenFetcher, type AuthFailure } from "../src/lib/auth-recovery";
 
 const clerk = vi.hoisted(() => ({
   status: "ready",
@@ -30,17 +31,24 @@ vi.mock("@clerk/clerk-react", () => ({
 
 let client: ConvexReactClient;
 let reportAuth: ((authenticated: boolean) => void) | undefined;
+let reportRefresh: ((refreshing: boolean) => void) | undefined;
+let fetchToken: ((args: { forceRefreshToken: boolean }) => Promise<unknown>) | undefined;
 let acceptToken: boolean;
 const clients: ConvexReactClient[] = [];
 
 function createClient() {
   client = new ConvexReactClient("https://example.convex.cloud", { logger: false });
   clients.push(client);
-  vi.spyOn(client, "setAuth").mockImplementation((fetchToken, onChange) => {
+  vi.spyOn(client, "setAuth").mockImplementation((fetch, onChange, onRefreshChange) => {
     reportAuth = onChange;
-    void fetchToken({ forceRefreshToken: false }).then((token) => onChange?.(Boolean(token) && acceptToken));
+    reportRefresh = onRefreshChange;
+    fetchToken = fetch;
+    void fetch({ forceRefreshToken: false }).then((token) => onChange?.(Boolean(token) && acceptToken));
   });
   vi.spyOn(client, "clearAuth").mockImplementation(() => {});
+  // The banner reads connection state; keep this transport-free client from opening a socket for it.
+  vi.spyOn(client, "connectionState").mockReturnValue({ hasEverConnected: true, isWebSocketConnected: true } as ReturnType<ConvexReactClient["connectionState"]>);
+  vi.spyOn(client, "subscribeToConnectionState").mockReturnValue(() => {});
   vi.spyOn(client, "close");
   return client;
 }
@@ -60,6 +68,9 @@ beforeEach(() => {
   vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
   acceptToken = true;
   reportAuth = undefined;
+  reportRefresh = undefined;
+  fetchToken = undefined;
+  sessionStorage.clear();
 });
 
 afterEach(async () => {
@@ -238,7 +249,7 @@ it("cancels recovery on sign-out and ignores an old authenticated callback", asy
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls);
 });
 
-it("supports the legacy Convex JWT template and restarts for organization/session changes", async () => {
+it("supports the legacy Convex JWT template and restarts for organization/session changes, not an audience change", async () => {
   clerk.sessionClaims = { aud: "other" };
   const view = render(<App />);
   await flush();
@@ -251,9 +262,16 @@ it("supports the legacy Convex JWT template and restarts for organization/sessio
   view.rerender(<App />);
   await flush();
   expect(clerk.getToken).toHaveBeenCalledTimes(calls + 2);
+  // A new audience is no new session: restarting would clear auth under the open app.
+  vi.mocked(client.setAuth).mockClear();
+  vi.mocked(client.clearAuth).mockClear();
   clerk.sessionClaims = { aud: "convex" };
   view.rerender(<App />);
   await flush();
+  expect(client.setAuth).not.toHaveBeenCalled();
+  expect(client.clearAuth).not.toHaveBeenCalled();
+  expect(clerk.getToken).toHaveBeenCalledTimes(calls + 2);
+  await act(async () => { await fetchToken?.({ forceRefreshToken: false }); });
   expect(clerk.getToken).toHaveBeenLastCalledWith({ skipCache: false });
 });
 
@@ -377,16 +395,39 @@ it("retains the same user's client during a temporary Clerk loading state", asyn
   const view = render(<App />);
   await flush();
   const owner = client;
+  // StrictMode's discarded setup is behind us: any later start or clear is a restart.
+  vi.mocked(owner.setAuth).mockClear();
+  vi.mocked(owner.clearAuth).mockClear();
   clerk.isLoaded = false;
   view.rerender(<App />);
   await flush();
   expect(owner.close).not.toHaveBeenCalled();
-  expect(screen.queryByText("Protected app")).toBeNull();
+  // An established session stays open through the gap, and says so only if it lasts.
+  expect(screen.getByText("Protected app")).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
+  await advance(4_000);
+  expect(screen.getByRole("status").textContent).toContain("couldn't confirm your sign-in");
+  expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
   clerk.isLoaded = true;
   view.rerender(<App />);
   await flush();
   expect(client).toBe(owner);
   expect(screen.getByText("Protected app")).toBeTruthy();
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(owner.setAuth).not.toHaveBeenCalled();
+  expect(owner.clearAuth).not.toHaveBeenCalled();
+});
+
+it("hides a session that Clerk stops reporting before it was ever established", async () => {
+  clerk.getToken.mockReturnValue(new Promise<string>(() => {}));
+  const view = render(<App />);
+  await flush();
+  clerk.isLoaded = false;
+  view.rerender(<App />);
+  act(() => reportAuth?.(true));
+  expect(screen.queryByText("Protected app")).toBeNull();
+  expect(screen.getByRole("status").textContent).toBe("Loading…");
 });
 
 it("keeps the same user's client and drafts through a Clerk error", async () => {
@@ -399,14 +440,188 @@ it("keeps the same user's client and drafts through a Clerk error", async () => 
   await flush();
   fireEvent.change(screen.getByRole("textbox"), { target: { value: "Unsaved question" } });
   const owner = client;
+  const field = screen.getByRole("textbox");
   clerk.status = "error";
   view.rerender(app());
   await flush();
-  expect(screen.queryByRole("textbox")).toBeNull();
+  expect(screen.getByRole("textbox")).toBe(field);
   clerk.status = "ready";
   view.rerender(app());
   await flush();
   expect(client).toBe(owner);
   expect(owner.close).not.toHaveBeenCalled();
-  expect((screen.getByRole("textbox") as HTMLInputElement).value).toBe("Unsaved question");
+  expect(screen.getByRole("textbox")).toBe(field);
+  expect((field as HTMLInputElement).value).toBe("Unsaved question");
+});
+
+// Kept in component state only: lost if the app is ever unmounted.
+function Stateful() {
+  const [value, setValue] = useState("");
+  return <input aria-label="Local" value={value} onChange={event => setValue(event.target.value)} />;
+}
+function StatefulApp() {
+  return <StrictMode><AuthProvider url="https://example.convex.cloud" createClient={createClient}><Stateful /></AuthProvider></StrictMode>;
+}
+async function typeLocal(text: string) {
+  render(<StatefulApp />);
+  await flush();
+  const field = screen.getByRole("textbox") as HTMLInputElement;
+  fireEvent.change(field, { target: { value: text } });
+  vi.mocked(client.setAuth).mockClear();
+  vi.mocked(client.clearAuth).mockClear();
+  return field;
+}
+/** Convex's own background token request, as its scheduled refresh makes it. */
+async function backgroundRefresh() {
+  await act(async () => { void fetchToken?.({ forceRefreshToken: true }); await Promise.resolve(); });
+}
+
+it("keeps the app and its local state open while the backend asks for a fresh token", async () => {
+  const field = await typeLocal("Only in this component");
+  act(() => reportRefresh?.(true));
+  expect(screen.getByRole("textbox")).toBe(field);
+  // A short refresh, as on returning to the tab, shows nothing at all.
+  await advance(3_000);
+  expect(screen.queryByRole("status")).toBeNull();
+  await advance(1_000);
+  expect(screen.getByRole("status").textContent).toContain("Reconnecting");
+  act(() => reportRefresh?.(false));
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.getByRole("textbox")).toBe(field);
+  expect(field.value).toBe("Only in this component");
+});
+
+it("never restarts auth under an open app, however long recovery takes", async () => {
+  const field = await typeLocal("Still here");
+  // No token request is pending, so there is nothing to retry in place.
+  act(() => reportRefresh?.(true));
+  for (let n = 0; n < 5; n++) await advance(10_000);
+  expect(screen.getByRole("status").textContent).toContain("couldn't reconnect");
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  fireEvent(window, new Event("focus"));
+  await advance(60_000);
+  expect(client.setAuth).not.toHaveBeenCalled();
+  expect(client.clearAuth).not.toHaveBeenCalled();
+  expect(screen.getByRole("textbox")).toBe(field);
+  expect(field.value).toBe("Still here");
+});
+
+it("retries a failed background refresh in place and reports it in the banner", async () => {
+  const field = await typeLocal("Mid-sentence");
+  const calls = clerk.getToken.mock.calls.length;
+  clerk.getToken.mockRejectedValue(new TypeError("network"));
+  await backgroundRefresh();
+  for (const delay of [1_000, 2_000, 5_000, 10_000]) await advance(delay);
+  expect(clerk.getToken).toHaveBeenCalledTimes(calls + 4);
+  expect(screen.getByRole("status").textContent).toContain("couldn't reconnect");
+  expect(screen.getByRole("textbox")).toBe(field);
+  clerk.getToken.mockImplementation(async () => tokenFor(clerk.userId));
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  await flush();
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(client.setAuth).not.toHaveBeenCalled();
+  expect(client.clearAuth).not.toHaveBeenCalled();
+  expect(field.value).toBe("Mid-sentence");
+  // The next interruption starts with a full retry budget.
+  const recovered = clerk.getToken.mock.calls.length;
+  clerk.getToken.mockRejectedValue(new TypeError("network"));
+  await backgroundRefresh();
+  await advance(1_000);
+  expect(clerk.getToken).toHaveBeenCalledTimes(recovered + 2);
+});
+
+it("recovers a failed background refresh on tab return before the banner appears", async () => {
+  await typeLocal("Mid-sentence");
+  clerk.getToken.mockRejectedValue(new TypeError("network"));
+  await backgroundRefresh();
+  clerk.getToken.mockImplementation(async () => tokenFor(clerk.userId));
+  fireEvent(window, new Event("focus"));
+  await advance(10_000);
+  expect(screen.queryByRole("status")).toBeNull();
+});
+
+it("offers sign-in again, not endless retries, when Clerk refuses an open session", async () => {
+  const field = await typeLocal("Unsent");
+  clerk.getToken.mockRejectedValue({ status: 401 });
+  await backgroundRefresh();
+  const calls = clerk.getToken.mock.calls.length;
+  fireEvent(window, new Event("focus"));
+  await advance(120_000);
+  expect(clerk.getToken).toHaveBeenCalledTimes(calls);
+  expect(screen.getByRole("status").textContent).toContain("Your session ended");
+  expect(screen.getByRole("textbox")).toBe(field);
+  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  await flush();
+  expect(clerk.signOut).toHaveBeenCalledOnce();
+});
+
+it("asks for sign-in again when Clerk refuses the session before the app opens", async () => {
+  clerk.getToken.mockRejectedValue({ status: 401 });
+  render(<App />);
+  await flush();
+  const calls = clerk.getToken.mock.calls.length;
+  await advance(120_000);
+  expect(clerk.getToken).toHaveBeenCalledTimes(calls);
+  expect(screen.getByRole("status").textContent).toContain("Your session ended");
+  expect(screen.queryByText("Protected app")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  await flush();
+  expect(clerk.signOut).toHaveBeenCalledOnce();
+});
+
+it("keeps a typed draft across a reload, and forgets it on sign-out or another account", async () => {
+  function Kept() {
+    const [value, setValue] = useKeptDraft("text");
+    return <input aria-label="Kept" value={value} onChange={event => setValue(event.target.value)} />;
+  }
+  const app = () => <AuthProvider url="https://example.convex.cloud" createClient={createClient}><Kept /></AuthProvider>;
+  const text = () => (screen.getByRole("textbox") as HTMLInputElement).value;
+  let view = render(app());
+  await flush();
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Typed before the tab was discarded" } });
+  // The browser discards the tab: nothing unmounts. Clerk is still loading when it comes back.
+  view.unmount();
+  Object.assign(clerk, { isLoaded: false, isSignedIn: false });
+  view = render(app());
+  await flush();
+  Object.assign(clerk, { isLoaded: true, isSignedIn: true });
+  view.rerender(app());
+  await flush();
+  expect(text()).toBe("Typed before the tab was discarded");
+  Object.assign(clerk, { userId: "user-2", sessionId: "session-2" });
+  view.rerender(app());
+  await flush();
+  expect(text()).toBe("");
+  fireEvent.change(screen.getByRole("textbox"), { target: { value: "Second user's text" } });
+  Object.assign(clerk, { isSignedIn: false, sessionId: null });
+  view.rerender(app());
+  await flush();
+  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(sessionStorage.length).toBe(0);
+});
+
+it("holds a forced refresh that repeats the token Convex kept, whatever a superseded request delivered since", async () => {
+  const [kept, discarded] = [tokenFor("user-1"), tokenFor("user-1")];
+  let release: (token: string) => void = () => {};
+  const getToken = vi.fn<() => Promise<string | null>>()
+    .mockReturnValueOnce(new Promise(resolve => { release = resolve; }))
+    .mockResolvedValue(kept);
+  const failures: (AuthFailure | null)[] = [];
+  const fetcher = createTokenFetcher({ getToken, userId: "user-1", forceFresh: false, onFailure: failure => failures.push(failure) });
+  // A scheduled refresh is still out when a rejection starts a newer request. Convex keeps the newer one's token.
+  const scheduled = fetcher.fetchAccessToken({ forceRefreshToken: true });
+  await expect(fetcher.fetchAccessToken({ forceRefreshToken: true })).resolves.toBe(kept);
+  release(discarded);
+  await expect(scheduled).resolves.toBe(discarded);
+  let repeat: string | null | undefined;
+  void fetcher.fetchAccessToken({ forceRefreshToken: true }).then((token) => { repeat = token; });
+  await vi.advanceTimersByTimeAsync(0);
+  expect(repeat).toBeUndefined();
+  expect(failures.at(-1)).toBe("unavailable");
+  const fresh = tokenFor("user-1");
+  getToken.mockResolvedValue(fresh);
+  expect(fetcher.retryPending()).toBe(true);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(repeat).toBe(fresh);
+  expect(failures.at(-1)).toBeNull();
 });

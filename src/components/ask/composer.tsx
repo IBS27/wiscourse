@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type KeyboardEvent } from "react";
-import { useDraft } from "@/lib/drafts";
+import { useDraft, useKeptDraft } from "@/lib/drafts";
 import { ArrowUp, Check, ChevronDown, Square } from "lucide-react";
 import { MAX_PROMPT_CHARS } from "../../../convex/lib/assistant";
 import {
@@ -35,7 +35,7 @@ export function Composer({
   autoFocus?: boolean;
   className?: string;
 }) {
-  const [draft, setDraft] = useDraft("chat:text", "");
+  const [draft, setDraft] = useKeptDraft("chat:text");
   const [sending, setSending] = useDraft("chat:sending", false);
   const ref = useRef<HTMLTextAreaElement>(null);
 

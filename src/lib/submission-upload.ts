@@ -45,15 +45,20 @@ export function useOwnerBoundUploads(): () => OwnerRun {
     const signal = lifetime?.signal() ?? null;
     if (lifetime === null || signal === null) throw new UploadError(OWNER_CHANGED);
     const owner = lifetime.owner;
-    // Clerk's live state can show the next account before React disposes this owner.
+    // Clerk's live state can show the next account, or a completed sign-out,
+    // before React disposes this owner. With no account and Clerk not ready it
+    // is only between states; the owner's lifetime covers that.
     const ensureCurrent = () => {
-      if (signal.aborted || clerk.user?.id !== owner) throw new UploadError(OWNER_CHANGED);
+      const reported = clerk.user;
+      const signedOut = reported === null && clerk.loaded && clerk.status === "ready";
+      if (signal.aborted || signedOut || (reported != null && reported.id !== owner)) throw new UploadError(OWNER_CHANGED);
     };
     const upload = async (file: File): Promise<Id<"_storage">> => {
       ensureCurrent();
       const token = await unlessAborted(getToken(nativeToken ? {} : { template: "convex" }), signal);
       ensureCurrent();
-      if (!token) throw new UploadError("Your session expired. Sign in again, then retry.");
+      // The owner is still live, so this is Clerk failing to answer, not a sign-out.
+      if (!token) throw new UploadError("We couldn't confirm your sign-in. Nothing was submitted; try again in a moment.");
       if (!belongsToUser(token, owner)) throw new UploadError(OWNER_CHANGED);
       const response = await fetch(`${import.meta.env.VITE_CONVEX_SITE_URL}/submissions/upload`, {
         method: "POST",

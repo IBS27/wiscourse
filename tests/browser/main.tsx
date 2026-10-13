@@ -1,10 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- standalone browser test entrypoint */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ConvexReactClient } from "convex/react";
 import { AuthProvider } from "../../src/components/app/auth-provider";
 import { QuickAddProvider } from "../../src/components/app/quick-add";
 import { Composer } from "../../src/components/ask/composer";
+import { OwnerConvexClient } from "../../src/lib/convex-client";
 import { useDraft } from "../../src/lib/drafts";
 import { useQuickAdd } from "../../src/lib/quick-add-context";
 import { change, useTestSession } from "./clerk";
@@ -12,7 +12,7 @@ import { createAuthServer } from "../helpers/auth-server";
 import "./style.css";
 
 const server = createAuthServer();
-const createClient = (url: string) => new ConvexReactClient(url, {
+const createClient = (url: string) => new OwnerConvexClient(url, {
   webSocketConstructor: server.WebSocket, logger: false, unsavedChangesWarning: false,
 });
 function Controls() {

@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/app/sidebar";
 import { BottomTabs } from "@/components/app/bottom-tabs";
 import { QuickAddProvider } from "@/components/app/quick-add";
 import { CommandPalette } from "@/components/search/command-palette";
-import { ConnectionBanner } from "@/components/app/connection-banner";
 import { useActivityHeartbeat } from "@/lib/activity";
 import { useTimeZonePreference } from "@/lib/time-zone";
 import { cn } from "@/lib/utils";
@@ -34,7 +33,6 @@ function RootLayout() {
         </div>
         {!inAsk && <BottomTabs />}
         <CommandPalette />
-        <ConnectionBanner />
       </DraftRoute>
     </QuickAddProvider>
   );

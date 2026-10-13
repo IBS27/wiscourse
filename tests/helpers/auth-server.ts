@@ -3,7 +3,7 @@
 type Version = { querySet: number; identity: number; ts: string };
 export type ClientMessage =
   | { type: "Authenticate"; tokenType: "User" | "None"; value?: string; baseVersion: number }
-  | { type: "ModifyQuerySet"; newVersion: number }
+  | { type: "ModifyQuerySet"; newVersion: number; modifications: { type: "Add" | "Remove" }[] }
   | { type: "Mutation"; udfPath: string; args: unknown[]; requestId: number }
   | { type: "Connect" };
 
@@ -22,6 +22,7 @@ export function createAuthServer() {
     /** This socket's frames, in order, for per-connection auth checks. */
     sent: ClientMessage[] = [];
     private subject: string | null = null;
+    private authBase = 0;
     private version: Version = { querySet: 0, identity: 0, ts: "AAAAAAAAAAA=" };
     private next = { ...this.version };
     private scheduled = false;
@@ -35,6 +36,7 @@ export function createAuthServer() {
       this.sent.push(message);
       if (message.type === "Authenticate") {
         this.subject = message.tokenType === "User" && message.value ? subjectOf(message.value) : null;
+        this.authBase = message.baseVersion;
         if (!confirmAuth) return;
         this.next.identity = message.baseVersion + 1;
       } else if (message.type === "ModifyQuerySet") {
@@ -64,9 +66,11 @@ export function createAuthServer() {
       this.closed = true;
       queueMicrotask(() => this.onclose?.({ code: 1000, reason: "test connection closed" }));
     }
-    rejectSession() {
+    /** `attempted`: the server is refusing the token just sent, not one that has since expired. */
+    rejectSession(attempted = false) {
       this.onmessage?.({ data: JSON.stringify({
-        type: "AuthError", error: "test token expired", baseVersion: this.version.identity - 1, authUpdateAttempted: false,
+        type: "AuthError", error: "test token expired", authUpdateAttempted: attempted,
+        baseVersion: attempted ? this.authBase : this.version.identity - 1,
       }) });
     }
   }
@@ -79,6 +83,21 @@ export function createAuthServer() {
     setConfirmAuth: (value: boolean) => { confirmAuth = value; },
     latest: () => sockets.at(-1)!,
   };
+}
+
+/**
+ * Queries and writes sent for no one: on a connection the owner had not
+ * authenticated on, or after its auth was cleared there.
+ */
+export function anonymousFrames(sockets: { sent: ClientMessage[] }[]): ClientMessage[] {
+  return sockets.flatMap((socket) => {
+    let owned = false;
+    return socket.sent.filter((message) => {
+      if (message.type === "Authenticate") owned = message.tokenType === "User";
+      if (message.type === "Mutation") return !owned;
+      return message.type === "ModifyQuerySet" && !owned && message.modifications.some(change => change.type === "Add");
+    });
+  });
 }
 
 export function subjectOf(token: string): string {

@@ -1,5 +1,6 @@
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/components/app/auth-provider";
+import { RouteError } from "@/components/app/route-error";
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
@@ -8,7 +9,7 @@ const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as
   | string
   | undefined;
 
-const router = createRouter({ routeTree });
+const router = createRouter({ routeTree, defaultErrorComponent: RouteError });
 
 declare module "@tanstack/react-router" {
   interface Register {

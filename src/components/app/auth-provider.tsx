@@ -3,11 +3,13 @@ import {
   useState, type ReactNode,
 } from "react";
 import { RedirectToTasks, SignInButton, useAuth, useClerk, useSession } from "@clerk/clerk-react";
-import { ConvexProviderWithAuth, ConvexReactClient, useConvexAuth } from "convex/react";
+import { ConvexProviderWithAuth, type ConvexReactClient, useConvexAuth } from "convex/react";
 import { Button } from "@/components/ui/button";
+import { ConnectionBanner, type AuthNotice } from "@/components/app/connection-banner";
 import { Logo } from "@/components/logo";
-import { AUTH_TIMEOUT, createGate, createTokenFetcher, reportAuthEvent, type AuthFailure } from "@/lib/auth-recovery";
-import { DraftContext, DraftStore } from "@/lib/drafts";
+import { AUTH_TIMEOUT, createGate, createLatest, createTokenFetcher, reportAuthEvent, type AuthFailure } from "@/lib/auth-recovery";
+import { OwnerConvexClient } from "@/lib/convex-client";
+import { DraftContext, DraftStore, forgetKeptDrafts } from "@/lib/drafts";
 import { OwnerSession } from "@/lib/owner-session";
 import { useSignOut } from "@/lib/sign-out";
 import { useOnline } from "@/lib/online";
@@ -18,12 +20,12 @@ const RecoveryContext = createContext<{
   owner: string;
   fetcherRef: { current: TokenFetcher | null };
   generation: number;
-  retry: () => void;
+  retry: (restart: boolean) => void;
   failure: AuthFailure | null;
   reportFailure: (failure: AuthFailure | null) => void;
 } | null>(null);
 
-const createConvexClient = (url: string) => new ConvexReactClient(url);
+const createConvexClient = (url: string): ConvexReactClient => new OwnerConvexClient(url);
 
 export function AuthProvider({ url, createClient = createConvexClient, children }: {
   url: string;
@@ -36,11 +38,15 @@ export function AuthProvider({ url, createClient = createConvexClient, children 
   const resolved = isLoaded && status !== "error" && !(status === "degraded" && !isSignedIn);
   const identity = isSignedIn ? userId ?? null : null;
   const [lastOwner, setLastOwner] = useState<string | null>(identity);
-  // A temporary Clerk loading/error state that reports no user hides the app
-  // but retains its owner, queue and drafts. A confirmed logout, or any report
+  // A temporary Clerk loading/error state that reports no user retains the
+  // owner, with its client, queue and drafts. A confirmed logout, or any report
   // of a different user, even an unresolved one, disposes of them.
   const owner = resolved || identity !== null ? identity : lastOwner;
   if (lastOwner !== owner) setLastOwner(owner);
+  useEffect(() => {
+    // The same rule for drafts kept in this tab's storage.
+    if (resolved || identity !== null) forgetKeptDrafts(identity);
+  }, [resolved, identity]);
   if (owner) {
     return <UserSession key={JSON.stringify([owner, url])} owner={owner} url={url} createClient={createClient}>{children}</UserSession>;
   }
@@ -56,7 +62,8 @@ function UserSession({ owner, url, createClient, children }: {
   children: ReactNode;
 }) {
   const [client, setClient] = useState<ConvexReactClient | null>(null);
-  const [drafts] = useState(() => new DraftStore());
+  const [drafts] = useState(() => new DraftStore(owner));
+  useEffect(() => drafts.attach(), [drafts]);
   const { sessionId, orgId, orgRole } = useAuth();
   // A new session or organization restarts the backend session. A Clerk gap
   // reports no session at all; it keeps the last one, since remounting would
@@ -90,11 +97,14 @@ function BackendSession({ owner, client, children }: { owner: string; client: Co
   const [generation, setGeneration] = useState(0);
   const [failure, reportFailure] = useState<AuthFailure | null>(null);
   const fetcherRef = useRef<TokenFetcher | null>(null);
-  const retry = useCallback(() => {
+  const retry = useCallback((restart: boolean) => {
     reportAuthEvent("retry");
     // Pending requests are retried in place; their success clears the failure.
     if (fetcherRef.current?.retryPending()) return;
-    // Otherwise Convex has given up on this auth, so start it again.
+    // Otherwise Convex has given up on this auth, so start it again. Starting
+    // again clears the client's auth first, and queries still mounted would
+    // rerun without it, so only a session whose app is hidden may restart.
+    if (!restart) return;
     reportFailure(null);
     setGeneration(value => value + 1);
   }, []);
@@ -117,9 +127,11 @@ function useClerkAuth() {
   const foreign = signedIn && userId !== owner;
   // The provider keeps this owner only through a Clerk gap: a temporary state
   // that reports no user. Any change to what this hook returns makes Convex
-  // clear the client's auth, after which its queued writes go out anonymously.
-  // So through a gap the owner stays authenticated with the same fetcher,
-  // and token requests wait for Clerk to return.
+  // clear the client's auth, after which its queued writes go out anonymously
+  // and the app's mounted queries rerun without it. So through a gap the owner
+  // stays authenticated with the same fetcher, and token requests wait for
+  // Clerk to return. For the same reason the fetcher reads Clerk's token
+  // function and audience when called, and is replaced only by a restart.
   const gap = !signedIn;
   const audience = sessionClaims?.aud;
   const reportedNative = audience === "convex" || (Array.isArray(audience) && audience.includes("convex"));
@@ -127,11 +139,17 @@ function useClerkAuth() {
   if (!gap && nativeToken !== reportedNative) setNativeToken(reportedNative);
   const [gate] = useState(() => createGate(!gap));
   useEffect(() => gate.set(!gap), [gate, gap]);
+  const [clerkToken] = useState(() => createLatest({ getToken, nativeToken }));
+  useEffect(() => clerkToken.set({ getToken, nativeToken }), [clerkToken, getToken, nativeToken]);
   // Bound to the client's owner, never to whoever Clerk reports right now:
   // Clerk can report the next account before this client is disposed.
   const fetcher = useMemo(() => createTokenFetcher({
-    getToken, userId: owner, nativeToken, forceFresh: generation > 0, onFailure: reportFailure, whenReady: gate.wait,
-  }), [getToken, owner, nativeToken, generation, reportFailure, gate]);
+    getToken: ({ skipCache }) => {
+      const { getToken, nativeToken } = clerkToken.get();
+      return getToken({ ...(nativeToken ? {} : { template: "convex" }), skipCache });
+    },
+    userId: owner, forceFresh: generation > 0, onFailure: reportFailure, whenReady: gate.wait,
+  }), [clerkToken, owner, generation, reportFailure, gate]);
   useEffect(() => {
     fetcherRef.current = fetcher;
     return () => {
@@ -151,22 +169,41 @@ function AuthBoundary({ children }: { children: ReactNode }) {
   const { failure } = useContext(RecoveryContext)!;
   const { status } = useClerk();
   const { isAuthenticated, isLoading, isRefreshing } = useConvexAuth();
+  // A Clerk gap: no user reported, while the provider above keeps this owner.
+  const gap = !isLoaded || status === "error" || !isSignedIn;
+  const [established, setEstablished] = useState(false);
+  if (isAuthenticated && !gap && !established) setEstablished(true);
   const state = !isLoaded || status === "error" ? "session-loading"
     : !isSignedIn ? "signed-out" : !isAuthenticated ? "reconnecting"
       : isRefreshing ? "refreshing" : "authenticated";
   useEffect(() => reportAuthEvent(state), [state]);
-  if (!isLoaded || status === "error" || !isSignedIn) {
-    return <SessionLoading failed={status === "error" || status === "degraded"} />;
-  }
   // The recovery controller also watches a server-rejected refresh while the SDK
   // still reports authenticated, and a failed token request, which the SDK
-  // never sees. Protected queries/writes are unmounted meanwhile.
-  if (!isAuthenticated || isRefreshing || failure !== null) {
-    // A reported failure ends the handshake even though its request stays pending.
-    const handshaking = (isLoading || isRefreshing) && failure === null;
-    return <ConnectionRecovery isLoading={handshaking} initialLoading={handshaking && !isRefreshing} />;
-  }
-  return children;
+  // never sees. A reported failure ends the handshake even though its request
+  // stays pending.
+  const handshaking = (isLoading || isRefreshing) && failure === null;
+  const recovery = useRecovery({
+    active: !gap && (!isAuthenticated || isRefreshing || failure !== null),
+    handshaking,
+    restart: !isAuthenticated,
+  });
+  // Once the session is established the app stays open while the backend
+  // still holds this owner's auth: through a Clerk gap, a refresh the server
+  // asked for, and a failed token request. The socket is paused or stopped
+  // until the owner's token arrives, so queries keep their last results and
+  // writes wait. Recovery is reported by the banner instead of a screen.
+  const open = isAuthenticated && (established || !gap);
+  if (gap && !open) return <SessionLoading failed={status === "error" || status === "degraded"} />;
+  if (!open) return <ConnectionRecovery recovery={recovery} initialLoading={handshaking} />;
+  const kind: AuthNotice["kind"] | null = gap ? "session"
+    : failure === "expired" ? "expired"
+      : failure === "configuration" ? "unverified"
+        : recovery.exhausted ? "stalled"
+          : isRefreshing || failure !== null ? "retrying" : null;
+  return <>
+    {children}
+    <ConnectionBanner auth={kind && { kind, retry: recovery.retryNow }} />
+  </>;
 }
 
 function Loading() {
@@ -196,23 +233,33 @@ function SessionLoading({ failed }: { failed: boolean }) {
 
 const RETRY_DELAYS = [1_000, 2_000, 5_000];
 
-function ConnectionRecovery({ isLoading, initialLoading }: { isLoading: boolean; initialLoading: boolean }) {
+/**
+ * Drives recovery for the whole backend session, whether a screen or the
+ * banner reports it. Each interruption gets its own retry budget. `restart`
+ * lets a retry start auth again when no token request is pending.
+ */
+function useRecovery({ active, handshaking, restart }: { active: boolean; handshaking: boolean; restart: boolean }) {
   const { retry, failure } = useContext(RecoveryContext)!;
   const online = useOnline();
   const [attempt, setAttempt] = useState(0);
   const [exhausted, setExhausted] = useState(false);
+  if (!active && (attempt !== 0 || exhausted)) {
+    setAttempt(0);
+    setExhausted(false);
+  }
   const lastRetry = useRef(-Infinity);
-  const permanent = failure === "configuration";
+  // Retrying cannot fix these; the user decides what happens next.
+  const stopped = failure === "configuration" || failure === "expired";
   const retryNow = useCallback(() => {
     if (!navigator.onLine || Date.now() - lastRetry.current < 1_000) return;
     lastRetry.current = Date.now();
     setAttempt(1);
     setExhausted(false);
-    retry();
-  }, [retry]);
+    retry(restart);
+  }, [retry, restart]);
 
   useEffect(() => {
-    if (!online || exhausted || permanent) return;
+    if (!active || !online || exhausted || stopped) return;
     const timeout = setTimeout(() => {
       if (attempt >= RETRY_DELAYS.length) {
         setExhausted(true);
@@ -220,16 +267,16 @@ function ConnectionRecovery({ isLoading, initialLoading }: { isLoading: boolean;
       } else {
         lastRetry.current = Date.now();
         setAttempt(value => value + 1);
-        retry();
+        retry(restart);
       }
-    }, isLoading ? AUTH_TIMEOUT : (RETRY_DELAYS[attempt] ?? AUTH_TIMEOUT));
+    }, handshaking ? AUTH_TIMEOUT : (RETRY_DELAYS[attempt] ?? AUTH_TIMEOUT));
     return () => clearTimeout(timeout);
-  }, [attempt, exhausted, isLoading, online, permanent, retry]);
+  }, [active, attempt, exhausted, handshaking, online, stopped, retry, restart]);
 
   useEffect(() => {
     // Exhausted attempts are no longer healthy handshakes, even if the SDK is
     // still loading. A network or tab return can start a new bounded attempt.
-    if ((isLoading && !exhausted) || permanent) return;
+    if (!active || (handshaking && !exhausted) || stopped) return;
     const resume = () => {
       if (document.visibilityState === "visible") retryNow();
     };
@@ -241,31 +288,40 @@ function ConnectionRecovery({ isLoading, initialLoading }: { isLoading: boolean;
       window.removeEventListener("focus", resume);
       window.removeEventListener("online", resume);
     };
-  }, [isLoading, exhausted, permanent, retryNow]);
+  }, [active, handshaking, exhausted, stopped, retryNow]);
 
+  return { online, attempt, exhausted, failure, retryNow };
+}
+
+/** The screen for a session the backend does not hold: the first handshake, or auth it gave up on. */
+function ConnectionRecovery({ recovery, initialLoading }: { recovery: ReturnType<typeof useRecovery>; initialLoading: boolean }) {
+  const { online, attempt, exhausted, failure, retryNow } = recovery;
+  const permanent = failure === "configuration";
+  const expired = failure === "expired";
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-8 text-center">
       <p role="status" className="text-ink-3">
         {!online ? "You're offline. We'll reconnect when you're back online."
-          : permanent ? "We couldn't verify your account. Please reload or try again later."
-            : exhausted ? "We couldn't reconnect. Please try again."
-              : initialLoading && attempt === 0 ? "Loading…" : "Reconnecting…"}
+          : expired ? "Your session ended. Sign in again to continue."
+            : permanent ? "We couldn't verify your account. Please reload or try again later."
+              : exhausted ? "We couldn't reconnect. Please try again."
+                : initialLoading && attempt === 0 ? "Loading…" : "Reconnecting…"}
       </p>
-      {(exhausted || permanent || !online) && (
+      {(exhausted || permanent || expired || !online) && (
         <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={retryNow} disabled={!online}>Retry</Button>
           <Button variant="outline" onClick={() => window.location.reload()}>Reload</Button>
         </div>
       )}
-      <SignOutAction />
+      <SignOutAction label={expired ? "Sign in again" : "Sign out"} />
     </div>
   );
 }
 
-function SignOutAction() {
+function SignOutAction({ label }: { label: string }) {
   const { run, pending, error } = useSignOut();
   return <>
-    <Button variant="ghost" onClick={() => void run()} disabled={pending}>{pending ? "Signing out…" : "Sign out"}</Button>
+    <Button variant="ghost" onClick={() => void run()} disabled={pending}>{pending ? "Signing out…" : label}</Button>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
   </>;
 }
