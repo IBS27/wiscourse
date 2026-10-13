@@ -405,7 +405,6 @@ it("retains the same user's client during a temporary Clerk loading state", asyn
   // An established session stays open through the gap, and says so only if it lasts.
   expect(screen.getByText("Protected app")).toBeTruthy();
   expect(screen.queryByRole("status")).toBeNull();
-  await advance(10_000);
   await advance(4_000);
   expect(screen.getByRole("status").textContent).toContain("couldn't confirm your sign-in");
   expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();

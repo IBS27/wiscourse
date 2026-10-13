@@ -12,7 +12,7 @@ an account or backend. The app's Vite config does not include these replacements
 3. Choose **Reject tokens**, then **Fail sign out** and **Sign out**. An error
    should remain visible. Choose **Allow sign out**, then **Sign out**. The
    sign-in screen should appear; signing in again should start with empty drafts.
-4. Choose **Fail Clerk**. The page should stay open, and after ten seconds a
+4. Choose **Fail Clerk**. The page should stay open, and after a few seconds a
    banner should offer a reload. **Restore Clerk** should clear it.
 5. Type a message and reload the page. The message should still be there; the
    notes, which are not kept, should be empty.

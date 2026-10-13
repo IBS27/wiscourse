@@ -193,10 +193,9 @@ function AuthBoundary({ children }: { children: ReactNode }) {
   // until the owner's token arrives, so queries keep their last results and
   // writes wait. Recovery is reported by the banner instead of a screen.
   const open = isAuthenticated && (established || !gap);
-  const gapStalled = useHeld(gap && open, AUTH_TIMEOUT);
   if (gap && !open) return <SessionLoading failed={status === "error" || status === "degraded"} />;
   if (!open) return <ConnectionRecovery recovery={recovery} initialLoading={handshaking} />;
-  const kind: AuthNotice["kind"] | null = gap ? (gapStalled ? "session" : null)
+  const kind: AuthNotice["kind"] | null = gap ? "session"
     : failure === "expired" ? "expired"
       : failure === "configuration" ? "unverified"
         : recovery.exhausted ? "stalled"
@@ -205,18 +204,6 @@ function AuthBoundary({ children }: { children: ReactNode }) {
     {children}
     <ConnectionBanner auth={kind && { kind, retry: recovery.retryNow }} />
   </>;
-}
-
-/** True once `active` has held without a break for `ms`. */
-function useHeld(active: boolean, ms: number) {
-  const [held, setHeld] = useState(false);
-  if (!active && held) setHeld(false);
-  useEffect(() => {
-    if (!active) return;
-    const timer = setTimeout(() => setHeld(true), ms);
-    return () => clearTimeout(timer);
-  }, [active, ms]);
-  return held;
 }
 
 function Loading() {

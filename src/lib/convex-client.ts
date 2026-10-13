@@ -10,11 +10,8 @@ import { flushSync } from "react-dom";
  */
 function createSocketGate(realSocket: () => typeof WebSocket) {
   let held = false;
-  let disposed = false;
   let newest: GatedSocket | null = null;
   const adopt = (socket: GatedSocket) => {
-    // The SDK has given up on any socket it replaces; one still waiting never connects.
-    newest?.abandon();
     newest = socket;
     if (!held) socket.connect();
   };
@@ -33,7 +30,7 @@ function createSocketGate(realSocket: () => typeof WebSocket) {
       adopt(this);
     }
     connect() {
-      if (this.ws || this.ended || disposed) return;
+      if (this.ws || this.ended) return;
       const ws = new (realSocket())(this.url);
       this.ws = ws;
       ws.onopen = (event) => this.onopen?.(event);
@@ -65,7 +62,6 @@ function createSocketGate(realSocket: () => typeof WebSocket) {
 
   return {
     Socket: GatedSocket as unknown as typeof WebSocket,
-    held: () => held,
     hold({ drop }: { drop: boolean }) {
       held = true;
       if (drop) newest?.drop();
@@ -75,7 +71,6 @@ function createSocketGate(realSocket: () => typeof WebSocket) {
       newest?.connect();
     },
     dispose() {
-      disposed = true;
       newest?.abandon();
     },
   };
@@ -96,7 +91,6 @@ function createSocketGate(realSocket: () => typeof WebSocket) {
  */
 export class OwnerConvexClient extends ConvexReactClient {
   private readonly gate: ReturnType<typeof createSocketGate>;
-  private disposed = false;
   // Whether the SDK holds a token it can use, and its newest token request:
   // it keeps a token only from that one.
   private authenticated = false;
@@ -148,7 +142,6 @@ export class OwnerConvexClient extends ConvexReactClient {
   }
 
   override close() {
-    this.disposed = true;
     // The SDK waits for a connecting socket to end; one held back never would.
     const closed = super.close();
     this.gate.dispose();
@@ -166,6 +159,6 @@ export class OwnerConvexClient extends ConvexReactClient {
   }
 
   private releaseIfAuthenticated() {
-    if (!this.disposed && this.authenticated && this.gate.held()) this.gate.release();
+    if (this.authenticated) this.gate.release();
   }
 }

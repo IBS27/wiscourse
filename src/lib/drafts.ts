@@ -6,17 +6,9 @@ import {
 const KEPT_PREFIX = "wiscourse:drafts:";
 
 // Storage can be unavailable or full; kept drafts then fall back to memory.
-function tabStorage(): Storage | null {
-  try {
-    return window.sessionStorage;
-  } catch {
-    return null;
-  }
-}
-
 function loadKept(owner: string): Record<string, string> {
   try {
-    const stored: unknown = JSON.parse(tabStorage()?.getItem(KEPT_PREFIX + owner) ?? "{}");
+    const stored: unknown = JSON.parse(sessionStorage.getItem(KEPT_PREFIX + owner) ?? "{}");
     if (typeof stored !== "object" || stored === null) return {};
     return Object.fromEntries(Object.entries(stored).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
   } catch {
@@ -27,11 +19,9 @@ function loadKept(owner: string): Record<string, string> {
 /** Drops every kept draft in this tab except `owner`'s. */
 export function forgetKeptDrafts(owner: string | null) {
   try {
-    const storage = tabStorage();
-    if (!storage) return;
-    const keys = Array.from({ length: storage.length }, (_, index) => storage.key(index));
+    const keys = Array.from({ length: sessionStorage.length }, (_, index) => sessionStorage.key(index));
     for (const key of keys) {
-      if (key?.startsWith(KEPT_PREFIX) && key !== KEPT_PREFIX + owner) storage.removeItem(key);
+      if (key?.startsWith(KEPT_PREFIX) && key !== KEPT_PREFIX + owner) sessionStorage.removeItem(key);
     }
   } catch {
     // Nothing was kept if storage cannot be read.
@@ -80,8 +70,7 @@ export class DraftStore {
   /** Reads a text draft and keeps it in storage from now on. */
   readKept(key: string): string {
     this.kept.add(key);
-    const value = this.read<unknown>(key, "");
-    return typeof value === "string" ? value : "";
+    return this.read(key, "");
   }
   update<T>(key: string, next: SetStateAction<T>) {
     const previous = this.values.get(key) as T;
@@ -124,9 +113,8 @@ export class DraftStore {
       if (typeof value === "string" && value !== "") text[key] = value;
     }
     try {
-      const storage = tabStorage();
-      if (Object.keys(text).length === 0) storage?.removeItem(KEPT_PREFIX + this.owner);
-      else storage?.setItem(KEPT_PREFIX + this.owner, JSON.stringify(text));
+      if (Object.keys(text).length === 0) sessionStorage.removeItem(KEPT_PREFIX + this.owner);
+      else sessionStorage.setItem(KEPT_PREFIX + this.owner, JSON.stringify(text));
     } catch {
       // The draft stays in memory.
     }
