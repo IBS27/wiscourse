@@ -11,7 +11,7 @@ import { OwnerSession } from "../src/lib/owner-session";
 import type { TodoItem } from "../convex/todos";
 
 const mocks = vi.hoisted(() => ({
-  clerk: { user: { id: "A" } as { id: string } | null },
+  clerk: { user: { id: "A" } as { id: string } | null | undefined, loaded: true, status: "ready" },
   getToken: undefined as unknown as ReturnType<typeof vi.fn>,
   submit: undefined as unknown as ReturnType<typeof vi.fn>,
 }));
@@ -36,7 +36,7 @@ let tokens: Array<Held<string | null>>;
 let uploads: Array<{ url: string; auth: string | null; file: string; signal: AbortSignal | undefined } & Held<Response>>;
 
 beforeEach(() => {
-  mocks.clerk.user = { id: "A" };
+  Object.assign(mocks.clerk, { user: { id: "A" }, loaded: true, status: "ready" });
   tokens = [];
   uploads = [];
   mocks.getToken = vi.fn(() => new Promise<string | null>((resolve, reject) => tokens.push({ resolve, reject })));
@@ -94,6 +94,57 @@ it("uploads each file with the owner's own token, then submits once", async () =
     content: { kind: "file", files: [{ storageId: "s0", name: "a.pdf" }, { storageId: "s1", name: "b.pdf" }] },
     confirmed: true,
   }));
+});
+
+// Clerk between states: switching sessions, or not ready, with no account to report.
+const gaps = {
+  "in transition": { user: undefined, loaded: true, status: "ready" },
+  "reloading": { user: undefined, loaded: false, status: "loading" },
+  "degraded": { user: null, loaded: true, status: "degraded" },
+};
+for (const [name, gap] of Object.entries(gaps)) {
+  it(`carries on when Clerk briefly reports no account while the owner's session lives (${name})`, async () => {
+    await confirmFiles(["a.pdf"]);
+    Object.assign(mocks.clerk, gap);
+    tokens[0].resolve(jwt("A"));
+    await flush();
+    uploads[0].resolve(new Response(JSON.stringify({ storageId: "s0" }), { status: 200 }));
+    await flush();
+    expect(mocks.submit).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Your account changed/)).toBeNull();
+  });
+}
+
+it("sends nothing more once Clerk reports a completed sign-out, before React disposes the owner", async () => {
+  await confirmFiles(["a.pdf", "b.pdf"]);
+  tokens[0].resolve(jwt("A"));
+  await flush();
+  // Signed out: Clerk is ready and has no account. A's panel is still mounted.
+  mocks.clerk.user = null;
+  uploads[0].resolve(new Response(JSON.stringify({ storageId: "s0" }), { status: 200 }));
+  await flush();
+  expect(uploads).toHaveLength(1);
+  expect(mocks.submit).not.toHaveBeenCalled();
+  expect(screen.getByText(/Your account changed/)).toBeTruthy();
+});
+
+it("does not use a token that arrives after a completed sign-out", async () => {
+  await confirmFiles(["a.pdf"]);
+  mocks.clerk.user = null;
+  tokens[0].resolve(jwt("A"));
+  await flush();
+  expect(uploads).toHaveLength(0);
+  expect(mocks.submit).not.toHaveBeenCalled();
+});
+
+it("submits nothing, and does not blame a sign-out, when Clerk has no token to give", async () => {
+  await confirmFiles(["a.pdf"]);
+  mocks.clerk.user = undefined;
+  tokens[0].resolve(null);
+  await flush();
+  expect(uploads).toHaveLength(0);
+  expect(mocks.submit).not.toHaveBeenCalled();
+  expect(screen.getByText(/couldn't confirm your sign-in/)).toBeTruthy();
 });
 
 it("drops a token that arrives after the owner is disposed, even if the owner returns", async () => {

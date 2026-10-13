@@ -17,7 +17,7 @@ import {
 } from "../../../convex/lib/submissions";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { useDiscardDrafts, useDraft } from "@/lib/drafts";
+import { useDiscardDrafts, useDraft, useKeptDraft } from "@/lib/drafts";
 import { UploadError, useOwnerBoundUploads } from "@/lib/submission-upload";
 import { dayKeyOf, formatDayShort, formatTime } from "@/lib/dates";
 import { errorMessage } from "@/lib/ask";
@@ -93,8 +93,8 @@ function Composer({ item, panel }: { item: TodoItem; panel: Panel }) {
   const group = `submission:${item.canvasId}`;
   const [expanded, setExpanded] = useDraft(`${group}:expanded`, false);
   const [chosen, setKind] = useDraft<SubmissionKind>(`${group}:kind`, panel.kinds[0]);
-  const [text, setText] = useDraft(`${group}:text`, "");
-  const [url, setUrl] = useDraft(`${group}:url`, "");
+  const [text, setText] = useKeptDraft(`${group}:text`);
+  const [url, setUrl] = useKeptDraft(`${group}:url`);
   const [files, setFiles] = useDraft<File[]>(`${group}:files`, []);
   const [confirming, setConfirming] = useDraft<string | null>(`${group}:confirm`, null);
   const discardDrafts = useDiscardDrafts(group);

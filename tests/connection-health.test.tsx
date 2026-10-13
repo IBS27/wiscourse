@@ -12,6 +12,8 @@ vi.mock("convex/react", () => ({
   useMutation: () => beat,
   useConvexConnectionState: () => connection,
 }));
+const signOut = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+vi.mock("@clerk/clerk-react", () => ({ useClerk: () => ({ signOut }) }));
 
 let visibility: DocumentVisibilityState = "visible";
 let online = true;
@@ -86,6 +88,43 @@ it("reports a lost connection only after a grace period, and clears on reconnect
   online = true;
   Object.assign(connection, { isWebSocketConnected: true });
   act(() => { fireEvent(window, new Event("online")); });
+  expect(screen.queryByRole("status")).toBeNull();
+});
+
+it("reports auth recovery under an open app, with the action each state needs", () => {
+  const retry = vi.fn();
+  const view = render(<ConnectionBanner auth={{ kind: "retrying", retry }} />);
+  act(() => { vi.advanceTimersByTime(3_000); });
+  expect(screen.queryByRole("status")).toBeNull();
+  act(() => { vi.advanceTimersByTime(1_000); });
+  expect(screen.getByRole("status").textContent).toContain("Reconnecting");
+  expect(screen.queryByRole("button")).toBeNull();
+
+  view.rerender(<ConnectionBanner auth={{ kind: "stalled", retry }} />);
+  expect(screen.getByRole("status").textContent).toContain("couldn't reconnect");
+  expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+  expect(retry).toHaveBeenCalledOnce();
+
+  view.rerender(<ConnectionBanner auth={{ kind: "unverified", retry }} />);
+  expect(screen.getByRole("status").textContent).toContain("couldn't verify your account");
+  expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
+
+  view.rerender(<ConnectionBanner auth={{ kind: "expired", retry }} />);
+  expect(screen.getByRole("status").textContent).toContain("Your session ended");
+  expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Sign in again" }));
+  expect(signOut).toHaveBeenCalledOnce();
+
+  // Offline explains the rest, and nothing can be retried until it ends.
+  online = false;
+  act(() => { fireEvent(window, new Event("offline")); });
+  expect(screen.getByRole("status").textContent).toContain("offline");
+  expect(screen.queryByRole("button")).toBeNull();
+
+  online = true;
+  act(() => { fireEvent(window, new Event("online")); });
+  view.rerender(<ConnectionBanner auth={null} />);
   expect(screen.queryByRole("status")).toBeNull();
 });
 
