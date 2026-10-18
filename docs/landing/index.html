@@ -844,7 +844,6 @@ img, svg { display: block; }
     function tick() {
       if (i === 0) ph.style.display = 'none';
       typed.textContent = text.slice(0, ++i);
-      chips.forEach(function (c) { if (i >= text.length - (+c.dataset.at) + 0 && i >= text.length - 12 + 0) {} });
       if (i >= 12) chips[2].classList.add('on');
       if (i >= 14) chips[1].classList.add('on');
       if (i >= text.length) chips[0].classList.add('on');
@@ -3068,10 +3067,11 @@ img, svg { display: block; }
     setDark(on); userTheme = on ? 'dark' : 'light'; localStorage.setItem('wc-landing.theme', userTheme);
   });
   nav.appendChild(t);
+  function isDesign(id) { var el = document.getElementById(id); return !!el && el.classList.contains('design'); }
   var start = location.hash.slice(1);
-  if (!document.getElementById(start)) start = designs[0] && designs[0].id;
+  if (!isDesign(start)) start = designs[0] && designs[0].id;
   if (start) activate(start, false);
-  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (document.getElementById(h)) activate(h, false); });
+  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (isDesign(h)) activate(h, false); });
 })();
 </script>
 </body>

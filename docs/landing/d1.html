@@ -734,7 +734,6 @@
     function tick() {
       if (i === 0) ph.style.display = 'none';
       typed.textContent = text.slice(0, ++i);
-      chips.forEach(function (c) { if (i >= text.length - (+c.dataset.at) + 0 && i >= text.length - 12 + 0) {} });
       if (i >= 12) chips[2].classList.add('on');
       if (i >= 14) chips[1].classList.add('on');
       if (i >= text.length) chips[0].classList.add('on');

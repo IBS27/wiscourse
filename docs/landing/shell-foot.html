@@ -30,10 +30,11 @@
     setDark(on); userTheme = on ? 'dark' : 'light'; localStorage.setItem('wc-landing.theme', userTheme);
   });
   nav.appendChild(t);
+  function isDesign(id) { var el = document.getElementById(id); return !!el && el.classList.contains('design'); }
   var start = location.hash.slice(1);
-  if (!document.getElementById(start)) start = designs[0] && designs[0].id;
+  if (!isDesign(start)) start = designs[0] && designs[0].id;
   if (start) activate(start, false);
-  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (document.getElementById(h)) activate(h, false); });
+  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (isDesign(h)) activate(h, false); });
 })();
 </script>
 </body>

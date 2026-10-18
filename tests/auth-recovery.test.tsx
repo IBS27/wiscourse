@@ -97,11 +97,11 @@ it("waits for Clerk and only shows sign-in for a confirmed signed-out session", 
   clerk.isSignedIn = false;
   const view = render(<App />);
   expect(screen.getByRole("status").textContent).toBe("Loading…");
-  expect(screen.queryByText("Sign in")).toBeNull();
+  expect(screen.queryAllByText("Sign in")).toHaveLength(0);
   clerk.isLoaded = true;
   view.rerender(<App />);
   await flush();
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
   expect(clients).toHaveLength(0);
 });
 
@@ -112,7 +112,7 @@ it("recovers dropped backend auth with a fresh token and preserves the URL", asy
   expect(screen.getByText("Protected app")).toBeTruthy();
   act(() => reportAuth?.(false));
   expect(screen.getByText("Reconnecting…")).toBeTruthy();
-  expect(screen.queryByText("Sign in")).toBeNull();
+  expect(screen.queryAllByText("Sign in")).toHaveLength(0);
   expect(screen.queryByText("Protected app")).toBeNull();
   await advance(1_000);
   expect(clerk.getToken).toHaveBeenLastCalledWith({ skipCache: true });
@@ -132,7 +132,7 @@ it("bounds failed refresh retries and lets the user retry after exhaustion", asy
   for (const delay of [1_000, 2_000, 5_000, 10_000]) await advance(delay);
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls + 3);
   expect(screen.getByText("We couldn't reconnect. Please try again.")).toBeTruthy();
-  expect(screen.queryByText("Sign in")).toBeNull();
+  expect(screen.queryAllByText("Sign in")).toHaveLength(0);
   await advance(120_000);
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls + 3);
   clerk.getToken.mockResolvedValue(tokenFor(clerk.userId));
@@ -244,7 +244,7 @@ it("cancels recovery on sign-out and ignores an old authenticated callback", asy
   fireEvent(document, new Event("visibilitychange"));
   fireEvent(window, new Event("online"));
   await advance(60_000);
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
   expect(screen.queryByText("Protected app")).toBeNull();
   expect(clerk.getToken).toHaveBeenCalledTimes(initialCalls);
 });
@@ -309,7 +309,7 @@ it("disposes the client on confirmed logout, including outstanding token work", 
   view.rerender(<App />);
   await flush();
   expect(firstClient.close).toHaveBeenCalledOnce();
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
 });
 
 it("offers reload after stalled or failed Clerk initialization", async () => {
@@ -318,7 +318,7 @@ it("offers reload after stalled or failed Clerk initialization", async () => {
   const view = render(<App />);
   await advance(10_000);
   expect(screen.getByRole("button", { name: "Reload" })).toBeTruthy();
-  expect(screen.queryByText("Sign in")).toBeNull();
+  expect(screen.queryAllByText("Sign in")).toHaveLength(0);
   clerk.status = "error";
   view.rerender(<App />);
   expect(screen.getByText(/couldn't load your sign-in session/)).toBeTruthy();
@@ -328,7 +328,7 @@ it("does not label degraded or pending Clerk sessions as signed out", async () =
   clerk.isSignedIn = false;
   clerk.status = "degraded";
   const view = render(<App />);
-  expect(screen.queryByText("Sign in")).toBeNull();
+  expect(screen.queryAllByText("Sign in")).toHaveLength(0);
   clerk.status = "ready";
   clerk.sessionStatus = "pending";
   view.rerender(<App />);
@@ -596,7 +596,7 @@ it("keeps a typed draft across a reload, and forgets it on sign-out or another a
   Object.assign(clerk, { isSignedIn: false, sessionId: null });
   view.rerender(app());
   await flush();
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
   expect(sessionStorage.length).toBe(0);
 });
 

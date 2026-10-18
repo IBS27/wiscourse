@@ -359,7 +359,7 @@ it("ignores a late token after logout and does not recreate a socket", async () 
   await act(async () => resolveToken(tokenFor("user-A")));
   await advance(60_000);
   expect(server.messages).toHaveLength(count);
-  expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: "Sign in" }).length).toBeGreaterThan(0);
 });
 
 it("cleans up subscriptions before closing a replaced client", async () => {

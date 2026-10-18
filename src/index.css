@@ -188,3 +188,12 @@
 @keyframes landing-blink {
   50% { opacity: 0; }
 }
+/* The hooks skip auto-advance and staggers; this catches the CSS-only
+   animations (carets, spinners, row entrance) in one place. */
+@media (prefers-reduced-motion: reduce) {
+  .landing *, .landing *::before, .landing *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

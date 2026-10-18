@@ -19,7 +19,7 @@ import {
  */
 export function Landing() {
   return (
-    <div className="min-h-dvh bg-surface text-ink dark:bg-page">
+    <div className="landing min-h-dvh bg-surface text-ink dark:bg-page">
       <Nav />
       <Hero />
       <GettingStarted />
@@ -33,15 +33,25 @@ export function Landing() {
 
 /* ---------- hooks ---------- */
 
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+// Resolved on first use, not at import: test environments (jsdom) have no matchMedia.
+let reduceMotion: MediaQueryList | null | undefined;
+function reduceMotionQuery(): MediaQueryList | null {
+  if (reduceMotion === undefined) {
+    reduceMotion = typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)")
+      : null;
+  }
+  return reduceMotion;
+}
 
 function useReducedMotion(): boolean {
   return useSyncExternalStore(
     (notify) => {
-      reduceMotion.addEventListener("change", notify);
-      return () => reduceMotion.removeEventListener("change", notify);
+      const query = reduceMotionQuery();
+      query?.addEventListener("change", notify);
+      return () => query?.removeEventListener("change", notify);
     },
-    () => reduceMotion.matches,
+    () => reduceMotionQuery()?.matches ?? false,
   );
 }
 
@@ -52,6 +62,12 @@ function useInView<T extends HTMLElement>(threshold: number, once = true): [RefO
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // No observer (jsdom, very old browsers): treat everything as in view.
+    if (typeof IntersectionObserver === "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time fallback for environments without IntersectionObserver
+      setInView(true);
+      return;
+    }
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -106,7 +122,7 @@ function scrollToGettingStarted(e: MouseEvent<HTMLAnchorElement>) {
   const target = document.getElementById("getting-started");
   if (!target) return;
   e.preventDefault();
-  target.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "start" });
+  target.scrollIntoView({ behavior: reduceMotionQuery()?.matches ? "auto" : "smooth", block: "start" });
 }
 
 /* ---------- sections ---------- */
