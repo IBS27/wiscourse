@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>wiscourse landing page concepts</title>
+<link rel="icon" href="favicon.svg" />
+<link rel="preconnect" href="https://rsms.me/" />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search).get("theme");
+    var t = q || localStorage.getItem("wc-landing.theme");
+    if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches))
+      document.documentElement.classList.add("dark");
+  })();
+</script>
+<style>
+/* ---------- shared tokens (copied from src/index.css) ---------- */
+:root {
+  --radius: 8px;
+  --page: #ececee; --surface: #ffffff; --sunken: #f4f4f5; --raised: #ffffff; --hover: #f4f4f5;
+  --line: #e5e5e8; --line-2: #d6d6db; --chip: #f4f4f5;
+  --ink: #18181b; --ink-2: #55555f; --ink-3: #8a8a93;
+  --red: #c5050c; --red-bg: #fdf1f1;
+  --today-bg: #18181b; --today-fg: #ffffff;
+  --shadow: 0 8px 24px rgba(16, 17, 20, 0.12);
+  --menu-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --course-indigo: #4f46e5; --course-amber: #b45309; --course-teal: #0f766e; --course-sky: #0369a1;
+  --course-rose: #be123c; --course-emerald: #047857; --course-violet: #6d28d9; --course-orange: #c2410c;
+  --course-none: #71717a;
+  --brand: var(--red); --brand-ink: #101114;
+  color-scheme: light;
+}
+.dark {
+  --page: #0b0b0b; --surface: #181818; --sunken: #0f0f0f; --raised: #1e1e1e; --hover: #242424;
+  --line: #2b2b2b; --line-2: #3c3c3c; --chip: #242424;
+  --ink: #e8e8e8; --ink-2: #a3a3a3; --ink-3: #737373;
+  --red: #ff4b54; --red-bg: #2b1417;
+  --today-bg: #e8e8e8; --today-fg: #181818;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  --menu-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --course-indigo: #818cf8; --course-amber: #f0a13a; --course-teal: #2dd4bf; --course-sky: #4cb4ec;
+  --course-rose: #fb7185; --course-emerald: #34d399; --course-violet: #a78bfa; --course-orange: #fb923c;
+  --course-none: #8c8c8c;
+  --brand-ink: #e8e8e8;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--surface); color: var(--ink);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif; font-feature-settings: "cv11", "ss01";
+  font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
+}
+@supports (font-variation-settings: normal) { body { font-family: "InterVariable", "Inter", ui-sans-serif, system-ui, sans-serif; } }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; cursor: pointer; }
+img, svg { display: block; }
+.tabular { font-variant-numeric: tabular-nums; }
+.eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ---------- logo lockup ---------- */
+.wc-logo { display: inline-flex; align-items: baseline; gap: 0.34em; line-height: 1; color: var(--ink); }
+.wc-logo .wc-mark { height: 0.72em; width: 1.119em; }
+.wc-logo .wc-word { height: 0.7734em; width: 4.6487em; transform: translateY(0.0112em); }
+
+/* ---------- switcher chrome (not part of any design) ---------- */
+#wc-switch {
+  position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 1000;
+  display: flex; align-items: center; gap: 2px; padding: 4px;
+  background: #18181b; color: #e8e8e8; border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06);
+  font-size: 12.5px; font-weight: 500; white-space: nowrap;
+}
+#wc-switch button { border: 0; background: transparent; color: #a3a3a3; padding: 7px 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; }
+#wc-switch button:hover { color: #e8e8e8; }
+#wc-switch button[aria-current="true"] { background: #e8e8e8; color: #18181b; }
+#wc-switch button .n { font-variant-numeric: tabular-nums; opacity: .55; font-size: 11px; }
+#wc-switch button[aria-current="true"] .n { opacity: .6; }
+#wc-switch .sep { width: 1px; height: 16px; background: rgba(255,255,255,.14); margin: 0 4px; }
+#wc-switch button.icon { padding: 7px 9px; }
+#wc-switch button.icon svg { width: 14px; height: 14px; }
+.design { display: none; }
+.design.is-active { display: block; }
+@media (max-width: 720px) {
+  #wc-switch { bottom: 10px; max-width: calc(100vw - 20px); overflow-x: auto; }
+  #wc-switch button .lbl { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <clipPath id="wc-l"><rect x="0" y="0" width="25.25" height="32.5"/></clipPath>
+    <clipPath id="wc-r"><rect x="25.25" y="0" width="25.25" height="32.5"/></clipPath>
+  </defs>
+  <symbol id="wc-mark" viewBox="0 0 50.5 32.5">
+    <g fill="none" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.25 3.25 L14.25 29.25 L25.25 3.25 L36.25 29.25 L47.25 3.25" stroke="var(--brand)" clip-path="url(#wc-l)"/>
+      <path d="M3.25 3.25 L14.25 29.25 L25.25 3.25 L36.25 29.25 L47.25 3.25" stroke="var(--brand-ink, currentColor)" clip-path="url(#wc-r)"/>
+    </g>
+  </symbol>
+  <symbol id="wc-word" viewBox="21.5 -762.2 4648.7 773.4">
+    <path fill="var(--brand)" d="M184 0 21 -546H155L209 -332Q221 -279 236 -216Q250 -153 264 -76H248Q261 -151 276 -215Q291 -278 305 -332L360 -546H481L535 -332Q548 -279 563 -216Q578 -152 591 -76H575Q588 -152 602 -215Q616 -278 629 -332L683 -546H818L655 0H526L462 -223Q453 -256 443 -295Q434 -333 425 -374Q417 -414 408 -451H431Q422 -414 413 -374Q404 -333 395 -294Q386 -255 376 -223L312 0ZM872 0V-546H999V0ZM935 -623Q905 -623 883 -644Q861 -664 861 -692Q861 -722 883 -742Q905 -762 935 -762Q966 -762 988 -742Q1009 -722 1009 -693Q1009 -664 988 -644Q966 -623 935 -623ZM1305 11Q1242 11 1194 -7Q1145 -25 1114 -60Q1083 -94 1074 -144L1193 -166Q1204 -125 1232 -106Q1261 -86 1307 -86Q1354 -86 1382 -105Q1409 -124 1409 -151Q1409 -175 1391 -190Q1373 -206 1336 -214L1242 -234Q1165 -250 1127 -289Q1089 -327 1089 -387Q1089 -438 1117 -475Q1145 -512 1194 -532Q1244 -553 1309 -553Q1371 -553 1416 -535Q1461 -518 1488 -486Q1516 -455 1527 -412L1413 -390Q1404 -418 1380 -438Q1355 -458 1311 -458Q1270 -458 1243 -440Q1216 -422 1216 -395Q1216 -371 1234 -355Q1252 -339 1294 -331L1387 -311Q1464 -294 1502 -258Q1539 -221 1539 -164Q1539 -112 1510 -73Q1480 -33 1427 -11Q1374 11 1305 11ZM1850 11Q1770 11 1711 -24Q1653 -60 1621 -123Q1589 -186 1589 -270Q1589 -355 1621 -419Q1653 -482 1711 -518Q1770 -553 1850 -553Q1895 -553 1934 -541Q1973 -529 2004 -507Q2035 -485 2055 -453Q2076 -421 2085 -381L1966 -356Q1961 -377 1951 -395Q1941 -412 1926 -424Q1912 -437 1893 -443Q1874 -450 1851 -450Q1806 -450 1777 -426Q1748 -402 1733 -362Q1718 -322 1718 -271Q1718 -220 1733 -180Q1748 -139 1777 -115Q1806 -92 1851 -92Q1874 -92 1893 -99Q1913 -105 1927 -118Q1942 -131 1953 -149Q1963 -167 1968 -189L2086 -164Q2078 -123 2057 -91Q2036 -59 2005 -36Q1974 -13 1935 -1Q1895 11 1850 11Z"/>
+    <path fill="currentColor" d="M2397 11Q2318 11 2259 -24Q2200 -60 2168 -123Q2136 -186 2136 -270Q2136 -355 2168 -419Q2200 -482 2259 -518Q2318 -553 2397 -553Q2477 -553 2536 -518Q2594 -482 2626 -419Q2658 -355 2658 -270Q2658 -186 2626 -123Q2594 -60 2536 -24Q2477 11 2397 11ZM2397 -92Q2442 -92 2471 -116Q2501 -140 2515 -180Q2529 -221 2529 -271Q2529 -321 2515 -361Q2501 -402 2471 -426Q2442 -450 2397 -450Q2353 -450 2324 -426Q2295 -402 2280 -362Q2266 -321 2266 -271Q2266 -221 2280 -180Q2295 -140 2324 -116Q2353 -92 2397 -92ZM2921 7Q2865 7 2823 -17Q2781 -41 2757 -87Q2734 -133 2734 -199V-546H2861V-218Q2861 -164 2890 -132Q2918 -101 2968 -101Q3002 -101 3028 -116Q3054 -130 3069 -159Q3084 -187 3084 -226V-546H3212V0H3091L3090 -135H3099Q3076 -63 3032 -28Q2987 7 2921 7ZM3311 0V-546H3435V-455H3440Q3455 -502 3492 -528Q3528 -553 3575 -553Q3586 -553 3599 -552Q3612 -551 3622 -550V-433Q3614 -436 3596 -438Q3579 -439 3561 -439Q3526 -439 3498 -424Q3470 -409 3454 -383Q3438 -356 3438 -321V0ZM3880 11Q3817 11 3769 -7Q3720 -25 3689 -60Q3658 -94 3649 -144L3768 -166Q3779 -125 3807 -106Q3836 -86 3882 -86Q3929 -86 3957 -105Q3984 -124 3984 -151Q3984 -175 3966 -190Q3948 -206 3911 -214L3817 -234Q3740 -250 3702 -289Q3664 -327 3664 -387Q3664 -438 3692 -475Q3720 -512 3769 -532Q3819 -553 3884 -553Q3946 -553 3991 -535Q4036 -518 4063 -486Q4091 -455 4102 -412L3988 -390Q3979 -418 3955 -438Q3930 -458 3886 -458Q3845 -458 3818 -440Q3791 -422 3791 -395Q3791 -371 3809 -355Q3827 -339 3869 -331L3962 -311Q4039 -294 4077 -258Q4114 -221 4114 -164Q4114 -112 4085 -73Q4055 -33 4002 -11Q3949 11 3880 11ZM4429 11Q4346 11 4287 -23Q4228 -58 4196 -121Q4164 -184 4164 -270Q4164 -354 4195 -417Q4227 -481 4285 -517Q4343 -553 4421 -553Q4470 -553 4516 -537Q4561 -521 4596 -487Q4631 -453 4650 -401Q4670 -349 4670 -277V-237H4224V-324H4607L4548 -298Q4548 -344 4533 -379Q4519 -414 4491 -434Q4463 -453 4421 -453Q4379 -453 4350 -433Q4321 -414 4305 -381Q4290 -348 4290 -307V-248Q4290 -196 4307 -160Q4325 -125 4357 -106Q4388 -88 4430 -88Q4458 -88 4481 -96Q4504 -104 4520 -120Q4537 -136 4545 -159L4662 -135Q4649 -91 4617 -58Q4585 -25 4538 -7Q4490 11 4429 11Z"/>
+  </symbol>
+</svg>
+<div id="designs">

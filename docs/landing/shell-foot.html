@@ -1,0 +1,40 @@
+</div>
+<nav id="wc-switch" aria-label="Design concepts"></nav>
+<script>
+(function () {
+  var designs = Array.prototype.slice.call(document.querySelectorAll('.design'));
+  var nav = document.getElementById('wc-switch');
+  var userTheme = new URLSearchParams(location.search).get('theme') || localStorage.getItem('wc-landing.theme');
+  function setDark(on) { document.documentElement.classList.toggle('dark', !!on); }
+  function activate(id, push) {
+    designs.forEach(function (d) { d.classList.toggle('is-active', d.id === id); });
+    nav.querySelectorAll('button[data-id]').forEach(function (b) { b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
+    var d = document.getElementById(id);
+    if (d && !userTheme) setDark(d.dataset.theme === 'dark');
+    if (push) history.replaceState(null, '', '#' + id);
+    window.scrollTo(0, 0);
+    window.dispatchEvent(new CustomEvent('wc:activate', { detail: { id: id } }));
+  }
+  designs.forEach(function (d, i) {
+    var b = document.createElement('button');
+    b.dataset.id = d.id;
+    b.innerHTML = '<span class="n">' + (i + 1) + '</span><span class="lbl">' + (d.dataset.title || d.id) + '</span>';
+    b.addEventListener('click', function () { activate(d.id, true); });
+    nav.appendChild(b);
+  });
+  var sep = document.createElement('span'); sep.className = 'sep'; nav.appendChild(sep);
+  var t = document.createElement('button'); t.className = 'icon'; t.title = 'Toggle light / dark';
+  t.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+  t.addEventListener('click', function () {
+    var on = !document.documentElement.classList.contains('dark');
+    setDark(on); userTheme = on ? 'dark' : 'light'; localStorage.setItem('wc-landing.theme', userTheme);
+  });
+  nav.appendChild(t);
+  var start = location.hash.slice(1);
+  if (!document.getElementById(start)) start = designs[0] && designs[0].id;
+  if (start) activate(start, false);
+  window.addEventListener('hashchange', function () { var h = location.hash.slice(1); if (document.getElementById(h)) activate(h, false); });
+})();
+</script>
+</body>
+</html>

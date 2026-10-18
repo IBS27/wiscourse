@@ -1,0 +1,445 @@
+<style>
+/* ===== Design 3: Manifesto ===== */
+.d3 { background: var(--page); color: var(--ink); min-height: 100dvh; }
+.d3 .wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.d3 .ico { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* buttons */
+.d3 .btn { display: inline-flex; align-items: center; justify-content: center; height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; transition: transform .15s ease, opacity .15s ease; }
+.d3 .btn:active { transform: translateY(1px); }
+.d3 .btn-primary { background: var(--today-bg); color: var(--today-fg); }
+.d3 .btn-primary:hover { opacity: .9; }
+.d3 .link { font-size: 13.5px; font-weight: 500; color: var(--ink-2); }
+.d3 .link:hover { color: var(--ink); }
+
+/* nav */
+.d3 .nav { height: 56px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.d3 .nav .right { justify-self: end; }
+.d3 .nav .left { justify-self: start; font-size: 12.5px; color: var(--ink-3); font-weight: 500; }
+
+/* hero */
+.d3 .hero { padding: 88px 0 0; text-align: center; }
+.d3 .hero h1 { margin: 0 auto; max-width: 760px; font-size: 60px; line-height: 1.04; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+.d3 .hero h1 .dim { color: var(--ink-3); }
+.d3 .hero p { margin: 22px auto 0; max-width: 520px; font-size: 17px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.d3 .hero .cta { margin-top: 30px; display: flex; justify-content: center; }
+.d3 .hero .btn { height: 42px; padding: 0 20px; }
+
+/* app panel */
+.d3 .panel-wrap { margin: 56px auto 0; max-width: 1100px; opacity: 0; transform: translateY(24px); transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+.d3 .panel-wrap.in { opacity: 1; transform: none; }
+.d3 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; text-align: left; display: grid; grid-template-columns: 216px minmax(0, 1fr) 292px; min-height: 560px; font-size: 13px; }
+.d3 .panel .sb { background: var(--sunken); border-right: 1px solid var(--line); padding: 14px 10px 12px; display: flex; flex-direction: column; }
+.d3 .sb .top { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 14px; color: var(--ink-3); }
+.d3 .sb a { display: flex; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 6px; color: var(--ink-2); font-weight: 500; }
+.d3 .sb a .ico { width: 15px; height: 15px; }
+.d3 .sb a.on { background: var(--hover); color: var(--ink); }
+.d3 .sb a .n { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d3 .sb .sec { display: flex; justify-content: space-between; padding: 18px 8px 6px; font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+.d3 .sb .crs .dot { width: 7px; height: 7px; border-radius: 999px; background: var(--c); margin-right: 2px; }
+.d3 .sb .crs .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d3 .sb .crs .code { margin-left: auto; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.d3 .sb .foot { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 8px; }
+.d3 .sb .av { width: 24px; height: 24px; border-radius: 999px; background: var(--today-bg); color: var(--today-fg); font-size: 10px; font-weight: 600; display: grid; place-items: center; }
+.d3 .sb .foot .nm { font-weight: 500; color: var(--ink); }
+.d3 .sb .foot .em { font-size: 11px; color: var(--ink-3); }
+
+.d3 .main { min-width: 0; display: flex; flex-direction: column; }
+.d3 .main .hd { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+.d3 .main .hd .d { font-size: 15px; font-weight: 600; letter-spacing: -0.015em; }
+.d3 .main .hd .s { margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+.d3 .main .hd .add { display: flex; align-items: center; gap: 8px; height: 32px; width: 260px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); color: var(--ink-3); font-size: 12.5px; }
+.d3 .main .hd .add .ico { width: 13px; height: 13px; }
+.d3 .kbd { margin-left: auto; font-size: 10.5px; font-weight: 600; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 1px 5px; line-height: 1.3; }
+.d3 .strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.d3 .strip .day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 0 6px; border-radius: 6px; }
+.d3 .strip .day .w { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.d3 .strip .day .num { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.d3 .strip .day .dots { display: flex; gap: 3px; height: 6px; align-items: center; }
+.d3 .strip .day .dots i { width: 5px; height: 5px; border-radius: 999px; background: var(--c); }
+.d3 .strip .day .dots b { font-size: 9.5px; font-weight: 600; color: var(--ink-3); line-height: 1; }
+.d3 .strip .day.today { background: var(--today-bg); color: var(--today-fg); }
+.d3 .strip .day.today .w { color: var(--today-fg); opacity: .7; }
+.d3 .strip .day.today .dots b { color: var(--today-fg); }
+.d3 .sec-h { display: flex; align-items: baseline; gap: 8px; padding: 16px 18px 6px; }
+.d3 .sec-h .t { font-size: 13px; font-weight: 600; }
+.d3 .sec-h .t.red { color: var(--red); }
+.d3 .sec-h .m { font-size: 12px; color: var(--ink-3); }
+.d3 .sec-h .c { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d3 .row { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 9px 18px 9px 14px; }
+.d3 .row:hover { background: var(--hover); }
+.d3 .row .rail { width: 4px; height: 100%; min-height: 28px; border-radius: 2px; background: var(--c); }
+.d3 .row .tt { font-weight: 500; letter-spacing: -0.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d3 .row .mm { margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+.d3 .row .st { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+.d3 .row .st.red { color: var(--red); }
+.d3 .row .st.done { color: var(--ink-2); }
+.d3 .row.done .tt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--line-2); }
+
+.d3 .rail-new { border-left: 1px solid var(--line); background: var(--sunken); padding: 14px 14px 12px; }
+.d3 .rail-new .hd { display: flex; align-items: center; justify-content: space-between; padding: 0 2px 10px; }
+.d3 .rail-new .hd .t { font-size: 13px; font-weight: 600; }
+.d3 .rail-new .hd .t span { color: var(--ink-3); font-weight: 600; margin-left: 5px; }
+.d3 .rail-new .hd a { font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
+.d3 .rail-new .dayl { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); padding: 10px 2px 6px; }
+.d3 .card { background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 8px; padding: 9px 11px; margin-bottom: 6px; }
+.d3 .card .k { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; color: var(--ink-3); }
+.d3 .card .k b { color: var(--c); font-weight: 600; }
+.d3 .card .t { margin-top: 3px; font-weight: 500; font-size: 12.5px; line-height: 1.35; }
+.d3 .card .s { margin-top: 2px; font-size: 11.5px; color: var(--ink-3); line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* reading */
+.d3 .read { padding: 136px 0 0; }
+.d3 .read .col { max-width: 640px; margin: 0 auto; }
+.d3 .read .eyebrow { margin-bottom: 20px; }
+.d3 .read p { margin: 0 0 24px; font-size: 18px; line-height: 1.6; color: var(--ink); text-wrap: pretty; letter-spacing: -0.005em; }
+.d3 .read p:last-child { margin-bottom: 0; }
+.d3 .read p em { font-style: normal; color: var(--ink-3); }
+
+/* what you get */
+.d3 .get { padding: 128px 0 0; }
+.d3 .get .col { max-width: 1000px; margin: 0 auto; }
+.d3 .get h2 { margin: 0 0 28px; font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -0.025em; }
+.d3 .get dl { margin: 0; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr 1fr; column-gap: 56px; }
+.d3 .get .item { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 20px; align-items: center; padding: 22px 0; min-height: 96px; }
+.d3 .get dt { font-size: 14px; font-weight: 600; letter-spacing: -0.005em; margin: 0; }
+.d3 .get dd { margin: 4px 0 0; font-size: 14px; line-height: 1.5; color: var(--ink-2); text-wrap: pretty; }
+.d3 .get .vis { width: 180px; flex: none; justify-self: end; font-size: 11.5px; }
+
+/* small visuals */
+.d3 .chips { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.d3 .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border-radius: 6px; background: var(--chip); border: 1px solid var(--line); font-size: 11px; font-weight: 500; color: var(--ink-2); white-space: nowrap; }
+.d3 .chip i { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d3 .mini { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.d3 .mini-rows .r { display: grid; grid-template-columns: 3px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px 6px 6px; border-top: 1px solid var(--line); font-size: 11px; }
+.d3 .mini-rows .r:first-child { border-top: 0; }
+.d3 .mini-rows .r i { width: 3px; height: 16px; border-radius: 2px; background: var(--c); }
+.d3 .mini-rows .r span { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d3 .mini-rows .r em { font-style: normal; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d3 .mini-rows .r em.red { color: var(--red); }
+.d3 .mini-grades .g { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 6px 8px; border-top: 1px solid var(--line); font-size: 11px; font-variant-numeric: tabular-nums; }
+.d3 .mini-grades .g:first-child { border-top: 0; background: var(--sunken); color: var(--ink-3); font-weight: 600; font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.d3 .mini-grades .g .v { font-weight: 500; }
+.d3 .mini-grades .g .edit { border: 1px solid var(--line-2); border-radius: 4px; padding: 0 4px; background: var(--surface); color: var(--ink); font-weight: 600; }
+.d3 .mini-grades .g .p { color: var(--ink-3); }
+.d3 .mini-grades .sum { padding: 6px 8px; border-top: 1px solid var(--line); font-size: 11px; color: var(--ink-2); background: var(--sunken); }
+.d3 .mini-grades .sum b { color: var(--ink); font-weight: 600; }
+.d3 .mini-cal { display: grid; grid-template-columns: 28px repeat(3, 1fr); font-size: 10px; color: var(--ink-3); }
+.d3 .mini-cal .h { padding: 5px 4px; border-bottom: 1px solid var(--line); font-weight: 600; text-align: center; }
+.d3 .mini-cal .h.today { color: var(--ink); }
+.d3 .mini-cal .tm { padding: 2px 4px; text-align: right; font-variant-numeric: tabular-nums; border-right: 1px solid var(--line); height: 22px; }
+.d3 .mini-cal .cell { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); height: 22px; position: relative; }
+.d3 .mini-cal .cell:nth-child(4n) { border-right: 0; }
+.d3 .mini-cal .ev { position: absolute; left: 2px; right: 2px; border-radius: 3px; border-left: 2px solid var(--c); background: var(--chip); color: var(--ink); font-size: 9px; font-weight: 500; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d3 .mini-k { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; color: var(--ink-3); border-bottom: 1px solid var(--line); font-size: 11.5px; }
+.d3 .mini-k .ico { width: 12px; height: 12px; }
+.d3 .mini-k .q { color: var(--ink); font-weight: 500; }
+.d3 .mini-k .cur { width: 1px; height: 13px; background: var(--ink); animation: d3blink 1s steps(1) infinite; }
+@keyframes d3blink { 50% { opacity: 0; } }
+.d3 .mini-res { padding: 5px 9px; font-size: 11px; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.d3 .mini-res.on { background: var(--hover); }
+.d3 .mini-res i { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d3 .mini-res em { font-style: normal; color: var(--ink-3); margin-left: auto; font-size: 10.5px; }
+.d3 .mini-inbox .m { display: grid; grid-template-columns: auto 1fr auto; gap: 7px; align-items: baseline; padding: 6px 8px; border-top: 1px solid var(--line); font-size: 11px; }
+.d3 .mini-inbox .m:first-child { border-top: 0; }
+.d3 .mini-inbox .m b { font-weight: 600; color: var(--c); font-size: 10px; }
+.d3 .mini-inbox .m span { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d3 .mini-inbox .m em { font-style: normal; color: var(--ink-3); font-size: 10.5px; }
+.d3 .mini-ask { padding: 8px 9px; font-size: 11px; line-height: 1.4; }
+.d3 .mini-ask .u { display: inline-block; background: var(--chip); border-radius: 6px; padding: 3px 7px; margin-bottom: 6px; color: var(--ink-2); }
+.d3 .mini-ask .a { color: var(--ink); }
+.d3 .mini-ask .a b { font-weight: 600; }
+.d3 .mini-tabs { display: flex; gap: 2px; padding: 4px 6px; border-bottom: 1px solid var(--line); font-size: 10.5px; font-weight: 500; color: var(--ink-3); }
+.d3 .mini-tabs span { padding: 3px 6px; border-radius: 6px; }
+.d3 .mini-tabs span.on { background: var(--hover); color: var(--ink); }
+.d3 .mini-mods .md { display: flex; align-items: center; gap: 7px; padding: 5px 9px; font-size: 11px; border-top: 1px solid var(--line); }
+.d3 .mini-mods .md:first-of-type { border-top: 0; }
+.d3 .mini-mods .md .ico { width: 11px; height: 11px; color: var(--ink-3); }
+.d3 .mini-mods .md em { font-style: normal; color: var(--ink-3); margin-left: auto; font-size: 10px; }
+
+/* statement band */
+.d3 .band { margin-top: 128px; background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.d3 .band .col { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; }
+.d3 .band .cell { padding: 56px 48px 56px 0; }
+.d3 .band .cell + .cell { border-left: 1px solid var(--line); padding: 56px 0 56px 48px; }
+.d3 .band h3 { margin: 0; font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; max-width: 22ch; }
+.d3 .band p { margin: 12px 0 0; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); max-width: 46ch; text-wrap: pretty; }
+
+/* closing */
+.d3 .close { padding: 136px 0 120px; text-align: center; }
+.d3 .close h2 { margin: 0 auto; max-width: 640px; font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+.d3 .close .cta { margin-top: 28px; }
+.d3 .close .sub { margin: 14px 0 0; font-size: 13px; color: var(--ink-3); }
+
+/* footer */
+.d3 footer { border-top: 1px solid var(--line); padding: 28px 0 96px; }
+.d3 footer .col { display: flex; align-items: center; gap: 24px; font-size: 12.5px; color: var(--ink-3); }
+.d3 footer .links { margin-left: auto; display: flex; gap: 20px; }
+.d3 footer .links a { color: var(--ink-2); font-weight: 500; }
+.d3 footer .links a:hover { color: var(--ink); }
+
+/* reveal */
+.d3 .rv { opacity: 0; transform: translateY(16px); transition: opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1); }
+.d3 .rv.in { opacity: 1; transform: none; }
+
+@media (max-width: 1100px) {
+  .d3 .panel { grid-template-columns: 200px minmax(0, 1fr); }
+  .d3 .rail-new { display: none; }
+}
+@media (max-width: 767px) {
+  .d3 .wrap { padding: 0 18px; }
+  .d3 .nav { grid-template-columns: auto 1fr; height: 52px; }
+  .d3 .nav .left { display: none; }
+  .d3 .nav .right { grid-column: 2; }
+  .d3 .hero { padding-top: 48px; }
+  .d3 .hero h1 { font-size: 34px; letter-spacing: -0.028em; }
+  .d3 .hero p { font-size: 15.5px; margin-top: 16px; }
+  .d3 .hero .cta { margin-top: 24px; }
+  .d3 .panel-wrap { margin-top: 40px; margin-right: -18px; }
+  .d3 .panel { grid-template-columns: minmax(0, 1fr); border-radius: 10px 0 0 10px; border-right: 0; min-height: 0; }
+  .d3 .panel .sb { display: none; }
+  .d3 .main .hd .add { display: none; }
+  .d3 .strip { padding: 10px 10px; gap: 2px; }
+  .d3 .strip .day .w { font-size: 9.5px; }
+  .d3 .read { padding-top: 88px; }
+  .d3 .read p { font-size: 16.5px; }
+  .d3 .get { padding-top: 80px; }
+  .d3 .get h2 { font-size: 24px; }
+  .d3 .get dl { grid-template-columns: 1fr; column-gap: 0; }
+  .d3 .get .item { grid-template-columns: 1fr; row-gap: 14px; padding: 20px 0; border-bottom: 1px solid var(--line); min-height: 0; }
+  .d3 .get .item:last-child { border-bottom: 0; }
+  .d3 .get .vis { justify-self: start; }
+  .d3 .chips { justify-content: flex-start; }
+  .d3 .band { margin-top: 80px; }
+  .d3 .band .col { grid-template-columns: 1fr; }
+  .d3 .band .cell { padding: 36px 0; }
+  .d3 .band .cell + .cell { border-left: 0; border-top: 1px solid var(--line); padding: 36px 0; }
+  .d3 .band h3 { font-size: 20px; }
+  .d3 .close { padding: 88px 0 72px; }
+  .d3 .close h2 { font-size: 30px; }
+  .d3 footer { padding-bottom: 88px; }
+  .d3 footer .col { flex-wrap: wrap; gap: 12px 20px; }
+  .d3 footer .links { margin-left: 0; width: 100%; }
+}
+</style>
+
+<section class="design d3" id="d3" data-title="Manifesto" data-theme="light">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="d3-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="d3-inbox" viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></symbol>
+  <symbol id="d3-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="d3-task" viewBox="0 0 24 24"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+  <symbol id="d3-grade" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
+  <symbol id="d3-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="d3-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></symbol>
+  <symbol id="d3-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="d3-file" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></symbol>
+  <symbol id="d3-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="d3-doc" viewBox="0 0 24 24"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></symbol>
+</svg>
+
+<header class="wrap nav">
+  <span class="left">For UW-Madison students</span>
+  <a href="#d3" class="wc-logo" style="font-size:19px" aria-label="wiscourse"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></a>
+  <a href="#" class="link right">Sign in</a>
+</header>
+
+<div class="hero wrap">
+  <h1>Canvas is slow.<br/><span class="dim">Your week shouldn't be.</span></h1>
+  <p>One agenda for every Canvas course at UW-Madison, with your own tasks next to the assignments.</p>
+  <div class="cta"><a href="#" class="btn btn-primary">Sign in</a></div>
+
+  <div class="panel-wrap" id="d3-panel">
+    <div class="panel" role="img" aria-label="The wiscourse home screen: sidebar, week strip, agenda and the New rail">
+      <aside class="sb">
+        <div class="top">
+          <span class="wc-logo" style="font-size:15px;color:var(--ink)"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></span>
+          <svg class="ico" style="width:14px;height:14px"><use href="#d3-search"/></svg>
+        </div>
+        <a class="on"><svg class="ico"><use href="#d3-home"/></svg>Home<span class="n">7</span></a>
+        <a><svg class="ico"><use href="#d3-inbox"/></svg>Inbox<span class="n">5</span></a>
+        <a><svg class="ico"><use href="#d3-book"/></svg>Courses</a>
+        <a><svg class="ico"><use href="#d3-task"/></svg>Tasks</a>
+        <a><svg class="ico"><use href="#d3-grade"/></svg>Grades</a>
+        <a><svg class="ico"><use href="#d3-cal"/></svg>Calendar</a>
+        <div class="sec"><span>Courses</span><span>Fall 2026</span></div>
+        <a class="crs" style="--c:var(--course-indigo)"><span class="dot"></span><span class="t">Operating Systems</span><span class="code">CS 537</span></a>
+        <a class="crs" style="--c:var(--course-amber)"><span class="dot"></span><span class="t">Linear Algebra</span><span class="code">MATH 340</span></a>
+        <a class="crs" style="--c:var(--course-teal)"><span class="dot"></span><span class="t">Microeconomics</span><span class="code">ECON 101</span></a>
+        <a class="crs" style="--c:var(--course-sky)"><span class="dot"></span><span class="t">Intro Statistics</span><span class="code">STAT 324</span></a>
+        <div class="foot"><span class="av">SB</span><div><div class="nm">Srinivas B.</div><div class="em">ibsrinivas27@wisc.edu</div></div></div>
+      </aside>
+
+      <div class="main">
+        <div class="hd">
+          <div><div class="d">Friday, August 21</div><div class="s">Synced 2 minutes ago · 4 courses</div></div>
+          <div class="add"><svg class="ico"><use href="#d3-plus"/></svg>Add a task…<span class="kbd">N</span></div>
+        </div>
+        <div class="strip">
+          <div class="day"><span class="w">Sun</span><span class="num">16</span><span class="dots"></span></div>
+          <div class="day"><span class="w">Mon</span><span class="num">17</span><span class="dots"><i style="--c:var(--course-indigo)"></i></span></div>
+          <div class="day"><span class="w">Tue</span><span class="num">18</span><span class="dots"><i style="--c:var(--course-sky)"></i><i style="--c:var(--course-teal)"></i></span></div>
+          <div class="day"><span class="w">Wed</span><span class="num">19</span><span class="dots"><i style="--c:var(--course-indigo)"></i></span></div>
+          <div class="day"><span class="w">Thu</span><span class="num">20</span><span class="dots"><i style="--c:var(--course-teal)"></i></span></div>
+          <div class="day today"><span class="w">Fri</span><span class="num">21</span><span class="dots"><i style="--c:var(--course-amber)"></i><i style="--c:var(--course-sky)"></i><i style="--c:var(--course-indigo)"></i><b>+2</b></span></div>
+          <div class="day"><span class="w">Sat</span><span class="num">22</span><span class="dots"><i style="--c:var(--course-teal)"></i></span></div>
+        </div>
+
+        <div class="sec-h"><span class="t red">Overdue</span><span class="c">2</span></div>
+        <div class="row" style="--c:var(--course-indigo)"><span class="rail"></span><div><div class="tt">Project 2: Multithreaded Web Server</div><div class="mm">CS 537 · Due Wed, 11:59 PM · 2/4</div></div><span class="st red">2 days late</span></div>
+        <div class="row" style="--c:var(--course-teal)"><span class="rail"></span><div><div class="tt">Problem Set 3: Elasticity and Consumer Surplus</div><div class="mm">ECON 101 · Due Thu, 5:00 PM</div></div><span class="st red">1 day late</span></div>
+
+        <div class="sec-h"><span class="t">Today</span><span class="m">Fri, Aug 21</span><span class="c">5</span></div>
+        <div class="row" style="--c:var(--course-amber)"><span class="rail"></span><div><div class="tt">Homework 5: Eigenvalues and Diagonalization</div><div class="mm">MATH 340 · Due 11:59 PM · 1/3</div></div><span class="st">Not submitted</span></div>
+        <div class="row" style="--c:var(--course-sky)"><span class="rail"></span><div><div class="tt">Quiz 2: Sampling Distributions</div><div class="mm">STAT 324 · Due 11:59 PM</div></div><span class="st done">Submitted 9:12 AM</span></div>
+        <div class="row" style="--c:var(--course-indigo)"><span class="rail"></span><div><div class="tt">Read Silberschatz ch. 4, Threads</div><div class="mm">CS 537 · Planned today · Personal</div></div><span class="st">No due date</span></div>
+        <div class="row" style="--c:var(--course-none)"><span class="rail"></span><div><div class="tt">Email Prof. Arpaci-Dusseau about office hours</div><div class="mm">Personal · Planned today</div></div><span class="st">No due date</span></div>
+        <div class="row done" style="--c:var(--course-sky)"><span class="rail"></span><div><div class="tt">Lab 3 write-up</div><div class="mm">STAT 324 · Done 10:04 AM</div></div><span class="st">Undo</span></div>
+
+        <div class="sec-h"><span class="t">Tomorrow</span><span class="m">Sat, Aug 22</span><span class="c">1</span></div>
+        <div class="row" style="--c:var(--course-teal)"><span class="rail"></span><div><div class="tt">Reading quiz: ch. 6, Market Failure</div><div class="mm">ECON 101 · Due 11:59 PM</div></div><span class="st">Not submitted</span></div>
+      </div>
+
+      <aside class="rail-new">
+        <div class="hd"><span class="t">New<span>5</span></span><a>Mark all read</a></div>
+        <div class="dayl">Today</div>
+        <div class="card" style="--c:var(--course-indigo)"><div class="k"><b>CS 537</b><span>2h</span></div><div class="t">Project 2 deadline extended to Friday</div><div class="s">Given the discussion-section conflict, we're moving…</div></div>
+        <div class="card" style="--c:var(--course-sky)"><div class="k"><b>STAT 324</b><span>4h</span></div><div class="t">Homework 3 graded: 47/50</div><div class="s">Posted by Peterson, T. · 2 comments</div></div>
+        <div class="card" style="--c:var(--course-teal)"><div class="k"><b>ECON 101</b><span>6h</span></div><div class="t">Problem Set 4 due date moved</div><div class="s">Aug 26, 5:00 PM to Aug 28, 5:00 PM</div></div>
+        <div class="dayl">Yesterday</div>
+        <div class="card" style="--c:var(--course-amber)"><div class="k"><b>MATH 340</b><span>Thu</span></div><div class="t">New assignment: Homework 6</div><div class="s">Due Sep 1, 11:59 PM · 40 points</div></div>
+        <div class="card" style="--c:var(--course-sky)"><div class="k"><b>STAT 324</b><span>Thu</span></div><div class="t">Discussion sections begin next week</div><div class="s">Sections meet in Van Vleck B119 starting Aug 25…</div></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="read wrap">
+  <div class="col rv">
+    <div class="eyebrow">Why it is fast</div>
+    <p>Every click in Canvas is a round trip to Canvas. The course list, the assignment, the file, the grade: each one is loaded again, from scratch, while you wait.</p>
+    <p>wiscourse does the waiting for you. It keeps a copy of your courses in its own database and refreshes that copy in the background, a few minutes apart. The screens you use read only from the copy. <em>Nothing on the page is waiting on Canvas.</em></p>
+    <p>So pages open the moment you ask for them, and they update on their own when something changes. Assignments from every course land in one agenda, with the dates you planned next to the dates that are due.</p>
+  </div>
+</div>
+
+<div class="get wrap">
+  <div class="col">
+    <h2 class="rv">What you get</h2>
+    <dl class="rv">
+      <div class="item">
+        <div><dt>Agenda</dt><dd>Overdue, Today, Tomorrow, This week, Later. Every course, one list, with a week strip above it.</dd></div>
+        <div class="vis mini mini-rows">
+          <div class="r" style="--c:var(--course-indigo)"><i></i><span>Project 2: Server</span><em class="red">2 days late</em></div>
+          <div class="r" style="--c:var(--course-amber)"><i></i><span>HW 5: Eigenvalues</span><em>11:59 PM</em></div>
+          <div class="r" style="--c:var(--course-sky)"><i></i><span>Quiz 2: Sampling</span><em>Submitted</em></div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Quick add</dt><dd>Type a task the way you would say it. Course and date are picked out for you.</dd></div>
+        <div class="vis chips">
+          <span class="chip" style="color:var(--ink)">read ch 4</span>
+          <span class="chip" style="--c:var(--course-indigo)"><i></i>CS 537</span>
+          <span class="chip">Fri, Aug 21</span>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Inbox</dt><dd>Announcements, grade postings and changed assignments in one feed, newest first, with read state.</dd></div>
+        <div class="vis mini mini-inbox">
+          <div class="m" style="--c:var(--course-indigo)"><b>CS 537</b><span>Project 2 extended</span><em>2h</em></div>
+          <div class="m" style="--c:var(--course-sky)"><b>STAT 324</b><span>HW 3 graded: 47/50</span><em>4h</em></div>
+          <div class="m" style="--c:var(--course-teal)"><b>ECON 101</b><span>PS 4 due date moved</span><em>6h</em></div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Courses</dt><dd>Modules, pages, files, syllabus and announcements, rendered in wiscourse. Files preview without a download.</dd></div>
+        <div class="vis mini mini-mods">
+          <div class="mini-tabs"><span class="on">Modules</span><span>Pages</span><span>Files</span><span>Syllabus</span></div>
+          <div class="md"><svg class="ico"><use href="#d3-doc"/></svg>Week 4: Threads<em>3 items</em></div>
+          <div class="md"><svg class="ico"><use href="#d3-file"/></svg>p2-handout.pdf<em>Preview</em></div>
+          <div class="md"><svg class="ico"><use href="#d3-link"/></svg>Project 2 autograder<em>Canvas</em></div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Grades</dt><dd>Weighted by assignment group. Edit a cell to see what-if, and what you need on the rest.</dd></div>
+        <div class="vis mini mini-grades">
+          <div class="g"><span>Group</span><span>Score</span><span>Wt</span></div>
+          <div class="g"><span class="v">Projects</span><span class="v">92 / 100</span><span class="p">40%</span></div>
+          <div class="g"><span class="v">Midterm</span><span class="edit">88</span><span class="p">30%</span></div>
+          <div class="sum">Need <b>84%</b> on the rest for an A</div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Calendar</dt><dd>Week, month and day views with due times, Canvas events and your planned work. Export to any calendar app.</dd></div>
+        <div class="vis mini mini-cal">
+          <div class="h"></div><div class="h">Thu</div><div class="h today">Fri</div><div class="h">Sat</div>
+          <div class="tm">9</div><div class="cell"><span class="ev" style="--c:var(--course-indigo);top:2px">CS 537</span></div><div class="cell"></div><div class="cell"></div>
+          <div class="tm">11</div><div class="cell"></div><div class="cell"><span class="ev" style="--c:var(--course-amber);top:2px">MATH</span></div><div class="cell"></div>
+          <div class="tm">1</div><div class="cell"><span class="ev" style="--c:var(--course-teal);top:2px">ECON</span></div><div class="cell"><span class="ev" style="--c:var(--course-sky);top:2px">Quiz 2</span></div><div class="cell"></div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Search</dt><dd>Press Cmd-K. Courses, assignments, pages, files and announcements, plus quick actions.</dd></div>
+        <div class="vis mini">
+          <div class="mini-k"><svg class="ico"><use href="#d3-search"/></svg><span class="q">eigen</span><span class="cur"></span></div>
+          <div class="mini-res on" style="--c:var(--course-amber)"><i></i>HW 5: Eigenvalues<em>Assignment</em></div>
+          <div class="mini-res" style="--c:var(--course-amber)"><i></i>Lecture 12 notes<em>File</em></div>
+        </div>
+      </div>
+      <div class="item">
+        <div><dt>Ask</dt><dd>Ask a question about your courses in plain words and get an answer drawn from the synced material.</dd></div>
+        <div class="vis mini mini-ask">
+          <div class="u">When is the CS 537 midterm?</div>
+          <div class="a"><b>Thu, Oct 15, 7:15 PM</b> in Van Vleck B102, per the syllabus. Chapters 1 to 7.</div>
+        </div>
+      </div>
+    </dl>
+  </div>
+</div>
+
+<div class="band">
+  <div class="wrap"><div class="col">
+    <div class="cell rv">
+      <h3>Grades appear only once your instructor posts them.</h3>
+      <p>Canvas lets instructors hold scores back. wiscourse never shows a score before it is released, and never computes one it was not given.</p>
+    </div>
+    <div class="cell rv">
+      <h3>Submissions are confirmed writes. Nothing is faked as sent.</h3>
+      <p>When you submit from wiscourse the status stays pending until Canvas confirms it. If it fails, you see that too.</p>
+    </div>
+  </div></div>
+</div>
+
+<div class="close wrap">
+  <h2 class="rv">Sign in and connect Canvas once.</h2>
+  <div class="cta rv"><a href="#" class="btn btn-primary">Sign in</a></div>
+  <p class="sub rv">The first sync starts right away.</p>
+</div>
+
+<footer>
+  <div class="wrap col">
+    <span class="wc-logo" style="font-size:15px;color:var(--ink)"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></span>
+    <span>Not affiliated with UW-Madison or Instructure.</span>
+    <nav class="links"><a href="#">Privacy</a><a href="#">GitHub</a><a href="#">Sign in</a></nav>
+  </div>
+</footer>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('d3');
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var targets = Array.prototype.slice.call(root.querySelectorAll('.rv, #d3-panel'));
+  function showAll() { targets.forEach(function (t) { t.classList.add('in'); }); }
+  if (reduce || !('IntersectionObserver' in window)) { showAll(); return; }
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  targets.forEach(function (t) { io.observe(t); });
+  // Never leave content hidden if the observer does not fire (hidden tab, odd viewports).
+  var armed = false;
+  function arm() { if (armed) return; armed = true; setTimeout(function () { showAll(); io.disconnect(); }, 1500); }
+  if (root.classList.contains('is-active')) arm();
+  window.addEventListener('wc:activate', function (e) { if (e.detail && e.detail.id === 'd3') arm(); });
+})();
+</script>

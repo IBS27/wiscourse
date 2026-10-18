@@ -1,0 +1,817 @@
+<style>
+.d1 { --wrap: 1180px; --c: var(--course-none); --bg: var(--surface); background: var(--bg); color: var(--ink); }
+/* Dark: the page drops to near-black so --surface panels read as panels. */
+.dark .d1 { --bg: var(--page); }
+.dark .d1 .rail { background: var(--surface); }
+.d1 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 24px; }
+
+/* nav */
+.d1 .nav { height: 60px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); z-index: 20; }
+.d1 .nav .wrap { height: 100%; display: flex; align-items: center; justify-content: space-between; }
+.d1 .nav-links { display: flex; align-items: center; gap: 22px; font-size: 13.5px; font-weight: 500; }
+.d1 .nav-links a:not(.btn) { color: var(--ink-2); }
+.d1 .nav-links a:not(.btn):hover { color: var(--ink); }
+
+/* buttons */
+.d1 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 8px; font-size: 13.5px; font-weight: 600; border: 1px solid transparent; transition: transform .12s ease, background .15s ease, border-color .15s ease; white-space: nowrap; }
+.d1 .btn:active { transform: translateY(1px); }
+.d1 .btn-primary { background: var(--today-bg); color: var(--today-fg); }
+.d1 .btn-primary:hover { opacity: .9; }
+.d1 .btn-sm { height: 32px; padding: 0 13px; font-size: 13px; }
+.d1 .link { color: var(--ink-2); font-weight: 500; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+.d1 .link:hover { color: var(--ink); }
+.d1 .link svg { width: 14px; height: 14px; transition: transform .15s ease; }
+.d1 .link:hover svg { transform: translateX(2px); }
+
+/* hero */
+.d1 .hero { padding: 72px 0 0; overflow: hidden; }
+.d1 .hero .wrap { display: grid; grid-template-columns: 11fr 13fr; gap: 48px; align-items: center; }
+.d1 .hero-copy { padding-bottom: 40px; }
+.d1 h1 { font-size: 42px; line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; margin: 0 0 20px; white-space: nowrap; }
+.d1 h1 .h1-b { display: block; color: var(--ink-3); }
+.d1 .hero p { font-size: 16.5px; line-height: 1.5; color: var(--ink-2); margin: 0 0 28px; max-width: 40ch; }
+.d1 .hero-cta { display: flex; align-items: center; gap: 22px; }
+.d1 .hero-vis { position: relative; min-width: 0; }
+.d1 .hero-vis::after { content: ""; position: absolute; inset: auto -160px 0 0; height: 90px; background: linear-gradient(to bottom, transparent, var(--bg)); pointer-events: none; }
+
+/* app frame (mini Home) */
+.d1 .app { width: calc(100% + 140px); max-width: 800px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.d1 .app-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.d1 .app-date { font-size: 15px; font-weight: 600; letter-spacing: -0.015em; }
+.d1 .app-sync { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 12px; color: var(--ink-3); }
+.d1 .app-sync .spin { width: 10px; height: 10px; border: 1.5px solid var(--line-2); border-top-color: var(--ink-2); border-radius: 999px; animation: d1spin .8s linear infinite; }
+.d1 .app-sync.done .spin { display: none; }
+.d1 .app-sync .d { width: 6px; height: 6px; border-radius: 999px; background: var(--course-emerald); display: none; }
+.d1 .app-sync.done .d { display: block; }
+@keyframes d1spin { to { transform: rotate(360deg); } }
+.d1 .app-add { height: 32px; width: 300px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); color: var(--ink-3); font-size: 13px; display: flex; align-items: center; gap: 9px; padding: 0 11px; }
+.d1 .app-add svg { width: 14px; height: 14px; }
+.d1 .kbd { margin-left: auto; font-size: 11px; font-weight: 500; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; line-height: 17px; background: var(--surface); }
+.d1 .week { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--line); padding: 10px 12px; gap: 4px; }
+.d1 .day { height: 54px; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; color: var(--ink-2); }
+.d1 .day b { font-weight: 600; font-size: 14px; color: var(--ink); letter-spacing: -0.01em; }
+.d1 .day.today { background: var(--today-bg); color: var(--today-fg); }
+.d1 .day.today b { color: var(--today-fg); }
+.d1 .dots { display: flex; gap: 3px; height: 6px; white-space: nowrap; }
+.d1 .dots i { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d1 .dots em { font-style: normal; font-size: 9.5px; line-height: 6px; color: var(--ink-3); font-weight: 600; }
+.d1 .day.today .dots em { color: var(--today-fg); opacity: .7; }
+.d1 .sec { padding: 10px 16px 4px; display: flex; align-items: baseline; gap: 8px; }
+.d1 .sec .t { font-size: 12.5px; font-weight: 600; letter-spacing: -0.01em; }
+.d1 .sec .t.red { color: var(--red); }
+.d1 .sec .m { font-size: 11.5px; color: var(--ink-3); }
+.d1 .sec .n { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-3); background: var(--chip); border-radius: 999px; padding: 1px 7px; }
+.d1 .sec .n.red { color: var(--red); background: var(--red-bg); }
+.d1 .row { display: flex; align-items: center; gap: 12px; padding: 9px 16px 9px 12px; border-left: 4px solid var(--c); margin: 0 0 2px; min-height: 46px; }
+.d1 .row:hover { background: var(--hover); }
+.d1 .row .cb { width: 15px; height: 15px; border: 1.5px solid var(--line-2); border-radius: 4px; flex: none; }
+.d1 .row .cb.on { background: var(--ink); border-color: var(--ink); position: relative; }
+.d1 .row .cb.on::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--surface); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.d1 .row .tx { min-width: 0; flex: 1; }
+.d1 .row .ti { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .row .ti.done { color: var(--ink-3); text-decoration: line-through; }
+.d1 .row .me { font-size: 12px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .row .st { font-size: 12px; color: var(--ink-3); flex: none; white-space: nowrap; }
+.d1 .row .st.red { color: var(--red); }
+.d1 .row .st.ok { color: var(--ink-2); }
+/* row stagger */
+.d1 .app .row, .d1 .app .sec { opacity: 0; transform: translateY(6px); }
+.d1 .app.in .row, .d1 .app.in .sec { animation: d1in .45s cubic-bezier(.16,1,.3,1) forwards; animation-delay: calc(var(--i) * 40ms + 120ms); }
+@keyframes d1in { to { opacity: 1; transform: none; } }
+
+/* sections */
+.d1 section.band { padding: 120px 0; }
+.d1 h2 { font-size: 32px; letter-spacing: -0.025em; font-weight: 600; line-height: 1.15; margin: 0 0 12px; }
+.d1 .lead { font-size: 15.5px; line-height: 1.55; color: var(--ink-2); margin: 0; max-width: 54ch; }
+
+/* how it works */
+.d1 .how { border-top: 1px solid var(--line); }
+.d1 .steps { margin-top: 56px; display: grid; grid-template-columns: 1fr 1fr 1fr; position: relative; }
+.d1 .steps::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 1px; background: var(--line-2); }
+.d1 .step { padding: 0 32px 0 0; position: relative; }
+.d1 .step + .step { padding-left: 32px; border-left: 1px solid var(--line); }
+.d1 .step .pt { width: 15px; height: 15px; border-radius: 999px; background: var(--surface); border: 1.5px solid var(--ink); margin-bottom: 26px; position: relative; }
+.d1 .step .pt::after { content: ""; position: absolute; inset: 3px; border-radius: 999px; background: var(--ink); }
+.d1 .step h3 { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin: 0 0 8px; }
+.d1 .step p { margin: 0; font-size: 14px; line-height: 1.55; color: var(--ink-2); }
+.d1 .step .where { font-size: 12px; color: var(--ink-3); margin-top: 10px; }
+
+/* product rows */
+.d1 .prow { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+.d1 .prow + .prow { margin-top: 120px; }
+.d1 .prow.flip .ptext { order: 2; }
+.d1 .prow h2 { font-size: 28px; }
+.d1 .ptext ul { margin: 22px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; font-size: 14px; color: var(--ink-2); }
+.d1 .ptext li { display: flex; gap: 10px; align-items: flex-start; }
+.d1 .ptext li svg { width: 15px; height: 15px; flex: none; margin-top: 2px; color: var(--ink-3); }
+.d1 .ptext code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--chip); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--ink); }
+
+/* quick add preview */
+.d1 .qa { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--menu-shadow); max-width: 480px; margin-left: auto; }
+.d1 .qa-in { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 15px; min-height: 50px; }
+.d1 .qa-in svg { width: 16px; height: 16px; color: var(--ink-3); flex: none; }
+.d1 .qa-in .cur { width: 1.5px; height: 18px; background: var(--ink); animation: d1blink 1s steps(2) infinite; }
+@keyframes d1blink { 50% { opacity: 0; } }
+.d1 .qa-in .typed:empty + .cur { margin-left: -4px; }
+.d1 .qa-in .ph { color: var(--ink-3); }
+.d1 .qa-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px; min-height: 52px; }
+.d1 .chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--chip); font-size: 12px; font-weight: 500; opacity: 0; transform: translateY(4px); transition: opacity .3s ease, transform .3s cubic-bezier(.16,1,.3,1); }
+.d1 .chip.on { opacity: 1; transform: none; }
+.d1 .chip i { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d1 .qa-foot { display: flex; gap: 14px; padding: 10px 16px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); }
+.d1 .qa-foot b { font-weight: 500; color: var(--ink-2); }
+
+/* new rail */
+.d1 .rail { border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); max-width: 420px; overflow: hidden; }
+.d1 .rail-h { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 600; }
+.d1 .rail-h .n { font-size: 11px; font-weight: 600; color: var(--ink-3); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; margin-left: 6px; }
+.d1 .rail-h a { font-size: 11.5px; font-weight: 500; color: var(--ink-3); }
+.d1 .rail-g { padding: 10px 14px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.d1 .card { margin: 0 10px 8px; padding: 10px 12px; background: var(--raised); border: 1px solid var(--line); border-left: 3px solid var(--c); border-radius: 8px; }
+.d1 .card .top { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-3); margin-bottom: 4px; }
+.d1 .card .top b { font-weight: 600; color: var(--ink-2); }
+.d1 .card .top span:last-child { margin-left: auto; }
+.d1 .card .t { font-size: 13px; font-weight: 500; letter-spacing: -0.005em; }
+.d1 .card .s { font-size: 12px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .card .s .g { color: var(--ink-2); font-weight: 500; }
+
+/* showcase (switcher) */
+.d1 .rest { border-top: 1px solid var(--line); }
+.d1 .show { margin-top: 40px; display: grid; grid-template-columns: 360px 1fr; gap: 56px; align-items: start; }
+.d1 .show-list { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.d1 .show-item { position: relative; display: block; width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 15px 14px 15px 18px; color: var(--ink-3); transition: color .2s ease, background .2s ease; }
+.d1 .show-item:hover { background: var(--hover); color: var(--ink-2); }
+.d1 .show-item:focus-visible { outline: 2px solid var(--line-2); outline-offset: -2px; }
+.d1 .show-item[aria-pressed="true"] { color: var(--ink); }
+.d1 .show-item h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; color: inherit; }
+.d1 .show-item p { margin: 3px 0 0; font-size: 13px; line-height: 1.45; color: inherit; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.d1 .show-item[aria-pressed="true"] p { color: var(--ink-2); }
+.d1 .show-item .bar { position: absolute; left: 0; top: 0; bottom: -1px; width: 2px; background: var(--line); transform-origin: top; transform: scaleY(0); opacity: 0; }
+.d1 .show-item[aria-pressed="true"] .bar { opacity: 1; background: var(--ink); animation: d1fill var(--dur, 3.5s) linear forwards; }
+.d1 .show.paused .show-item .bar { animation-play-state: paused; }
+.d1 .show.static .show-item[aria-pressed="true"] .bar { animation: none; transform: none; }
+@keyframes d1fill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+.d1 .show-stage { position: relative; height: 620px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; min-width: 0; }
+.d1 .pane { position: absolute; inset: 0; opacity: 0; transform: translateY(6px); transition: opacity .2s ease, transform .2s cubic-bezier(.16,1,.3,1); pointer-events: none; font-size: 13px; }
+.d1 .pane.on { opacity: 1; transform: none; pointer-events: auto; }
+.d1 .pane::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(to bottom, transparent, var(--pbg, var(--surface))); pointer-events: none; z-index: 2; }
+.d1 .pane[data-pane="search"] { --pbg: var(--sunken); }
+.d1 .pane[data-pane="ask"]::after { display: none; }
+.d1 .show.static .pane { transition: none; }
+.d1 .pane .ic { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.d1 .pane .ph { height: 50px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line); }
+.d1 .pane .ph .t { font-size: 15px; font-weight: 600; letter-spacing: -0.015em; }
+.d1 .pane .ph .m { font-size: 12px; color: var(--ink-3); margin-left: 8px; font-weight: 400; }
+.d1 .pane .ph .act { font-size: 12.5px; color: var(--ink-3); }
+.d1 .kbd2 { font-size: 10.5px; font-weight: 500; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; line-height: 16px; }
+
+/* inbox pane */
+.d1 .fx { padding: 10px 18px; border-bottom: 1px solid var(--line); display: flex; gap: 6px; }
+.d1 .fx span { font-size: 12px; font-weight: 500; color: var(--ink-2); padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+.d1 .fx span.on { background: var(--today-bg); color: var(--today-fg); border-color: var(--today-bg); }
+.d1 .fg { padding: 14px 18px 4px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.d1 .fi { display: grid; grid-template-columns: 76px 1fr auto; column-gap: 10px; align-items: baseline; padding: 10px 18px 10px 14px; border-left: 4px solid var(--c); position: relative; }
+.d1 .fi + .fi { border-top: 1px solid var(--line); }
+.d1 .fi .cc { font-size: 11px; font-weight: 600; color: var(--c); letter-spacing: .02em; }
+.d1 .fi .tt { grid-column: 2; font-size: 13.5px; font-weight: 500; }
+.d1 .fi.unread .tm::after { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--ink); margin-left: 8px; vertical-align: 1px; }
+.d1 .fi .tm { min-width: 34px; text-align: right; }
+.d1 .fi:not(.unread) .tm { padding-right: 14px; }
+.d1 .fi .tm { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d1 .fi .ex { grid-column: 2; font-size: 12px; color: var(--ink-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .fi .ex .g { color: var(--ink-2); font-weight: 500; }
+
+/* course hub pane */
+.d1 .hub { display: grid; grid-template-columns: 208px 1fr; height: 100%; }
+.d1 .hub .side { border-right: 1px solid var(--line); background: var(--sunken); padding: 12px 8px; }
+.d1 .hub .side .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px 8px; }
+.d1 .hub .crs { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--ink-2); line-height: 1.25; }
+.d1 .hub .crs .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d1 .hub .crs.on { background: var(--hover); color: var(--ink); }
+.d1 .hub .crs small { grid-column: 2; color: var(--ink-3); font-weight: 400; font-size: 11.5px; }
+.d1 .hub .body { min-width: 0; }
+.d1 .hub .ttl { padding: 16px 18px 0; }
+.d1 .hub .ttl .k { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--course-indigo); }
+.d1 .hub .ttl .n { font-size: 17px; font-weight: 600; letter-spacing: -0.015em; margin-top: 2px; }
+.d1 .tabs { display: flex; gap: 18px; padding: 12px 18px 0; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 500; color: var(--ink-3); }
+.d1 .tabs span { padding-bottom: 9px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.d1 .tabs span.on { color: var(--ink); border-color: var(--ink); }
+.d1 .mod { padding: 10px 18px 0; }
+.d1 .mod .mh { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 8px 0; font-size: 13.5px; }
+.d1 .mod .mh .ic { width: 13px; height: 13px; color: var(--ink-3); }
+.d1 .mod .mi { display: flex; align-items: center; gap: 9px; padding: 8px 0 8px 21px; border-top: 1px solid var(--line); font-size: 13px; }
+.d1 .mod .mi .ic { width: 14px; height: 14px; color: var(--ink-3); }
+.d1 .mod .mi .r { margin-left: auto; color: var(--ink-3); font-size: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.d1 .mod .mi .r.done { color: var(--ink-2); }
+.d1 .mod .mi .r .ic { width: 12px; height: 12px; }
+
+/* grades pane */
+.d1 .gr { display: grid; grid-template-columns: 3fr 2fr; height: calc(100% - 50px); }
+.d1 .gr .tbl { border-right: 1px solid var(--line); }
+.d1 .gr table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+.d1 .gr th { text-align: left; font-size: 11px; font-weight: 600; color: var(--ink-3); padding: 11px 18px 9px; border-bottom: 1px solid var(--line); letter-spacing: .02em; }
+.d1 .gr td { padding: 10px 18px; border-top: 1px solid var(--line); }
+.d1 .gr tr:first-child td { border-top: 0; }
+.d1 .gr tr.grp td { background: var(--sunken); font-weight: 600; }
+.d1 .gr tr.sub td:first-child { padding-left: 32px; color: var(--ink-2); }
+.d1 .gr td.num, .d1 .gr th.num { text-align: right; }
+.d1 .gr td .w { color: var(--ink-3); font-size: 11.5px; margin-left: 6px; font-weight: 400; }
+.d1 .gr .edit { display: inline-block; min-width: 50px; text-align: right; padding: 3px 7px; margin: -4px -7px -4px 0; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-2) 35%, transparent); }
+.d1 .gr td.muted { color: var(--ink-3); }
+.d1 .gr .sum { padding: 20px 20px; }
+.d1 .gr .sum .big { font-size: 36px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.d1 .gr .sum .lb { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+.d1 .gr .sum .need { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.5; }
+.d1 .gr .sum .need b { font-weight: 600; }
+.d1 .gr .sum .note { margin-top: 14px; font-size: 12px; color: var(--ink-3); line-height: 1.5; }
+.d1 .gr .sum .rs { margin-top: 16px; font-size: 12px; color: var(--ink-3); display: flex; gap: 14px; }
+.d1 .gr .sum .rs span { text-decoration: underline; text-underline-offset: 2px; }
+
+/* calendar pane */
+.d1 .cal { display: grid; grid-template-columns: 44px repeat(5, 1fr); height: calc(100% - 50px); }
+.d1 .cal .gut { border-right: 1px solid var(--line); position: relative; }
+.d1 .cal .gut .hd { height: 46px; border-bottom: 1px solid var(--line); }
+.d1 .cal .ds { height: 26px; border-bottom: 1px solid var(--line); display: flex; gap: 3px; align-items: center; padding: 0 4px; overflow: hidden; }
+.d1 .cal .dp { display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 6px; border-radius: 6px; background: var(--chip); font-size: 10px; font-weight: 500; white-space: nowrap; }
+.d1 .cal .dp i { width: 5px; height: 5px; border-radius: 999px; background: var(--c); }
+.d1 .cal .gut span { position: absolute; right: 6px; font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; transform: translateY(-50%); }
+.d1 .cal .cday { border-left: 1px solid var(--line); position: relative; }
+.d1 .cal .cday:nth-child(2) { border-left: 0; }
+.d1 .cal .dh { height: 46px; box-sizing: border-box; text-align: center; padding-top: 6px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--ink-3); font-weight: 500; }
+.d1 .cal .dh b { display: block; height: 22px; line-height: 22px; font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 1px; }
+.d1 .cal .dh.today b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--today-bg); color: var(--today-fg); margin: 1px auto 0; }
+.d1 .cal .hl { position: absolute; left: 0; right: 0; height: 1px; background: var(--line); }
+.d1 .cal .ev { position: absolute; left: 4px; right: 4px; padding: 5px 6px 5px 9px; border-radius: 6px; background: var(--chip); font-size: 11px; line-height: 1.3; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.d1 .cal .ev::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+.d1 .cal .ev small { display: block; color: var(--ink-3); font-weight: 400; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .cal .ev.due { background: var(--surface); border: 1px solid var(--line); }
+.d1 .cal .ev.plan { background: var(--surface); border: 1px dashed var(--line-2); }
+
+/* search pane */
+.d1 .ck { padding: 36px 18px 0; background: var(--sunken); height: 100%; }
+.d1 .ck .pal { max-width: 560px; margin: 0 auto; border: 1px solid var(--line); border-radius: 8px; background: var(--raised); box-shadow: var(--menu-shadow); overflow: hidden; }
+.d1 .ck .in { display: flex; align-items: center; gap: 10px; padding: 13px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.d1 .ck .in .ic { color: var(--ink-3); }
+.d1 .ck .in .cur { width: 1px; height: 16px; background: var(--ink); margin-left: -8px; animation: d1blink 1s steps(2) infinite; }
+.d1 .ck .in .kbd2 { margin-left: auto; }
+.d1 .ck .g { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 10px 14px 4px; }
+.d1 .ck .r { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: 13px; }
+.d1 .ck .r.on { background: var(--hover); }
+.d1 .ck .r .ic { width: 14px; height: 14px; color: var(--ink-3); }
+.d1 .ck .r .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+.d1 .ck .r .m { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+.d1 .ck .ft { display: flex; gap: 14px; padding: 9px 14px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--ink-3); }
+
+/* ask pane */
+.d1 .ask { display: grid; grid-template-columns: 220px 1fr; height: 100%; }
+.d1 .ask .thr { border-right: 1px solid var(--line); background: var(--sunken); padding: 12px 8px; }
+.d1 .ask .thr .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px 8px; }
+.d1 .ask .thr .th { padding: 7px 8px; border-radius: 6px; font-size: 13px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d1 .ask .thr .th.on { background: var(--hover); color: var(--ink); }
+.d1 .ask .conv { display: flex; flex-direction: column; min-width: 0; }
+.d1 .ask .msgs { flex: 1; padding: 22px 22px 0; display: flex; flex-direction: column; gap: 16px; }
+.d1 .ask .u { align-self: flex-end; max-width: 72%; background: var(--chip); border-radius: 8px; padding: 9px 12px; font-size: 13.5px; }
+.d1 .ask .a { max-width: 86%; font-size: 13.5px; line-height: 1.55; }
+.d1 .ask .a p { margin: 0 0 8px; }
+.d1 .ask .a b { font-weight: 600; }
+.d1 .ask .src { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; margin-top: 2px; }
+.d1 .ask .src .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--course-indigo); }
+.d1 .ask .chg { display: grid; grid-template-columns: 1fr auto; column-gap: 14px; align-items: center; border: 1px solid var(--line); border-left: 3px solid var(--course-indigo); border-radius: 8px; padding: 9px 12px; margin-top: 4px; font-size: 13px; background: var(--surface); }
+.d1 .ask .chg .dot { display: none; }
+.d1 .ask .chg .ct { grid-column: 1; grid-row: 1; font-weight: 500; }
+.d1 .ask .chg .cm { grid-column: 1; grid-row: 2; font-size: 12px; color: var(--ink-3); margin-top: 1px; }
+.d1 .ask .chg .cu { grid-column: 2; grid-row: 1 / 3; font-size: 12px; color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px; }
+.d1 .ask .msgs { gap: 14px; }
+.d1 .ask .comp { margin: 16px 22px 22px; border: 1px solid var(--line-2); border-radius: 8px; padding: 11px 12px; font-size: 13.5px; color: var(--ink-3); display: flex; justify-content: space-between; align-items: center; }
+
+/* closing */
+.d1 .close { border-top: 1px solid var(--line); padding: 112px 0; }
+.d1 .close .wrap { display: grid; grid-template-columns: 1fr 440px; gap: 72px; align-items: center; }
+.d1 .close h2 { font-size: 36px; max-width: 16ch; }
+.d1 .close .lead { margin-bottom: 28px; }
+/* First-sync card: the only progress indicator in the product. */
+.d1 .fs { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); padding: 18px 18px 8px; }
+.d1 .fs .t { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.d1 .fs .s { font-size: 12.5px; color: var(--ink-3); margin-top: 3px; }
+.d1 .fs .track { height: 3px; border-radius: 999px; background: var(--chip); margin: 14px 0 6px; overflow: hidden; }
+.d1 .fs .track i { display: block; height: 100%; width: 100%; background: var(--ink); transform-origin: left; transform: scaleX(.06); transition: transform 2.6s cubic-bezier(.2,.7,.2,1); }
+.d1 .fs .st { display: flex; align-items: center; gap: 9px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.d1 .fs .st:first-of-type { border-top: 0; }
+.d1 .fs .st svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-3); flex: none; }
+.d1 .fs .st .r { margin-left: auto; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.d1 .fs .st.done svg { color: var(--ink); }
+.d1 .fs .st.done .r { color: var(--ink-2); }
+.d1 .fs .st.wait { color: var(--ink-3); }
+.d1 .fs .st .r b { font-weight: 500; color: var(--ink); }
+.d1 .fs.go .track i { transform: scaleX(.72); }
+.d1 .fs .st svg.spin { animation: d1spin 1.4s linear infinite; }
+@keyframes d1spin { to { transform: rotate(360deg); } }
+.d1 .fs .st { opacity: 0; transform: translateY(4px); transition: opacity .4s ease, transform .4s cubic-bezier(.16,1,.3,1); transition-delay: calc(var(--i) * 260ms + 300ms); }
+.d1 .fs.go .st { opacity: 1; transform: none; }
+
+/* footer */
+.d1 footer { border-top: 1px solid var(--line); padding: 28px 0; font-size: 12.5px; color: var(--ink-3); }
+.d1 footer .wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.d1 footer .fl { margin-left: auto; display: flex; gap: 18px; }
+.d1 footer .fl a:hover { color: var(--ink); }
+
+/* reveal */
+.d1 .rv { opacity: 0; transform: translateY(14px); transition: opacity .6s cubic-bezier(.16,1,.3,1), transform .6s cubic-bezier(.16,1,.3,1); }
+.d1 .rv.on { opacity: 1; transform: none; }
+
+@media (max-width: 960px) {
+  .d1 .hero .wrap { grid-template-columns: 1fr; gap: 40px; }
+  .d1 .app { width: 100%; }
+  .d1 .app-add { display: none; }
+  .d1 .steps { grid-template-columns: 1fr; gap: 36px; }
+  .d1 .steps::before { display: none; }
+  .d1 .step + .step { border-left: 0; padding-left: 0; }
+  .d1 .step { padding-right: 0; }
+  .d1 .prow { grid-template-columns: 1fr; gap: 32px; }
+  .d1 .prow.flip .ptext { order: 0; }
+  .d1 .qa, .d1 .rail { margin-left: 0; max-width: 100%; }
+  .d1 .show { grid-template-columns: 1fr; gap: 20px; margin-top: 28px; }
+  .d1 .show-list { flex-direction: row; gap: 6px; border-top: 0; overflow-x: auto; scroll-snap-type: x mandatory; padding: 2px 0 10px; scrollbar-width: none; }
+  .d1 .show-list::-webkit-scrollbar { display: none; }
+  .d1 .show-item { flex: none; scroll-snap-align: start; width: auto; border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; background: var(--surface); }
+  .d1 .show-item[aria-pressed="true"] { background: var(--chip); border-color: var(--line-2); }
+  .d1 .show-item p, .d1 .show-item .bar { display: none; }
+  .d1 .show-stage { height: 520px; }
+  .d1 .hub .side, .d1 .ask .thr { display: none; }
+  .d1 .hub, .d1 .ask { grid-template-columns: 1fr; }
+  .d1 .gr { grid-template-columns: 1fr; height: auto; }
+  .d1 .gr .tbl { border-right: 0; }
+  .d1 .gr .sum { order: -1; border-bottom: 1px solid var(--line); padding: 16px 18px; display: grid; grid-template-columns: auto 1fr; column-gap: 18px; align-items: center; }
+  .d1 .gr .sum .big { font-size: 30px; }
+  .d1 .gr .sum .lb { grid-column: 1; }
+  .d1 .gr .sum .need { grid-column: 2; grid-row: 1 / 3; margin: 0; padding: 0; border: 0; }
+  .d1 .gr .sum .note, .d1 .gr .sum .rs { display: none; }
+  .d1 .pane .ph .m, .d1 .pane .ph .act { display: none; }
+  .d1 .fi { grid-template-columns: 62px 1fr auto; padding-right: 14px; }
+  .d1 .fi .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .d1 .cal { grid-template-columns: 44px repeat(3, 1fr); }
+  .d1 .cal .cday:nth-child(n+5) { display: none; }
+  .d1 .cal .ev { white-space: normal; font-size: 10.5px; padding: 4px 5px 4px 8px; }
+  .d1 .cal .ev small { display: none; }
+  .d1 .ck { padding: 20px 14px 0; }
+}
+@media (max-width: 640px) {
+  .d1 .wrap { padding: 0 18px; }
+  .d1 .hero { padding-top: 44px; }
+  .d1 .hero-copy { padding-bottom: 0; }
+  .d1 .hero .wrap { gap: 28px; }
+  .d1 h1 { font-size: 34px; white-space: normal; text-wrap: balance; }
+  .d1 .hero p { font-size: 15px; }
+  .d1 section.band { padding: 72px 0; }
+  .d1 h2, .d1 .prow h2 { font-size: 26px; }
+  .d1 .close h2 { font-size: 28px; }
+  .d1 .close .wrap { grid-template-columns: 1fr; gap: 36px; }
+  .d1 .close { padding: 72px 0; }
+  .d1 .tabs { gap: 14px; }
+  .d1 .tabs span:nth-child(n+5) { display: none; }
+  .d1 .fi .tm { display: none; }
+  .d1 .nav-links { gap: 14px; }
+  .d1 .row .st { display: none; }
+  .d1 .day { height: 48px; }
+  .d1 .day span.l { font-size: 11px; }
+  .d1 .dots em { display: none; }
+  .d1 .dots { gap: 2px; }
+  .d1 .qa-foot span:nth-child(n+3) { display: none; }
+  .d1 .qa-in { font-size: 14px; }
+  .d1 footer .fl { margin-left: 0; }
+}
+</style>
+
+<section class="design d1" id="d1" data-title="Agenda first" data-theme="light">
+  <header class="nav">
+    <div class="wrap">
+      <a href="#d1" class="wc-logo" style="font-size:18px" aria-label="wiscourse"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></a>
+      <nav class="nav-links">
+        <a href="#d1-how">Getting started</a>
+        <a href="#" class="btn btn-primary btn-sm">Sign in</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <h1>Canvas is slow. <span class="h1-b">Your week shouldn't be.</span></h1>
+        <p>Your Canvas courses, assignments and grades, kept in sync and laid out as one agenda.</p>
+        <div class="hero-cta">
+          <a href="#" class="btn btn-primary">Sign in</a>
+          <a href="#d1-how" class="link">Getting started <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="hero-vis">
+        <div class="app" id="d1-app" aria-label="Preview of the wiscourse home screen">
+          <div class="app-top">
+            <div>
+              <div class="app-date">Friday, August 21</div>
+              <div class="app-sync" id="d1-sync"><span class="spin"></span><span class="d"></span><span class="txt">Syncing from Canvas…</span></div>
+            </div>
+            <div class="app-add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Add a task…<span class="kbd">N</span></div>
+          </div>
+          <div class="week">
+            <div class="day"><span class="l">Sun</span><b>16</b><span class="dots"></span></div>
+            <div class="day"><span class="l">Mon</span><b>17</b><span class="dots"><i style="--c:var(--course-indigo)"></i></span></div>
+            <div class="day"><span class="l">Tue</span><b>18</b><span class="dots"></span></div>
+            <div class="day"><span class="l">Wed</span><b>19</b><span class="dots"><i style="--c:var(--course-indigo)"></i><i style="--c:var(--course-teal)"></i></span></div>
+            <div class="day"><span class="l">Thu</span><b>20</b><span class="dots"><i style="--c:var(--course-teal)"></i></span></div>
+            <div class="day today"><span class="l">Fri</span><b>21</b><span class="dots"><i style="--c:var(--course-amber)"></i><i style="--c:var(--course-sky)"></i><i style="--c:var(--course-indigo)"></i><em>+2</em></span></div>
+            <div class="day"><span class="l">Sat</span><b>22</b><span class="dots"><i style="--c:var(--course-teal)"></i></span></div>
+          </div>
+
+          <div class="sec" style="--i:0"><span class="t red">Overdue</span><span class="n red">2</span></div>
+          <div class="row" style="--i:1;--c:var(--course-indigo)"><span class="cb"></span><div class="tx"><div class="ti">Project 2: Multithreaded Web Server</div><div class="me">CS 537 · Due Wed, 11:59 PM · 2/4</div></div><span class="st red">2 days late</span></div>
+          <div class="row" style="--i:2;--c:var(--course-teal)"><span class="cb"></span><div class="tx"><div class="ti">Problem Set 3: Elasticity and Consumer Surplus</div><div class="me">ECON 101 · Due Thu, 5:00 PM</div></div><span class="st red">1 day late</span></div>
+
+          <div class="sec" style="--i:3"><span class="t">Today</span><span class="m">Fri, Aug 21</span><span class="n">5</span></div>
+          <div class="row" style="--i:4;--c:var(--course-amber)"><span class="cb"></span><div class="tx"><div class="ti">Homework 5: Eigenvalues and Diagonalization</div><div class="me">MATH 340 · Due 11:59 PM · 1/3</div></div><span class="st">Not submitted</span></div>
+          <div class="row" style="--i:5;--c:var(--course-sky)"><span class="cb"></span><div class="tx"><div class="ti">Quiz 2: Sampling Distributions</div><div class="me">STAT 324 · Due 11:59 PM</div></div><span class="st ok">Submitted 9:12 AM</span></div>
+          <div class="row" style="--i:6;--c:var(--course-indigo)"><span class="cb"></span><div class="tx"><div class="ti">Read Silberschatz ch. 4, Threads</div><div class="me">CS 537 · Planned today · Personal</div></div><span class="st">No due date</span></div>
+          <div class="row" style="--i:7;--c:var(--course-sky)"><span class="cb on"></span><div class="tx"><div class="ti done">Lab 3 write-up</div><div class="me">STAT 324 · Done 10:04 AM</div></div><span class="st">Undo</span></div>
+
+          <div class="sec" style="--i:8"><span class="t">Tomorrow</span><span class="m">Sat, Aug 22</span><span class="n">1</span></div>
+          <div class="row" style="--i:9;--c:var(--course-teal)"><span class="cb"></span><div class="tx"><div class="ti">Reading quiz: ch. 6, Market Failure</div><div class="me">ECON 101 · Due 11:59 PM</div></div><span class="st">Not submitted</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="band how" id="d1-how">
+    <div class="wrap">
+      <h2 class="rv">Getting started</h2>
+            <div class="steps rv">
+        <div class="step"><div class="pt"></div><h3>Sign in</h3><p>Use your email or Google account. wiscourse never asks for your Canvas password.</p><div class="where">Takes a minute</div></div>
+        <div class="step"><div class="pt"></div><h3>Connect Canvas in Settings</h3><p>Link your UW-Madison Canvas account once. Courses, assignments, grades and announcements start syncing right away.</p><div class="where">Settings</div></div>
+        <div class="step"><div class="pt"></div><h3>Open your agenda</h3><p>Items land as they arrive. Press N to add your own tasks next to Canvas work, and come back any time.</p><div class="where">Home</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <div class="wrap">
+      <div class="prow">
+        <div class="ptext rv">
+          <h2>Add a task the way you would say it</h2>
+          <p class="lead">Type <code>read ch 4 fri #cs537</code> and it goes on Friday, under CS 537.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span><code>#cs537</code> matches the course, <code>fri</code> plans it for Friday</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Personal tasks sit next to Canvas assignments in the same list</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Press <code>N</code> anywhere to open it</span></li>
+          </ul>
+        </div>
+        <div class="rv">
+          <div class="qa" id="d1-qa">
+            <div class="qa-in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg><span class="typed"></span><span class="cur"></span><span class="ph">Add a task…</span></div>
+            <div class="qa-chips">
+              <span class="chip" data-at="12"><i style="--c:var(--course-indigo)"></i>CS 537</span>
+              <span class="chip" data-at="8">Planned Fri, Aug 21</span>
+              <span class="chip" data-at="4">Personal task</span>
+            </div>
+            <div class="qa-foot"><span><b>↵</b> add</span><span><b>⇥</b> edit chip</span><span><b>⌥↵</b> add and keep open</span><span><b>esc</b> cancel</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="prow flip">
+        <div class="ptext rv">
+          <h2>See what changed since you last looked</h2>
+          <p class="lead">Announcements, posted grades and moved due dates, in one feed next to your agenda.</p>
+          <ul>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Grades appear only once the instructor posts them</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Due-date changes show the old and new time</span></li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span>Older items stay in Inbox</span></li>
+          </ul>
+        </div>
+        <div class="rv">
+          <div class="rail">
+            <div class="rail-h"><span>New<span class="n">5</span></span><a href="#">Mark all read</a></div>
+            <div class="rail-g">Today</div>
+            <div class="card" style="--c:var(--course-indigo)"><div class="top"><b>CS 537</b><span>2h</span></div><div class="t">Project 2 deadline extended to Friday</div><div class="s">Given the discussion-section conflict, we're moving…</div></div>
+            <div class="card" style="--c:var(--course-sky)"><div class="top"><b>STAT 324</b><span>4h</span></div><div class="t">Homework 3 graded <span class="g">47/50</span></div><div class="s">Posted by Peterson, T. · 2 comments</div></div>
+            <div class="card" style="--c:var(--course-teal)"><div class="top"><b>ECON 101</b><span>6h</span></div><div class="t">Problem Set 4 due date moved</div><div class="s">Aug 26, 5:00 PM → Aug 28, 5:00 PM</div></div>
+            <div class="rail-g">Yesterday</div>
+            <div class="card" style="--c:var(--course-amber)"><div class="top"><b>MATH 340</b><span>Thu</span></div><div class="t">New assignment: Homework 6</div><div class="s">Due Sep 1, 11:59 PM · 40 points</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band rest" id="d1-rest">
+    <div class="wrap">
+      <h2 class="rv">Everything else Canvas has</h2>
+      <div class="show rv" id="d1-show">
+        <div class="show-list" role="tablist" aria-label="Product areas">
+          <button type="button" class="show-item" data-pane="inbox" aria-pressed="true"><span class="bar"></span><h3>Inbox</h3><p>Announcements, grade postings and changed assignments, newest first.</p></button>
+          <button type="button" class="show-item" data-pane="courses" aria-pressed="false"><span class="bar"></span><h3>Courses</h3><p>Modules, pages, files and syllabus, rendered in wiscourse.</p></button>
+          <button type="button" class="show-item" data-pane="grades" aria-pressed="false"><span class="bar"></span><h3>Grades</h3><p>Weighted by group. Edit a score to see where you land.</p></button>
+          <button type="button" class="show-item" data-pane="calendar" aria-pressed="false"><span class="bar"></span><h3>Calendar</h3><p>Lectures, due times and planned work. Subscribe from any calendar app.</p></button>
+          <button type="button" class="show-item" data-pane="search" aria-pressed="false"><span class="bar"></span><h3>Search</h3><p>Press ⌘K to jump to any course, assignment, page or file.</p></button>
+          <button type="button" class="show-item" data-pane="ask" aria-pressed="false"><span class="bar"></span><h3>Ask</h3><p>Questions about your courses, answered from your own syllabi and pages.</p></button>
+        </div>
+
+        <div class="show-stage" aria-live="polite">
+          <!-- Inbox -->
+          <div class="pane on" data-pane="inbox">
+            <div class="ph"><span class="t">Inbox<span class="m">5 unread · 4 courses</span></span><span class="act">Mark all read</span></div>
+            <div class="fx"><span class="on">All</span><span>Announcements</span><span>Grades</span><span>Assignments</span></div>
+            <div class="fg">Today</div>
+            <div class="fi unread" style="--c:var(--course-indigo)"><span class="cc">CS 537</span><span class="tt">Project 2 deadline extended to Friday</span><span class="tm">2h</span><span class="ex">Given the discussion-section conflict, we are moving the due date to Friday at 11:59 PM.</span></div>
+            <div class="fi unread" style="--c:var(--course-sky)"><span class="cc">STAT 324</span><span class="tt">Homework 3 graded <span class="g">47/50</span></span><span class="tm">4h</span><span class="ex">Posted by Peterson, T. · 2 comments</span></div>
+            <div class="fi unread" style="--c:var(--course-teal)"><span class="cc">ECON 101</span><span class="tt">Problem Set 4 due date moved</span><span class="tm">6h</span><span class="ex">Aug 26, 5:00 PM to Aug 28, 5:00 PM</span></div>
+            <div class="fg">Yesterday</div>
+            <div class="fi unread" style="--c:var(--course-amber)"><span class="cc">MATH 340</span><span class="tt">New assignment: Homework 6</span><span class="tm">Thu</span><span class="ex">Due Sep 1, 11:59 PM · 40 points</span></div>
+            <div class="fi unread" style="--c:var(--course-sky)"><span class="cc">STAT 324</span><span class="tt">Discussion sections begin next week</span><span class="tm">Thu</span><span class="ex">Sections meet in Van Vleck B119 starting Aug 25.</span></div>
+            <div class="fi" style="--c:var(--course-indigo)"><span class="cc">CS 537</span><span class="tt">Project 1 graded <span class="g">92/100</span></span><span class="tm">Wed</span><span class="ex">Read Wed 4:20 PM</span></div>
+            <div class="fi" style="--c:var(--course-teal)"><span class="cc">ECON 101</span><span class="tt">Office hours moved to Social Sciences 6470</span><span class="tm">Wed</span><span class="ex">Starting this week, Tuesdays 2 to 4 PM.</span></div>
+            <div class="fi" style="--c:var(--course-amber)"><span class="cc">MATH 340</span><span class="tt">Homework 4 graded <span class="g">38/40</span></span><span class="tm">Tue</span><span class="ex">Posted by Ellenberg, J.</span></div>
+          </div>
+
+          <!-- Courses -->
+          <div class="pane" data-pane="courses">
+            <div class="hub">
+              <div class="side">
+                <div class="lbl">Courses · Fall 2026</div>
+                <div class="crs on" style="--c:var(--course-indigo)"><span class="dot"></span>Operating Systems<small>CS 537</small></div>
+                <div class="crs" style="--c:var(--course-amber)"><span class="dot"></span>Linear Algebra<small>MATH 340</small></div>
+                <div class="crs" style="--c:var(--course-teal)"><span class="dot"></span>Microeconomics<small>ECON 101</small></div>
+                <div class="crs" style="--c:var(--course-sky)"><span class="dot"></span>Intro Statistics<small>STAT 324</small></div>
+              </div>
+              <div class="body">
+                <div class="ttl"><div class="k">CS 537</div><div class="n">Introduction to Operating Systems</div></div>
+                <div class="tabs"><span class="on">Modules</span><span>Pages</span><span>Files</span><span>Syllabus</span><span>Announcements</span><span>Grades</span></div>
+                <div class="mod">
+                  <div class="mh"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>Week 4: Threads and Concurrency</div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Lecture notes: threads and the pthreads API<span class="r done"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Viewed</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>p2-starter.tar.gz<span class="r">212 KB</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Project 2: Multithreaded Web Server<span class="r">Due Wed, 11:59 PM</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Discussion: scheduler trade-offs<span class="r">Opens in Canvas</span></div>
+                  <div class="mh" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>Week 5: CPU Scheduling</div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Lecture 9: CPU scheduling policies<span class="r">Page</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>scheduler-handout.pdf<span class="r">1.4 MB</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Project 3: xv6 Scheduler<span class="r">Due Mon Aug 24</span></div>
+                  <div class="mh" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>Week 6: Virtual Memory</div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Lecture 11: Address spaces<span class="r">Page</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>vm-worksheet.pdf<span class="r">380 KB</span></div>
+                  <div class="mh" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Week 7: Paging and TLBs</div>
+                  <div class="mh"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Week 8: Midterm review</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grades -->
+          <div class="pane" data-pane="grades">
+            <div class="ph"><span class="t">CS 537<span class="m">Operating Systems · Weighted by group</span></span><span class="act">Fall 2026</span></div>
+            <div class="gr">
+              <div class="tbl">
+                <table>
+                  <tr><th>Assignment</th><th class="num">Score</th></tr>
+                  <tr class="grp"><td>Projects <span class="w">40%</span></td><td class="num">88.5%</td></tr>
+                  <tr class="sub"><td>Project 1: xv6 Shell</td><td class="num">92 / 100</td></tr>
+                  <tr class="sub"><td>Project 2: Multithreaded Web Server</td><td class="num muted">Not graded</td></tr>
+                  <tr class="sub"><td>Project 3: xv6 Scheduler</td><td class="num muted">Not yet</td></tr>
+                  <tr class="grp"><td>Homework <span class="w">20%</span></td><td class="num">94.2%</td></tr>
+                  <tr class="sub"><td>Homework 1</td><td class="num">19 / 20</td></tr>
+                  <tr class="sub"><td>Homework 2</td><td class="num">18 / 20</td></tr>
+                  <tr class="sub"><td>Homework 3</td><td class="num">20 / 20</td></tr>
+                  <tr class="sub"><td>Homework 4</td><td class="num">17 / 20</td></tr>
+                  <tr class="grp"><td>Midterm <span class="w">15%</span></td><td class="num"><span class="edit">86</span></td></tr>
+                  <tr class="sub"><td>Midterm, Oct 15</td><td class="num muted">What-if</td></tr>
+                  <tr class="grp"><td>Final <span class="w">25%</span></td><td class="num muted">Not yet</td></tr>
+                </table>
+              </div>
+              <div class="sum">
+                <div class="big">90.1%</div>
+                <div class="lb">What-if total · was 89.4%</div>
+                <div class="need">Need <b>84%</b> on the rest for an A.</div>
+                <div class="note">Canvas is the source of truth. Edits stay on this device and never change your real grade.</div>
+                <div class="rs"><span>Reset</span><span>Open in Canvas</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Calendar -->
+          <div class="pane" data-pane="calendar">
+            <div class="ph"><span class="t">Week<span class="m">Aug 17 to 21</span></span><span class="act">Today · Subscribe</span></div>
+            <div class="cal">
+              <div class="gut"><div class="hd"></div><div class="ds"></div><span style="top:72px">10 AM</span><span style="top:132px">11 AM</span><span style="top:192px">12 PM</span><span style="top:252px">1 PM</span><span style="top:312px">2 PM</span><span style="top:372px">3 PM</span><span style="top:432px">4 PM</span><span style="top:492px">5 PM</span></div>
+              <div class="cday"><div class="dh">Mon<b>17</b></div><div class="ds"></div><i class="hl" style="top:132px"></i><i class="hl" style="top:192px"></i><i class="hl" style="top:252px"></i><i class="hl" style="top:312px"></i><i class="hl" style="top:372px"></i><i class="hl" style="top:432px"></i><i class="hl" style="top:492px"></i>
+                <div class="ev" style="top:72px;height:50px;--c:var(--course-indigo)">CS 537 Lecture<small>10:00 to 10:50 AM</small></div>
+<div class="ev" style="top:197px;height:75px;--c:var(--course-teal)">ECON 101 Lecture<small>12:05 to 1:20 PM</small></div></div>
+              <div class="cday"><div class="dh">Tue<b>18</b></div><div class="ds"></div><i class="hl" style="top:132px"></i><i class="hl" style="top:192px"></i><i class="hl" style="top:252px"></i><i class="hl" style="top:312px"></i><i class="hl" style="top:372px"></i><i class="hl" style="top:432px"></i><i class="hl" style="top:492px"></i>
+                <div class="ev" style="top:132px;height:75px;--c:var(--course-amber)">MATH 340 Lecture<small>11:00 AM to 12:15 PM</small></div>
+<div class="ev" style="top:272px;height:75px;--c:var(--course-sky)">STAT 324 Lab<small>1:20 to 2:35 PM</small></div></div>
+              <div class="cday"><div class="dh">Wed<b>19</b></div><div class="ds"><span class="dp" style="--c:var(--course-indigo)"><i></i>P2 due</span></div><i class="hl" style="top:132px"></i><i class="hl" style="top:192px"></i><i class="hl" style="top:252px"></i><i class="hl" style="top:312px"></i><i class="hl" style="top:372px"></i><i class="hl" style="top:432px"></i><i class="hl" style="top:492px"></i>
+                <div class="ev" style="top:72px;height:50px;--c:var(--course-indigo)">CS 537 Lecture<small>10:00 to 10:50 AM</small></div>
+<div class="ev" style="top:197px;height:75px;--c:var(--course-teal)">ECON 101 Lecture<small>12:05 to 1:20 PM</small></div>
+<div class="ev plan" style="top:312px;height:60px;--c:var(--course-indigo)">Finish Project 2<small>Planned · 2 to 3 PM</small></div></div>
+              <div class="cday"><div class="dh">Thu<b>20</b></div><div class="ds"></div><i class="hl" style="top:132px"></i><i class="hl" style="top:192px"></i><i class="hl" style="top:252px"></i><i class="hl" style="top:312px"></i><i class="hl" style="top:372px"></i><i class="hl" style="top:432px"></i><i class="hl" style="top:492px"></i>
+                <div class="ev" style="top:132px;height:75px;--c:var(--course-amber)">MATH 340 Lecture<small>11:00 AM to 12:15 PM</small></div>
+<div class="ev" style="top:272px;height:75px;--c:var(--course-sky)">STAT 324 Lab<small>1:20 to 2:35 PM</small></div>
+<div class="ev due" style="top:492px;height:38px;--c:var(--course-teal)">Problem Set 3 due<small>5:00 PM</small></div></div>
+              <div class="cday"><div class="dh today">Fri<b>21</b></div><div class="ds"><span class="dp" style="--c:var(--course-amber)"><i></i>HW 5</span><span class="dp" style="--c:var(--course-sky)"><i></i>Quiz 2</span></div><i class="hl" style="top:132px"></i><i class="hl" style="top:192px"></i><i class="hl" style="top:252px"></i><i class="hl" style="top:312px"></i><i class="hl" style="top:372px"></i><i class="hl" style="top:432px"></i><i class="hl" style="top:492px"></i>
+                <div class="ev" style="top:72px;height:50px;--c:var(--course-indigo)">CS 537 Lecture<small>10:00 to 10:50 AM</small></div>
+<div class="ev plan" style="top:252px;height:60px;--c:var(--course-none)">CS 537 office hours<small>Planned · 1 to 2 PM</small></div></div>
+              </div>
+          </div>
+
+          <!-- Search -->
+          <div class="pane" data-pane="search">
+            <div class="ck">
+              <div class="pal">
+                <div class="in"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>sched<span class="cur"></span><span class="kbd2">Esc</span></div>
+                <div class="g">Assignments</div>
+                <div class="r on" style="--c:var(--course-indigo)"><span class="dot"></span>Project 3: xv6 Scheduler<span class="m">CS 537 · Due Mon Aug 24</span></div>
+                <div class="g">Pages</div>
+                <div class="r" style="--c:var(--course-indigo)"><span class="dot"></span>Lecture 9: CPU scheduling policies<span class="m">CS 537</span></div>
+                <div class="r" style="--c:var(--course-teal)"><span class="dot"></span>Discussion section schedule<span class="m">ECON 101</span></div>
+                <div class="g">Files</div>
+                <div class="r" style="--c:var(--course-indigo)"><span class="dot"></span>scheduler-handout.pdf<span class="m">CS 537 · 1.4 MB</span></div>
+                <div class="g">Announcements</div>
+                <div class="r" style="--c:var(--course-sky)"><span class="dot"></span>Discussion sections begin next week<span class="m">STAT 324</span></div>
+                <div class="g">Actions</div>
+                <div class="r"><svg class="ic" viewBox="0 0 24 24"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Add a task<span class="m"><span class="kbd2">N</span></span></div>
+                <div class="r"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Go to Calendar<span class="m"><span class="kbd2">G</span> <span class="kbd2">C</span></span></div>
+                <div class="ft"><span><b>↑↓</b> move</span><span><b>↵</b> open</span><span><b>esc</b> close</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ask -->
+          <div class="pane" data-pane="ask">
+            <div class="ask">
+              <div class="thr">
+                <div class="lbl">Threads</div>
+                <div class="th on">CS 537 midterm</div>
+                <div class="th">Late policy for ECON 101</div>
+                <div class="th">What to read before Monday</div>
+                <div class="th">Plan this week</div>
+              </div>
+              <div class="conv">
+                <div class="msgs">
+                  <div class="u">When is the CS 537 midterm, and what does it cover?</div>
+                  <div class="a">
+                    <p><b>Thursday, October 15 at 7:15 PM</b> in Van Vleck B102. The syllabus lists it as covering chapters 1 to 7 of the textbook, which is everything through CPU scheduling.</p>
+                    <p>You have one planned task that overlaps: a study group for Project 2 at 7 PM that day. Want me to move it?</p>
+                    <span class="src"><span class="dot"></span>CS 537 · Syllabus</span>
+                  </div>
+                  <div class="u">Yes, move it to Wednesday the 14th, same time.</div>
+                  <div class="a">
+                    <p>Done. The study group is now planned for <b>Wednesday, October 14 at 7 PM</b>.</p>
+                    <div class="chg"><span class="dot" style="--c:var(--course-indigo)"></span><span class="ct">Study group, Project 2</span><span class="cm">Planned Thu Oct 15 to Wed Oct 14 · 7:00 PM</span><span class="cu">Undo</span></div>
+                  </div>
+                </div>
+                <div class="comp"><span>Ask about your courses or plan your week</span><svg class="ic" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="close">
+    <div class="wrap">
+      <div>
+        <h2 class="rv">Start with this week.</h2>
+        <p class="lead rv">Sign in and connect Canvas in Settings. The first sync starts right away, and you can use the app while it runs.</p>
+        <a href="#" class="btn btn-primary rv">Sign in</a>
+      </div>
+      <div class="fs rv" id="d1-fs" aria-label="First sync from Canvas">
+        <div class="t">Setting up wiscourse</div>
+        <div class="s">First sync from Canvas. Items show up as they arrive.</div>
+        <div class="track"><i></i></div>
+        <div class="st done" style="--i:0"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Courses<span class="r"><b>4</b> active</span></div>
+        <div class="st done" style="--i:1"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Assignments<span class="r"><b>128</b></span></div>
+        <div class="st" style="--i:2"><svg class="spin" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Submissions and grades<span class="r">3 of 4 courses</span></div>
+        <div class="st wait" style="--i:3"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Announcements and modules<span class="r">queued</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span class="wc-logo" style="font-size:15px"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></span>
+      <span>Not affiliated with UW-Madison or Instructure.</span>
+      <nav class="fl"><a href="#">Privacy</a><a href="#">GitHub</a><a href="#">Sign in</a></nav>
+    </div>
+  </footer>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('d1');
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timers = [];
+  function later(fn, ms) { timers.push(setTimeout(fn, reduce ? 0 : ms)); }
+  function clear() { timers.forEach(clearTimeout); timers = []; }
+
+  function heroPlay() {
+    var app = root.querySelector('#d1-app');
+    var sync = root.querySelector('#d1-sync');
+    app.classList.remove('in'); sync.classList.remove('done');
+    sync.querySelector('.txt').textContent = 'Syncing from Canvas…';
+    void app.offsetWidth;
+    later(function () { app.classList.add('in'); }, 200);
+    later(function () { sync.classList.add('done'); sync.querySelector('.txt').textContent = 'Synced just now · 4 courses · next check in 2 min'; }, 1100);
+  }
+
+  var qaDone = false;
+  function qaPlay() {
+    if (qaDone) return; qaDone = true;
+    var qa = root.querySelector('#d1-qa');
+    var typed = qa.querySelector('.typed'), ph = qa.querySelector('.ph');
+    var chips = qa.querySelectorAll('.chip');
+    var text = 'read ch 4 fri #cs537';
+    if (reduce) { typed.textContent = text; ph.style.display = 'none'; chips.forEach(function (c) { c.classList.add('on'); }); return; }
+    var i = 0;
+    function tick() {
+      if (i === 0) ph.style.display = 'none';
+      typed.textContent = text.slice(0, ++i);
+      chips.forEach(function (c) { if (i >= text.length - (+c.dataset.at) + 0 && i >= text.length - 12 + 0) {} });
+      if (i >= 12) chips[2].classList.add('on');
+      if (i >= 14) chips[1].classList.add('on');
+      if (i >= text.length) chips[0].classList.add('on');
+      if (i < text.length) later(tick, 60 + Math.random() * 50);
+    }
+    later(tick, 500);
+  }
+
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('on');
+      if (e.target.querySelector && e.target.querySelector('#d1-qa')) qaPlay();
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.2 });
+  root.querySelectorAll('.rv').forEach(function (el) { io.observe(el); });
+
+  /* showcase switcher */
+  var show = root.querySelector('#d1-show');
+  var items = Array.prototype.slice.call(show.querySelectorAll('.show-item'));
+  var panes = Array.prototype.slice.call(show.querySelectorAll('.pane'));
+  var DUR = 3500, idx = 0, tick = null, inView = false, active = root.classList.contains('is-active'), hovered = false;
+  if (reduce) show.classList.add('static');
+  function select(i, restart) {
+    idx = (i + items.length) % items.length;
+    var key = items[idx].dataset.pane;
+    items.forEach(function (b, j) {
+      b.setAttribute('aria-pressed', j === idx ? 'true' : 'false');
+      if (j === idx) { var bar = b.querySelector('.bar'); bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = ''; }
+    });
+    panes.forEach(function (p) { p.classList.toggle('on', p.dataset.pane === key); });
+    if (restart) arm();
+  }
+  function arm() {
+    stop();
+    if (reduce || !inView || !active || hovered) return;
+    tick = setTimeout(function () { select(idx + 1, true); }, DUR);
+  }
+  function stop() { if (tick) { clearTimeout(tick); tick = null; } }
+  items.forEach(function (b, i) {
+    b.addEventListener('click', function () { select(i, true); });
+    b.addEventListener('keydown', function (e) {
+      var d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return; e.preventDefault(); select(idx + d, true); items[idx].focus();
+    });
+  });
+  /* pause on hover: freeze the bar where it is and resume with the remaining time */
+  var pausedAt = 0, startedAt = 0;
+  function pause() {
+    if (hovered) return; hovered = true; show.classList.add('paused');
+    pausedAt = Date.now() - startedAt; stop();
+  }
+  function resume() {
+    if (!hovered) return; hovered = false; show.classList.remove('paused');
+    if (reduce || !inView || !active) return;
+    var left = Math.max(300, DUR - pausedAt);
+    startedAt = Date.now() - pausedAt;
+    tick = setTimeout(function () { select(idx + 1, true); }, left);
+  }
+  show.addEventListener('mouseenter', pause);
+  show.addEventListener('mouseleave', resume);
+  show.addEventListener('focusin', pause);
+  show.addEventListener('focusout', function (e) { if (!show.contains(e.relatedTarget)) resume(); });
+  var armWrapped = arm;
+  arm = function () { startedAt = Date.now(); armWrapped(); };
+  var sio = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      inView = e.isIntersecting;
+      if (inView) { select(idx, true); } else { stop(); }
+    });
+  }, { threshold: 0.35 });
+  sio.observe(show);
+
+  function activate() { clear(); heroPlay(); active = true; if (inView) select(idx, true); }
+  window.addEventListener('wc:activate', function (e) { if (e.detail.id === 'd1') activate(); else { clear(); active = false; stop(); } });
+  if (root.classList.contains('is-active')) activate();
+})();
+</script>
+<script>(function(){var el=document.getElementById('d1-fs');if(!el)return;var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){el.classList.add('go');io.disconnect();}});},{threshold:.4});io.observe(el);})();</script>
