@@ -175,3 +175,25 @@
   text-transform: uppercase;
   color: var(--ink-3);
 }
+
+/* Landing page (src/components/landing): row stagger, switcher progress bar,
+   caret blink. Referenced via Tailwind's animate-[name_…] arbitrary values. */
+@keyframes landing-in {
+  to { opacity: 1; transform: none; }
+}
+@keyframes landing-fill {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes landing-blink {
+  50% { opacity: 0; }
+}
+/* The hooks skip auto-advance and staggers; this catches the CSS-only
+   animations (carets, spinners, row entrance) in one place. */
+@media (prefers-reduced-motion: reduce) {
+  .landing *, .landing *::before, .landing *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

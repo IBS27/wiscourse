@@ -1,0 +1,648 @@
+<style>
+/* ============ Design 4: Four courses, one agenda ============ */
+.d4 { background: var(--surface); color: var(--ink); --wrap: 1180px; --pad: 32px; --ease: cubic-bezier(.16,1,.3,1); }
+.d4 .wrap { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--pad); }
+.d4 h1, .d4 h2, .d4 h3, .d4 p { margin: 0; }
+.d4 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid transparent; font-size: 14px; font-weight: 600; letter-spacing: -0.005em; transition: transform .15s var(--ease), background .15s; white-space: nowrap; }
+.d4 .btn:active { transform: translateY(1px); }
+.d4 .btn-primary { background: var(--today-bg); color: var(--today-fg); }
+.d4 .btn-primary:hover { opacity: .92; }
+.d4 .btn-sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.d4 .quiet { color: var(--ink-2); }
+.d4 .meta { color: var(--ink-3); font-size: 12.5px; }
+.d4 .ic { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* reveal */
+.d4 [data-reveal] { opacity: 0; transform: translateY(14px); transition: opacity .6s var(--ease), transform .7s var(--ease); }
+.d4 [data-reveal].in { opacity: 1; transform: none; }
+
+/* ---------- nav ---------- */
+.d4 .nav { height: 60px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); z-index: 20; }
+.d4 .nav .wrap { height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.d4 .nav-links { display: flex; gap: 22px; font-size: 13.5px; font-weight: 500; color: var(--ink-2); position: absolute; left: 50%; transform: translateX(-50%); }
+.d4 .nav-links a:hover { color: var(--ink); }
+.d4 .nav .wrap { position: relative; }
+
+/* ---------- hero ---------- */
+.d4 .hero { padding: 56px 0 80px; overflow: hidden; }
+.d4 .hero .wrap { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: center; }
+.d4 .hero h1 { font-size: 60px; line-height: 1.02; letter-spacing: -0.035em; font-weight: 600; }
+.d4 .hero .sub { margin-top: 20px; font-size: 17px; line-height: 1.5; color: var(--ink-2); max-width: 42ch; }
+.d4 .hero .cta { margin-top: 28px; display: flex; align-items: center; gap: 18px; }
+.d4 .hero .cta a.link { font-size: 14px; font-weight: 500; color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; }
+.d4 .hero .cta a.link:hover { color: var(--ink); }
+.d4 .hero .cta a.link .ic { width: 13px; height: 13px; }
+
+.d4 .merge { position: relative; min-width: 0; }
+.d4 .lanes { display: grid; gap: 6px; }
+.d4 .lane { position: relative; display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 12px 0 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; opacity: 0; transform: translateX(28px); transition: opacity .55s var(--ease), transform .7s var(--ease); }
+.d4 .lane::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--c); }
+.d4 .merge.ready .lane { opacity: 1; transform: none; }
+.d4 .lane .code { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.d4 .lane .name { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.d4 .lane .chips { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.d4 .chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 6px; background: var(--chip); font-size: 11.5px; font-weight: 500; color: var(--ink-2); white-space: nowrap; transition: opacity .3s; }
+.d4 .chip .t { color: var(--ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+.d4 .lane .after { margin-left: auto; font-size: 12px; color: var(--ink-3); opacity: 0; transition: opacity .4s .1s; white-space: nowrap; }
+.d4 .merge.merged .lane .chips { visibility: hidden; position: absolute; }
+.d4 .merge.merged .lane .after { opacity: 1; }
+.d4 .merge .flyer { position: absolute; z-index: 3; pointer-events: none; transition: transform .7s var(--ease), opacity .2s; will-change: transform; }
+
+.d4 .agenda { margin-top: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; opacity: 0; transform: translateY(8px); transition: opacity .5s var(--ease) .2s, transform .6s var(--ease) .2s; }
+.d4 .merge.ready .agenda { opacity: 1; transform: none; }
+.d4 .agenda .hd { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px 8px; border-bottom: 1px solid var(--line); }
+.d4 .agenda .hd .t { font-size: 13px; font-weight: 600; }
+.d4 .agenda .hd .d { font-size: 12px; color: var(--ink-3); }
+.d4 .agenda .hd .n { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--ink-3); background: var(--chip); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
+.d4 .row { position: relative; display: flex; align-items: center; gap: 10px; padding: 7px 14px 7px 16px; border-top: 1px solid var(--line); min-height: 38px; }
+.d4 .row:first-of-type { border-top: 0; }
+.d4 .row::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 4px; border-radius: 0 2px 2px 0; background: var(--c); }
+.d4 .row .ttl { font-size: 13px; font-weight: 500; letter-spacing: -0.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d4 .row .sb { font-size: 11.5px; color: var(--ink-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d4 .row .main { min-width: 0; flex: 1; }
+.d4 .row .st { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.d4 .row .st.red { color: var(--red); font-weight: 500; }
+.d4 .agenda .target { opacity: 0; transition: opacity .25s; }
+.d4 .merge.merged .agenda .target { opacity: 1; }
+.d4 .merge.static .lane, .d4 .merge.static .agenda { opacity: 1; transform: none; transition: none; }
+
+/* ---------- section headers ---------- */
+.d4 .sec { padding: 112px 0; }
+.d4 .sec-hd { max-width: 60ch; }
+.d4 .sec-hd h2 { font-size: 34px; line-height: 1.12; letter-spacing: -0.025em; font-weight: 600; }
+.d4 .sec-hd p { margin-top: 12px; font-size: 16px; line-height: 1.55; color: var(--ink-2); max-width: 54ch; }
+
+/* ---------- bento ---------- */
+.d4 .bento { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 272px; gap: 14px; }
+.d4 .cell { position: relative; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; --cellbg: var(--surface); }
+.d4 .cell.sunk { background: var(--sunken); --cellbg: var(--sunken); }
+.d4 .cell.a { grid-column: 1 / 3; grid-row: 1 / 3; border-top: 1px solid var(--line); }
+.d4 .cell.a::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 1px; background: var(--course-indigo); }
+.d4 .cell.b { grid-column: 3; grid-row: 1; }
+.d4 .cell.c { grid-column: 3; grid-row: 2; }
+.d4 .cell.d { grid-column: 1 / 3; grid-row: 3; }
+.d4 .cell.e { grid-column: 3; grid-row: 3; }
+.d4 .cell .cap { padding: 18px 20px 12px; flex: none; }
+.d4 .cell .cap h3 { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.d4 .cell .cap p { margin-top: 3px; font-size: 13px; color: var(--ink-3); line-height: 1.45; }
+.d4 .cell .ui { position: relative; flex: 1; min-height: 0; padding: 0 20px; }
+.d4 .cell .ui::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 48px; background: linear-gradient(to bottom, transparent, var(--cellbg)); pointer-events: none; }
+.d4 .mini { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 12.5px; overflow: hidden; }
+.d4 .cell.sunk .mini { background: var(--surface); }
+
+/* course hub mini */
+.d4 .hub { display: grid; grid-template-columns: 196px 1fr; min-height: 100%; }
+.d4 .hub .side { border-right: 1px solid var(--line); background: var(--sunken); padding: 10px 8px; }
+.d4 .hub .side .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px 6px; }
+.d4 .hub .side .crs { display: grid; grid-template-columns: auto 1fr; column-gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; font-size: 12.5px; font-weight: 500; color: var(--ink-2); line-height: 1.25; }
+.d4 .hub .side .crs .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--c); flex: none; }
+.d4 .hub .side .crs.on { background: var(--hover); color: var(--ink); }
+.d4 .hub .side .crs small { grid-column: 2; color: var(--ink-3); font-weight: 400; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d4 .hub .body { min-width: 0; }
+.d4 .hub .ttl { padding: 12px 16px 0; }
+.d4 .hub .ttl .k { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--course-indigo); }
+.d4 .hub .ttl .n { font-size: 15px; font-weight: 600; letter-spacing: -0.015em; margin-top: 2px; }
+.d4 .tabs { display: flex; gap: 16px; padding: 10px 16px 0; border-bottom: 1px solid var(--line); font-size: 12.5px; font-weight: 500; color: var(--ink-3); }
+.d4 .tabs span { padding-bottom: 8px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.d4 .tabs span.on { color: var(--ink); border-color: var(--ink); }
+.d4 .mod { padding: 10px 16px 0; }
+.d4 .mod .mh { display: flex; align-items: center; gap: 8px; font-weight: 600; padding: 6px 0; }
+.d4 .mod .mh .ic { width: 13px; height: 13px; color: var(--ink-3); }
+.d4 .mod .mi { display: flex; align-items: center; gap: 9px; padding: 7px 0 7px 21px; border-top: 1px solid var(--line); color: var(--ink); }
+.d4 .mod .mi .ic { width: 14px; height: 14px; color: var(--ink-3); }
+.d4 .mod .mi .r { margin-left: auto; color: var(--ink-3); font-size: 11.5px; white-space: nowrap; }
+.d4 .mod .mi .r.done { color: var(--ink-2); display: inline-flex; align-items: center; gap: 4px; }
+
+/* calendar mini */
+.d4 .cal { display: grid; grid-template-columns: repeat(5, 1fr); }
+.d4 .cal .day { border-left: 1px solid var(--line); min-height: 210px; position: relative; }
+.d4 .cal .day:first-child { border-left: 0; }
+.d4 .cal .dh { text-align: center; padding: 7px 0 6px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--ink-3); font-weight: 500; }
+.d4 .cal .dh b { display: block; height: 22px; line-height: 22px; font-size: 13px; color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 1px; }
+.d4 .cal .dh.today b { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--today-bg); color: var(--today-fg); margin: 1px auto 0; }
+.d4 .ev { position: absolute; left: 3px; right: 3px; padding: 4px 5px 4px 8px; border-radius: 6px; background: var(--chip); font-size: 10.5px; line-height: 1.25; font-weight: 500; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.d4 .ev::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+.d4 .ev small { display: block; color: var(--ink-3); font-weight: 400; overflow: hidden; text-overflow: ellipsis; }
+
+/* inbox mini */
+.d4 .feed .it { display: grid; grid-template-columns: auto 1fr auto; column-gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); align-items: baseline; }
+.d4 .feed .it:first-child { border-top: 0; }
+.d4 .feed .cc { font-size: 10.5px; font-weight: 600; color: var(--c); letter-spacing: .02em; }
+.d4 .feed .tt { font-weight: 500; grid-column: 2; }
+.d4 .feed .tm { color: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums; }
+.d4 .feed .ex { grid-column: 2; color: var(--ink-3); font-size: 11.5px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.d4 .feed .it.unread .tt::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 999px; background: var(--ink); margin-right: 6px; vertical-align: 1px; }
+
+/* grades mini */
+.d4 .gr { display: grid; grid-template-columns: 3fr 2fr; }
+.d4 .gr .tbl { border-right: 1px solid var(--line); }
+.d4 .gr table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.d4 .gr th { text-align: left; font-size: 11px; font-weight: 600; color: var(--ink-3); padding: 9px 12px 7px; border-bottom: 1px solid var(--line); letter-spacing: .02em; }
+.d4 .gr td { padding: 8px 12px; border-top: 1px solid var(--line); }
+.d4 .gr tr:first-child td { border-top: 0; }
+.d4 .gr td.num, .d4 .gr th.num { text-align: right; }
+.d4 .gr td .w { color: var(--ink-3); font-size: 11.5px; margin-left: 6px; }
+.d4 .gr .edit { display: inline-block; min-width: 46px; text-align: right; padding: 2px 6px; margin: -3px -6px -3px 0; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); box-shadow: 0 0 0 3px color-mix(in srgb, var(--line-2) 35%, transparent); }
+.d4 .gr td.muted { color: var(--ink-3); }
+.d4 .gr .sum { padding: 14px 16px; }
+.d4 .gr .sum .big { font-size: 30px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.d4 .gr .sum .lb { font-size: 11.5px; color: var(--ink-3); margin-top: 4px; }
+.d4 .gr .sum .need { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; line-height: 1.45; }
+.d4 .gr .sum .need b { font-weight: 600; }
+.d4 .gr .sum .rs { margin-top: 10px; font-size: 11.5px; color: var(--ink-3); display: flex; gap: 12px; }
+.d4 .gr .sum .rs span { text-decoration: underline; text-underline-offset: 2px; }
+
+/* cmd-k mini */
+.d4 .ck .in { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--ink); font-size: 13px; }
+.d4 .ck .in .ic { color: var(--ink-3); }
+.d4 .ck .in .cur { width: 1px; height: 14px; background: var(--ink); margin-left: -8px; animation: d4blink 1s steps(1) infinite; }
+@keyframes d4blink { 50% { opacity: 0; } }
+.d4 .ck .in .kbd { margin-left: auto; }
+.d4 .kbd { font-size: 10.5px; font-weight: 500; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 4px; padding: 0 5px; line-height: 16px; font-family: inherit; }
+.d4 .ck .g { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); padding: 8px 12px 4px; }
+.d4 .ck .r { display: flex; align-items: center; gap: 9px; padding: 6px 12px; }
+.d4 .ck .r.on { background: var(--hover); }
+.d4 .ck .r .ic { color: var(--ink-3); width: 14px; height: 14px; }
+.d4 .ck .r .m { margin-left: auto; color: var(--ink-3); font-size: 11.5px; }
+.d4 .ck .r .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--c); }
+
+/* ---------- section 3: keep canvas ---------- */
+.d4 .keep .wrap { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; align-items: start; }
+.d4 .keep .txt { position: sticky; top: 100px; }
+.d4 .keep .txt p { margin-top: 14px; font-size: 16px; line-height: 1.55; color: var(--ink-2); max-width: 44ch; }
+.d4 .keep .split { margin-top: 28px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; border-top: 1px solid var(--line); padding-top: 20px; }
+.d4 .keep .split h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.d4 .keep .split ul { list-style: none; margin: 0; padding: 0; font-size: 13.5px; color: var(--ink-2); line-height: 1.7; }
+.d4 .keep .split li { display: flex; align-items: flex-start; gap: 8px; }
+.d4 .keep .split li .ic { margin-top: 5px; }
+.d4 .keep .split li .ic { width: 13px; height: 13px; color: var(--ink-3); }
+
+.d4 .asg { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.d4 .asg .top { padding: 20px 24px 18px; border-bottom: 1px solid var(--line); }
+.d4 .asg .top .k { font-size: 12px; color: var(--ink-3); display: flex; align-items: center; gap: 6px; }
+.d4 .asg .top .k .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--course-indigo); }
+.d4 .asg .top h3 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; margin-top: 6px; line-height: 1.2; }
+.d4 .asg .top .due { margin-top: 8px; font-size: 13px; color: var(--red); font-weight: 500; }
+.d4 .asg .top .due span { color: var(--ink-3); font-weight: 400; }
+.d4 .asg .grid { display: grid; grid-template-columns: 1fr 1fr; }
+.d4 .asg .col { padding: 18px 24px 20px; }
+.d4 .asg .col + .col { border-left: 1px solid var(--line); }
+.d4 .asg .lab { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+.d4 .asg .plan { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+.d4 .asg .plan .kbd { margin-left: 4px; }
+.d4 .asg .subs { margin: 12px 0 0; padding: 0; list-style: none; font-size: 13.5px; }
+.d4 .asg .subs li { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+.d4 .asg .subs li:first-child { border-top: 0; }
+.d4 .asg .box { width: 15px; height: 15px; border: 1.5px solid var(--line-2); border-radius: 4px; display: grid; place-items: center; flex: none; }
+.d4 .asg .box.on { background: var(--today-bg); border-color: var(--today-bg); color: var(--today-fg); }
+.d4 .asg .box .ic { width: 10px; height: 10px; stroke-width: 3; }
+.d4 .asg li.done span { color: var(--ink-3); text-decoration: line-through; }
+.d4 .asg .add { color: var(--ink-3); font-size: 13px; padding: 8px 0 0; display: flex; align-items: center; gap: 8px; }
+.d4 .asg .notes { margin-top: 10px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.d4 .asg .subm { margin-top: 16px; border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; background: var(--sunken); }
+.d4 .asg .subm .s1 { font-size: 13.5px; font-weight: 600; }
+.d4 .asg .subm .s2 { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+.d4 .asg .subm .acts { margin-top: 12px; display: flex; gap: 8px; }
+.d4 .asg .subm .btn-ghost { background: var(--surface); border-color: var(--line-2); color: var(--ink); }
+.d4 .asg .ext { margin-top: 14px; font-size: 13px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---------- section 4: facts ---------- */
+.d4 .facts { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.d4 .facts .wrap { display: grid; grid-template-columns: repeat(3, 1fr); }
+.d4 .fact { padding: 40px 28px; display: flex; gap: 14px; align-items: flex-start; }
+.d4 .fact + .fact { border-left: 1px solid var(--line); }
+.d4 .fact:first-child { padding-left: 0; }
+.d4 .fact .ic { width: 18px; height: 18px; margin-top: 2px; color: var(--ink-2); }
+.d4 .fact h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.d4 .fact p { margin-top: 4px; font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+.d4 .fact .kbd { margin: 0 1px; vertical-align: 1px; }
+
+/* ---------- closing + footer ---------- */
+.d4 .close { padding: 120px 0; }
+.d4 .close .wrap { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; flex-wrap: wrap; }
+.d4 .close h2 { font-size: 40px; line-height: 1.08; letter-spacing: -0.03em; font-weight: 600; max-width: 20ch; }
+.d4 .close p { margin-top: 12px; font-size: 16px; color: var(--ink-2); max-width: 44ch; }
+.d4 .foot { border-top: 1px solid var(--line); padding: 28px 0 100px; font-size: 13px; color: var(--ink-3); }
+.d4 .foot .wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.d4 .foot .links { margin-left: auto; display: flex; gap: 20px; }
+.d4 .foot .links a:hover { color: var(--ink); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1024px) {
+  .d4 .hero h1 { font-size: 50px; }
+  .d4 .bento { grid-template-columns: 1fr 1fr; grid-auto-rows: 260px; }
+  .d4 .cell.a { grid-column: 1 / 3; grid-row: 1 / 3; }
+  .d4 .cell.b { grid-column: 1; grid-row: 3; }
+  .d4 .cell.c { grid-column: 2; grid-row: 3; }
+  .d4 .cell.d { grid-column: 1 / 3; grid-row: 4; }
+  .d4 .cell.e { grid-column: 1 / 3; grid-row: 5; }
+  .d4 .nav-links { display: none; }
+}
+@media (max-width: 768px) {
+  .d4 { --pad: 20px; }
+  .d4 .hero { padding: 44px 0 64px; }
+  .d4 .hero .wrap { grid-template-columns: 1fr; gap: 36px; }
+  .d4 .hero h1 { font-size: 40px; max-width: none; }
+  .d4 .hero .sub { font-size: 15.5px; }
+  .d4 .lane .name { display: none; }
+  .d4 .lane .chips .chip:nth-child(2) { display: none; }
+  .d4 .row .st:not(.red) { display: none; }
+  .d4 .sec { padding: 72px 0; }
+  .d4 .sec-hd h2 { font-size: 28px; }
+  .d4 .bento { grid-template-columns: 1fr; grid-auto-rows: auto; margin-top: 32px; }
+  .d4 .cell.a, .d4 .cell.b, .d4 .cell.c, .d4 .cell.d, .d4 .cell.e { grid-column: 1; grid-row: auto; height: 250px; }
+  .d4 .cell.a { height: 500px; }
+  .d4 .cell.d { height: auto; }
+  .d4 .cell.d .ui { padding-bottom: 20px; }
+  .d4 .cell.d .ui::after { display: none; }
+  .d4 .mod .mi .r { display: none; }
+  .d4 .mod { font-size: 12px; }
+  .d4 .hub { grid-template-columns: 1fr; }
+  .d4 .hub .side { display: none; }
+  .d4 .gr { grid-template-columns: 1fr; }
+  .d4 .gr .tbl { border-right: 0; border-bottom: 1px solid var(--line); }
+  .d4 .cal .day:nth-child(n+4) { display: none; }
+  .d4 .cal { grid-template-columns: repeat(3, 1fr); }
+  .d4 .keep .wrap { grid-template-columns: 1fr; gap: 36px; }
+  .d4 .keep .txt { position: static; }
+  .d4 .asg .grid { grid-template-columns: 1fr; }
+  .d4 .asg .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+  .d4 .asg .top, .d4 .asg .col { padding-left: 18px; padding-right: 18px; }
+  .d4 .facts .wrap { grid-template-columns: 1fr; }
+  .d4 .fact { padding: 22px 0; }
+  .d4 .fact + .fact { border-left: 0; border-top: 1px solid var(--line); }
+  .d4 .close { padding: 80px 0; }
+  .d4 .close h2 { font-size: 32px; }
+  .d4 .foot .links { margin-left: 0; }
+}
+</style>
+
+<section class="design d4" id="d4" data-title="Four courses" data-theme="light">
+  <header class="nav">
+    <div class="wrap">
+      <a href="#d4" class="wc-logo" style="font-size:18px" aria-label="wiscourse"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></a>
+      <nav class="nav-links" aria-label="Sections">
+        <a href="#d4-courses">Courses</a>
+        <a href="#d4-grades">Grades</a>
+        <a href="#d4-calendar">Calendar</a>
+      </nav>
+      <a class="btn btn-primary btn-sm" href="#">Sign in</a>
+    </div>
+  </header>
+
+  <!-- ===== hero ===== -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Every course.<br>One agenda.</h1>
+        <p class="sub">Every assignment from every Canvas course, merged into one list with your own tasks alongside.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#">Sign in</a>
+          <a class="link" href="#d4-courses">See what is inside <svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></a>
+        </div>
+      </div>
+
+      <div class="merge" id="d4-merge" aria-label="Four courses merging into one agenda">
+        <div class="lanes">
+          <div class="lane" style="--c: var(--course-indigo)">
+            <span class="code">CS 537</span><span class="name">Operating Systems</span>
+            <span class="chips">
+              <span class="chip" data-to="r3">Project 2 <span class="t">Wed</span></span>
+              <span class="chip" data-to="r6">Read ch. 4 <span class="t">Fri</span></span>
+            </span>
+            <span class="after">MWF 9:55 AM</span>
+          </div>
+          <div class="lane" style="--c: var(--course-amber)">
+            <span class="code">MATH 340</span><span class="name">Linear Algebra</span>
+            <span class="chips">
+              <span class="chip" data-to="r4">Homework 5 <span class="t">Fri</span></span>
+              <span class="chip" data-to="r8">Review sheet <span class="t">Sun</span></span>
+            </span>
+            <span class="after">TR 11:00 AM</span>
+          </div>
+          <div class="lane" style="--c: var(--course-teal)">
+            <span class="code">ECON 101</span><span class="name">Microeconomics</span>
+            <span class="chips">
+              <span class="chip" data-to="r2">Problem Set 3 <span class="t">Thu</span></span>
+              <span class="chip" data-to="r7">Reading quiz <span class="t">Sat</span></span>
+            </span>
+            <span class="after">MWF 1:20 PM</span>
+          </div>
+          <div class="lane" style="--c: var(--course-sky)">
+            <span class="code">STAT 324</span><span class="name">Intro Statistics</span>
+            <span class="chips">
+              <span class="chip" data-to="r5">Quiz 2 <span class="t">Fri</span></span>
+              <span class="chip" data-to="r1">Lab 3 <span class="t">Done</span></span>
+            </span>
+            <span class="after">TR 2:30 PM</span>
+          </div>
+        </div>
+
+        <div class="agenda">
+          <div class="hd"><span class="t">Agenda</span><span class="d">Fri, Aug 21</span><span class="n tabular">8</span></div>
+          <div class="row target" id="d4-r2" style="--c: var(--course-teal)"><div class="main"><div class="ttl">Problem Set 3: Elasticity and Consumer Surplus</div><div class="sb">ECON 101 · Due Thu, 5:00 PM</div></div><span class="st red">1 day late</span></div>
+          <div class="row target" id="d4-r3" style="--c: var(--course-indigo)"><div class="main"><div class="ttl">Project 2: Multithreaded Web Server</div><div class="sb">CS 537 · Due Wed, 11:59 PM · 2/4</div></div><span class="st red">2 days late</span></div>
+          <div class="row target" id="d4-r4" style="--c: var(--course-amber)"><div class="main"><div class="ttl">Homework 5: Eigenvalues and Diagonalization</div><div class="sb">MATH 340 · Due today, 11:59 PM · 1/3</div></div><span class="st">Not submitted</span></div>
+          <div class="row target" id="d4-r5" style="--c: var(--course-sky)"><div class="main"><div class="ttl">Quiz 2: Sampling Distributions</div><div class="sb">STAT 324 · Due today, 11:59 PM</div></div><span class="st">Submitted 9:12 AM</span></div>
+          <div class="row target" id="d4-r6" style="--c: var(--course-indigo)"><div class="main"><div class="ttl">Read Silberschatz ch. 4: Threads</div><div class="sb">CS 537 · Planned today · Personal</div></div><span class="st">No due date</span></div>
+          <div class="row target" id="d4-r1" style="--c: var(--course-sky)"><div class="main"><div class="ttl">Lab 3 write-up</div><div class="sb">STAT 324 · Done 10:04 AM</div></div><span class="st">Undo</span></div>
+          <div class="row target" id="d4-r7" style="--c: var(--course-teal)"><div class="main"><div class="ttl">Reading quiz: ch. 6, Market Failure</div><div class="sb">ECON 101 · Due Sat, 11:59 PM</div></div><span class="st">Not submitted</span></div>
+          <div class="row target" id="d4-r8" style="--c: var(--course-amber)"><div class="main"><div class="ttl">Build exam 1 review sheet</div><div class="sb">MATH 340 · Planned Sun · Personal</div></div><span class="st">No due date</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== bento ===== -->
+  <section class="sec" id="d4-courses">
+    <div class="wrap">
+      <div class="sec-hd" data-reveal>
+        <h2>The rest of Canvas, inside wiscourse.</h2>
+      </div>
+
+      <div class="bento">
+        <!-- A: course hub 2x2 -->
+        <div class="cell a" data-reveal>
+          <div class="cap"><h3>Course hub</h3><p>Modules, pages, files and the syllabus, rendered inside wiscourse.</p></div>
+          <div class="ui">
+            <div class="mini hub" style="height:100%">
+              <div class="side">
+                <div class="lbl">Courses · Fall 2026</div>
+                <div class="crs on" style="--c: var(--course-indigo)"><span class="dot"></span>Operating Systems<small>CS 537</small></div>
+                <div class="crs" style="--c: var(--course-amber)"><span class="dot"></span>Linear Algebra<small>MATH 340</small></div>
+                <div class="crs" style="--c: var(--course-teal)"><span class="dot"></span>Microeconomics<small>ECON 101</small></div>
+                <div class="crs" style="--c: var(--course-sky)"><span class="dot"></span>Intro Statistics<small>STAT 324</small></div>
+              </div>
+              <div class="body">
+                <div class="ttl"><div class="k">CS 537</div><div class="n">Introduction to Operating Systems</div></div>
+                <div class="tabs"><span class="on">Modules</span><span>Pages</span><span>Files</span><span>Syllabus</span><span>Announcements</span><span>Grades</span></div>
+                <div class="mod">
+                  <div class="mh"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>Week 4: Threads and Concurrency</div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Lecture notes: threads and the pthreads API<span class="r done"><svg class="ic" viewBox="0 0 24 24" style="width:12px;height:12px"><path d="M20 6 9 17l-5-5"/></svg>Viewed</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>p2-starter.tar.gz<span class="r">212 KB</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Project 2: Multithreaded Web Server<span class="r">Due Wed, 11:59 PM</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Discussion: scheduler trade-offs<span class="r">Opens in Canvas</span></div>
+                  <div class="mh" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>Week 5: CPU Scheduling</div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Lecture 9: CPU scheduling policies<span class="r">Page</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>scheduler-handout.pdf<span class="r">1.4 MB</span></div>
+                  <div class="mi"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Project 3: xv6 Scheduler<span class="r">Due Mon Aug 24</span></div>
+                  <div class="mh" style="margin-top:6px"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>Week 6: Virtual Memory</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- B: calendar 1x1 -->
+        <div class="cell b" id="d4-calendar" data-reveal>
+          <div class="cap"><h3>Calendar</h3><p>Due times, lectures and planned work, with ICS export.</p></div>
+          <div class="ui">
+            <div class="mini cal">
+              <div class="day"><div class="dh">Mon<b>17</b></div><div class="ev" style="top:46px;--c: var(--course-indigo)">Lecture<small>9:55 AM</small></div></div>
+              <div class="day"><div class="dh">Tue<b>18</b></div><div class="ev" style="top:74px;--c: var(--course-sky)">Lab<small>1:20 PM</small></div></div>
+              <div class="day"><div class="dh">Wed<b>19</b></div><div class="ev" style="top:46px;--c: var(--course-indigo)">Lecture<small>9:55 AM</small></div><div class="ev" style="top:120px;--c: var(--course-indigo)">P2 due<small>11:59 PM</small></div></div>
+              <div class="day"><div class="dh">Thu<b>20</b></div><div class="ev" style="top:96px;--c: var(--course-teal)">PS 3<small>5:00 PM</small></div></div>
+              <div class="day"><div class="dh today">Fri<b>21</b></div><div class="ev" style="top:46px;--c: var(--course-amber)">HW 5<small>11:59 PM</small></div><div class="ev" style="top:96px;--c: var(--course-sky)">Quiz 2<small>11:59 PM</small></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- C: inbox 1x1 -->
+        <div class="cell c sunk" data-reveal>
+          <div class="cap"><h3>Inbox</h3><p>Announcements, grade postings and changed due dates, in order.</p></div>
+          <div class="ui">
+            <div class="mini feed">
+              <div class="it unread" style="--c: var(--course-indigo)"><span class="cc">CS 537</span><span class="tt">Project 2 deadline extended to Friday</span><span class="tm">2h</span><span class="ex">Given the discussion-section conflict, we are moving the due date.</span></div>
+              <div class="it unread" style="--c: var(--course-sky)"><span class="cc">STAT 324</span><span class="tt">Homework 3 graded: 47/50</span><span class="tm">4h</span><span class="ex">Posted by Peterson, T. · 2 comments</span></div>
+              <div class="it" style="--c: var(--course-teal)"><span class="cc">ECON 101</span><span class="tt">Problem Set 4 due date moved</span><span class="tm">6h</span><span class="ex">Aug 26, 5:00 PM to Aug 28, 5:00 PM</span></div>
+              <div class="it" style="--c: var(--course-amber)"><span class="cc">MATH 340</span><span class="tt">New assignment: Homework 6</span><span class="tm">Thu</span><span class="ex">Due Sep 1, 11:59 PM · 40 points</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- D: grades 2x1 -->
+        <div class="cell d" id="d4-grades" data-reveal>
+          <div class="cap"><h3>Grades, with what-if</h3><p>Edit any score to see where you land. Canvas stays the source of truth.</p></div>
+          <div class="ui">
+            <div class="mini gr">
+              <div class="tbl">
+                <table>
+                  <tr><th>CS 537 · Weighted by group</th><th class="num">Score</th></tr>
+                  <tr><td>Projects <span class="w">40%</span></td><td class="num">88.5%</td></tr>
+                  <tr><td>Homework <span class="w">20%</span></td><td class="num">94.2%</td></tr>
+                  <tr><td>Midterm <span class="w">15%</span></td><td class="num"><span class="edit">86</span></td></tr>
+                  <tr><td>Final <span class="w">25%</span></td><td class="num muted">Not yet</td></tr>
+                </table>
+              </div>
+              <div class="sum">
+                <div class="big">90.1%</div>
+                <div class="lb">What-if total · was 89.4%</div>
+                <div class="need">Need <b>89.6%</b> on the rest for an A, or <b>78%</b> for an AB.</div>
+                <div class="rs"><span>Reset</span><span>Open in Canvas</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- E: cmd-k 1x1 -->
+        <div class="cell e sunk" data-reveal>
+          <div class="cap"><h3>Search</h3><p>Courses, assignments, pages, files and announcements from one box.</p></div>
+          <div class="ui">
+            <div class="mini ck">
+              <div class="in"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>sched<span class="cur"></span><span class="kbd">Esc</span></div>
+              <div class="g">Assignments</div>
+              <div class="r on" style="--c: var(--course-indigo)"><span class="dot"></span>Project 3: xv6 Scheduler<span class="m">CS 537</span></div>
+              <div class="g">Pages</div>
+              <div class="r" style="--c: var(--course-indigo)"><span class="dot"></span>Lecture 9: CPU scheduling policies<span class="m">CS 537</span></div>
+              <div class="r" style="--c: var(--course-teal)"><span class="dot"></span>Discussion section schedule<span class="m">ECON 101</span></div>
+              <div class="g">Files</div>
+              <div class="r" style="--c: var(--course-indigo)"><span class="dot"></span>scheduler-handout.pdf<span class="m">CS 537</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== keep canvas ===== -->
+  <section class="sec keep" style="padding-top:0">
+    <div class="wrap">
+      <div class="txt" data-reveal>
+        <div class="sec-hd">
+          <h2 style="max-width:18ch">Keep the parts of Canvas you need.</h2>
+        </div>
+        <p>Assignments, pages, files, the syllabus and announcements open inside wiscourse. Each one gets a plan: a planned date, subtasks and notes that stay with it.</p>
+        <p>Quizzes, discussions and anything only Canvas can do open in Canvas with one link, already on the right page.</p>
+        <div class="split">
+          <div>
+            <h3>Opens here</h3>
+            <ul>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Assignments and submissions</li>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Pages and files</li>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Grades and announcements</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Opens in Canvas</h3>
+            <ul>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Taking quizzes</li>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Discussions</li>
+              <li><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>External tools</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="asg" data-reveal>
+        <div class="top">
+          <div class="k"><span class="dot"></span>CS 537 · Assignment · 100 points</div>
+          <h3>Project 2: Multithreaded Web Server</h3>
+          <div class="due">Overdue <span>· due Wed Aug 19, 11:59 PM · Planned today</span></div>
+        </div>
+        <div class="grid">
+          <div class="col">
+            <div class="lab">Plan</div>
+            <div class="plan"><svg class="ic" viewBox="0 0 24 24"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Friday, Aug 21<span class="kbd">P</span></div>
+            <ul class="subs">
+              <li class="done"><span class="box on"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span>Read the handout and starter code</span></li>
+              <li class="done"><span class="box on"><svg class="ic" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span><span>Thread pool with condition variables</span></li>
+              <li><span class="box"></span><span>SFF scheduling policy</span></li>
+              <li><span class="box"></span><span>Run the full test script twice</span></li>
+            </ul>
+            <div class="add"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add subtask</div>
+            <div class="lab" style="margin-top:18px">Notes</div>
+            <div class="notes">Deadlock in request_handle when the queue is full. The consumer signals before releasing the lock. Ask in office hours Thursday.</div>
+          </div>
+          <div class="col">
+            <div class="lab">Submission</div>
+            <div class="subm">
+              <div class="s1">Not submitted</div>
+              <div class="s2">0 of 3 attempts used · file upload (.tar.gz)</div>
+              <div class="acts"><span class="btn btn-sm btn-ghost"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Attach file</span><span class="btn btn-sm btn-primary">Submit</span></div>
+            </div>
+            <div class="lab" style="margin-top:18px">Description</div>
+            <div class="notes">Build a multithreaded web server in C. The server uses a fixed-size thread pool and a bounded buffer to handle concurrent HTTP requests. Late policy: 10% per day, 3 days max.</div>
+            <a class="ext" href="#"><svg class="ic" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Open in Canvas</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== facts ===== -->
+  <section class="facts">
+    <div class="wrap">
+      <div class="fact" data-reveal>
+        <svg class="ic" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>
+        <div><h3>Works on your phone</h3><p>Bottom tabs on mobile, a sidebar on desktop. Same data, same speed.</p></div>
+      </div>
+      <div class="fact" data-reveal>
+        <svg class="ic" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+        <div><h3>Grades only once posted</h3><p>Nothing shows before the instructor releases it. The Canvas score is the truth; what-if math stays local.</p></div>
+      </div>
+      <div class="fact" data-reveal>
+        <svg class="ic" viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></svg>
+        <div><h3>Keyboard first</h3><p>Press <span class="kbd">N</span> to add a task, <span class="kbd">⌘K</span> to search anything.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== closing ===== -->
+  <section class="close">
+    <div class="wrap">
+      <div data-reveal>
+        <h2>Your courses are already in Canvas. Read them somewhere faster.</h2>
+        <p>Sign in and connect Canvas in Settings. The first sync starts right away.</p>
+      </div>
+      <a class="btn btn-primary" href="#">Sign in</a>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div class="wrap">
+      <span class="wc-logo" style="font-size:15px"><svg class="wc-mark"><use href="#wc-mark"/></svg><svg class="wc-word"><use href="#wc-word"/></svg></span>
+      <span>Not affiliated with UW-Madison or Instructure.</span>
+      <nav class="links"><a href="#">Privacy</a><a href="#">GitHub</a><a href="#">Sign in</a></nav>
+    </div>
+  </footer>
+</section>
+
+<script>
+(function () {
+  var root = document.getElementById('d4');
+  var merge = root.querySelector('#d4-merge');
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var timers = [];
+  var ran = false;
+
+  // Scroll reveals
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.1 });
+  root.querySelectorAll('[data-reveal]').forEach(function (el) { io.observe(el); });
+
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function clear() { timers.forEach(clearTimeout); timers = []; }
+
+  function endState() {
+    merge.classList.add('static', 'ready', 'merged');
+  }
+
+  function fly() {
+    var chips = merge.querySelectorAll('.chip[data-to]');
+    var box = merge.getBoundingClientRect();
+    var flyers = [];
+    chips.forEach(function (chip) {
+      var row = merge.querySelector('#d4-' + chip.dataset.to);
+      var from = chip.getBoundingClientRect();
+      var toEl = row.querySelector('.ttl');
+      var to = toEl.getBoundingClientRect();
+      var f = chip.cloneNode(true);
+      f.classList.add('flyer');
+      f.style.left = (from.left - box.left) + 'px';
+      f.style.top = (from.top - box.top) + 'px';
+      merge.appendChild(f);
+      var dx = to.left - from.left + 4;
+      var dy = to.top - from.top + (to.height - from.height) / 2;
+      f.dataset.dx = dx; f.dataset.dy = dy;
+      flyers.push(f);
+      chip.style.opacity = '0';
+    });
+    // next frame: move
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        flyers.forEach(function (f, i) {
+          f.style.transitionDelay = (i * 45) + 'ms, ' + (520 + i * 45) + 'ms';
+          f.style.transform = 'translate(' + f.dataset.dx + 'px,' + f.dataset.dy + 'px)';
+          f.style.opacity = '0';
+        });
+      });
+    });
+    later(function () {
+      merge.classList.add('merged');
+      flyers.forEach(function (f) { f.remove(); });
+    }, 560 + chips.length * 45);
+  }
+
+  function run() {
+    if (ran) return;
+    ran = true;
+    if (reduce) { endState(); return; }
+    merge.classList.add('ready');
+    later(fly, 1500);
+  }
+
+  function reset() {
+    clear();
+    ran = false;
+    merge.classList.remove('ready', 'merged', 'static');
+    merge.querySelectorAll('.flyer').forEach(function (f) { f.remove(); });
+    merge.querySelectorAll('.chip[data-to]').forEach(function (c) { c.style.opacity = ''; });
+  }
+
+  window.addEventListener('wc:activate', function (e) {
+    if (e.detail.id === 'd4') { reset(); later(run, 120); } else { clear(); }
+  });
+  if (root.classList.contains('is-active')) later(run, 200);
+})();
+</script>
