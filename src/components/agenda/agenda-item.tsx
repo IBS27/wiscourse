@@ -131,7 +131,7 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
   }
   if (overdue && item.dueAt !== undefined) {
     return (
-      <Pill tone="red">
+      <Pill tone="red" className="bg-transparent px-0">
         <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
         <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
       </Pill>

@@ -4,7 +4,7 @@ import { MOBILE_TABS, NAV, useNavCounts } from "./nav";
 export function BottomTabs() {
   const counts = useNavCounts();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-line bg-surface/95 px-1 pt-[6px] backdrop-blur pb-[max(16px,env(safe-area-inset-bottom))] md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-line bg-surface px-1 pt-[6px] pb-[max(16px,env(safe-area-inset-bottom))] md:hidden">
       {MOBILE_TABS.map((to) => {
         const item = NAV.find((n) => n.to === to);
         if (!item) return null;

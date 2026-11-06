@@ -6,6 +6,7 @@ import {
   denseTime,
   eventCourseId,
   GRID_BOUNDS,
+  firstBlockMinute,
   gridScrollTop,
   hourLabel,
   layoutBlocks,
@@ -15,10 +16,11 @@ import {
   shiftMonth,
   timeInputValue,
   minuteFromTimeInput,
-  mondayWeekDays,
+  calendarWeekDays,
   type CalendarEvent,
   type TimeBlock,
 } from "../src/lib/calendar";
+import { weekDays } from "../src/lib/agenda";
 import { zonedToUtc } from "../convex/lib/zones";
 import type { MeetingOccurrence } from "../convex/lib/meetings";
 import type { TodoItem } from "../convex/todos";
@@ -88,9 +90,14 @@ describe("grid bounds", () => {
     expect(gridScrollTop(undefined)).toBe(8 * 48);
   });
 
-  it("opens an hour above the now-line on today", () => {
-    expect(gridScrollTop(14 * 60 + 30)).toBe(13.5 * 48);
+  it("opens an hour above a block that starts before 9 AM", () => {
+    expect(gridScrollTop(7 * 60 + 45)).toBe(6.75 * 48);
     expect(gridScrollTop(20)).toBe(0);
+  });
+
+  it("keeps 8 AM when every block starts later", () => {
+    expect(gridScrollTop(11 * 60)).toBe(8 * 48);
+    expect(gridScrollTop(9 * 60)).toBe(8 * 48);
   });
 
   it("keeps a block that runs to midnight at its start time", () => {
@@ -183,8 +190,8 @@ describe("day models", () => {
       _id: "e2",
       source: "local",
       title: "Study group",
-      startAt: at("2026-09-13", 16 * 60),
-      endAt: at("2026-09-13", 18 * 60),
+      startAt: at("2026-09-12", 16 * 60),
+      endAt: at("2026-09-12", 18 * 60),
       location: "College Library",
     },
   ];
@@ -209,7 +216,7 @@ describe("day models", () => {
     todo({ key: "a4", title: "Done already", plannedDay: "2026-09-10", doneAt: at("2026-09-09", 600) }),
   ];
 
-  const days = mondayWeekDays("2026-09-10");
+  const days = calendarWeekDays("2026-09-10");
   const models = buildDayModels({
     days,
     todos,
@@ -219,9 +226,10 @@ describe("day models", () => {
     courseLabel: (id) => (id === 1 ? "MATH 340" : undefined),
   });
 
-  it("covers Monday to Sunday", () => {
-    expect(days[0]).toBe("2026-09-07");
-    expect(days[6]).toBe("2026-09-13");
+  it("covers Sunday to Saturday, as Home's week strip does", () => {
+    expect(days).toEqual(weekDays("2026-09-10"));
+    expect(days[0]).toBe("2026-09-06");
+    expect(days[6]).toBe("2026-09-12");
   });
 
   it("puts due times in the due list and plans in the plan list", () => {
@@ -244,8 +252,13 @@ describe("day models", () => {
     expect(meeting.subtitle).toBe("Van Vleck B102");
   });
 
+  it("finds the earliest block of the week for the grid's opening scroll", () => {
+    expect(firstBlockMinute(days, models)).toBe(11 * 60);
+    expect(firstBlockMinute(["2026-09-08"], models)).toBeUndefined();
+  });
+
   it("marks local events so they render lighter", () => {
-    const [event] = models.get("2026-09-13")!.blocks;
+    const [event] = models.get("2026-09-12")!.blocks;
     expect(event).toMatchObject({ kind: "event", local: true, startMinute: 16 * 60 });
   });
 
@@ -265,7 +278,7 @@ describe("day models", () => {
 });
 
 describe("multi-day events", () => {
-  const days = mondayWeekDays("2026-09-10");
+  const days = calendarWeekDays("2026-09-10");
   const build = (events: CalendarEvent[]) =>
     buildDayModels({
       days,
@@ -343,11 +356,11 @@ describe("multi-day events", () => {
 });
 
 describe("month grid", () => {
-  it("starts on the Monday before the 1st and covers the month", () => {
+  it("starts on the Sunday before the 1st and covers the month", () => {
     const days = monthDays("2026-09-10");
-    expect(days[0]).toBe("2026-08-31");
+    expect(days[0]).toBe("2026-08-30");
     expect(days).toHaveLength(35);
-    expect(days[days.length - 1]).toBe("2026-10-04");
+    expect(days[days.length - 1]).toBe("2026-10-03");
   });
 
   it("uses six rows when the month needs them", () => {

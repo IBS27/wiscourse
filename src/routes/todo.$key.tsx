@@ -48,7 +48,7 @@ function TodoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex min-h-[56px] items-center gap-2 border-b border-line px-4 md:min-h-[64px] md:px-6">
+      <div className="flex min-h-[64px] items-center gap-2 border-b border-line px-4 md:px-6">
         <Link
           to="/"
           className="-ml-2 flex h-8 shrink-0 items-center gap-1 rounded-md pr-[10px] pl-[6px] text-[13px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
@@ -63,7 +63,7 @@ function TodoPage() {
           </>
         )}
       </div>
-      <div className="flex-1 md:bg-page md:px-6">
+      <div className="flex-1">
         {missing ? (
           <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
             <SearchX className="size-5 text-ink-3" />

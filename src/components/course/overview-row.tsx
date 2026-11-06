@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 /**
  * The overview's row: type icon · title · meta, with a trailing unread dot
  * when the caller tracks one. `line` rows sit in the main column (meta drops
- * under the title on phones); `rail` rows are the side column's two-line
- * clamp with the time at the right.
+ * under the title on phones); `rail` rows are the side column's: a title
+ * of up to two lines with its meta line underneath.
  */
 export function OverviewRow({
   icon: Icon,
@@ -42,17 +42,19 @@ export function OverviewRow({
   const body = rail ? (
     <>
       <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3" />
-      <span
-        className={cn(
-          "line-clamp-2 min-w-0 flex-1 leading-[1.4]",
-          unread ? "font-medium text-ink" : "text-ink-2",
+      <span className="min-w-0 flex-1">
+        <span
+          className={cn(
+            "line-clamp-2 leading-[1.4] tracking-[-0.005em]",
+            unread ? "font-medium text-ink" : "text-ink-2",
+          )}
+        >
+          {title}
+        </span>
+        {meta !== undefined && (
+          <span className="tabular mt-[2px] block truncate text-[12px] text-ink-3">{meta}</span>
         )}
-      >
-        {title}
       </span>
-      {meta !== undefined && (
-        <span className="tabular mt-px shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">{meta}</span>
-      )}
       {dot !== null && <span className="mt-[6px] flex">{dot}</span>}
     </>
   ) : (
@@ -73,7 +75,7 @@ export function OverviewRow({
   const cls = cn(
     "relative flex w-full gap-[10px] text-left text-[13px] text-ink no-underline transition-colors outline-none",
     rail
-      ? "items-start rounded-md px-2 py-[7px]"
+      ? "items-start rounded-md px-2 py-[9px]"
       : "items-start py-[9px] pr-4 pl-4 after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line md:items-center md:pr-6 md:pl-6 md:after:left-12",
     interactive && "hover:bg-hover focus-visible:bg-hover",
     className,

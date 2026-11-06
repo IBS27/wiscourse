@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronRight, FileText, ArrowUpRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
@@ -12,6 +12,7 @@ import {
   sectionResources,
   type MapResource,
 } from "@/lib/interpreted-course";
+import { EDGE_FADE, revealInRow, useEdgeFade } from "./edge-fade";
 import type { ModuleWithItems } from "./module-utils";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +67,7 @@ export function InterpretedOverview({
 }) {
   const [selection, setSelection] = useState<string>();
   const [page, setPage] = useState<string>();
-  const navRef = useRef<HTMLElement>(null);
+  const navRef = useEdgeFade<HTMLElement>();
   const active =
     map.sections.find((s) => s.id === selection) ??
     map.sections.find((s) => s.id === defaultSection(map, today))!;
@@ -80,9 +81,8 @@ export function InterpretedOverview({
   useEffect(() => {
     const nav = navRef.current;
     const chip = nav?.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (!nav || !chip || nav.scrollWidth <= nav.clientWidth) return;
-    nav.scrollLeft = chip.offsetLeft - nav.offsetLeft - 16;
-  }, [active.id]);
+    if (nav && chip) revealInRow(nav, chip);
+  }, [active.id, navRef]);
   const chapterLayout = map.sections.some((s) =>
     /^chapter\s+\d/i.test(s.title),
   );
@@ -127,30 +127,27 @@ export function InterpretedOverview({
           params={{ courseId }}
           className="text-[12px] text-ink-3 transition-colors hover:text-ink"
         >
-          Review interpretation
+          Review AI grouping
           {map.conflicts.length > 0 && ` · ${map.conflicts.length} flagged`}
         </Link>
       </div>
       {map.essentials.length > 0 && (
-        <div
-          className="mb-5 flex flex-wrap items-center gap-2"
-          aria-label="Course essentials"
-        >
+        <ul className="mb-5 space-y-px" aria-label="Course essentials">
           {map.essentials.map((e, i) => {
             const r = byId.get(e.resourceId);
             return r ? (
-              <Link
-                key={i}
-                to={r.href}
-                className="inline-flex h-7 max-w-full items-center gap-[6px] rounded-md border border-line bg-surface px-[10px] text-[12px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink sm:max-w-[320px]"
-                title={e.label}
-              >
-                <FileText className="size-[13px] shrink-0 text-ink-3" aria-hidden />
-                <span className="truncate">{e.label}</span>
-              </Link>
+              <li key={i}>
+                <Link
+                  to={r.href}
+                  className="-mx-2 flex items-start gap-[10px] rounded-md px-2 py-[6px] text-[13px] leading-[1.4] text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:bg-hover"
+                >
+                  <FileText className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
+                  <span className="min-w-0">{e.label}</span>
+                </Link>
+              </li>
             ) : null;
           })}
-        </div>
+        </ul>
       )}
       <div
         className={
@@ -165,7 +162,10 @@ export function InterpretedOverview({
           className={
             cards
               ? "grid gap-1 sm:grid-cols-2"
-              : "-mx-4 flex min-w-0 gap-[6px] overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-6 md:px-6 xl:mx-0 xl:block xl:max-h-[440px] xl:space-y-px xl:overflow-y-auto xl:px-0 xl:pb-0 [&::-webkit-scrollbar]:hidden"
+              : cn(
+                  "-mx-4 flex min-w-0 scroll-px-4 gap-[6px] overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-6 md:scroll-px-6 md:px-6 xl:mx-0 xl:block xl:max-h-[440px] xl:space-y-px xl:overflow-y-auto xl:px-0 xl:pb-0 [&::-webkit-scrollbar]:hidden",
+                  EDGE_FADE,
+                )
           }
         >
           {map.sections.map((s) => (

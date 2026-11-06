@@ -1,13 +1,21 @@
 import { useTodoList } from "@/lib/list-queries";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CircleCheck, Inbox, Plus } from "lucide-react";
+import { Check, ChevronRight, CircleCheck, Inbox, ListFilter, Plus } from "lucide-react";
 import type { TodoItem } from "../../convex/todos";
 import { Dot, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
 import { ProfileMenu } from "@/components/app/profile-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AgendaItem } from "@/components/agenda/agenda-item";
-import { isDone } from "@/lib/agenda";
+import { buildAgenda, isDone } from "@/lib/agenda";
 import { courseLabel, courseStyle, useCourses, useNow, useToday } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +31,15 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 type Semester = "current" | "all";
 type Source = "all" | "canvas" | "personal";
+const SOURCES: { id: Source; label: string }[] = [
+  { id: "all", label: "All tasks" },
+  { id: "canvas", label: "Canvas" },
+  { id: "personal", label: "Personal" },
+];
+const SEMESTERS: { id: Semester; label: string }[] = [
+  { id: "current", label: "This semester" },
+  { id: "all", label: "All semesters" },
+];
 
 function Tasks() {
   const items = useTodoList();
@@ -108,28 +125,15 @@ function Tasks() {
             </div>
           </>
         )}
-        <div className="flex shrink-0 items-center gap-2 max-md:pr-4 md:ml-auto">
-          <Segmented
-            label="Source"
-            value={source}
-            onChange={setSource}
-            options={[
-              { id: "all", label: "All" },
-              { id: "canvas", label: "Canvas" },
-              { id: "personal", label: "Personal" },
-            ]}
-          />
-          <Segmented
-            label="Semester"
-            value={semester}
-            onChange={(value) => {
+        <div className="flex shrink-0 items-center max-md:pr-4 md:ml-auto">
+          <FilterMenu
+            source={source}
+            onSource={setSource}
+            semester={semester}
+            onSemester={(value) => {
               setSemester(value);
               setCourse(null);
             }}
-            options={[
-              { id: "current", label: "This semester" },
-              { id: "all", label: "All semesters" },
-            ]}
           />
         </div>
       </div>
@@ -161,19 +165,49 @@ function GroupedList({ items, view, todayKey, now }: { items: TodoItem[]; view: 
   }
   const dated = items.filter((it) => it.dueAt !== undefined || it.plannedDay !== undefined);
   const undated = items.filter((it) => it.dueAt === undefined && it.plannedDay === undefined);
+  // Same buckets as Home; whatever Canvas already has (submitted, graded,
+  // settled) folds into one collapsed section at the end.
+  const buckets = buildAgenda(dated, { todayKey, now }).filter((b) => b.items.length > 0);
+  const placed = new Set(buckets.flatMap((b) => b.items.map((it) => it.key)));
+  const handled = dated
+    .filter((it) => !placed.has(it.key))
+    .sort((a, b) => (b.dueAt ?? 0) - (a.dueAt ?? 0));
   return (
     <>
-      {dated.length > 0 && <Section title="Scheduled" items={dated} todayKey={todayKey} now={now} />}
+      {buckets.map((b) => (
+        <Section key={b.id} title={b.title} detail={b.detail} items={b.items} red={b.id === "overdue"} todayKey={todayKey} now={now} />
+      ))}
       {undated.length > 0 && <Section title="Undated" items={undated} todayKey={todayKey} now={now} />}
+      {handled.length > 0 && <HandledSection items={handled} todayKey={todayKey} now={now} />}
     </>
   );
 }
 
-function Section({ title, detail, items, todayKey, now }: { title: string; detail?: string; items: TodoItem[]; todayKey: string; now: number }) {
+function HandledSection({ items, todayKey, now }: { items: TodoItem[]; todayKey: string; now: number }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="pb-6">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-baseline gap-2 px-4 pt-6 pb-2 text-left transition-colors hover:text-ink md:px-6"
+      >
+        <ChevronRight className={cn("size-[13px] self-center text-ink-3 transition-transform", open && "rotate-90")} aria-hidden />
+        <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink-2">Submitted or graded</h2>
+        <span className="text-[12.5px] text-ink-3">Canvas has these; mark them done to clear them</span>
+        <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
+      </button>
+      {open && items.map((it, i) => <AgendaItem key={it.key} item={it} first={i === 0} todayKey={todayKey} now={now} />)}
+    </section>
+  );
+}
+
+function Section({ title, detail, items, red, todayKey, now }: { title: string; detail?: string; items: TodoItem[]; red?: boolean; todayKey: string; now: number }) {
   return (
     <section>
       <div className="flex items-baseline gap-2 px-4 pt-6 pb-2 md:px-6">
-        <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
+        <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
         {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
         <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
       </div>
@@ -208,6 +242,83 @@ function FilterChip({
     >
       {children}
     </button>
+  );
+}
+
+/** Source and semester: set-and-forget choices, kept out of the toolbar. */
+function FilterMenu({
+  source,
+  onSource,
+  semester,
+  onSemester,
+}: {
+  source: Source;
+  onSource: (value: Source) => void;
+  semester: Semester;
+  onSemester: (value: Semester) => void;
+}) {
+  const active = (source !== "all" ? 1 : 0) + (semester !== "current" ? 1 : 0);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={active > 0 ? `Filter, ${active} active` : "Filter"}
+          className={cn(
+            "flex h-7 shrink-0 items-center gap-[6px] rounded-md border border-line px-[9px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none data-[state=open]:bg-hover",
+            active > 0 && "border-line-2 text-ink",
+          )}
+        >
+          <ListFilter className="size-[14px] text-ink-3" />
+          Filter
+          {active > 0 && (
+            <span className="tabular grid h-4 min-w-4 place-items-center rounded-full bg-today px-1 text-[10.5px] leading-none font-semibold text-today-fg">
+              {active}
+            </span>
+          )}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[200px]">
+        <MenuChoices label="Source" value={source} onChange={onSource} options={SOURCES} />
+        <DropdownMenuSeparator />
+        <MenuChoices label="Semester" value={semester} onChange={onSemester} options={SEMESTERS} />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function MenuChoices<T extends string>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (value: T) => void;
+  options: { id: T; label: string }[];
+}) {
+  return (
+    <>
+      <div className="px-2 pt-[6px] pb-1 text-[11.5px] font-medium text-ink-3" aria-hidden>
+        {label}
+      </div>
+      <DropdownMenuRadioGroup
+        aria-label={label}
+        value={value}
+        onValueChange={(id) => {
+          const option = options.find((o) => o.id === id);
+          if (option) onChange(option.id);
+        }}
+      >
+        {options.map((o) => (
+          <DropdownMenuRadioItem key={o.id} value={o.id}>
+            {o.label}
+            <Check className={cn("ml-auto", value !== o.id && "invisible")} />
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </>
   );
 }
 

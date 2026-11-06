@@ -150,7 +150,6 @@ function CourseFiles() {
         folder={folder}
         selectedFileId={selectedFile?.canvasId}
         isNew={isNew}
-        unreadFolders={unreadFolders}
         compact={previewFile !== undefined}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}

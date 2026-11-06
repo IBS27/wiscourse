@@ -78,7 +78,7 @@ function CourseOverview() {
                     params={{ courseId }}
                     className="font-medium text-ink underline decoration-line-2 underline-offset-4 hover:decoration-ink-3"
                   >
-                    Review interpretation
+                    Review AI grouping
                   </Link>
                 </span>
               </p>
@@ -117,7 +117,7 @@ function CourseOverview() {
                 className="mx-4 mt-6 inline-flex items-center gap-[6px] rounded-md px-2 py-1 text-[12.5px] text-ink-3 transition-colors hover:bg-hover hover:text-ink md:mx-[18px]"
               >
                 <Sparkles className="size-[14px]" aria-hidden />
-                {interpretation?.state?.map ? "Review interpretation" : "Organize this course"}
+                {interpretation?.state?.map ? "Review AI grouping" : "Organize this course"}
               </Link>
             )}
           </>

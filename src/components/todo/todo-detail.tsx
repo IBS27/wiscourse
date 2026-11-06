@@ -79,9 +79,9 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   }, [ref, done, setDone]);
 
   return (
-    <div className="mx-auto w-full max-w-[760px] md:my-8 md:rounded-xl md:border md:border-line md:bg-surface md:shadow-[0_1px_2px_rgba(16,17,20,0.04)]" style={courseStyle(color(item.courseCanvasId))}>
+    <div className="mx-auto w-full max-w-[760px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
-      <div className="px-4 pt-5 pb-4 md:px-7 md:pt-7 md:pb-5">
+      <div className="pt-5 pb-5 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
           {course ? (
             <>
@@ -236,7 +236,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
       )}
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-line px-4 py-4 md:rounded-b-xl md:bg-sunken md:px-7">
+      <div className="flex flex-wrap items-center gap-2 border-t border-line py-5">
         <button
           type="button"
           onClick={() => void setDone({ ref, done: !done })}
@@ -301,7 +301,7 @@ const PROSE = cn(
 
 function Block({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <section className="border-t border-line px-4 py-4 md:px-7 md:py-5">
+    <section className="border-t border-line py-5">
       <div className="mb-[10px] flex items-center gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
         {hint && <div className="ml-auto flex items-center max-md:[&>kbd]:hidden">{hint}</div>}

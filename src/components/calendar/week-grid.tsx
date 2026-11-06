@@ -1,10 +1,10 @@
 // Direction A: a time grid for the things that occupy time, with two thin
 // bands above it for the things that do not (Due and Plan). The grid runs
-// the whole day and scrolls under the headers and bands, opening on the
-// hour before the now-line or the morning.
+// the whole day and scrolls under the headers and bands, opening at 8 AM or
+// an hour before the week's first block, whichever is earlier.
 
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { CalendarClock, ChevronUp } from "lucide-react";
+import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
@@ -12,6 +12,7 @@ import {
   blockLabel,
   blockTimeLabel,
   clockTime,
+  firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
   hourLabel,
@@ -78,7 +79,7 @@ export function WeekGrid({
   const showNow = days.includes(todayKey);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
-  useTimelineScroll(scrollRef, gridScrollTop(showNow ? nowMinute : undefined), PX_PER_HOUR);
+  useTimelineScroll(scrollRef, gridScrollTop(firstBlockMinute(days, models)), PX_PER_HOUR);
 
   const due = days.map((day) => {
     const model = models.get(day);
@@ -100,13 +101,10 @@ export function WeekGrid({
   // Marks alone are small enough that a phone shows them all.
   const fold = !compact && !expanded;
   const overflows = !compact && [...due, ...planned].some((rows) => rows.length > BAND_ROWS + 1);
-  const emptyWeek = days.every((day) => (models.get(day)?.blocks.length ?? 0) === 0);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {onAddClassTimes !== undefined && !emptyWeek && (
-        <ClassTimesStrip onOpen={onAddClassTimes} />
-      )}
+      {onAddClassTimes !== undefined && <ClassTimesStrip onOpen={onAddClassTimes} />}
 
       <div className={cn("grid border-b border-line", GUTTER)} style={grid}>
         <div className="border-r border-line" />
@@ -137,59 +135,53 @@ export function WeekGrid({
         onExpand={() => setExpanded(true)}
       />
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        className="relative grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+        style={grid}
+      >
         <div
-          ref={scrollRef}
-          className="relative grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-          style={grid}
+          className="relative border-r border-line text-[10.5px] tabular text-ink-3"
+          style={{ height: bounds.height }}
         >
-          <div
-            className="relative border-r border-line text-[10.5px] tabular text-ink-3"
-            style={{ height: bounds.height }}
-          >
-            {bounds.hours.map((hour) =>
-              // The now label takes the place of an hour it would collide with.
-              showNow && Math.abs(nowMinute - hour * 60) < NOW_LABEL_CLEARANCE ? null : (
-                <span
-                  key={hour}
-                  className="absolute right-2 -translate-y-1/2"
-                  style={{ top: minuteOffset(hour * 60, bounds) }}
-                >
-                  {hourLabel(hour)}
-                </span>
-              ),
-            )}
-            {showNow && <NowLabel top={nowTop} minute={nowMinute} className="right-[4px]" />}
-          </div>
-
-          {days.map((day) => {
-            const isToday = day === todayKey;
-            const isPast = day < todayKey;
-            const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
-            return (
-              <div
-                key={day}
-                className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
-                style={{ ...HOUR_LINES, height: bounds.height }}
+          {bounds.hours.map((hour) =>
+            // The now label takes the place of an hour it would collide with.
+            showNow && Math.abs(nowMinute - hour * 60) < NOW_LABEL_CLEARANCE ? null : (
+              <span
+                key={hour}
+                className="absolute right-2 -translate-y-1/2"
+                style={{ top: minuteOffset(hour * 60, bounds) }}
               >
-                {blocks.map((block) => (
-                  <Block
-                    key={block.id}
-                    block={block}
-                    bounds={bounds}
-                    past={isPast}
-                    onOpen={onOpenBlock}
-                  />
-                ))}
-                {isToday && showNow && <NowLine top={nowTop} className="left-[4px]" />}
-              </div>
-            );
-          })}
+                {hourLabel(hour)}
+              </span>
+            ),
+          )}
+          {showNow && <NowLabel top={nowTop} minute={nowMinute} className="right-[4px]" />}
         </div>
 
-        {onAddClassTimes !== undefined && emptyWeek && (
-          <ClassTimesCard onOpen={onAddClassTimes} left={compact ? 0 : gutter(compact)} />
-        )}
+        {days.map((day) => {
+          const isToday = day === todayKey;
+          const isPast = day < todayKey;
+          const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
+          return (
+            <div
+              key={day}
+              className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
+              style={{ ...HOUR_LINES, height: bounds.height }}
+            >
+              {blocks.map((block) => (
+                <Block
+                  key={block.id}
+                  block={block}
+                  bounds={bounds}
+                  past={isPast}
+                  onOpen={onOpenBlock}
+                />
+              ))}
+              {isToday && showNow && <NowLine top={nowTop} className="left-[4px]" />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -292,47 +284,27 @@ function Band({
   );
 }
 
-/** Above the grid when the week has blocks but no class times. */
+/**
+ * Above the day headers while no class times exist: an inline row, never an
+ * overlay, so it cannot cover the grid it is asking to fill.
+ */
 function ClassTimesStrip({ onOpen }: { onOpen: () => void }) {
   return (
-    <div className="flex h-10 shrink-0 items-center gap-[9px] border-b border-line px-4 text-[12.5px] text-ink-3 md:px-6">
-      <CalendarClock className="size-[14px] shrink-0" />
-      <span className="min-w-0 truncate">Add your class times so lectures show here</span>
-      <button
-        type="button"
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4 text-[12.5px] md:px-6">
+      <CalendarClock className="size-[14px] shrink-0 text-ink-3" />
+      <span className="shrink-0 font-medium text-ink-2">No class times yet</span>
+      <span className="hidden min-w-0 truncate text-ink-3 sm:inline">
+        Add your class times so lectures show here
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
         onClick={onOpen}
-        className="ml-auto shrink-0 rounded-md px-2 py-1 font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
+        className="ml-auto h-7 shrink-0 rounded-md px-[10px] text-[12.5px]"
       >
+        <Plus className="size-[13px]" />
         Add class times
-      </button>
-    </div>
-  );
-}
-
-/** Floats over an empty week, where the strip would only add to the void. */
-function ClassTimesCard({ onOpen, left }: { onOpen: () => void; left: number }) {
-  return (
-    <div
-      className="pointer-events-none absolute right-0 bottom-4 z-[3] flex justify-center px-4 md:bottom-6"
-      style={{ left }}
-    >
-      <div className="pointer-events-auto flex w-full max-w-[480px] flex-wrap items-center gap-3 rounded-xl border border-line bg-raised py-3 pr-3 pl-[14px] shadow-[var(--menu-shadow)]">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-chip text-ink-2">
-          <CalendarClock className="size-4" />
-        </span>
-        <div className="min-w-[200px] flex-1">
-          <div className="text-[13px] font-semibold tracking-[-0.005em]">No classes here yet</div>
-          <div className="mt-px text-[12.5px] text-ink-3">Add your class times so lectures show here</div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onOpen}
-          className="ml-auto h-8 shrink-0 rounded-lg px-3 text-[12.5px]"
-        >
-          Add class times
-        </Button>
-      </div>
+      </Button>
     </div>
   );
 }

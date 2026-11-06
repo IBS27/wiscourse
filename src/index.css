@@ -18,7 +18,7 @@
   --chip: #f2f2f4;
   --ink: #1b1b1f;
   --ink-2: #4f4f59;
-  --ink-3: #74747e;
+  --ink-3: #6c6c76;
   --red: #c5050c;
   --red-bg: #fdf1f1;
   --today-bg: #18181b;
@@ -63,8 +63,8 @@
   /* UW–Madison Badger Red. Logo + overdue only — not a UI accent. */
   --brand: var(--red);
   --brand-ink: #101114;
-  /* Unread marker: neutral so it never collides with a course colour. */
-  --unread: var(--ink);
+  /* Unread marker: one blue, used for "new since you looked" everywhere. */
+  --unread: #2f6feb;
 }
 
 .dark {
@@ -97,6 +97,7 @@
   --course-none: #8c8c8c;
 
   --brand-ink: #ececef;
+  --unread: #5b9bff;
 }
 
 @theme inline {

@@ -8,6 +8,7 @@ import {
   blockGeometry,
   blockTimeLabel,
   eventCourseId,
+  firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
   hourLabel,
@@ -38,7 +39,7 @@ export function DayView({
   onOpenEvent,
 }: {
   day: string;
-  /** The week the strip shows, Monday first. */
+  /** The week the strip shows, Sunday first, as on Home. */
   days: string[];
   models: Map<string, DayModel>;
   todayKey: string;
@@ -54,11 +55,7 @@ export function DayView({
   const bodySwipe = useSwipe((delta) => onShiftDay(delta));
   const stripSwipe = useSwipe((delta) => onShiftWeek(delta));
   const scrollRef = useRef<HTMLDivElement>(null);
-  useTimelineScroll(
-    scrollRef,
-    gridScrollTop(day === todayKey ? minuteOf(now, zone) : undefined),
-    PX_PER_HOUR,
-  );
+  useTimelineScroll(scrollRef, gridScrollTop(firstBlockMinute([day], models)), PX_PER_HOUR);
   const band = [
     ...(model?.allDay ?? []).map((event) => (
       <AllDayLine key={`all:${event._id}`} event={event} onOpen={onOpenEvent} roomy />

@@ -10,7 +10,7 @@
 import type { TodoItem } from "../../convex/todos";
 import { MEETING_KIND_LABELS, type MeetingOccurrence } from "../../convex/lib/meetings";
 import { CAMPUS_TIME_ZONE, dayKeyIn, minuteOfDayIn, zonedToUtc } from "../../convex/lib/zones";
-import { addDays, dayDiff, startOfMondayWeek } from "./dates";
+import { addDays, dayDiff, startOfWeek } from "./dates";
 
 /** One hour of grid, in pixels (docs/calendar.html: 48px per hour). */
 export const PX_PER_HOUR = 48;
@@ -20,10 +20,10 @@ export const MIN_BLOCK_PX = 40;
 const MIN_BLOCK_MINUTES = (MIN_BLOCK_PX / PX_PER_HOUR) * 60;
 /** Breathing room above the first hour line so its label is not clipped. */
 export const GRID_TOP_PAD = 10;
-/** Where the timeline opens when today is not in view: the start of the day. */
+/** Where the timeline opens: the start of the working day. */
 export const GRID_OPENS_AT = 8 * 60;
-/** How far above the now-line the timeline opens on today, so it has context. */
-const NOW_LEAD = 60;
+/** How far above an earlier first block the timeline opens, for context. */
+const BLOCK_LEAD = 60;
 
 /** Shape of a `calendarEvents` row; structural so tests need no Convex ids. */
 export interface CalendarEvent {
@@ -332,12 +332,30 @@ export const GRID_BOUNDS: GridBounds = {
 };
 
 /**
- * The scroll offset the timeline opens at: an hour above the now-line when
- * today is in view, otherwise 8 AM. Clamped so the top pad stays visible.
+ * The scroll offset the timeline opens at: 8 AM, or an hour above the
+ * earliest block in view when that starts sooner, so a morning exam is never
+ * scrolled away. Clamped so the top pad stays visible.
  */
-export function gridScrollTop(nowMinute: number | undefined): number {
-  const minute = nowMinute === undefined ? GRID_OPENS_AT : nowMinute - NOW_LEAD;
+export function gridScrollTop(firstBlockMinute: number | undefined): number {
+  const minute =
+    firstBlockMinute === undefined
+      ? GRID_OPENS_AT
+      : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
   return Math.max(0, minuteOffset(Math.max(0, minute), GRID_BOUNDS) - GRID_TOP_PAD);
+}
+
+/** The earliest block start across `models` for `days`, if any. */
+export function firstBlockMinute(
+  days: string[],
+  models: Map<string, DayModel>,
+): number | undefined {
+  let first: number | undefined;
+  for (const day of days) {
+    for (const block of models.get(day)?.blocks ?? []) {
+      if (first === undefined || block.startMinute < first) first = block.startMinute;
+    }
+  }
+  return first;
 }
 
 /** Pixels from the top of the grid body for a given minute of the day. */
@@ -365,22 +383,22 @@ export function blockGeometry(
 // ── Day sets ────────────────────────────────────────────────────────────────
 
 /**
- * Monday … Sunday of the week containing `key`. Named for its start on
- * purpose: src/lib/agenda.ts exports a Sunday-start `weekDays` for Home.
+ * Sunday … Saturday of the week containing `key` — the same week Home's
+ * strip shows (src/lib/agenda.ts `weekDays`), so the two never disagree.
  */
-export function mondayWeekDays(key: string): string[] {
-  const monday = startOfMondayWeek(key);
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+export function calendarWeekDays(key: string): string[] {
+  const sunday = startOfWeek(key);
+  return Array.from({ length: 7 }, (_, i) => addDays(sunday, i));
 }
 
 /**
- * The month grid containing `key`: whole Monday-start weeks covering the
- * month — four rows for a February that starts on a Monday, usually five,
+ * The month grid containing `key`: whole Sunday-start weeks covering the
+ * month — four rows for a February that starts on a Sunday, usually five,
  * six when the 1st falls late in the week.
  */
 export function monthDays(key: string): string[] {
   const first = `${key.slice(0, 7)}-01`;
-  const start = startOfMondayWeek(first);
+  const start = startOfWeek(first);
   const last = lastDayOfMonth(key);
   const weeks = Math.ceil((dayDiff(start, last) + 1) / 7);
   return Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));

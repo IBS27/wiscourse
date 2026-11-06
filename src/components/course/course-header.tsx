@@ -1,9 +1,10 @@
-import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, type ReactNode } from "react";
+import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronLeft, ExternalLink, Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
+import { EDGE_FADE, revealInRow, useEdgeFade } from "./edge-fade";
 import { UnreadDot } from "./unread-dot";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
@@ -28,6 +29,17 @@ export function CourseHeader({
   const sync = useSyncInfo();
   const canvasHref = canvasCourseUrl(courseId, sync?.instance);
   const hub = useQuery(api.courses.hub, Number.isFinite(canvasId) ? { canvasId } : "skip");
+  const tabsRef = useEdgeFade<HTMLElement>();
+  const pathname = useLocation({ select: (location) => location.pathname });
+
+  // On a phone the open tab can sit past the edge (Syllabus, Grades). The
+  // badges widen the row once the hub loads, so look again then.
+  const badges = `${hub?.unreadModules}:${hub?.newFiles}`;
+  useEffect(() => {
+    const nav = tabsRef.current;
+    const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (nav && tab) revealInRow(nav, tab);
+  }, [pathname, badges, tabsRef]);
 
   const name = course === undefined ? "" : courseTitle(course);
   const code = course === undefined ? undefined : shortCode(course);
@@ -100,7 +112,13 @@ export function CourseHeader({
         </a>
       </div>
 
-      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-2 md:mt-4 md:px-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav
+        ref={tabsRef}
+        className={cn(
+          "mt-1 flex scroll-px-4 gap-[2px] overflow-x-auto px-2 md:mt-4 md:px-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          EDGE_FADE,
+        )}
+      >
         <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
         <Tab
           to="/courses/$courseId/modules"
@@ -163,8 +181,7 @@ function Tab({
 function TabCount({ n }: { n: number }) {
   return (
     <span className="tabular rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
-      {n}
-      <span className="hidden md:inline"> new</span>
+      {n} new
     </span>
   );
 }

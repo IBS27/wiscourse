@@ -260,9 +260,7 @@ function AssignmentRow({
         )}
       >
         {whatIf === undefined ? (
-          <span
-            className={cn(result.dropped && "text-ink-3 line-through decoration-ink-3/70")}
-          >
+          <span className={cn(result.dropped && "font-normal text-ink-3")}>
             <Score parts={scoreParts(row, result.effectiveScore)} />
           </span>
         ) : (

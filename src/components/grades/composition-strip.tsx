@@ -84,7 +84,7 @@ export function CompositionStrip({
           <span
             key={segment.key}
             title={segment.name}
-            className="relative block h-full min-w-[6px] shrink grow-0 overflow-hidden rounded-full bg-ink/8"
+            className="relative block h-full min-w-[18px] shrink grow-0 overflow-hidden rounded-full bg-ink/8"
             style={{ flexBasis: `${segment.share * 100}%` }}
           >
             <span

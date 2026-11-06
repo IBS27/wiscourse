@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { Folder, FolderOpen, Lock, Search, SearchX } from "lucide-react";
+import { FolderOpen, Lock, Search, SearchX } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
   folderPath,
   folderPathLabel,
+  recentFiles,
   type FileDoc,
   type FolderNode,
   type FolderTree,
@@ -17,21 +18,25 @@ interface Row {
   path?: string;
 }
 
-/** Name · folder count · new-dot; the count drops while a preview is open. */
-const COLS = "grid-cols-[minmax(0,1fr)_72px_6px] gap-x-5";
-const COLS_COMPACT = "grid-cols-[minmax(0,1fr)_6px] gap-x-3";
+const RECENT_COUNT = 8;
+
+interface Section {
+  label?: string;
+  rows: Row[];
+}
 
 /**
- * The middle pane of 4-A. The filter does double duty: empty it narrows the
- * open folder, typed it searches the whole course and each row carries the
- * folder it came from.
+ * The middle pane of 4-A. Subfolders live only in the tree beside it, so
+ * this pane is files: the open folder's own, with the newest across the
+ * course pinned above them at the root. The filter does double duty: empty
+ * it narrows the open folder, typed it searches the whole course and each
+ * row carries the folder it came from.
  */
 export function FileList({
   tree,
   folder,
   selectedFileId,
   isNew,
-  unreadFolders,
   compact = false,
   onSelectFolder,
   onSelectFile,
@@ -41,8 +46,6 @@ export function FileList({
   folder: FolderNode | undefined;
   selectedFileId: number | undefined;
   isNew: (file: FileDoc) => boolean;
-  /** Folders holding an unseen, recently added file. */
-  unreadFolders: Set<number>;
   /** A preview is open beside the list: names only. */
   compact?: boolean;
   onSelectFolder: (canvasId: number) => void;
@@ -53,20 +56,36 @@ export function FileList({
   const query = filter.trim().toLowerCase();
   const searching = query !== "";
 
-  const rows = useMemo<Row[]>(() => {
-    if (!searching) return (folder?.files ?? []).map((file) => ({ file }));
-    return tree.files
-      .filter((file) => file.displayName.toLowerCase().includes(query))
-      .map((file) => ({ file, path: folderPathLabel(tree, file.folderCanvasId) }));
-  }, [tree, folder, query, searching]);
-
-  const folders = searching ? [] : (folder?.children ?? []);
   const crumbs = folderPath(tree, folder?.folder.canvasId);
-  const cols = compact ? COLS_COMPACT : COLS;
+  const atRoot = crumbs.length <= 1;
+
+  const sections = useMemo<Section[]>(() => {
+    if (searching) {
+      const rows = tree.files
+        .filter((file) => file.displayName.toLowerCase().includes(query))
+        .map((file) => ({ file, path: folderPathLabel(tree, file.folderCanvasId) }));
+      return [{ rows }];
+    }
+    const own = (folder?.files ?? []).map((file) => ({ file }));
+    if (!atRoot) return [{ rows: own }];
+    const recent = recentFiles(tree, RECENT_COUNT).map((file) => ({
+      file,
+      path: folderPathLabel(tree, file.folderCanvasId),
+    }));
+    if (recent.length === 0) return [{ rows: own }];
+    return own.length === 0
+      ? [{ label: "Recently added", rows: recent }]
+      : [
+          { label: "Recently added", rows: recent },
+          { label: "In this folder", rows: own },
+        ];
+  }, [tree, folder, query, searching, atRoot]);
+  const total = sections.reduce((n, section) => n + section.rows.length, 0);
+  const subfolders = folder?.children.length ?? 0;
+
   const rowCls = cn(
-    "relative grid min-h-10 w-full items-center px-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
-    "after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line",
-    cols,
+    "relative grid min-h-10 w-full items-center gap-x-3 px-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+    "grid-cols-[minmax(0,1fr)_6px] after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line",
   );
 
   return (
@@ -75,7 +94,7 @@ export function FileList({
         <div className="flex min-w-0 items-center gap-[6px] overflow-hidden">
           {searching ? (
             <span className="truncate">
-              {rows.length} result{rows.length === 1 ? "" : "s"} in this course
+              {total} result{total === 1 ? "" : "s"} in this course
             </span>
           ) : (
             crumbs.map((node, i) => (
@@ -112,7 +131,7 @@ export function FileList({
         </label>
       </div>
 
-      {rows.length === 0 && folders.length === 0 ? (
+      {total === 0 ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
           {searching ? (
             <SearchX className="size-5 text-ink-3" aria-hidden />
@@ -120,70 +139,64 @@ export function FileList({
             <FolderOpen className="size-5 text-ink-3" aria-hidden />
           )}
           <p className="text-[13px] text-ink-2">
-            {searching ? `No files match “${filter.trim()}”` : "This folder is empty"}
+            {searching
+              ? `No files match “${filter.trim()}”`
+              : subfolders > 0
+                ? "No files directly in this folder"
+                : "This folder is empty"}
           </p>
+          {!searching && subfolders > 0 && (
+            <p className="text-[12.5px] text-ink-3">
+              Its {subfolders} subfolder{subfolders === 1 ? " is" : "s are"} in the list on the left.
+            </p>
+          )}
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {folders.map((child) => (
-            <button
-              key={child.folder.canvasId}
-              type="button"
-              onClick={() => onSelectFolder(child.folder.canvasId)}
-              className={rowCls}
-            >
-              <span className="flex min-w-0 items-center gap-[10px]">
-                <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
-                <span className="truncate">{child.folder.name}</span>
-              </span>
-              {!compact && (
-                <>
-                  <span className="tabular text-right text-[12px] text-ink-3">
-                    {child.totalFiles} file{child.totalFiles === 1 ? "" : "s"}
-                  </span>
-                </>
+        <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+          {sections.map((section) => (
+            <div key={section.label ?? "files"}>
+              {section.label !== undefined && (
+                <div className="px-4 pt-5 pb-2 text-[13px] font-semibold tracking-[-0.005em] text-ink">
+                  {section.label}
+                </div>
               )}
-              <span className="flex justify-end">
-                {unreadFolders.has(child.folder.canvasId) && <UnreadDot />}
-              </span>
-            </button>
-          ))}
-          {rows.map(({ file, path }) => {
-            const selected = file.canvasId === selectedFileId;
-            const unread = isNew(file);
-            return (
-              <button
-                key={file.canvasId}
-                type="button"
-                aria-current={selected ? "true" : undefined}
-                onClick={() => onSelectFile(file.canvasId)}
-                className={cn(rowCls, selected && "bg-chip hover:bg-chip")}
-              >
-                <span className="flex min-w-0 items-center gap-[10px]">
-                  {file.lockedForUser === true ? (
-                    <Lock className="size-[14px] shrink-0 text-ink-3" aria-label="Locked" />
-                  ) : (
-                    <FileTypeIcon contentType={file.contentType} filename={file.filename} />
-                  )}
-                  <span className="min-w-0">
-                    <span
-                      className={cn(
-                        compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
-                        unread && "font-medium",
+              {section.rows.map(({ file, path }) => {
+                const selected = file.canvasId === selectedFileId;
+                const unread = isNew(file);
+                return (
+                  <button
+                    key={file.canvasId}
+                    type="button"
+                    aria-current={selected ? "true" : undefined}
+                    onClick={() => onSelectFile(file.canvasId)}
+                    className={cn(rowCls, selected && "bg-chip hover:bg-chip")}
+                  >
+                    <span className="flex min-w-0 items-center gap-[10px]">
+                      {file.lockedForUser === true ? (
+                        <Lock className="size-[14px] shrink-0 text-ink-3" aria-label="Locked" />
+                      ) : (
+                        <FileTypeIcon contentType={file.contentType} filename={file.filename} />
                       )}
-                    >
-                      {file.displayName}
+                      <span className="min-w-0">
+                        <span
+                          className={cn(
+                            compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
+                            unread && "font-medium",
+                          )}
+                        >
+                          {file.displayName}
+                        </span>
+                        {path !== undefined && path !== "" && (
+                          <span className="block truncate text-[12px] text-ink-3">{path}</span>
+                        )}
+                      </span>
                     </span>
-                    {path !== undefined && path !== "" && (
-                      <span className="block truncate text-[12px] text-ink-3">{path}</span>
-                    )}
-                  </span>
-                </span>
-                {!compact && <span />}
-                <span className="flex justify-end">{unread && <UnreadDot />}</span>
-              </button>
-            );
-          })}
+                    <span className="flex justify-end">{unread && <UnreadDot />}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
     </div>

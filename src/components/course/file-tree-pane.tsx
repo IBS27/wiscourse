@@ -4,8 +4,10 @@ import { UnreadDot } from "./unread-dot";
 import { folderPath, type FolderNode, type FolderTree } from "./file-tree";
 import { cn } from "@/lib/utils";
 
-/** The left pane of 4-A: Canvas' folder hierarchy. Folders above the
- *  selection are forced open — a deep link cannot land on a hidden row. */
+/** The left pane of 4-A: Canvas' folder hierarchy, and the only place
+ *  subfolders are listed. Folders above the selection are forced open — a
+ *  deep link cannot land on a hidden row — and the selected folder opens
+ *  by default so its subfolders show. */
 export function FileTreePane({
   tree,
   selectedFolderId,
@@ -32,7 +34,8 @@ export function FileTreePane({
 
   const rootId = tree.root?.folder.canvasId;
   const isOpen = (canvasId: number) =>
-    ancestors.has(canvasId) || (overrides.get(canvasId) ?? canvasId === rootId);
+    ancestors.has(canvasId) ||
+    (overrides.get(canvasId) ?? (canvasId === rootId || canvasId === selectedFolderId));
 
   const toggle = (canvasId: number) => {
     const closing = isOpen(canvasId);

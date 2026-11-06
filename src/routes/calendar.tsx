@@ -18,7 +18,7 @@ import { useCalendarData } from "@/components/calendar/use-calendar";
 import {
   monthDays,
   shiftMonth,
-  mondayWeekDays,
+  calendarWeekDays,
   type CalendarEvent,
   type TimeBlock,
 } from "@/lib/calendar";
@@ -28,7 +28,7 @@ import {
   dayKeyOf,
   formatDayMedium,
   formatMonthYear,
-  startOfMondayWeek,
+  startOfWeek,
 } from "@/lib/dates";
 import { useCourses, useIsMobile, useNow, useToday } from "@/lib/hooks";
 import { useSyncInfo } from "@/lib/sync-info";
@@ -79,7 +79,7 @@ function Calendar() {
   const [subscribing, setSubscribing] = useState(false);
 
   const days = useMemo(
-    () => (view === "month" ? monthDays(anchor) : mondayWeekDays(anchor)),
+    () => (view === "month" ? monthDays(anchor) : calendarWeekDays(anchor)),
     [view, anchor],
   );
   const { models, meetings, loading } = useCalendarData({ days });
@@ -341,10 +341,14 @@ function ConnectCard() {
   );
 }
 
-/** "Week 2" of the term, from the earliest term start among the courses. */
+/**
+ * "Week 2" of the term, from the earliest term start among the courses.
+ * Counted in the calendar's own Sunday-start weeks, so the label always
+ * names the week on screen.
+ */
 function teachingWeek(
   courses: { termStartAt?: number; startAt?: number }[],
-  mondayKey: string,
+  sundayKey: string,
 ): number | undefined {
   let earliest: number | undefined;
   for (const course of courses) {
@@ -353,6 +357,6 @@ function teachingWeek(
     if (earliest === undefined || start < earliest) earliest = start;
   }
   if (earliest === undefined) return undefined;
-  const week = dayDiff(startOfMondayWeek(dayKeyOf(earliest)), mondayKey) / 7 + 1;
+  const week = dayDiff(startOfWeek(dayKeyOf(earliest)), sundayKey) / 7 + 1;
   return Number.isInteger(week) && week >= 1 && week <= 20 ? week : undefined;
 }

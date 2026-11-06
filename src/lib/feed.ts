@@ -50,7 +50,9 @@ export function feedSubtitle(item: FeedItem, dueAt?: number): string | undefined
       : undefined;
   const letter =
     item.grade !== undefined && item.grade !== String(item.score) && item.grade !== pct ? item.grade : undefined;
-  return join([pct, letter]) ?? "Grade posted";
+  // The title already carries "— 10/10"; repeating it as a percent is noise.
+  if (pct !== undefined) return letter;
+  return letter ?? "Grade posted";
 }
 
 function join(parts: (string | undefined)[]): string | undefined {

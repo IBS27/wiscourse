@@ -215,16 +215,16 @@ export function CourseGradebook({
             </div>
             <div className="mt-[2px] truncate text-[12.5px] text-ink-3">{metaLine}</div>
           </div>
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-2">
             {toggle}
             <a
               href={canvasCourseUrl(courseCanvasId, sync?.instance)}
               target="_blank"
               rel="noreferrer"
-              className="hidden h-8 items-center gap-[7px] rounded-lg px-[10px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
+              className="hidden h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
             >
-              <ExternalLink className="size-[13px]" />
-              Canvas
+              <ExternalLink className="size-[14px]" />
+              Open in Canvas
             </a>
           </div>
         </header>
@@ -315,7 +315,7 @@ export function CourseGradebook({
         )}
 
         <div
-          className={cn("px-2 pt-4 pb-10 md:px-4", whatIfOn && "lg:col-start-1 lg:row-start-2")}
+          className={cn("px-4 pt-4 pb-10 md:px-6", whatIfOn && "lg:col-start-1 lg:row-start-2")}
         >
           <GradebookTable summary={live} whatIf={whatIfOn ? whatIf : undefined} seen={seen} footer={footer} />
         </div>
@@ -377,7 +377,7 @@ function ModeToggle({
           button,
           on
             ? "bg-today px-3 text-today-fg hover:opacity-90"
-            : "border border-line-2 bg-surface px-[10px] text-ink md:pr-[6px] shadow-[0_1px_1px_rgba(0,0,0,0.04)] hover:bg-hover",
+            : "border border-line bg-surface px-3 text-ink-2 md:pr-[6px] hover:border-line-2 hover:bg-hover hover:text-ink",
         )}
       >
         <FlaskConical className={cn("size-[14px]", !on && "text-ink-3")} />

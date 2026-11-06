@@ -13,7 +13,9 @@ import { MeetingsEditor } from "@/components/calendar/meetings-editor";
 import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
-import { feedSeenKind, feedTitle } from "@/lib/feed";
+import { formatPercent } from "@/lib/grades-ui";
+import { formatChange, scoreOf } from "@/components/inbox/format";
+import { feedSeenKind } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +59,7 @@ export function OverviewRail({
   };
 
   return (
-    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[300px] lg:border-t-0 lg:border-l">
+    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[340px] lg:border-t-0 lg:border-l">
       {standing !== undefined && (
         <Fact
           label="Standing"
@@ -100,9 +102,9 @@ export function OverviewRail({
               key={item.key}
               variant="rail"
               icon={item.type === "assignment" ? ROW_ICON.Assignment : ROW_ICON[item.type]}
-              title={feedTitle(item)}
+              title={item.title}
               unread={!item.seen}
-              meta={formatAgo(item.at, now)}
+              meta={`${railKind(item)} · ${formatAgo(item.at, now)}`}
               to={
                 item.type === "announcement"
                   ? announcementsHref(courseId, item.canvasId)
@@ -240,15 +242,27 @@ function InstructorFact({ course }: { course: Course | undefined }) {
   );
 }
 
+/** What happened, for the meta line under the item's own title. */
+function railKind(item: FeedItem): string {
+  if (item.type === "grade") {
+    return item.score !== undefined && item.pointsPossible !== undefined
+      ? `Graded ${scoreOf(item.score, item.pointsPossible)}`
+      : "Graded";
+  }
+  if (item.type === "change") {
+    const verb = item.change ? formatChange(item.change).verb : "updated";
+    return verb.charAt(0).toUpperCase() + verb.slice(1);
+  }
+  return item.type === "assignment" ? "New assignment" : "Announcement";
+}
+
 /** "91.2% · A" over "4 of 12 graded · Projects weigh 50%". */
 function standingLines(
   hub: CourseHub | null | undefined,
 ): { value: string; sub?: string } | undefined {
   if (hub === null || hub === undefined) return undefined;
-  const score =
-    hub.currentScore === undefined
-      ? undefined
-      : `${Number.isInteger(hub.currentScore) ? hub.currentScore : hub.currentScore.toFixed(1)}%`;
+  // The Grades tab's formatter, so both screens round the same number alike.
+  const score = hub.currentScore === undefined ? undefined : formatPercent(hub.currentScore);
   const value = [score, hub.currentGrade].filter(Boolean).join(" · ");
   const sub = [
     hub.assignmentCount > 0
