@@ -71,7 +71,7 @@ export function DayRow({
           className={cn(
             "block truncate font-medium tracking-[-0.005em]",
             list ? "text-[13.5px]" : "text-[13px]",
-            done && "text-ink-3 line-through decoration-line-2",
+            done && "text-ink-3",
           )}
         >
           {title}

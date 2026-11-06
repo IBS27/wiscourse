@@ -13,14 +13,14 @@ import {
   FileText,
   Megaphone,
   MessageSquare,
-  SquareCheck,
+  ClipboardList,
   GraduationCap,
 } from "lucide-react";
 
 export type RowIcon = ComponentType<{ className?: string }>;
 
 export const ROW_ICON = {
-  Assignment: SquareCheck,
+  Assignment: ClipboardList,
   Quiz: CircleHelp,
   Discussion: MessageSquare,
   Page: FileText,

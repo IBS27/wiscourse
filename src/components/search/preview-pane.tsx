@@ -6,14 +6,14 @@ import {
   Megaphone,
   MousePointerClick,
   Rows3,
-  SquareCheck,
+  ClipboardList,
 } from "lucide-react";
 import { dayKeyOf, formatDayShort, formatTime } from "@/lib/dates";
 import { formatBytes } from "@/lib/format";
 import { type SearchItem, type SearchKind } from "@/lib/search";
 
 const KIND: Record<SearchKind, { label: string; icon: ComponentType<{ className?: string }> }> = {
-  assignment: { label: "Assignment", icon: SquareCheck },
+  assignment: { label: "Assignment", icon: ClipboardList },
   page: { label: "Page", icon: FileText },
   file: { label: "File", icon: File },
   announcement: { label: "Announcement", icon: Megaphone },

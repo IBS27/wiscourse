@@ -4,7 +4,7 @@
  * next seven days — anything further out belongs on Tasks, not here.
  */
 
-import { CalendarCheck, CircleHelp, MessageSquare, SquareCheck } from "lucide-react";
+import { CalendarCheck, CircleHelp, MessageSquare, ClipboardList } from "lucide-react";
 import type { RowIcon } from "./overview-icons";
 import { OverviewRow, SectionHead } from "./overview-row";
 import type { TodoItem } from "../../../convex/todos";
@@ -13,10 +13,10 @@ import { isOverdue } from "@/lib/agenda";
 import { DAY_MS, dayKeyOf, formatDayShort, formatTime, formatWeekday } from "@/lib/dates";
 
 const ICON: Record<string, RowIcon> = {
-  assignment: SquareCheck,
+  assignment: ClipboardList,
   quiz: CircleHelp,
   discussion: MessageSquare,
-  local: SquareCheck,
+  local: ClipboardList,
 };
 
 export function OverviewDue({
@@ -63,7 +63,7 @@ export function OverviewDue({
         items.map((item) => (
           <OverviewRow
             key={item.key}
-            icon={ICON[item.kind] ?? SquareCheck}
+            icon={ICON[item.kind] ?? ClipboardList}
             title={item.title}
             to={`/todo/${item.key}`}
             meta={dueMeta(item, now)}

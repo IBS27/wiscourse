@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, SquareCheck } from "lucide-react";
+import { ExternalLink, ClipboardList } from "lucide-react";
 import { CanvasHtml } from "@/components/reader/canvas-html";
 import { UnreadDot } from "./unread-dot";
 import { fileHref, rewriteCanvasHref } from "@/lib/course-routes";
@@ -100,7 +100,7 @@ export function AnnouncementRow({
                 to={link.to}
                 className="inline-flex h-7 max-w-[280px] items-center gap-[6px] rounded-md border border-line bg-surface px-[10px] text-[12.5px] font-medium text-ink no-underline transition-colors hover:border-line-2 hover:bg-hover"
               >
-                <SquareCheck className="size-[13px] shrink-0 text-ink-3" />
+                <ClipboardList className="size-[13px] shrink-0 text-ink-3" />
                 <span className="truncate">Open {link.label}</span>
               </Link>
             ))}

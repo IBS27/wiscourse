@@ -5,7 +5,7 @@ import {
   FileText,
   ListChecks,
   MessagesSquare,
-  SquareCheckBig,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import type { Doc } from "../../../convex/_generated/dataModel";
@@ -344,7 +344,7 @@ export function lockReason(
 
 const TYPE_ICON: Partial<Record<ModuleItemDoc["type"], LucideIcon>> = {
   Page: FileText,
-  Assignment: SquareCheckBig,
+  Assignment: ClipboardList,
   Quiz: ListChecks,
   Discussion: MessagesSquare,
   ExternalUrl: ExternalLink,

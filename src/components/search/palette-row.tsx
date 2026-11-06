@@ -9,7 +9,7 @@ import {
   Plus,
   RefreshCw,
   Rows3,
-  SquareCheck,
+  ClipboardList,
 } from "lucide-react";
 import { Kbd, CourseTag } from "@/components/app/bits";
 import { UnreadDot } from "@/components/course/unread-dot";
@@ -26,7 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<SearchKind, ComponentType<{ className?: string }>> = {
-  assignment: SquareCheck,
+  assignment: ClipboardList,
   page: FileText,
   file: File,
   announcement: Megaphone,

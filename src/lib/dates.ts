@@ -206,6 +206,16 @@ export function formatLate(dueAt: number, now: number = Date.now()): string {
   return "just past due";
 }
 
+/** Compact `formatLate` for tight rows: "15d late", "4h late". */
+export function formatLateShort(dueAt: number, now: number = Date.now()): string {
+  const diff = now - dueAt;
+  const days = Math.floor(diff / DAY_MS);
+  if (days >= 1) return `${days}d late`;
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours >= 1) return `${hours}h late`;
+  return "Past due";
+}
+
 /** "2 minutes ago", "just now", "3 hours ago". */
 export function formatSince(ms: number, now: number = Date.now()): string {
   const diff = now - ms;

@@ -51,7 +51,7 @@ function Line({
       ? "size-[22px] items-center justify-center"
       : roomy
         ? "h-[28px] w-full items-center gap-[6px] px-[6px] text-[12.5px] whitespace-nowrap"
-        : "w-full items-start py-[3px] pr-1 pl-[3px] text-[11.5px] leading-[15px]",
+        : "w-full items-start py-[3px] pr-1 pl-[3px] text-[12px] leading-[16px]",
     className,
   );
   const label = compact ? title : undefined;
@@ -90,7 +90,7 @@ function Title({ roomy, done, children }: { roomy?: boolean; done?: boolean; chi
       className={cn(
         "min-w-0 flex-1",
         roomy ? "truncate" : "line-clamp-2",
-        done && "line-through decoration-ink-3/50",
+        done && "text-ink-3",
       )}
     >
       {children}

@@ -301,8 +301,8 @@ const PROSE = cn(
 
 function Block({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <section className="border-t border-line px-4 py-5 md:px-7">
-      <div className="mb-3 flex items-center gap-2">
+    <section className="border-t border-line px-4 py-4 md:px-7 md:py-5">
+      <div className="mb-[10px] flex items-center gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
         {hint && <div className="ml-auto flex items-center max-md:[&>kbd]:hidden">{hint}</div>}
       </div>

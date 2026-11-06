@@ -10,6 +10,7 @@ import {
   dayKeyOf,
   formatDueRelative,
   formatLate,
+  formatLateShort,
   formatPlannedRelative,
   formatTime,
 } from "@/lib/dates";
@@ -128,7 +129,14 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
       </Pill>
     );
   }
-  if (overdue && item.dueAt !== undefined) return <Pill tone="red">{formatLate(item.dueAt, now)}</Pill>;
+  if (overdue && item.dueAt !== undefined) {
+    return (
+      <Pill tone="red">
+        <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
+        <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
+      </Pill>
+    );
+  }
   switch (item.submission) {
     case "graded":
       return (
