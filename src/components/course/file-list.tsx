@@ -3,15 +3,12 @@ import { Folder, FolderOpen, Lock, Search, SearchX } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
-  fileAddedAt,
   folderPath,
   folderPathLabel,
   type FileDoc,
   type FolderNode,
   type FolderTree,
 } from "./file-tree";
-import { formatMonthDayYear } from "@/lib/dates";
-import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface Row {
@@ -20,8 +17,8 @@ interface Row {
   path?: string;
 }
 
-/** Name · size · added · new-dot; the last three drop while a preview is open. */
-const COLS = "grid-cols-[minmax(0,1fr)_72px_84px_6px] gap-x-5";
+/** Name · folder count · new-dot; the count drops while a preview is open. */
+const COLS = "grid-cols-[minmax(0,1fr)_72px_6px] gap-x-5";
 const COLS_COMPACT = "grid-cols-[minmax(0,1fr)_6px] gap-x-3";
 
 /**
@@ -36,7 +33,6 @@ export function FileList({
   isNew,
   unreadFolders,
   compact = false,
-  now,
   onSelectFolder,
   onSelectFile,
   className,
@@ -49,7 +45,6 @@ export function FileList({
   unreadFolders: Set<number>;
   /** A preview is open beside the list: names only. */
   compact?: boolean;
-  now: number;
   onSelectFolder: (canvasId: number) => void;
   onSelectFile: (canvasId: number) => void;
   className?: string;
@@ -130,19 +125,6 @@ export function FileList({
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {!compact && (
-            <div
-              className={cn(
-                "grid h-8 items-center border-b border-line px-4 pl-10 text-[12px] font-medium text-ink-3",
-                cols,
-              )}
-            >
-              <span>Name</span>
-              <span className="text-right">Size</span>
-              <span className="text-right">Added</span>
-              <span />
-            </div>
-          )}
           {folders.map((child) => (
             <button
               key={child.folder.canvasId}
@@ -159,7 +141,6 @@ export function FileList({
                   <span className="tabular text-right text-[12px] text-ink-3">
                     {child.totalFiles} file{child.totalFiles === 1 ? "" : "s"}
                   </span>
-                  <span />
                 </>
               )}
               <span className="flex justify-end">
@@ -198,16 +179,7 @@ export function FileList({
                     )}
                   </span>
                 </span>
-                {!compact && (
-                  <>
-                    <span className="tabular text-right text-[12px] text-ink-3">
-                      {formatBytes(file.size)}
-                    </span>
-                    <span className="tabular text-right text-[12px] text-ink-3">
-                      {formatMonthDayYear(fileAddedAt(file), now)}
-                    </span>
-                  </>
-                )}
+                {!compact && <span />}
                 <span className="flex justify-end">{unread && <UnreadDot />}</span>
               </button>
             );
