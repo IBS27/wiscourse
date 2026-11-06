@@ -1,5 +1,4 @@
-import { ChevronLeft, ChevronRight, Folder, Lock } from "lucide-react";
-import { SectionLabel } from "@/components/app/bits";
+import { ChevronLeft, ChevronRight, Folder, FolderOpen, Lock } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
@@ -16,6 +15,10 @@ import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const RECENT_COUNT = 5;
+
+/** Hairline inset to the name column, as on every other list. */
+const ROW =
+  "relative transition-colors outline-none hover:bg-hover active:bg-hover focus-visible:bg-hover after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line";
 
 /**
  * 4-B, the mobile Files tab: one column, folders as rows, and the five
@@ -74,12 +77,12 @@ export function FileColumn({
             key={child.folder.canvasId}
             type="button"
             onClick={() => onSelectFolder(child.folder.canvasId)}
-            className="flex h-11 shrink-0 items-center gap-[10px] border-b border-line px-4 text-left text-[13px] active:bg-hover"
+            className={cn("flex h-11 shrink-0 items-center gap-[10px] px-4 text-left text-[13px]", ROW)}
           >
             <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
             <span className="min-w-0 flex-1 truncate">{child.folder.name}</span>
             <span className="tabular shrink-0 text-xs text-ink-3">
-              {child.totalFiles} item{child.totalFiles === 1 ? "" : "s"}
+              {child.totalFiles} file{child.totalFiles === 1 ? "" : "s"}
             </span>
             <ChevronRight className="size-[14px] shrink-0 text-ink-3" aria-hidden />
           </button>
@@ -95,14 +98,17 @@ export function FileColumn({
         ))}
 
         {empty && (
-          <p className="p-6 text-center text-[13px] text-ink-3">
-            {atRoot ? "No files yet" : "This folder is empty"}
-          </p>
+          <div className="flex flex-col items-center gap-2 px-6 py-16 text-center">
+            <FolderOpen className="size-5 text-ink-3" aria-hidden />
+            <p className="text-[13px] text-ink-2">{atRoot ? "No files yet" : "This folder is empty"}</p>
+          </div>
         )}
 
         {atRoot && recent.length > 0 && (
           <>
-            <SectionLabel className="px-4 pt-4 pb-[6px]">Recently added</SectionLabel>
+            <div className="px-4 pt-6 pb-2 text-[13px] font-semibold tracking-[-0.005em] text-ink">
+              Recently added
+            </div>
             {recent.map((file) => (
               <FileRow
                 key={`recent-${file.canvasId}`}
@@ -135,7 +141,7 @@ function FileRow({
     <button
       type="button"
       onClick={onSelect}
-      className="flex shrink-0 items-center gap-[10px] border-b border-line px-4 py-[9px] text-left text-[13px] active:bg-hover"
+      className={cn("flex min-h-11 shrink-0 items-center gap-[10px] px-4 py-[9px] text-left text-[13px]", ROW)}
     >
       {file.lockedForUser === true ? (
         <Lock className="size-[14px] shrink-0 text-ink-3" aria-label="Locked" />

@@ -44,15 +44,15 @@ export function CourseHeader({
       className="border-b border-line"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-center gap-[10px] px-4 pt-[6px] pb-[10px] md:hidden">
+      <div className="flex items-center gap-[10px] px-4 pt-2 pb-[10px] md:hidden">
         <Link to="/courses" aria-label="All courses" className="shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0">
-          <div className="truncate text-[19px] leading-tight font-semibold tracking-[-0.02em]">
+          <div className="line-clamp-2 text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">
             {name || <span className="text-ink-3">Course</span>}
           </div>
-          <div className="truncate text-xs text-ink-3">
+          <div className="mt-[2px] truncate text-[12.5px] text-ink-3">
             {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
             {code !== undefined && course?.term !== undefined && " · "}
             {course?.term}
@@ -100,7 +100,7 @@ export function CourseHeader({
         </a>
       </div>
 
-      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-4 md:mt-4 md:px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-2 md:mt-4 md:px-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
         <Tab
           to="/courses/$courseId/modules"
@@ -149,7 +149,7 @@ function Tab({
       to={to}
       params={{ courseId }}
       activeOptions={{ exact, includeSearch: false, includeHash: false }}
-      className="-mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent px-[10px] pt-2 pb-[10px] text-[13px] font-medium text-ink-3 hover:text-ink-2"
+      className="group -mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent px-2 pt-2 pb-[10px] text-[13px] font-medium text-ink-3 transition-colors outline-none hover:border-line-2 hover:text-ink focus-visible:text-ink md:px-[10px]"
       activeProps={{ className: "border-ink! text-ink!" }}
     >
       {label}
@@ -160,7 +160,7 @@ function Tab({
 
 function TabCount({ n }: { n: number }) {
   return (
-    <span className="rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
+    <span className="tabular rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
       {n}
       <span className="hidden md:inline"> new</span>
     </span>

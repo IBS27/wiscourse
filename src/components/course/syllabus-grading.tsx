@@ -18,7 +18,7 @@ export function SyllabusGrading({ canvasId }: { canvasId: number }) {
   if (rows.length === 0) return null;
 
   return (
-    <section className="px-4 pt-5 md:px-5">
+    <section className="px-4 pt-5 md:px-6">
       <h2 className="mb-[6px] text-[15px] font-semibold tracking-[-0.01em]">Grading</h2>
       <table className="w-full max-w-[520px] border-collapse text-[13px]">
         <thead>

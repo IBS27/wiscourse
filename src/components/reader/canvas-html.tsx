@@ -99,6 +99,11 @@ function transform(html: string, courseId: number): { markup: string; headings: 
 
   for (const anchor of Array.from(root.querySelectorAll("a"))) rewriteAnchor(anchor, courseId);
 
+  // Canvas editors leave `<p>&nbsp;</p>` spacers that read as big gaps.
+  for (const p of Array.from(root.querySelectorAll("p"))) {
+    if (p.children.length === 0 && (p.textContent ?? "").replace(/[\s\u00a0]/g, "") === "") p.remove();
+  }
+
   const used = new Set<string>();
   for (const node of Array.from(root.querySelectorAll("h2, h3"))) {
     const level = node.tagName === "H2" ? 2 : 3;

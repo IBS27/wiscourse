@@ -126,8 +126,8 @@ function CourseInterpretation() {
         {map && (
           <>
             <div>
-              <p className="text-xs uppercase tracking-wide text-ink-3">
-                {map.organization}
+              <p className="text-[12px] font-medium text-ink-3 first-letter:uppercase">
+                {map.organization} organization
               </p>
               <p className="mt-2 text-sm">{map.summary}</p>
             </div>

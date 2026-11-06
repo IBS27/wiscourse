@@ -67,11 +67,11 @@ function CourseSyllabus() {
       <SyllabusFacts course={course} facts={facts ?? undefined} />
       <SyllabusGrading canvasId={canvasId} />
       {detail === undefined ? null : hasBody ? (
-        <div className="max-w-[760px] px-4 pt-5 md:px-5">
+        <div className="max-w-[760px] px-4 pt-5 md:px-6">
           <CanvasHtml html={body} courseId={canvasId} />
         </div>
       ) : loading ? null : sources.size > 0 ? (
-        <div className="space-y-3 px-4 pt-5 md:px-5">
+        <div className="space-y-3 px-4 pt-5 md:px-6">
           <p className="text-[13px] text-ink-3">
             Syllabus and course information
           </p>
@@ -82,7 +82,7 @@ function CourseSyllabus() {
           ))}
         </div>
       ) : front ? (
-        <div className="px-4 pt-5 md:px-5">
+        <div className="px-4 pt-5 md:px-6">
           <p className="mb-3 text-[13px] text-ink-3">
             Check the instructor’s course home for policies and course
             information.
@@ -95,7 +95,7 @@ function CourseSyllabus() {
           </Link>
         </div>
       ) : (
-        <p className="px-4 pt-5 text-[13px] text-ink-3 md:px-5">
+        <p className="px-4 pt-5 text-[13px] text-ink-3 md:px-6">
           No syllabus link found in synced course content.
         </p>
       )}

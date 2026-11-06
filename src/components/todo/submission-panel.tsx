@@ -66,7 +66,7 @@ export function SubmissionPanel({ item }: { item: TodoItem }) {
   else composer = <Composer item={item} panel={panel} />;
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="mt-3 flex flex-col gap-2">
       {row !== null && <OutboxCard row={row} item={item} panel={panel} now={now} />}
       {composer}
     </div>

@@ -75,7 +75,14 @@ export function TargetsRail({
         className,
       )}
     >
-      <p className="eyebrow mb-2">To finish with</p>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-[13px] font-semibold">To finish with</h2>
+        {summary.pointsRemaining > 0 && (
+          <span className="tabular text-[12px] text-ink-3">
+            {formatPoints(summary.pointsRemaining)} pts left
+          </span>
+        )}
+      </div>
       <div>
         {targets.map(({ entry, needed }, index) => {
           const current = here === entry.name;
@@ -104,9 +111,6 @@ export function TargetsRail({
               </span>
               <span className="truncate text-[12.5px] text-ink-3">
                 {cutoffLabel(entry)}
-                {index === 0 && summary.pointsRemaining > 0 && (
-                  <> · {formatPoints(summary.pointsRemaining)} pts left</>
-                )}
               </span>
               <span
                 className={cn(
@@ -130,7 +134,7 @@ export function TargetsRail({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="mt-[10px] inline-flex items-center gap-[6px] text-[12.5px] font-medium text-ink-2 hover:text-ink"
+        className="mt-[10px] -ml-2 inline-flex h-8 items-center gap-[6px] rounded-lg px-2 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
       >
         <SlidersHorizontal className="size-[13px]" />
         Edit cutoffs
@@ -142,7 +146,7 @@ export function TargetsRail({
         onOpenChange={setEditing}
       />
 
-      <p className="eyebrow mt-6 mb-2">Edits</p>
+      <h2 className="mt-7 mb-2 text-[13px] font-semibold">Edits</h2>
       {edits.length === 0 ? (
         <p className="text-[12.5px] text-ink-3">
           Type a score into any row and everything above moves.
@@ -166,7 +170,7 @@ export function TargetsRail({
         type="button"
         onClick={whatIf.reset}
         disabled={whatIf.edits.size === 0}
-        className="mt-[14px] inline-flex h-[31px] items-center gap-[7px] rounded-lg border border-line bg-surface px-3 text-[12.5px] font-medium text-ink-2 hover:bg-hover disabled:opacity-50"
+        className="mt-[14px] inline-flex h-8 items-center gap-[7px] rounded-lg border border-line-2 bg-surface px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none disabled:opacity-50"
       >
         <RotateCcw className="size-[13px]" />
         Reset all

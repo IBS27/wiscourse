@@ -9,6 +9,7 @@ import { OverviewRail } from "@/components/course/overview-rail";
 import { InterpretedOverview } from "@/components/course/interpreted-overview";
 import { usableInterpretation } from "@/lib/interpreted-course";
 import { Link } from "@tanstack/react-router";
+import { Info, Sparkles } from "lucide-react";
 import { OverviewWeek } from "@/components/course/overview-week";
 import {
   courseColorVar,
@@ -67,34 +68,24 @@ function CourseOverview() {
         ) : (
           <>
             {staleMap && (
-              <p className="px-5 pb-4 text-xs text-ink-3">
-                Course material changed. Showing the original course
-                organization until its interpretation is refreshed.{" "}
-                <Link
-                  to="/courses/$courseId/interpretation"
-                  params={{ courseId }}
-                  className="underline"
-                >
-                  Review interpretation
-                </Link>
+              <p className="mx-4 mt-5 flex items-start gap-[10px] rounded-[10px] border border-line bg-sunken px-3 py-[10px] text-[12.5px] leading-[1.5] text-ink-2 md:mx-6">
+                <Info className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
+                <span>
+                  Course material changed. Showing the original course
+                  organization until its interpretation is refreshed.{" "}
+                  <Link
+                    to="/courses/$courseId/interpretation"
+                    params={{ courseId }}
+                    className="font-medium text-ink underline decoration-line-2 underline-offset-4 hover:decoration-ink-3"
+                  >
+                    Review interpretation
+                  </Link>
+                </span>
               </p>
             )}
-            {!staleMap && (
-              <div className="px-5 pb-4">
-                <Link
-                  to="/courses/$courseId/interpretation"
-                  params={{ courseId }}
-                  className="text-xs text-ink-3 underline"
-                >
-                  {interpretation?.state?.map
-                    ? "Review interpretation"
-                    : "Organize this course"}
-                </Link>
-              </div>
-            )}
             {course?.defaultView === "wiki" && front && (
-              <section className="px-4 pb-5 md:px-5">
-                <SectionHead title="Course home" />
+              <section className="px-4 pb-5 md:px-6">
+                <SectionHead title="Course home" className="px-0 md:px-0" />
                 {front.contentUnavailable || front.lockedForUser ? (
                   <a
                     href={front.htmlUrl}
@@ -119,6 +110,16 @@ function CourseOverview() {
                 course?.startAt ?? course?.termStartAt ?? now,
               ).getFullYear()}
             />
+            {!staleMap && (
+              <Link
+                to="/courses/$courseId/interpretation"
+                params={{ courseId }}
+                className="mx-4 mt-6 inline-flex items-center gap-[6px] rounded-md px-2 py-1 text-[12.5px] text-ink-3 transition-colors hover:bg-hover hover:text-ink md:mx-[18px]"
+              >
+                <Sparkles className="size-[14px]" aria-hidden />
+                {interpretation?.state?.map ? "Review interpretation" : "Organize this course"}
+              </Link>
+            )}
           </>
         )}
       </div>

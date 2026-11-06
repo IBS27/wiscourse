@@ -8,7 +8,7 @@ import { Composer } from "@/components/ask/composer";
 import { AskMobileNav } from "@/components/ask/mobile-nav";
 import { AssistantMessage, UserMessage } from "@/components/ask/message";
 import { ThreadMenu } from "@/components/ask/thread-list";
-import { Dot } from "@/components/app/bits";
+import { CourseTag } from "@/components/app/bits";
 import { errorMessage, isThreadRunning, type AskThread } from "@/lib/ask";
 import { courseLabel, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { displayTimeZone } from "@/lib/time-zone";
@@ -28,7 +28,7 @@ function Conversation() {
   if (thread === null) {
     return (
       <div className="flex flex-1 flex-col">
-        <header className="flex h-[54px] items-center gap-1 border-b border-line px-2 md:hidden">
+        <header className="flex h-14 items-center gap-1 border-b border-line px-2 md:hidden">
           <AskMobileNav />
         </header>
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
@@ -120,7 +120,7 @@ function Thread({ threadId, thread }: { threadId: string; thread: AskThread | un
         }}
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        <div className="mx-auto flex w-full max-w-[700px] flex-col gap-[18px] px-4 pt-6 pb-4 md:px-6">
+        <div className="mx-auto flex w-full max-w-[720px] flex-col gap-6 px-4 pt-8 pb-6 md:px-6">
           {status === "CanLoadMore" && (
             <button
               type="button"
@@ -166,7 +166,7 @@ function Thread({ threadId, thread }: { threadId: string; thread: AskThread | un
             </button>
           )}
           {!running && thread?.error && (
-            <div className="flex items-start gap-[9px] rounded-[10px] border border-line px-3 py-[10px] text-[13px]" role="alert">
+            <div className="flex items-start gap-[10px] rounded-[10px] border border-line bg-surface px-3 py-[10px] text-[13px]" role="alert">
               <AlertTriangle className="mt-[2px] size-[14px] shrink-0 text-red" />
               <div className="flex-1">
                 {thread.error}
@@ -184,7 +184,7 @@ function Thread({ threadId, thread }: { threadId: string; thread: AskThread | un
           )}
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[700px] shrink-0 px-3 pb-[max(10px,env(safe-area-inset-bottom))] md:px-6">
+      <div className="mx-auto w-full max-w-[720px] shrink-0 px-3 pb-[max(10px,env(safe-area-inset-bottom))] md:px-6">
         {thread?.archivedAt !== undefined && <ArchivedNote threadId={threadId} />}
         <Composer
           onSend={onSend}
@@ -194,8 +194,9 @@ function Thread({ threadId, thread }: { threadId: string; thread: AskThread | un
           onCourseChange={(courseCanvasId) => void setCourse({ threadId, courseCanvasId: courseCanvasId ?? null })}
           placeholder="Reply, or ask something new"
           autoFocus
+          className="shadow-[0_1px_2px_rgba(16,17,20,0.04),0_4px_16px_-6px_rgba(16,17,20,0.08)]"
         />
-        <p className={cn("pt-2 text-center text-[11px]", error ? "text-red" : "text-ink-3")} role="status">
+        <p className={cn("pt-2 text-center text-[11.5px]", error ? "text-red" : "text-ink-3")} role="status">
           {error ?? "Reads your Canvas courses. Changes only your wiscourse tasks, plans and calendar."}
         </p>
       </div>
@@ -230,7 +231,7 @@ function ThreadHeader({ thread }: { thread: AskThread | undefined }) {
   };
 
   return (
-    <header className="flex h-[54px] shrink-0 items-center gap-[10px] border-b border-line px-2 md:pr-[14px] md:pl-6">
+    <header className="flex h-14 shrink-0 items-center gap-[10px] border-b border-line px-2 md:h-16 md:pr-4 md:pl-6">
       <AskMobileNav activeId={thread?.threadId} />
       <div className="flex min-w-0 flex-1 items-center gap-[10px]">
         {editing ? (
@@ -251,12 +252,8 @@ function ThreadHeader({ thread }: { thread: AskThread | undefined }) {
           <h1 className="truncate page-title">{thread?.title ?? ""}</h1>
         )}
         {course && !editing && (
-          <span
-            className="hidden h-[21px] shrink-0 items-center gap-[5px] rounded-md bg-chip px-2 text-[11.5px] font-medium text-ink-2 sm:inline-flex"
-            style={courseStyle(color(course.canvasId))}
-          >
-            <Dot />
-            {courseLabel(course)}
+          <span className="hidden shrink-0 text-[12.5px] sm:inline-flex" style={courseStyle(color(course.canvasId))}>
+            <CourseTag>{courseLabel(course)}</CourseTag>
           </span>
         )}
       </div>

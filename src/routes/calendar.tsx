@@ -6,7 +6,6 @@
 import { useDraft } from "@/lib/drafts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarToolbar, HintBar, type CalendarView } from "@/components/calendar/toolbar";
 import { WeekGrid } from "@/components/calendar/week-grid";
@@ -245,7 +244,7 @@ function Calendar() {
         view={view}
         title={title}
         compactTitle={compactTitle}
-        detail={week === undefined ? undefined : `· Week ${week}`}
+        detail={week === undefined ? undefined : `Week ${week}`}
         onView={setView}
         onPrev={() => shift(-1)}
         onNext={() => shift(1)}
@@ -268,9 +267,8 @@ function Calendar() {
           todayKey={today}
           now={now}
           zone={zone}
-          prompt={
-            noMeetings ? <ClassTimesPrompt onOpen={() => setMeetingsFor("any")} /> : undefined
-          }
+          compact={mobile}
+          onAddClassTimes={noMeetings ? () => setMeetingsFor("any") : undefined}
           onOpenBlock={openBlock}
           onOpenEvent={setEditingEvent}
         />
@@ -327,22 +325,9 @@ function Calendar() {
   );
 }
 
-function ClassTimesPrompt({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex items-center gap-[9px] border-b border-line px-5 py-[9px] text-left text-[12.5px] text-ink-3 hover:text-ink"
-    >
-      <CalendarClock className="size-[14px]" />
-      Add your class times so lectures show here
-    </button>
-  );
-}
-
 function ConnectCard() {
   return (
-    <div className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-[10px] border border-line bg-surface p-4">
+    <div className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-[10px] border border-line bg-surface p-4 md:mx-6">
       <div>
         <div className="text-[14px] font-semibold tracking-[-0.01em]">Connect Canvas</div>
         <div className="mt-[3px] text-[12.5px] text-ink-3">

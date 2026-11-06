@@ -1,58 +1,85 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ExternalLink } from "lucide-react";
+import { ChevronLeft, ExternalLink, Mail } from "lucide-react";
 import type { FeedItem } from "../../../convex/inbox";
 import { Button } from "@/components/ui/button";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { CourseTag } from "@/components/app/bits";
+import { FEED_ICON } from "./format";
 
-/** The frame every detail pane shares: eyebrow, title, by-line, body, actions. */
+/** Reading column shared by the detail pane and its loading state. */
+export const READING = "mx-auto w-full max-w-[720px] px-4 pt-4 pb-12 md:px-8 md:pt-7";
+
+/** Mobile-only way back to the list; on lg the list sits beside the pane. */
+export function BackToInbox() {
+  return (
+    <Link
+      to="/inbox"
+      search={(prev) => ({ ...prev, item: undefined })}
+      className="mb-4 -ml-1 inline-flex h-8 items-center gap-1 rounded-md pr-2 text-[13px] font-medium text-ink-3 no-underline transition-colors hover:text-ink lg:hidden"
+    >
+      <ChevronLeft className="size-4" />
+      Inbox
+    </Link>
+  );
+}
+
+/** The frame every detail pane shares: kind line, title, by-line, actions, body. */
 export function DetailShell({
   item,
-  eyebrow,
+  kind,
   title,
   by,
   actions,
   children,
 }: {
   item: FeedItem;
-  /** The part after the course code: "Grade posted · Homework 3". */
-  eyebrow: string;
+  /** What happened: "Announcement", "Grade posted", … */
+  kind: string;
   title: ReactNode;
   by?: ReactNode;
   actions: ReactNode;
   children?: ReactNode;
 }) {
   const { label, color } = useCourses();
+  const Icon = FEED_ICON[item.type];
   return (
-    <article className="px-4 pt-4 pb-8 md:px-7 md:pt-6" style={courseStyle(color(item.courseCanvasId))}>
-      <Link
-        to="/inbox"
-        search={(prev) => ({ ...prev, item: undefined })}
-        className="mb-4 -ml-1 inline-flex items-center gap-1 text-[13px] text-ink-3 no-underline hover:text-ink lg:hidden"
-      >
-        <ChevronLeft className="size-4" />
-        Inbox
-      </Link>
+    <article className={READING} style={courseStyle(color(item.courseCanvasId))}>
+      <BackToInbox />
 
-      <div className="mb-2 flex items-center gap-2 text-[11.5px] text-ink-3">
-        <UnreadDot />
+      <div className="mb-[10px] flex items-center gap-2 text-[12.5px] text-ink-3">
         <CourseTag>{label(item.courseCanvasId) ?? "Course"}</CourseTag>
-        <span>·</span>
-        <span className="truncate">{eyebrow}</span>
+        <span aria-hidden>·</span>
+        <span className="inline-flex min-w-0 items-center gap-[5px]">
+          <Icon className="size-[13px] shrink-0" aria-hidden />
+          <span className="truncate">{kind}</span>
+        </span>
       </div>
 
-      <h1 className="text-[19px] leading-[1.25] font-semibold tracking-[-0.02em]">{title}</h1>
+      <h1 className="text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-balance text-ink">{title}</h1>
       {by !== undefined && (
-        <div className="mt-[6px] flex items-center gap-2 text-[12.5px] text-ink-3">{by}</div>
+        <div className="mt-[10px] flex items-center gap-2 text-[12.5px] text-ink-3">{by}</div>
       )}
 
-      <div className="mt-[18px]">{children}</div>
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-line pb-5 [&_[data-slot=button]]:text-[13px]">
+        {actions}
+      </div>
 
-      <div className="mt-[22px] flex flex-wrap items-center gap-2 border-t border-line pt-4">{actions}</div>
+      <div className="pt-6">{children}</div>
     </article>
+  );
+}
+
+/** "Cassie Williams · Nov 2, 12:02 PM" with an initials chip; either half may be missing. */
+export function ByLine({ name, when }: { name?: string; when: string }) {
+  return (
+    <>
+      {name !== undefined && <Initials name={name} />}
+      {name !== undefined && <span className="font-medium text-ink-2">{name}</span>}
+      {name !== undefined && <span aria-hidden>·</span>}
+      <span className="tabular">{when}</span>
+    </>
   );
 }
 
@@ -67,18 +94,18 @@ export function Initials({ name }: { name: string }) {
     .join("");
   if (letters === "") return null;
   return (
-    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-chip text-[9px] font-semibold text-ink-2">
+    <span className="grid size-[22px] shrink-0 place-items-center rounded-full bg-chip text-[9.5px] font-semibold text-ink-2">
       {letters}
     </span>
   );
 }
 
-/** The bordered stat tiles: Score · Class median · Weight · Course now. */
+/** Key numbers as a quiet row of label-over-value pairs. */
 export function Facts({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <dl
       className={cn(
-        "tabular grid grid-cols-2 gap-x-4 gap-y-[14px] border-y border-line py-[14px] text-[13px] text-ink md:grid-cols-4",
+        "tabular grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-line px-4 py-[14px] sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]",
         className,
       )}
     >
@@ -89,15 +116,15 @@ export function Facts({ children, className }: { children: ReactNode; className?
 
 export function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div>
-      <dt className="eyebrow mb-1 text-[10.5px]">{label}</dt>
-      <dd>{children}</dd>
+    <div className="min-w-0">
+      <dt className="mb-1 text-[12px] text-ink-3">{label}</dt>
+      <dd className="text-[14px] font-medium text-ink">{children}</dd>
     </div>
   );
 }
 
 export function BlockLabel({ children }: { children: ReactNode }) {
-  return <div className="eyebrow mt-5 mb-1 text-[10.5px]">{children}</div>;
+  return <h2 className="mt-7 mb-3 text-[13px] font-semibold tracking-[-0.01em] text-ink">{children}</h2>;
 }
 
 export function CanvasButton({ href, children }: { href: string; children: ReactNode }) {
@@ -113,8 +140,17 @@ export function CanvasButton({ href, children }: { href: string; children: React
 
 export function MarkUnreadButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
-    <Button size="sm" variant="ghost" className="ml-auto text-ink-3" onClick={onClick} disabled={disabled}>
-      Mark unread
+    <Button
+      size="sm"
+      variant="ghost"
+      aria-label="Mark unread"
+      title="Mark unread"
+      className="text-ink-3 hover:text-ink sm:ml-auto"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <Mail />
+      <span className="hidden sm:inline">Mark unread</span>
     </Button>
   );
 }

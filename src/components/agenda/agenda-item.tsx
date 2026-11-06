@@ -67,11 +67,11 @@ export function AgendaItem({
   return (
     <div
       className={cn(
-        "group relative flex items-start gap-3 bg-surface py-[11px] pr-5 pl-5 transition-colors hover:bg-hover",
+        "group relative flex items-start gap-3 bg-surface py-[11px] pr-4 pl-4 transition-colors hover:bg-hover md:pr-6 md:pl-6",
         // Hairline between rows, inset to the title column.
-        "after:absolute after:right-0 after:bottom-0 after:left-[49px] after:h-px after:bg-line",
-        first && "before:absolute before:top-0 before:right-0 before:left-[49px] before:h-px before:bg-line",
-        compact && "pr-[14px] pl-[14px] after:left-[43px] before:left-[43px]",
+        "after:absolute after:right-0 after:bottom-0 after:left-[45px] after:h-px after:bg-line md:after:left-[53px]",
+        first && "before:absolute before:top-0 before:right-0 before:left-[45px] before:h-px before:bg-line md:before:left-[53px]",
+        compact && "pr-[14px] pl-[14px] after:left-[43px] before:left-[43px] md:pr-[14px] md:pl-[14px] md:after:left-[43px] md:before:left-[43px]",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
@@ -100,9 +100,9 @@ export function AgendaItem({
         >
           {item.title}
         </div>
-        <div className={cn("mt-[3px] flex flex-wrap items-center gap-x-[6px] gap-y-[2px] text-[12.5px] text-ink-3", done && "opacity-75")}>
+        <div className={cn("mt-[3px] flex min-w-0 items-center gap-x-[6px] overflow-hidden text-[12.5px] whitespace-nowrap text-ink-3", done && "opacity-75")}>
           {meta.map((m, i) => (
-            <span key={i} className="flex items-center gap-[6px]">
+            <span key={i} className={cn("flex items-center gap-[6px]", i === meta.length - 1 ? "min-w-0 truncate" : "shrink-0")}>
               {i > 0 && <span className="text-line-2" aria-hidden>·</span>}
               {m}
             </span>
@@ -132,14 +132,14 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
   switch (item.submission) {
     case "graded":
       return (
-        <Pill>
+        <Pill tone="quiet">
           <Check />
           Graded{item.score !== undefined && item.pointsPossible !== undefined ? ` ${item.score}/${item.pointsPossible}` : ""}
         </Pill>
       );
     case "submitted":
       return (
-        <Pill>
+        <Pill tone="quiet">
           <Check />
           Submitted{item.submittedAt !== undefined ? ` ${formatTime(item.submittedAt)}` : ""}
         </Pill>

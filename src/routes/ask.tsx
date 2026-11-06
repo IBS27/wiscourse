@@ -9,7 +9,7 @@ function AskLayout() {
   const { threadId } = useParams({ strict: false });
   return (
     <div className="flex h-dvh min-h-0 flex-1">
-      <aside className="hidden w-[264px] shrink-0 flex-col border-r border-line md:flex">
+      <aside className="hidden w-[256px] shrink-0 flex-col border-r border-line md:flex">
         <ThreadList activeId={threadId} />
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">

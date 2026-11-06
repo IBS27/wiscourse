@@ -1,11 +1,11 @@
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { CountBadge } from "@/components/app/bits";
-import { ProfileMenu } from "@/components/app/profile-menu";
-import { InboxFilters, type TypeCounts } from "@/components/inbox/filters";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { CheckCheck, Inbox } from "lucide-react";
+import { PageHeader } from "@/components/app/page-header";
+import { CourseSelect, InboxFilters, UnreadToggle, type TypeCounts } from "@/components/inbox/filters";
 import { InboxRow } from "@/components/inbox/row";
 import { DetailEmpty, DetailLoading, InboxDetail } from "@/components/inbox/detail";
 import { parseInboxSearch, type InboxSearch } from "@/components/inbox/search";
@@ -109,117 +109,151 @@ function InboxPage() {
         ? `checked ${formatSince(info.lastSyncedAt, now)}`
         : undefined;
 
+  const subtitle = [
+    unreadTotal > 0 ? `${unreadTotal} unread` : feed === undefined ? undefined : "All caught up",
+    checked,
+  ]
+    .filter((part) => part !== undefined)
+    .join(" · ");
+
   return (
-    <div className="flex min-h-0 flex-1 lg:h-full">
-      <section
-        className={cn(
-          "flex min-w-0 flex-1 flex-col border-line lg:w-[46%] lg:max-w-[620px] lg:min-w-[360px] lg:flex-none lg:overflow-y-auto lg:border-r",
-          search.item !== undefined && "hidden lg:flex",
-        )}
-      >
-        <header className="flex items-center justify-between gap-5 border-b border-line px-4 py-[14px] lg:sticky lg:top-0 lg:z-10 lg:bg-surface">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 page-title">
-              Inbox
-              <CountBadge n={unreadTotal} />
-            </div>
-            <div className="mt-[3px] truncate text-xs text-ink-3">
-              {unreadTotal} unread{checked !== undefined && ` · ${checked}`}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-3">
-            {unreadTotal > 0 && (
-              <button
-                type="button"
-                onClick={() => void markAll()}
-                className="text-xs text-ink-3 hover:text-ink"
-              >
-                Mark all read
-              </button>
-            )}
-            <span className="md:hidden">
-              <ProfileMenu variant="avatar" />
-            </span>
-          </div>
-        </header>
-
-        <InboxFilters search={search} counts={counts} onChange={setSearch} />
-
-        <div className="pb-8">
-          {feed === undefined ? (
-            <ListSkeleton />
-          ) : all.length === 0 ? (
-            <Empty
-              title="That's everything"
-              body="Announcements, posted grades and new assignments show up here."
-            />
-          ) : items.length === 0 ? (
-            <Empty title="No matches" body="Nothing in the feed fits these filters.">
-              <button
-                type="button"
-                onClick={() => setSearch({ type: undefined, course: undefined, unread: undefined })}
-                className="text-[12.5px] font-medium text-ink-2 hover:text-ink"
-              >
-                Clear filters
-              </button>
-            </Empty>
-          ) : (
-            groupFeed(items, today, now).map((group) => (
-              <div key={group.label}>
-                <div className="eyebrow px-4 pt-[14px] pb-[6px] text-[10.5px]">{group.label}</div>
-                {group.items.map((f) => (
-                  <InboxRow
-                    key={f.key}
-                    item={f}
-                    now={now}
-                    dueAt={dueByAssignment.get(f.canvasId)}
-                    selected={f.key === search.item}
-                  />
-                ))}
+    <div className="flex min-h-0 flex-1 flex-col lg:h-full">
+      <div className={cn("shrink-0", search.item !== undefined && "hidden lg:block")}>
+        <PageHeader
+          title="Inbox"
+          subtitle={subtitle}
+          actions={
+            <>
+              <div className="hidden items-center gap-4 lg:flex">
+                <CourseSelect search={search} onChange={setSearch} />
+                <UnreadToggle search={search} onChange={setSearch} />
               </div>
-            ))
-          )}
-        </div>
-      </section>
+              {unreadTotal > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void markAll()}
+                  aria-label="Mark all read"
+                  title="Mark all read"
+                  className="inline-flex h-8 cursor-pointer items-center gap-[6px] rounded-md px-2 text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none lg:ml-1"
+                >
+                  <CheckCheck className="size-[15px]" aria-hidden />
+                  <span className="hidden sm:inline">Mark all read</span>
+                </button>
+              )}
+            </>
+          }
+        />
+      </div>
 
-      <section
-        className={cn(
-          "min-w-0 flex-1 lg:overflow-y-auto",
-          search.item === undefined && "hidden lg:block",
-        )}
-      >
-        {selected !== undefined ? (
-          <InboxDetail
-            key={selected.key}
-            item={selected}
-            dueAt={dueByAssignment.get(selected.canvasId)}
-            onMarkUnread={onMarkUnread}
-          />
-        ) : search.item === undefined ? (
-          <DetailEmpty />
-        ) : feed === undefined ? (
-          <DetailLoading />
-        ) : (
-          <Empty title="Not in the feed" body="This item has aged out of the Inbox.">
-            <button
-              type="button"
-              onClick={() => setSearch({ item: undefined })}
-              className="text-[12.5px] font-medium text-ink-2 hover:text-ink"
+      <div className="flex min-h-0 flex-1">
+        <section
+          aria-label="Inbox items"
+          className={cn(
+            "flex min-w-0 flex-1 flex-col border-line lg:w-[420px] lg:flex-none lg:overflow-y-auto lg:border-r xl:w-[500px] 2xl:w-[560px]",
+            search.item !== undefined && "hidden lg:flex",
+          )}
+        >
+          <div className="sticky top-0 z-10 bg-surface">
+            <InboxFilters search={search} counts={counts} onChange={setSearch} />
+          </div>
+
+          <div className="pb-8">
+            {feed === undefined ? (
+              <ListSkeleton />
+            ) : all.length === 0 ? (
+              <Empty
+                title="That's everything"
+                body="Announcements, posted grades and new assignments show up here."
+              />
+            ) : items.length === 0 ? (
+              <Empty title="No matches" body="Nothing in the feed fits these filters.">
+                <button
+                  type="button"
+                  onClick={() => setSearch({ type: undefined, course: undefined, unread: undefined })}
+                  className="mt-1 inline-flex h-7 cursor-pointer items-center rounded-md px-[10px] text-[12.5px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--line-2)] transition-colors hover:bg-hover hover:text-ink"
+                >
+                  Clear filters
+                </button>
+              </Empty>
+            ) : (
+              groupFeed(items, today, now).map((group) => (
+                <section key={group.label} aria-label={group.label}>
+                  <h2 className="flex items-baseline justify-between px-4 pt-5 pb-[6px] text-[13px] font-semibold tracking-[-0.01em] text-ink md:px-6">
+                    {group.label}
+                    <span className="tabular text-[12px] font-normal text-ink-3">{group.items.length}</span>
+                  </h2>
+                  {group.items.map((f) => (
+                    <InboxRow
+                      key={f.key}
+                      item={f}
+                      now={now}
+                      dueAt={dueByAssignment.get(f.canvasId)}
+                      selected={f.key === search.item}
+                    />
+                  ))}
+                </section>
+              ))
+            )}
+          </div>
+        </section>
+
+        <section
+          aria-label="Reading pane"
+          className={cn(
+            "min-w-0 flex-1 lg:overflow-y-auto",
+            search.item === undefined && "hidden lg:block",
+          )}
+        >
+          {selected !== undefined ? (
+            <InboxDetail
+              key={selected.key}
+              item={selected}
+              dueAt={dueByAssignment.get(selected.canvasId)}
+              onMarkUnread={onMarkUnread}
+            />
+          ) : search.item === undefined ? (
+            <DetailEmpty />
+          ) : feed === undefined ? (
+            <DetailLoading />
+          ) : (
+            <Empty
+              title="Not in the feed"
+              body="This item has aged out of the Inbox."
+              className="h-full justify-center"
             >
-              Back to Inbox
-            </button>
-          </Empty>
-        )}
-      </section>
+              <Link
+                to="/inbox"
+                search={(prev) => ({ ...prev, item: undefined })}
+                className="mt-1 inline-flex h-7 items-center rounded-md px-[10px] text-[12.5px] font-medium text-ink-2 no-underline shadow-[inset_0_0_0_1px_var(--line-2)] transition-colors hover:bg-hover hover:text-ink"
+              >
+                Back to Inbox
+              </Link>
+            </Empty>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-function Empty({ title, body, children }: { title: string; body: string; children?: ReactNode }) {
+function Empty({
+  title,
+  body,
+  className,
+  children,
+}: {
+  title: string;
+  body: string;
+  className?: string;
+  children?: ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-[9px] px-10 py-11 text-center text-ink-3">
-      <span className="text-[14px] font-medium text-ink-2">{title}</span>
-      <span className="text-[12.5px] leading-[1.5]">{body}</span>
+    <div className={cn("flex flex-col items-center gap-2 px-10 py-14 text-center", className)}>
+      <span className="mb-1 grid size-10 place-items-center rounded-xl border border-line bg-sunken text-ink-3">
+        <Inbox className="size-[18px]" strokeWidth={1.75} aria-hidden />
+      </span>
+      <span className="text-[14px] font-medium text-ink">{title}</span>
+      <span className="max-w-[280px] text-[12.5px] leading-[1.55] text-ink-3">{body}</span>
       {children}
     </div>
   );
@@ -227,9 +261,9 @@ function Empty({ title, body, children }: { title: string; body: string; childre
 
 function ListSkeleton() {
   return (
-    <div>
+    <div className="pt-5">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 border-b border-line px-4 py-3">
+        <div key={i} className="flex items-start gap-3 px-4 py-[13px] md:px-6">
           <div className="mt-[2px] size-[15px] rounded bg-chip" />
           <div className="flex-1 space-y-2">
             <div className="h-3 w-2/3 rounded bg-chip" />

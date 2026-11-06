@@ -4,44 +4,78 @@ import type { RowIcon } from "./overview-icons";
 import { UnreadDot } from "./unread-dot";
 import { cn } from "@/lib/utils";
 
-/** The overview's row: unread dot, type icon, title, right-aligned meta. */
+/**
+ * The overview's row: type icon · title · meta, with a trailing unread dot
+ * when the caller tracks one. `line` rows sit in the main column (meta drops
+ * under the title on phones); `rail` rows are the side column's two-line
+ * clamp with the time at the right.
+ */
 export function OverviewRow({
   icon: Icon,
   title,
   meta,
-  unread = false,
+  unread,
   to,
   href,
   onClick,
+  variant = "line",
   className,
 }: {
   icon: RowIcon;
   title: ReactNode;
   meta?: ReactNode;
+  /** Pass a boolean to reserve the dot slot so a column of rows lines up. */
   unread?: boolean;
   to?: string;
   href?: string;
   onClick?: () => void;
+  variant?: "line" | "rail";
   className?: string;
 }) {
-  const body = (
-    <>
-      {/* Always rendered so titles line up whether or not a row is new. */}
-      <span className="-ml-4 shrink-0">
-        {unread ? <UnreadDot /> : <span className="block size-[6px]" aria-hidden />}
+  const rail = variant === "rail";
+  const dot =
+    unread === undefined ? null : (
+      <span className="flex w-[6px] shrink-0 justify-end" aria-hidden={!unread}>
+        {unread && <UnreadDot />}
       </span>
-      <Icon className="size-[14px] shrink-0 text-ink-3" />
-      <span className={cn("truncate", unread && "font-medium")}>{title}</span>
+    );
+  const body = rail ? (
+    <>
+      <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3" />
+      <span
+        className={cn(
+          "line-clamp-2 min-w-0 flex-1 leading-[1.4]",
+          unread ? "font-medium text-ink" : "text-ink-2",
+        )}
+      >
+        {title}
+      </span>
       {meta !== undefined && (
-        <span className="tabular ml-auto flex shrink-0 items-center gap-2 text-[11.5px] whitespace-nowrap text-ink-3">
-          {meta}
-        </span>
+        <span className="tabular mt-px shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">{meta}</span>
       )}
+      {dot !== null && <span className="mt-[6px] flex">{dot}</span>}
+    </>
+  ) : (
+    <>
+      <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3 md:mt-0" />
+      <span className="flex min-w-0 flex-1 flex-col gap-[2px] md:flex-row md:items-center md:gap-4">
+        <span className={cn("min-w-0 md:truncate", unread === true && "font-medium")}>{title}</span>
+        {meta !== undefined && (
+          <span className="tabular flex shrink-0 items-center gap-2 text-[12px] whitespace-nowrap text-ink-3 md:ml-auto">
+            {meta}
+          </span>
+        )}
+      </span>
+      {dot !== null && <span className="mt-[6px] flex md:mt-0">{dot}</span>}
     </>
   );
+  const interactive = to !== undefined || href !== undefined;
   const cls = cn(
-    "flex w-full items-center gap-[10px] border-b border-line py-2 pr-4 pl-9 text-left text-[13px] text-ink no-underline md:pr-5",
-    (to !== undefined || href !== undefined) && "hover:bg-hover",
+    "relative flex w-full gap-[10px] text-left text-[13px] text-ink no-underline transition-colors outline-none",
+    rail
+      ? "items-start rounded-md px-2 py-[7px]"
+      : "items-start py-[9px] pr-4 pl-4 after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line md:items-center md:pr-6 md:pl-6 md:after:left-12",
+    interactive && "hover:bg-hover focus-visible:bg-hover",
     className,
   );
 
@@ -62,7 +96,11 @@ export function OverviewRow({
   return <div className={cls}>{body}</div>;
 }
 
-/** The uppercase section rule above each block. */
+/**
+ * The heading above each overview block, in the Home section style:
+ * sentence case, 13px semibold, quiet detail beside it, extras at the right.
+ * `muted` is the smaller sub-heading inside a block.
+ */
 export function SectionHead({
   title,
   detail,
@@ -84,28 +122,34 @@ export function SectionHead({
     <>
       <span
         className={cn(
-          "text-[11.5px] font-semibold tracking-[0.09em] uppercase",
+          "min-w-0 truncate",
+          muted
+            ? "text-[12.5px] font-medium text-ink-2"
+            : "text-[13px] font-semibold tracking-[-0.005em] text-ink",
           red && "text-red",
-          muted && "text-ink-3",
         )}
       >
         {title}
       </span>
       {detail !== undefined && (
-        <span className="truncate text-[11.5px] tracking-[0.01em] text-ink-3">{detail}</span>
+        <span className="min-w-0 truncate text-[12.5px] text-ink-3">{detail}</span>
       )}
       {right !== undefined && (
-        <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[11px] font-semibold text-ink-3">
+        <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[12px] text-ink-3">
           {right}
         </span>
       )}
     </>
   );
-  const base = cn("flex items-center gap-2 px-4 pt-4 pb-[7px] md:px-5", className);
+  const base = cn(
+    "flex items-baseline gap-2 px-4 md:px-6",
+    muted ? "pt-3 pb-1" : "pt-6 pb-2",
+    className,
+  );
   return to === undefined ? (
     <div className={base}>{inner}</div>
   ) : (
-    <Link to={to} className={cn(base, "hover:bg-hover")}>
+    <Link to={to} className={cn(base, "transition-colors hover:bg-hover")}>
       {inner}
     </Link>
   );

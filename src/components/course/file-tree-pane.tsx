@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { folderPath, type FolderNode, type FolderTree } from "./file-tree";
 import { cn } from "@/lib/utils";
@@ -47,7 +47,7 @@ export function FileTreePane({
   return (
     <nav
       aria-label="Folders"
-      className={cn("overflow-y-auto border-r border-line bg-sunken p-2 text-[13px]", className)}
+      className={cn("overflow-y-auto border-r border-line bg-sunken px-2 py-[6px] text-[13px]", className)}
     >
       <FolderRows
         node={tree.root}
@@ -85,10 +85,10 @@ function FolderRows({
     <>
       <div
         className={cn(
-          "flex h-7 items-center rounded-[7px] pr-2 text-ink-2 hover:bg-hover",
-          selected && "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)]",
+          "flex h-[30px] items-center rounded-md pr-2 text-ink-2 transition-colors hover:bg-hover hover:text-ink",
+          selected && "bg-surface font-medium text-ink shadow-[0_0_0_1px_var(--line)] hover:bg-surface",
         )}
-        style={{ paddingLeft: 4 + node.depth * 14 }}
+        style={{ paddingLeft: 2 + node.depth * 14 }}
       >
         {hasChildren ? (
           <button
@@ -96,7 +96,7 @@ function FolderRows({
             onClick={() => onToggle(id)}
             aria-expanded={open}
             aria-label={`${open ? "Collapse" : "Expand"} ${node.folder.name}`}
-            className="grid size-[18px] shrink-0 place-items-center rounded text-ink-3 hover:text-ink-2"
+            className="grid size-[18px] shrink-0 place-items-center rounded text-ink-3 transition-colors hover:text-ink"
           >
             {open ? (
               <ChevronDown className="size-[14px]" />
@@ -111,12 +111,18 @@ function FolderRows({
           type="button"
           onClick={() => onSelect(id)}
           aria-current={selected ? "true" : undefined}
-          className="flex min-w-0 flex-1 items-center gap-2 py-1 pl-1 text-left"
+          title={node.folder.name}
+          className="flex min-w-0 flex-1 items-center gap-2 py-1 pl-[2px] text-left outline-none focus-visible:underline"
         >
+          {open && hasChildren ? (
+            <FolderOpen className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+          ) : (
+            <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+          )}
           <span className="truncate">{node.folder.name}</span>
           <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-2">
             {unreadFolders.has(id) && <UnreadDot />}
-            <span className="text-[11px] text-ink-3 tabular">{node.totalFiles}</span>
+            <span className="text-[11.5px] font-normal text-ink-3 tabular">{node.totalFiles}</span>
           </span>
         </button>
       </div>

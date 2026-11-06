@@ -28,16 +28,22 @@ export function ModuleRow({
   className?: string;
 }) {
   const id = `item-${item.canvasId}`;
-  const style = {
-    paddingLeft: (dense ? 30 : 46) + item.indent * 22,
-    paddingRight: dense ? 16 : 20,
-  };
+  // `--pl` is the icon column: under the module title in the accordion,
+  // tighter in the timeline. Indents step in from there.
+  const style = { paddingLeft: `calc(var(--pl) + ${item.indent * 22}px)` } as CSSProperties;
+  const gutter = dense
+    ? "[--pl:30px] pr-4"
+    : "[--pl:40px] pr-4 md:[--pl:48px] md:pr-6";
 
   if (item.type === "SubHeader") {
     return (
       <div
         id={id}
-        className={cn("eyebrow scroll-mt-24 pt-[14px] pb-[6px]", className)}
+        className={cn(
+          "scroll-mt-24 pt-4 pb-[6px] text-[12.5px] font-medium text-ink-2",
+          gutter,
+          className,
+        )}
         style={style}
       >
         {item.title}
@@ -54,8 +60,11 @@ export function ModuleRow({
       target={target}
       onOpen={() => ctx.open(item)}
       className={cn(
-        "flex scroll-mt-24 items-center gap-[10px] py-2 text-[13px] text-ink hover:bg-hover",
-        !dense && "border-t border-line",
+        "relative flex min-h-10 scroll-mt-24 items-center gap-[10px] py-[9px] text-[13px] text-ink transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+        gutter,
+        // Hairline above each row, inset to the title column.
+        !dense &&
+          "before:absolute before:top-0 before:right-0 before:left-[calc(var(--pl)+24px)] before:h-px before:bg-line",
         className,
       )}
       style={style}
@@ -68,7 +77,14 @@ export function ModuleRow({
       {createElement(itemIcon(item, ctx.files), {
         className: "size-[14px] shrink-0 text-ink-3",
       })}
-      <span className={cn("truncate", unread && "font-medium")}>{item.title}</span>
+      <span
+        className={cn(
+          "line-clamp-2 min-w-0 md:truncate",
+          unread ? "font-medium" : "text-ink-2",
+        )}
+      >
+        {item.title}
+      </span>
       {target.kind === "external" && (
         <ArrowUpRight className="-ml-[4px] size-3 shrink-0 text-ink-3" />
       )}
@@ -132,7 +148,7 @@ export function ItemLink({
 function StatusMeta({ status }: { status: ItemStatus }) {
   if (status.kind === "none") return null;
   return (
-    <span className="tabular ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">
+    <span className="tabular ml-auto shrink-0 pl-3 text-[12px] whitespace-nowrap text-ink-3">
       {status.kind === "overdue" ? (
         <Pill tone="red" className="h-[19px] text-[11px]">
           Overdue

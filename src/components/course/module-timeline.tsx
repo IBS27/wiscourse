@@ -46,19 +46,26 @@ export function ModuleTimeline({
           <section
             key={group.key}
             className={cn(
-              "grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)] md:px-5",
+              "grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)] md:px-6",
               current && "bg-sunken",
             )}
           >
             <div className="px-4 pt-[14px] pb-1 text-[12.5px] text-ink-3 md:px-0 md:py-[14px] md:pr-4">
               <b
                 className={cn(
-                  "text-[13.5px] font-semibold tracking-[-0.01em] md:block",
-                  current ? "text-c" : group.weekStart === undefined ? "text-ink-3" : "text-ink",
+                  "inline-flex items-center gap-[6px] text-[13.5px] font-semibold tracking-[-0.01em] md:flex",
+                  group.weekStart === undefined && !current ? "text-ink-3" : "text-ink",
                 )}
               >
+                {current && <span className="size-[6px] rounded-full bg-c" aria-hidden />}
                 {group.label}
               </b>
+              {current && (
+                <span className="text-ink-2 md:block">
+                  <span className="md:hidden"> · </span>
+                  This week
+                </span>
+              )}
               {group.range !== undefined && (
                 <span className="md:block">
                   <span className="md:hidden"> · </span>
@@ -68,7 +75,7 @@ export function ModuleTimeline({
               {total > 0 && !ctx.seenLoading && (
                 <span className="tabular md:mt-[6px] md:block">
                   <span className="md:hidden"> · </span>
-                  {viewed}/{total}
+                  {viewed} of {total} viewed
                 </span>
               )}
             </div>
@@ -123,7 +130,7 @@ function ModuleBlock({
   return (
     <div id={`module-${module.canvasId}`} className="scroll-mt-24">
       {topic !== "" && topic !== groupLabel && (
-        <div className="px-4 pt-[6px] pb-[2px] text-[12.5px] font-medium text-ink-2 md:pl-[30px]">
+        <div className="px-4 pt-2 pb-[2px] text-[12.5px] font-medium text-ink-2 md:pl-[30px]">
           {title}
         </div>
       )}

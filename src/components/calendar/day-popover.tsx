@@ -127,7 +127,7 @@ export function DayPopover({
 }
 
 function Group({ label }: { label: string }) {
-  return <div className="eyebrow px-4 pt-3 pb-1 text-[10.5px]">{label}</div>;
+  return <div className="px-4 pt-3 pb-1 text-[12px] font-semibold text-ink-2">{label}</div>;
 }
 
 function count(n: number, one: string, many: string): string | undefined {

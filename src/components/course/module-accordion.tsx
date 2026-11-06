@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import { Check, ChevronRight, Clock, Inbox } from "lucide-react";
 import {
   contentItems,
   itemCountLabel,
@@ -61,28 +61,25 @@ export function ModuleAccordion({
               aria-expanded={expanded}
               onClick={() => toggle(module.canvasId)}
               className={cn(
-                "flex w-full items-center gap-[10px] px-4 pt-[13px] pb-3 text-left text-[13.5px] font-semibold tracking-[-0.01em] md:px-5",
-                locked ? "cursor-default text-ink-3" : "hover:bg-hover",
-                !locked && !expanded && "text-ink-2",
+                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[14px] font-semibold tracking-[-0.01em] transition-colors outline-none md:px-6",
+                locked ? "cursor-default text-ink-3" : "text-ink hover:bg-hover focus-visible:bg-hover",
               )}
             >
               <ChevronRight
                 className={cn(
-                  "size-[14px] shrink-0 text-ink-3 transition-transform",
+                  "size-[14px] shrink-0 text-ink-3 transition-transform group-hover:text-ink-2",
                   expanded && "rotate-90",
                   locked && "invisible",
                 )}
               />
-              <span className="truncate">{module.name}</span>
+              <span className="line-clamp-2 min-w-0 md:truncate">{module.name}</span>
               {/* "0 of 6 viewed" before the seen rows land is a claim, not a
                   blank. Say nothing until it settles. */}
               {!locked && total > 0 && !ctx.seenLoading && (
-                <span className="shrink-0 text-[11.5px] font-medium text-ink-3">
-                  {viewed === total ? "All viewed" : `${viewed} of ${total} viewed`}
-                </span>
+                <Progress viewed={viewed} total={total} />
               )}
               {locked && (
-                <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[11.5px] font-medium text-ink-3">
+                <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-3 text-[12px] font-normal text-ink-3">
                   <Clock className="size-[13px]" />
                   {lockReason(module, byId)} · {itemCountLabel(module)}
                 </span>
@@ -91,18 +88,51 @@ export function ModuleAccordion({
 
             {expanded &&
               (contentItems(module.items).length === 0 ? (
-                <div className="border-t border-line px-4 py-3 text-[12.5px] text-ink-3 md:px-5 md:pl-[46px]">
+                <div className="flex items-center gap-[10px] border-t border-line py-3 pr-4 pl-10 text-[12.5px] text-ink-3 md:pl-12">
+                  <Inbox className="size-[14px] shrink-0" aria-hidden />
                   Nothing in this module yet.
                 </div>
               ) : (
-                module.items.map((item) => (
-                  <ModuleRow key={item.canvasId} item={item} ctx={ctx} />
-                ))
+                <div className="pb-2">
+                  {module.items.map((item) => (
+                    <ModuleRow key={item.canvasId} item={item} ctx={ctx} />
+                  ))}
+                </div>
               ))}
           </section>
         );
       })}
     </div>
+  );
+}
+
+/** "3 of 10 viewed" with a hairline meter; a check once everything is seen. */
+function Progress({ viewed, total }: { viewed: number; total: number }) {
+  const done = viewed === total;
+  return (
+    <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
+      <span className="hidden h-1 w-14 overflow-hidden rounded-full bg-chip sm:block" aria-hidden>
+        <span
+          className="block h-full rounded-full bg-c"
+          style={{ width: `${Math.round((viewed / total) * 100)}%` }}
+        />
+      </span>
+      {done ? (
+        <span className="flex items-center gap-1">
+          <Check className="size-[13px]" aria-hidden />
+          All viewed
+        </span>
+      ) : (
+        <>
+          <span className="sm:hidden">
+            {viewed}/{total}
+          </span>
+          <span className="hidden sm:inline">
+            {viewed} of {total} viewed
+          </span>
+        </>
+      )}
+    </span>
   );
 }
 

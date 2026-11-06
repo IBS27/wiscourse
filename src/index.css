@@ -61,6 +61,8 @@
   /* UW–Madison Badger Red. Logo + overdue only — not a UI accent. */
   --brand: var(--red);
   --brand-ink: #101114;
+  /* Unread marker: neutral so it never collides with a course colour. */
+  --unread: var(--ink);
 }
 
 .dark {
@@ -143,6 +145,7 @@
   --color-today-fg: var(--today-fg);
   /* The current row/card's course colour; set via style={{ "--c": ... }}. */
   --color-c: var(--c, var(--course-none));
+  --color-unread: var(--unread);
 
   --shadow-menu: var(--menu-shadow);
   --shadow-float: var(--shadow);
@@ -181,13 +184,12 @@
   color: var(--ink);
 }
 
-/* Uppercase section/eyebrow label. */
+/* Section label inside a card or panel. */
 @utility eyebrow {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  letter-spacing: -0.005em;
+  color: var(--ink);
 }
 
 /* Landing page (src/components/landing): row stagger, switcher progress bar,

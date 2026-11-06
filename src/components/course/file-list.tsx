@@ -1,14 +1,17 @@
 import { useMemo, useState } from "react";
-import { Lock, Search } from "lucide-react";
+import { Folder, FolderOpen, Lock, Search, SearchX } from "lucide-react";
 import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
+  fileAddedAt,
   folderPath,
   folderPathLabel,
   type FileDoc,
   type FolderNode,
   type FolderTree,
 } from "./file-tree";
+import { formatMonthDayYear } from "@/lib/dates";
+import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 interface Row {
@@ -16,6 +19,10 @@ interface Row {
   /** Only in search results, where the row is out of its folder's context. */
   path?: string;
 }
+
+/** Name · size · added · new-dot; the last three drop while a preview is open. */
+const COLS = "grid-cols-[minmax(0,1fr)_72px_84px_6px] gap-x-5";
+const COLS_COMPACT = "grid-cols-[minmax(0,1fr)_6px] gap-x-3";
 
 /**
  * The middle pane of 4-A. The filter does double duty: empty it narrows the
@@ -27,6 +34,9 @@ export function FileList({
   folder,
   selectedFileId,
   isNew,
+  unreadFolders,
+  compact = false,
+  now,
   onSelectFolder,
   onSelectFile,
   className,
@@ -35,6 +45,11 @@ export function FileList({
   folder: FolderNode | undefined;
   selectedFileId: number | undefined;
   isNew: (file: FileDoc) => boolean;
+  /** Folders holding an unseen, recently added file. */
+  unreadFolders: Set<number>;
+  /** A preview is open beside the list: names only. */
+  compact?: boolean;
+  now: number;
   onSelectFolder: (canvasId: number) => void;
   onSelectFile: (canvasId: number) => void;
   className?: string;
@@ -50,7 +65,14 @@ export function FileList({
       .map((file) => ({ file, path: folderPathLabel(tree, file.folderCanvasId) }));
   }, [tree, folder, query, searching]);
 
+  const folders = searching ? [] : (folder?.children ?? []);
   const crumbs = folderPath(tree, folder?.folder.canvasId);
+  const cols = compact ? COLS_COMPACT : COLS;
+  const rowCls = cn(
+    "relative grid min-h-10 w-full items-center px-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+    "after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line",
+    cols,
+  );
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
@@ -63,14 +85,18 @@ export function FileList({
           ) : (
             crumbs.map((node, i) => (
               <span key={node.folder.canvasId} className="flex min-w-0 items-center gap-[6px]">
-                {i > 0 && <span aria-hidden>/</span>}
+                {i > 0 && (
+                  <span className="text-line-2" aria-hidden>
+                    /
+                  </span>
+                )}
                 {i === crumbs.length - 1 ? (
                   <span className="truncate font-medium text-ink">{node.folder.name}</span>
                 ) : (
                   <button
                     type="button"
                     onClick={() => onSelectFolder(node.folder.canvasId)}
-                    className="truncate hover:text-ink-2"
+                    className="truncate rounded px-[2px] transition-colors hover:text-ink"
                   >
                     {node.folder.name}
                   </button>
@@ -79,24 +105,68 @@ export function FileList({
             ))
           )}
         </div>
-        <label className="ml-auto flex h-7 w-[120px] shrink-0 xl:w-[150px] items-center gap-[7px] rounded-[7px] border border-line bg-surface px-[9px] focus-within:border-line-2">
+        <label className="ml-auto flex h-7 w-[140px] shrink-0 items-center gap-[7px] rounded-md border border-line bg-surface px-[9px] transition-colors focus-within:border-line-2 xl:w-[180px]">
           <Search className="size-[13px] shrink-0 text-ink-3" aria-hidden />
           <input
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
-            placeholder="Filter…"
+            placeholder="Filter files…"
             aria-label="Filter files"
             className="min-w-0 flex-1 bg-transparent text-[12.5px] text-ink outline-none placeholder:text-ink-3"
           />
         </label>
       </div>
 
-      {rows.length === 0 ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-[13px] text-ink-2">
-          {searching ? `No files match “${filter.trim()}”` : "This folder is empty"}
+      {rows.length === 0 && folders.length === 0 ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+          {searching ? (
+            <SearchX className="size-5 text-ink-3" aria-hidden />
+          ) : (
+            <FolderOpen className="size-5 text-ink-3" aria-hidden />
+          )}
+          <p className="text-[13px] text-ink-2">
+            {searching ? `No files match “${filter.trim()}”` : "This folder is empty"}
+          </p>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
+          {!compact && (
+            <div
+              className={cn(
+                "grid h-8 items-center border-b border-line px-4 pl-10 text-[12px] font-medium text-ink-3",
+                cols,
+              )}
+            >
+              <span>Name</span>
+              <span className="text-right">Size</span>
+              <span className="text-right">Added</span>
+              <span />
+            </div>
+          )}
+          {folders.map((child) => (
+            <button
+              key={child.folder.canvasId}
+              type="button"
+              onClick={() => onSelectFolder(child.folder.canvasId)}
+              className={rowCls}
+            >
+              <span className="flex min-w-0 items-center gap-[10px]">
+                <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+                <span className="truncate">{child.folder.name}</span>
+              </span>
+              {!compact && (
+                <>
+                  <span className="tabular text-right text-[12px] text-ink-3">
+                    {child.totalFiles} file{child.totalFiles === 1 ? "" : "s"}
+                  </span>
+                  <span />
+                </>
+              )}
+              <span className="flex justify-end">
+                {unreadFolders.has(child.folder.canvasId) && <UnreadDot />}
+              </span>
+            </button>
+          ))}
           {rows.map(({ file, path }) => {
             const selected = file.canvasId === selectedFileId;
             const unread = isNew(file);
@@ -106,10 +176,7 @@ export function FileList({
                 type="button"
                 aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectFile(file.canvasId)}
-                className={cn(
-                  "grid min-h-10 w-full grid-cols-[minmax(0,1fr)_20px] items-center gap-3 border-b border-line px-4 py-[7px] text-left text-[13px] hover:bg-hover",
-                  selected && "bg-hover shadow-[inset_2px_0_0_var(--c)]",
-                )}
+                className={cn(rowCls, selected && "bg-chip hover:bg-chip")}
               >
                 <span className="flex min-w-0 items-center gap-[10px]">
                   {file.lockedForUser === true ? (
@@ -118,14 +185,29 @@ export function FileList({
                     <FileTypeIcon contentType={file.contentType} filename={file.filename} />
                   )}
                   <span className="min-w-0">
-                    <span className={cn("block truncate", unread && "font-medium")}>
+                    <span
+                      className={cn(
+                        compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
+                        unread && "font-medium",
+                      )}
+                    >
                       {file.displayName}
                     </span>
                     {path !== undefined && path !== "" && (
-                      <span className="block truncate text-[11.5px] text-ink-3">{path}</span>
+                      <span className="block truncate text-[12px] text-ink-3">{path}</span>
                     )}
                   </span>
                 </span>
+                {!compact && (
+                  <>
+                    <span className="tabular text-right text-[12px] text-ink-3">
+                      {formatBytes(file.size)}
+                    </span>
+                    <span className="tabular text-right text-[12px] text-ink-3">
+                      {formatMonthDayYear(fileAddedAt(file), now)}
+                    </span>
+                  </>
+                )}
                 <span className="flex justify-end">{unread && <UnreadDot />}</span>
               </button>
             );

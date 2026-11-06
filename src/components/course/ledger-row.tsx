@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import type { TodoItem } from "../../../convex/todos";
-import { UnreadDot } from "./unread-dot";
+import { ROW_ICON, type RowIcon } from "./overview-icons";
 import { Dot } from "@/components/app/bits";
 import { courseHref } from "@/lib/course-routes";
 import { formatDayShort, formatTime, formatWeekday, dayKeyOf } from "@/lib/dates";
@@ -11,6 +11,13 @@ import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
+
+/** Course · next due · new — the columns `LEDGER_HEAD` labels. */
+export const LEDGER_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,300px)_176px]";
+
+/** Hairline under each row, inset to the title column (dot + gap). */
+const RULE =
+  "after:absolute after:right-0 after:bottom-0 after:left-9 after:h-px after:bg-line md:after:left-[44px]";
 
 export function LedgerRow({
   course,
@@ -31,54 +38,52 @@ export function LedgerRow({
   const seenFiles = useSeen("file");
 
   const code = shortCode(course);
-  const meta = [code, familyName(course.verifiedInstructors?.[0])].filter(
-    (part): part is string => part !== undefined && part !== "",
-  );
+  const instructor = familyName(course.verifiedInstructors?.[0]);
 
   const next = nextDue(todos, course.canvasId);
   const overdue = next?.dueAt !== undefined && next.dueAt < now;
   const freshFiles = (fresh ?? []).filter((file) => !seenFiles.has(file.canvasId)).length;
-  const summary = newSummary(feed, course.canvasId, freshFiles);
+  const counts = newCounts(feed, course.canvasId, freshFiles);
 
   return (
     <Link
       to={courseHref(course.canvasId)}
       style={courseStyle(color)}
-      className="grid grid-cols-1 gap-y-[6px] border-b border-line px-4 py-[11px] text-inherit no-underline hover:bg-hover md:h-[58px] md:grid-cols-[minmax(0,1fr)_250px_230px] md:items-center md:gap-x-4 md:gap-y-0 md:px-5 md:py-0"
+      className={cn(
+        "group relative grid grid-cols-1 gap-y-[6px] py-3 pr-4 pl-9 text-inherit no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:min-h-[62px] md:items-center md:gap-x-8 md:gap-y-0 md:py-[10px] md:pr-6 md:pl-[44px]",
+        LEDGER_COLS,
+        RULE,
+      )}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <Dot className="size-2" />
-        <div className="min-w-0">
-          <div className="truncate text-[14px] leading-[1.25] font-medium tracking-[-0.01em]">
-            {courseTitle(course)}
-          </div>
-          <div className="mt-[2px] truncate text-xs text-ink-3">
-            {meta.map((part, i) => (
-              <span key={`${i}-${part}`}>
-                {i > 0 && <span className="opacity-55"> · </span>}
-                <span className={cn(i === 0 && code !== undefined && "font-medium text-ink-2")}>
-                  {part}
-                </span>
-              </span>
-            ))}
-          </div>
+      <div className="relative min-w-0">
+        <Dot className="absolute top-[6px] -left-5 size-2" />
+        <div className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink md:truncate">
+          {courseTitle(course)}
+        </div>
+        <div className="mt-[2px] truncate text-[12.5px] text-ink-3">
+          {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
+          {code !== undefined && instructor !== undefined && (
+            <span className="text-line-2" aria-hidden>
+              {" · "}
+            </span>
+          )}
+          {instructor}
         </div>
       </div>
 
-      <div
-        className={cn(
-          "min-w-0 text-[13px] leading-[1.25]",
-          // A bare em-dash on its own line is noise once the row stacks.
-          next === undefined && "hidden text-ink-3 md:block",
-        )}
-      >
+      <div className={cn("min-w-0 leading-[1.35]", next === undefined && "hidden md:block")}>
         {next === undefined ? (
-          "—"
+          <span className="text-[12.5px] text-ink-3">Nothing due</span>
         ) : (
           <>
-            <span className="block truncate">{next.title}</span>
+            <span className="block truncate text-[13px] text-ink-2">
+              <span className="text-ink-3 md:hidden">Next · </span>
+              {next.title}
+            </span>
             {next.dueAt !== undefined && (
-              <span className={cn("mt-[2px] block text-xs text-ink-3", overdue && "text-red")}>
+              <span
+                className={cn("tabular mt-[2px] block text-[12.5px] text-ink-3", overdue && "text-red")}
+              >
                 {overdue
                   ? `Overdue · was ${formatWeekday(dayKeyOf(next.dueAt))} ${formatTime(next.dueAt)}`
                   : `${formatDayShort(dayKeyOf(next.dueAt))} · ${formatTime(next.dueAt)}`}
@@ -88,22 +93,33 @@ export function LedgerRow({
         )}
       </div>
 
-      <div
-        className={cn(
-          "items-center gap-2 text-[12.5px]",
-          summary === undefined ? "hidden text-ink-3 md:flex" : "flex text-ink-2",
-        )}
-      >
-        {summary === undefined ? (
-          "—"
-        ) : (
-          <>
-            <UnreadDot />
-            {summary}
-          </>
-        )}
-      </div>
+      <NewCounts counts={counts} />
     </Link>
+  );
+}
+
+interface NewCount {
+  n: number;
+  noun: string;
+  icon: RowIcon;
+}
+
+/** Icon + number per kind: "6 announcements · 13 grades · 4 changes" in one glance, never two lines. */
+function NewCounts({ counts }: { counts: NewCount[] }) {
+  if (counts.length === 0) {
+    return <span className="hidden text-[12.5px] text-ink-3 md:block">Up to date</span>;
+  }
+  const label = counts.map(({ n, noun }) => plural(n, noun)).join(" · ");
+  return (
+    <div className="flex items-center gap-x-[14px] text-[12.5px]" title={label}>
+      <span className="sr-only">{label}</span>
+      {counts.map(({ n, noun, icon: Icon }) => (
+        <span key={noun} className="inline-flex items-center gap-[5px]" aria-hidden>
+          <Icon className="size-[13px] text-ink-3" />
+          <span className="tabular font-medium text-ink-2">{n}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -115,16 +131,19 @@ export function LedgerPastRow({ course, color }: { course: Course; color: string
     <Link
       to={courseHref(course.canvasId)}
       style={courseStyle(color)}
-      className="flex items-center gap-4 border-b border-line px-4 py-[10px] text-ink-2 no-underline hover:bg-hover md:h-[42px] md:px-5 md:py-0"
+      className={cn(
+        "relative flex items-center gap-4 py-[10px] pr-4 pl-9 text-ink-2 no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:min-h-[44px] md:py-[9px] md:pr-6 md:pl-[44px]",
+        RULE,
+      )}
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Dot className="size-2 opacity-45" />
-        <div className="min-w-0 truncate">
-          <span className="text-[13.5px] font-medium">{courseTitle(course)}</span>
-          <span className="ml-[10px] text-xs text-ink-3">
-            {[code, instructor].filter(Boolean).join(" · ")}
-          </span>
-        </div>
+      <div className="relative min-w-0 flex-1 md:flex md:items-baseline md:gap-[10px]">
+        <Dot className="absolute top-[6px] -left-5 size-2 opacity-45" />
+        <span className="block truncate text-[13.5px] font-medium md:min-w-0 md:flex-initial">
+          {courseTitle(course)}
+        </span>
+        <span className="block shrink-0 truncate text-[12.5px] text-ink-3">
+          {[code, instructor].filter(Boolean).join(" · ")}
+        </span>
       </div>
       {final !== undefined && (
         <span className="tabular shrink-0 text-[12.5px] text-ink-3">
@@ -149,24 +168,19 @@ function nextDue(todos: TodoItem[] | undefined, canvasId: number): TodoItem | un
     .sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0))[0];
 }
 
-/** "2 announcements · 3 files · 1 grade", or undefined when nothing is new. */
-function newSummary(
-  feed: FeedItem[] | undefined,
-  canvasId: number,
-  files: number,
-): string | undefined {
+/** Unseen feed items per kind, plus fresh files; empty when nothing is new. */
+function newCounts(feed: FeedItem[] | undefined, canvasId: number, files: number): NewCount[] {
   const unseen = (feed ?? []).filter((f) => f.courseCanvasId === canvasId && !f.seen);
   const count = (type: FeedItem["type"]) => unseen.filter((f) => f.type === type).length;
-  const parts = [
-    plural(count("announcement"), "announcement"),
-    plural(files, "file"),
-    plural(count("grade"), "grade"),
-    plural(count("assignment"), "assignment"),
-    plural(count("change"), "change"),
-  ].filter((part): part is string => part !== undefined);
-  return parts.length === 0 ? undefined : parts.join(" · ");
+  return [
+    { n: count("announcement"), noun: "announcement", icon: ROW_ICON.announcement },
+    { n: files, noun: "file", icon: ROW_ICON.File },
+    { n: count("grade"), noun: "grade", icon: ROW_ICON.grade },
+    { n: count("assignment"), noun: "assignment", icon: ROW_ICON.Assignment },
+    { n: count("change"), noun: "change", icon: ROW_ICON.change },
+  ].filter((c) => c.n > 0);
 }
 
-function plural(n: number, noun: string): string | undefined {
-  return n === 0 ? undefined : `${n} ${noun}${n === 1 ? "" : "s"}`;
+function plural(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
 }

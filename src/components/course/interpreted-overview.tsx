@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronRight, FileText, ArrowUpRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
@@ -13,6 +13,7 @@ import {
   type MapResource,
 } from "@/lib/interpreted-course";
 import type { ModuleWithItems } from "./module-utils";
+import { cn } from "@/lib/utils";
 
 function PageReader({
   courseId,
@@ -65,6 +66,7 @@ export function InterpretedOverview({
 }) {
   const [selection, setSelection] = useState<string>();
   const [page, setPage] = useState<string>();
+  const navRef = useRef<HTMLElement>(null);
   const active =
     map.sections.find((s) => s.id === selection) ??
     map.sections.find((s) => s.id === defaultSection(map, today))!;
@@ -72,6 +74,15 @@ export function InterpretedOverview({
   const resolve = (ids: string[]) =>
     sectionResources(ids, resources, modules, courseId);
   const rows = resolve(active.resourceIds);
+
+  // Below xl the sections are a sideways chip strip; bring the open one
+  // into view. Only the strip scrolls, never the page.
+  useEffect(() => {
+    const nav = navRef.current;
+    const chip = nav?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (!nav || !chip || nav.scrollWidth <= nav.clientWidth) return;
+    nav.scrollLeft = chip.offsetLeft - nav.offsetLeft - 16;
+  }, [active.id]);
   const chapterLayout = map.sections.some((s) =>
     /^chapter\s+\d/i.test(s.title),
   );
@@ -102,9 +113,9 @@ export function InterpretedOverview({
       !r.id.startsWith("item:"),
   );
   return (
-    <section className="px-4 pt-5 pb-5 md:px-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-[14px] font-semibold tracking-[-0.01em]">
+    <section className="px-4 pt-6 pb-5 md:px-6">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">
           {chapterLayout
             ? "Chapters & course resources"
             : weekly
@@ -114,7 +125,7 @@ export function InterpretedOverview({
         <Link
           to="/courses/$courseId/interpretation"
           params={{ courseId }}
-          className="text-[11px] text-ink-3 hover:text-ink-2"
+          className="text-[12px] text-ink-3 transition-colors hover:text-ink"
         >
           Review interpretation
           {map.conflicts.length > 0 && ` · ${map.conflicts.length} flagged`}
@@ -122,7 +133,7 @@ export function InterpretedOverview({
       </div>
       {map.essentials.length > 0 && (
         <div
-          className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line pb-4"
+          className="mb-5 flex flex-wrap items-center gap-2"
           aria-label="Course essentials"
         >
           {map.essentials.map((e, i) => {
@@ -131,14 +142,11 @@ export function InterpretedOverview({
               <Link
                 key={i}
                 to={r.href}
-                className="inline-flex max-w-full items-center gap-1 text-[11.5px] leading-4 text-ink-2 hover:text-ink"
+                className="inline-flex h-7 max-w-full items-center gap-[6px] rounded-md border border-line bg-surface px-[10px] text-[12px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink sm:max-w-[320px]"
                 title={e.label}
               >
-                <span className="line-clamp-1">{e.label}</span>
-                <ArrowUpRight
-                  className="size-3 shrink-0 text-ink-3"
-                  aria-hidden
-                />
+                <FileText className="size-[13px] shrink-0 text-ink-3" aria-hidden />
+                <span className="truncate">{e.label}</span>
               </Link>
             ) : null;
           })}
@@ -148,15 +156,16 @@ export function InterpretedOverview({
         className={
           cards
             ? "space-y-4"
-            : "grid min-w-0 items-start gap-4 xl:grid-cols-[200px_minmax(0,1fr)] xl:gap-5"
+            : "grid min-w-0 items-start gap-4 xl:grid-cols-[216px_minmax(0,1fr)] xl:gap-6"
         }
       >
         <nav
+          ref={navRef}
           aria-label={chapterLayout ? "Chapter navigation" : "Course sections"}
           className={
             cards
               ? "grid gap-1 sm:grid-cols-2"
-              : "flex min-w-0 gap-1 overflow-x-auto pb-2 xl:block xl:max-h-[420px] xl:space-y-0.5 xl:overflow-y-auto xl:border-r xl:border-line xl:pr-3"
+              : "-mx-4 flex min-w-0 gap-[6px] overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-6 md:px-6 xl:mx-0 xl:block xl:max-h-[440px] xl:space-y-px xl:overflow-y-auto xl:px-0 xl:pb-0 [&::-webkit-scrollbar]:hidden"
           }
         >
           {map.sections.map((s) => (
@@ -169,11 +178,16 @@ export function InterpretedOverview({
                 setPage(undefined);
               }}
               title={s.title}
-              className={`max-w-[220px] shrink-0 rounded-r-md border-l-2 px-2.5 py-2 text-left text-[12px] leading-[17px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-c/40 xl:w-full xl:max-w-none ${s.id === active.id ? "border-c bg-hover font-medium text-ink" : "border-transparent text-ink-2 hover:bg-hover hover:text-ink"}`}
+              className={cn(
+                "max-w-[240px] shrink-0 rounded-full border px-3 py-[5px] text-left text-[12.5px] leading-[18px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-line-2 xl:w-full xl:max-w-none xl:rounded-md xl:border-0 xl:px-[10px] xl:py-[7px] xl:text-[13px]",
+                s.id === active.id
+                  ? "border-line-2 bg-chip font-medium text-ink"
+                  : "border-line text-ink-2 hover:bg-hover hover:text-ink",
+              )}
             >
-              <span className="line-clamp-2">{s.title}</span>
+              <span className="block truncate xl:line-clamp-2 xl:whitespace-normal">{s.title}</span>
               {s.teachingDates && (
-                <span className="mt-1 block text-xs font-normal text-ink-3">
+                <span className="mt-[2px] hidden text-[12px] font-normal text-ink-3 xl:block">
                   {formatDay(s.teachingDates.start)}
                   {s.teachingDates.end !== s.teachingDates.start &&
                     ` – ${formatDay(s.teachingDates.end)}`}
@@ -183,11 +197,11 @@ export function InterpretedOverview({
           ))}
         </nav>
         <div className="min-w-0" aria-label="Selected course section">
-          <h3 className="pt-1 text-[13px] leading-5 font-semibold">
+          <h3 className="text-[15px] leading-[1.35] font-semibold tracking-[-0.01em] text-ink xl:pt-[5px]">
             {active.title}
           </h3>
           {active.teachingDates && (
-            <p className="mt-1 text-xs text-ink-3">
+            <p className="tabular mt-[2px] text-[12.5px] text-ink-3">
               {formatDay(active.teachingDates.start)}
               {active.teachingDates.end !== active.teachingDates.start &&
                 ` – ${formatDay(active.teachingDates.end)}`}
@@ -195,24 +209,27 @@ export function InterpretedOverview({
           )}
           {!!active.entries?.length && (
             <ol
-              className="mt-2 divide-y divide-line rounded-lg border border-line"
+              className="mt-3 border-t border-line"
               aria-label={`${active.title} schedule`}
             >
               {active.entries.map((e, i) => (
                 <li
                   key={i}
-                  className={`flex gap-3 px-3 py-2.5 text-[13px] leading-[18px] ${e.date && e.date < today ? "text-ink-3" : ""}`}
+                  className={cn(
+                    "flex flex-col gap-[2px] border-b border-line py-[10px] text-[13px] leading-[1.45] sm:flex-row sm:gap-4",
+                    e.date && e.date < today ? "text-ink-2" : "text-ink",
+                  )}
                 >
-                  <span className="w-[88px] shrink-0 text-[12px] text-ink-3 tabular-nums">
+                  <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums sm:w-[84px] sm:pt-px">
                     {e.date ? formatDay(e.date) : ""}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p>{e.title}</p>
+                    <p className="font-medium">{e.title}</p>
                     {resolve(e.resourceIds).map((r) => (
                       <Link
                         key={r.href}
                         to={r.href}
-                        className="mt-1 mr-3 inline-flex items-center gap-1 text-[12px] text-ink-2 hover:text-ink"
+                        className="mt-1 mr-4 inline-flex items-center gap-[5px] text-[12.5px] text-ink-3 transition-colors hover:text-ink hover:underline"
                       >
                         <FileText className="size-3 shrink-0" aria-hidden />
                         {r.title}
@@ -224,13 +241,21 @@ export function InterpretedOverview({
             </ol>
           )}
           {rows.length > 0 && (
-            <ul className="mt-2 max-h-80 overflow-y-auto divide-y divide-line rounded-lg border border-line">
+            <ul
+              className={cn(
+                "max-h-80 overflow-y-auto border-t border-line",
+                active.entries?.length ? "mt-5" : "mt-3",
+              )}
+            >
               {rows.map((r) => (
                 <li key={r.href}>
                   {r.id.startsWith("page:") ? (
                     <button
                       type="button"
-                      className={`group flex w-full items-start gap-2.5 px-3 py-2.5 text-left text-[13px] leading-[18px] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-c/40 ${page === r.id ? "bg-hover" : ""}`}
+                      className={cn(
+                        "group flex w-full items-start gap-[10px] border-b border-line px-2 py-[9px] text-left text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+                        page === r.id && "bg-hover font-medium",
+                      )}
                       onClick={() => setPage(r.id)}
                       aria-pressed={page === r.id}
                       aria-label={`Read ${r.title}`}
@@ -248,7 +273,7 @@ export function InterpretedOverview({
                   ) : (
                     <Link
                       to={r.href}
-                      className="flex items-start gap-2.5 px-3 py-2.5 text-[13px] leading-[18px] hover:bg-hover"
+                      className="flex items-start gap-[10px] border-b border-line px-2 py-[9px] text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
                     >
                       <FileText
                         className="mt-0.5 size-3.5 shrink-0 text-ink-3"
@@ -276,20 +301,21 @@ export function InterpretedOverview({
           )}
         </div>
       </div>
-      <details className="mt-4 border-t border-line pt-3 text-[12px]">
-        <summary className="cursor-pointer text-ink-3 hover:text-ink-2">
+      <details className="group/more mt-6 text-[12.5px]">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-[6px] text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-[14px] transition-transform group-open/more:rotate-90" aria-hidden />
           More course material ({other.length})
         </summary>
-        <p className="mt-2 text-xs text-ink-3">
+        <p className="mt-2 text-[12px] text-ink-3">
           Material outside these groups is still available here and in Modules
           and Files.
         </p>
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {other.map((r) => (
             <li key={r.id}>
               <Link
                 to={r.href}
-                className="text-sm underline underline-offset-4"
+                className="text-[13px] text-ink-2 underline decoration-line-2 underline-offset-4 transition-colors hover:text-ink hover:decoration-ink-3"
               >
                 {r.title}
               </Link>

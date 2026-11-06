@@ -40,13 +40,14 @@ export function OverviewWeek({
     <>
       {current.length > 0 && (
         <section>
-          <SectionHead title="This week" />
+          <SectionHead title="This week" className="pb-0" />
           {current.map((module) => (
             <div key={module.canvasId}>
               <SectionHead
                 title={module.name}
                 to={moduleHref(courseId, module.canvasId)}
                 muted
+                className="pt-4"
               />
               {module.items.map((item) => {
                 if (item.type === "SubHeader")
@@ -67,7 +68,7 @@ export function OverviewWeek({
                     title={item.title}
                     meta={
                       due === undefined
-                        ? item.type
+                        ? typeLabel(item.type)
                         : `Due ${formatDueRelative(due, todayKey)}`
                     }
                     unread={
@@ -107,4 +108,16 @@ export function OverviewWeek({
       </section>
     </>
   );
+}
+
+/** Canvas' "ExternalUrl" and friends, as a person would say them. */
+function typeLabel(type: string): string {
+  switch (type) {
+    case "ExternalUrl":
+      return "Link";
+    case "ExternalTool":
+      return "Opens in Canvas";
+    default:
+      return type;
+  }
 }

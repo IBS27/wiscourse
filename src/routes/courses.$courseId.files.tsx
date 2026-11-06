@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { FolderOpen } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FileColumn } from "@/components/course/file-column";
@@ -84,8 +85,10 @@ function CourseFiles() {
   if (data === undefined) return <FilesSkeleton mobile={mobile} previewing={search.file !== undefined} />;
   if (tree.files.length === 0 && previewFile === undefined) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-10 text-[13px] text-ink-3">
-        No files yet
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+        <FolderOpen className="size-5 text-ink-3" aria-hidden />
+        <p className="text-[13px] text-ink-2">No files yet</p>
+        <p className="text-[12.5px] text-ink-3">Files your instructor shares will appear here.</p>
       </div>
     );
   }
@@ -131,20 +134,25 @@ function CourseFiles() {
     );
   }
 
+  const unreadFolders = unreadFolderIds(tree, isNew);
+
   return (
     <div className="flex min-h-0 flex-1" style={style}>
       <FileTreePane
         tree={tree}
         selectedFolderId={folderId}
-        unreadFolders={unreadFolderIds(tree, isNew)}
+        unreadFolders={unreadFolders}
         onSelect={selectFolder}
-        className="w-[200px] shrink-0"
+        className="w-[240px] shrink-0 xl:w-[264px]"
       />
       <FileList
         tree={tree}
         folder={folder}
         selectedFileId={selectedFile?.canvasId}
         isNew={isNew}
+        unreadFolders={unreadFolders}
+        compact={previewFile !== undefined}
+        now={now}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}
         className={cn("min-h-0", previewFile === undefined ? "min-w-0 flex-1" : COMPACT_LIST)}

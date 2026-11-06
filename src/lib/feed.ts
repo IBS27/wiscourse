@@ -49,7 +49,7 @@ export function feedSubtitle(item: FeedItem, dueAt?: number): string | undefined
       ? percent(item.score, item.pointsPossible)
       : undefined;
   const letter =
-    item.grade !== undefined && item.grade !== String(item.score) ? item.grade : undefined;
+    item.grade !== undefined && item.grade !== String(item.score) && item.grade !== pct ? item.grade : undefined;
   return join([pct, letter]) ?? "Grade posted";
 }
 

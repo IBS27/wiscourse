@@ -37,7 +37,7 @@ export function SubscribeDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[520px]">
-        <div className="border-b border-line px-[18px] pt-4 pb-[14px]">
+        <div className="border-b border-line px-4 md:px-5 pt-4 pb-[14px]">
           <DialogTitle className="text-[14px] font-semibold tracking-[-0.01em]">
             Subscribe in another calendar
           </DialogTitle>
@@ -91,7 +91,7 @@ export function SubscribeSections() {
 
   return (
     <>
-      <div className="border-b border-line px-[18px] py-[14px]">
+      <div className="border-b border-line px-4 md:px-5 py-[14px]">
         <div className="eyebrow mb-[10px]">Feed link</div>
         {!configured ? (
           <div className="text-[12.5px] text-ink-3">
@@ -99,7 +99,7 @@ export function SubscribeSections() {
           </div>
         ) : url === undefined ? (
           <div className="flex items-center gap-3">
-            <Button size="sm" onClick={() => void create()} disabled={busy || prefs === undefined}>
+            <Button size="sm" variant="outline" className="text-[13px]" onClick={() => void create()} disabled={busy || prefs === undefined}>
               Create feed link
             </Button>
             <span className="text-[12px] text-ink-3">No feed exists yet.</span>
@@ -126,7 +126,7 @@ export function SubscribeSections() {
         </div>
       </div>
 
-      <div className="border-b border-line px-[18px] py-[14px]">
+      <div className="border-b border-line px-4 md:px-5 py-[14px]">
         <div className="eyebrow mb-[10px]">Include</div>
         {INCLUDE_ROWS.map((row) => (
           <div key={row.id} className="flex items-center gap-[9px] py-[7px] text-[13px] text-ink-2">
@@ -142,7 +142,7 @@ export function SubscribeSections() {
       </div>
 
       {url !== undefined && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-line px-[18px] py-[14px]">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 md:px-5 py-[14px]">
           {confirming ? (
             <>
               <span className="text-[12.5px] text-ink-2">Replace the link?</span>
@@ -205,7 +205,7 @@ export function TimeZoneSection() {
   };
 
   return (
-    <div className="px-[18px] py-[14px]">
+    <div className="px-4 md:px-5 py-[14px]">
       <div className="eyebrow mb-[10px]">Show times in</div>
       <div className="flex h-8 items-center gap-[9px] rounded-lg border border-line bg-surface px-[10px] text-[13px]">
         <Globe className="size-[14px] shrink-0 text-ink-3" />

@@ -1,9 +1,11 @@
 // Direction A: a time grid for the things that occupy time, with two thin
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening on the
-// now-line or the morning.
+// hour before the now-line or the morning.
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { CalendarClock, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
@@ -22,13 +24,17 @@ import {
   type GridBounds,
 } from "@/lib/calendar";
 import { AllDayLine, DueLine, PlanLine } from "./bands";
-import { blockFill, BLOCK_SUBTITLE } from "./block-styles";
+import { blockFill, BLOCK_SUBTITLE, NOW_LABEL_CLEARANCE, TODAY_TINT } from "./block-styles";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-const COLUMNS: CSSProperties = { gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))" };
+/** The hour gutter, narrower on a phone where every pixel goes to the days. */
+const gutter = (compact: boolean) => (compact ? 44 : 56);
+const columns = (compact: boolean): CSSProperties => ({
+  gridTemplateColumns: `${gutter(compact)}px repeat(7, minmax(0, 1fr))`,
+});
 
 // The headers and bands sit outside the scrolling body but share its column
 // template, so they reserve the same scrollbar gutter (a no-op with overlay
@@ -40,13 +46,17 @@ const HOUR_LINES: CSSProperties = {
   backgroundPosition: `0 ${GRID_TOP_PAD}px`,
 };
 
+/** A day's band shows this many rows before folding the rest into "+N more". */
+const BAND_ROWS = 3;
+
 export function WeekGrid({
   days,
   models,
   todayKey,
   now,
   zone,
-  prompt,
+  compact = false,
+  onAddClassTimes,
   onOpenBlock,
   onOpenEvent,
 }: {
@@ -55,8 +65,10 @@ export function WeekGrid({
   todayKey: string;
   now: number;
   zone: string;
-  /** Quiet one-liner above the grid, e.g. the add-class-times nudge. */
-  prompt?: ReactNode;
+  /** Phone layout: band items shrink to their marks. */
+  compact?: boolean;
+  /** Set when no class times exist yet: the grid nudges for them. */
+  onAddClassTimes?: () => void;
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
@@ -65,82 +77,119 @@ export function WeekGrid({
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
   const scrollRef = useRef<HTMLDivElement>(null);
-  useTimelineScroll(scrollRef, gridScrollTop(showNow ? nowMinute : undefined));
+  const [expanded, setExpanded] = useState(false);
+  useTimelineScroll(scrollRef, gridScrollTop(showNow ? nowMinute : undefined), PX_PER_HOUR);
+
+  const due = days.map((day) => {
+    const model = models.get(day);
+    return [
+      ...(model?.allDay ?? []).map((event) => (
+        <AllDayLine key={event._id} event={event} onOpen={onOpenEvent} compact={compact} />
+      )),
+      ...(model?.due ?? []).map((item) => (
+        <DueLine key={item.key} item={item} zone={zone} compact={compact} />
+      )),
+    ];
+  });
+  const planned = days.map((day) =>
+    (models.get(day)?.planned ?? []).map((item) => (
+      <PlanLine key={item.key} item={item} compact={compact} />
+    )),
+  );
+  const grid = columns(compact);
+  // Marks alone are small enough that a phone shows them all.
+  const fold = !compact && !expanded;
+  const overflows = !compact && [...due, ...planned].some((rows) => rows.length > BAND_ROWS + 1);
+  const emptyWeek = days.every((day) => (models.get(day)?.blocks.length ?? 0) === 0);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {prompt}
+      {onAddClassTimes !== undefined && !emptyWeek && (
+        <ClassTimesStrip onOpen={onAddClassTimes} />
+      )}
 
-      <div className={cn("grid border-b border-line", GUTTER)} style={COLUMNS}>
+      <div className={cn("grid border-b border-line", GUTTER)} style={grid}>
         <div className="border-r border-line" />
         {days.map((day) => (
           <DayHeader key={day} day={day} todayKey={todayKey} />
         ))}
       </div>
 
-      <Band label="Due" days={days} todayKey={todayKey}>
-        {(day) => {
-          const model = models.get(day);
-          return (
-            <>
-              {model?.allDay.map((event) => (
-                <AllDayLine key={event._id} event={event} onOpen={onOpenEvent} />
-              ))}
-              {model?.due.map((item) => (
-                <DueLine key={item.key} item={item} zone={zone} />
-              ))}
-            </>
-          );
-        }}
-      </Band>
+      <Band
+        label="Due"
+        days={days}
+        todayKey={todayKey}
+        rows={due}
+        columns={grid}
+        fold={fold}
+        compact={compact}
+        onExpand={() => setExpanded(true)}
+        collapse={expanded && overflows ? () => setExpanded(false) : undefined}
+      />
+      <Band
+        label="Plan"
+        days={days}
+        todayKey={todayKey}
+        rows={planned}
+        columns={grid}
+        fold={fold}
+        compact={compact}
+        onExpand={() => setExpanded(true)}
+      />
 
-      <Band label="Plan" days={days} todayKey={todayKey}>
-        {(day) => <>{models.get(day)?.planned.map((item) => <PlanLine key={item.key} item={item} />)}</>}
-      </Band>
-
-      <div
-        ref={scrollRef}
-        className="relative grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-        style={COLUMNS}
-      >
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <div
-          className="relative border-r border-line text-[10.5px] tabular text-ink-3"
-          style={{ height: bounds.height }}
+          ref={scrollRef}
+          className="relative grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
+          style={grid}
         >
-          {bounds.hours.map((hour) => (
-            <span
-              key={hour}
-              className="absolute right-2 -translate-y-1/2"
-              style={{ top: minuteOffset(hour * 60, bounds) }}
-            >
-              {hourLabel(hour)}
-            </span>
-          ))}
+          <div
+            className="relative border-r border-line text-[10.5px] tabular text-ink-3"
+            style={{ height: bounds.height }}
+          >
+            {bounds.hours.map((hour) =>
+              // The now label takes the place of an hour it would collide with.
+              showNow && Math.abs(nowMinute - hour * 60) < NOW_LABEL_CLEARANCE ? null : (
+                <span
+                  key={hour}
+                  className="absolute right-2 -translate-y-1/2"
+                  style={{ top: minuteOffset(hour * 60, bounds) }}
+                >
+                  {hourLabel(hour)}
+                </span>
+              ),
+            )}
+            {showNow && <NowLabel top={nowTop} minute={nowMinute} className="right-[4px]" />}
+          </div>
+
+          {days.map((day) => {
+            const isToday = day === todayKey;
+            const isPast = day < todayKey;
+            const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
+            return (
+              <div
+                key={day}
+                className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
+                style={{ ...HOUR_LINES, height: bounds.height }}
+              >
+                {blocks.map((block) => (
+                  <Block
+                    key={block.id}
+                    block={block}
+                    bounds={bounds}
+                    past={isPast}
+                    onOpen={onOpenBlock}
+                  />
+                ))}
+                {isToday && showNow && <NowLine top={nowTop} className="left-[4px]" />}
+              </div>
+            );
+          })}
         </div>
 
-        {days.map((day) => {
-          const isToday = day === todayKey;
-          const isPast = day < todayKey;
-          const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
-          return (
-            <div
-              key={day}
-              className={cn("relative overflow-hidden border-l border-line", isToday && "bg-sunken")}
-              style={{ ...HOUR_LINES, height: bounds.height }}
-            >
-              {blocks.map((block) => (
-                <Block
-                  key={block.id}
-                  block={block}
-                  bounds={bounds}
-                  past={isPast}
-                  onOpen={onOpenBlock}
-                />
-              ))}
-              {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
-            </div>
-          );
-        })}
+        {onAddClassTimes !== undefined && emptyWeek && (
+          <ClassTimesCard onOpen={onAddClassTimes} left={compact ? 0 : gutter(compact)} />
+        )}
       </div>
     </div>
   );
@@ -150,24 +199,24 @@ function DayHeader({ day, todayKey }: { day: string; todayKey: string }) {
   const isToday = day === todayKey;
   const isPast = day < todayKey;
   return (
-    <div className="border-l border-line pt-[10px] pb-[9px] text-center">
-      <div
-        className={cn(
-          "text-[10.5px] font-semibold tracking-[0.08em] uppercase",
-          isToday ? "text-ink" : "text-ink-3",
-        )}
-      >
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-[2px] border-l border-line py-[7px] md:flex-row md:gap-[6px] md:py-[11px]",
+        isToday && TODAY_TINT,
+      )}
+    >
+      <span className={cn("text-[12px] font-medium", isToday ? "text-ink" : "text-ink-3")}>
         {formatWeekday(day)}
-      </div>
-      <div
+      </span>
+      <span
         className={cn(
-          "mx-auto mt-[3px] grid size-6 place-items-center rounded-[7px] text-[14px] font-semibold tracking-[-0.02em]",
-          isPast && "text-ink-3",
+          "grid h-6 min-w-6 place-items-center rounded-full px-[5px] text-[14px] font-semibold tabular tracking-[-0.01em]",
+          isPast ? "text-ink-3" : "text-ink",
           isToday && "bg-today text-today-fg",
         )}
       >
         {Number(day.slice(-2))}
-      </div>
+      </span>
     </div>
   );
 }
@@ -176,29 +225,114 @@ function Band({
   label,
   days,
   todayKey,
-  children,
+  rows,
+  columns,
+  fold,
+  compact,
+  onExpand,
+  collapse,
 }: {
   label: string;
   days: string[];
   todayKey: string;
-  children: (day: string) => ReactNode;
+  /** Each day's rows, in `days` order. */
+  rows: ReactNode[][];
+  columns: CSSProperties;
+  /** Long days fold into "+N more" (until expanded). */
+  fold: boolean;
+  compact: boolean;
+  onExpand: () => void;
+  /** Set while expanded: the fold-back control under the label. */
+  collapse?: () => void;
 }) {
   return (
-    <div className={cn("grid border-b border-line", GUTTER)} style={COLUMNS}>
-      <div className="border-r border-line pt-[7px] pr-2 text-right text-[10px] font-semibold tracking-[0.08em] text-ink-3 uppercase">
+    <div className={cn("grid border-b border-line", GUTTER)} style={columns}>
+      <div className="flex flex-col items-end gap-1 border-r border-line pt-[6px] pr-2 text-[11.5px] font-medium text-ink-3">
         {label}
+        {collapse !== undefined && (
+          <button
+            type="button"
+            onClick={collapse}
+            aria-label="Show fewer"
+            title="Show fewer"
+            className="-mr-1 grid size-5 place-items-center rounded-[5px] transition-colors hover:bg-hover hover:text-ink"
+          >
+            <ChevronUp className="size-[13px]" />
+          </button>
+        )}
       </div>
-      {days.map((day) => (
-        <div
-          key={day}
-          className={cn(
-            "flex min-h-[34px] flex-col gap-[2px] border-l border-line px-[5px] pt-[5px] pb-1",
-            day === todayKey && "bg-sunken",
-          )}
-        >
-          {children(day)}
+      {days.map((day, i) => {
+        const all = rows[i];
+        // Fold only what would take more than one extra row to show.
+        const folded = fold && all.length > BAND_ROWS + 1;
+        const shown = folded ? all.slice(0, BAND_ROWS) : all;
+        return (
+          <div
+            key={day}
+            className={cn(
+              "flex min-h-[30px] min-w-0 border-l border-line p-1",
+              compact ? "flex-wrap content-start justify-center" : "flex-col gap-px",
+              day === todayKey && TODAY_TINT,
+            )}
+          >
+            {shown}
+            {folded && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="h-[21px] rounded-[5px] pl-[22px] text-left text-[11px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
+              >
+                +{all.length - shown.length} more
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Above the grid when the week has blocks but no class times. */
+function ClassTimesStrip({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="flex h-10 shrink-0 items-center gap-[9px] border-b border-line px-4 text-[12.5px] text-ink-3 md:px-6">
+      <CalendarClock className="size-[14px] shrink-0" />
+      <span className="min-w-0 truncate">Add your class times so lectures show here</span>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="ml-auto shrink-0 rounded-md px-2 py-1 font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
+      >
+        Add class times
+      </button>
+    </div>
+  );
+}
+
+/** Floats over an empty week, where the strip would only add to the void. */
+function ClassTimesCard({ onOpen, left }: { onOpen: () => void; left: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute right-0 bottom-4 z-[3] flex justify-center px-4 md:bottom-6"
+      style={{ left }}
+    >
+      <div className="pointer-events-auto flex w-full max-w-[480px] flex-wrap items-center gap-3 rounded-xl border border-line bg-raised py-3 pr-3 pl-[14px] shadow-[var(--menu-shadow)]">
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-chip text-ink-2">
+          <CalendarClock className="size-4" />
+        </span>
+        <div className="min-w-[200px] flex-1">
+          <div className="text-[13px] font-semibold tracking-[-0.005em]">No classes here yet</div>
+          <div className="mt-px text-[12.5px] text-ink-3">Add your class times so lectures show here</div>
         </div>
-      ))}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onOpen}
+          className="ml-auto h-8 shrink-0 rounded-lg px-3 text-[12.5px]"
+        >
+          Add class times
+        </Button>
+      </div>
     </div>
   );
 }
@@ -247,7 +381,22 @@ function Block({
   );
 }
 
-export function NowLine({
+/** The current time: a dot on the day's edge and a crisp red rule. */
+export function NowLine({ top, className }: { top: number; className?: string }) {
+  return (
+    <div
+      className={cn("pointer-events-none absolute right-0 left-0 z-[2] -translate-y-1/2", className)}
+      style={{ top }}
+      aria-hidden
+    >
+      <span className="absolute top-1/2 -left-[4px] block size-2 -translate-y-1/2 rounded-full bg-red" />
+      <span className="block h-[1.5px] bg-red" />
+    </div>
+  );
+}
+
+/** "4:30" in the hour gutter, level with the now-line. */
+export function NowLabel({
   top,
   minute,
   className,
@@ -257,18 +406,14 @@ export function NowLine({
   className?: string;
 }) {
   return (
-    <div
+    <span
       className={cn(
-        "pointer-events-none absolute right-0 left-0 z-[2] flex -translate-y-1/2 items-center",
+        "pointer-events-none absolute z-[2] -translate-y-1/2 rounded-[4px] bg-red px-[4px] py-px text-[10px] leading-[13px] font-semibold tabular text-surface",
         className,
       )}
       style={{ top }}
     >
-      <span className="-ml-[3px] block size-[6px] shrink-0 rounded-full bg-red" />
-      <span className="h-px flex-1 bg-red" />
-      <span className="pl-[3px] pr-[3px] text-[10px] font-semibold tabular text-red">
-        {clockTime(minute)}
-      </span>
-    </div>
+      {clockTime(minute)}
+    </span>
   );
 }

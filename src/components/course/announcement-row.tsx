@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, SquareCheck } from "lucide-react";
 import { CanvasHtml } from "@/components/reader/canvas-html";
-import { Initials } from "@/components/inbox/detail-shell";
+import { UnreadDot } from "./unread-dot";
 import { fileHref, rewriteCanvasHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -42,53 +42,63 @@ export function AnnouncementRow({
   const author = announcement.authorName ?? "Course staff";
   const links = detectLinks(announcement.message, courseId);
 
+  const when = announcement.postedAt === undefined ? undefined : formatAgo(announcement.postedAt, now);
+  const meta = [author, when].filter(Boolean).join(" · ");
+
   return (
     <article
       ref={ref}
-      className={cn(
-        "relative border-b border-line",
-        open && "bg-surface",
-        unread &&
-          "before:absolute before:top-[14px] before:left-0 before:h-4 before:w-[3px] before:rounded-r-[3px] before:bg-c",
-      )}
+      className="relative after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line md:after:left-12"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="block w-full px-4 pt-[13px] pb-[14px] text-left hover:bg-hover md:px-5"
+        className="group relative block w-full py-[14px] pr-4 pl-10 text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:pr-6 md:pl-12"
       >
-        <div className="flex items-center gap-2 text-xs text-ink-3">
-          <Initials name={author} />
-          <span className="truncate font-medium text-ink-2">{author}</span>
-          <span className="tabular ml-auto shrink-0">
-            {announcement.postedAt === undefined ? "" : formatAgo(announcement.postedAt, now)}
+        {unread && (
+          <span className="absolute top-[22px] left-4 flex md:left-6">
+            <UnreadDot />
+            <span className="sr-only">Unread</span>
           </span>
-        </div>
-        <div
-          className={cn(
-            "mt-1 text-[14px] tracking-[-0.005em]",
-            unread ? "font-semibold" : "font-medium",
-          )}
-        >
-          {announcement.title}
-        </div>
-        {!open && (
-          <div className="mt-[3px] line-clamp-2 text-[12.5px] leading-[1.5] text-ink-3">
-            {preview(announcement.message)}
+        )}
+        <div className="flex items-baseline gap-4">
+          <div
+            className={cn(
+              "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
+              unread ? "font-semibold" : "font-medium",
+            )}
+          >
+            {announcement.title}
           </div>
+          <span className="tabular hidden shrink-0 text-[12px] text-ink-3 md:block">{meta}</span>
+        </div>
+        <div className="tabular mt-[2px] text-[12.5px] text-ink-3 md:hidden">{meta}</div>
+        {!open && (
+          <p
+            className={cn(
+              "mt-[5px] line-clamp-2 max-w-[700px] text-[13px] leading-[1.55]",
+              unread ? "text-ink-2" : "text-ink-3",
+            )}
+          >
+            {preview(announcement.message)}
+          </p>
         )}
       </button>
 
       {open && (
-        <div className="px-4 pb-[14px] md:px-5">
-          <CanvasHtml html={announcement.message} courseId={courseId} className="text-[13.5px]" />
-          <div className="mt-3 flex flex-wrap gap-2">
+        <div className="pr-4 pb-5 pl-10 md:pr-6 md:pl-12">
+          <CanvasHtml
+            html={announcement.message}
+            courseId={courseId}
+            className="max-w-[720px] text-[13.5px]"
+          />
+          <div className="mt-4 flex flex-wrap gap-2">
             {links.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="inline-flex h-[27px] max-w-[280px] items-center gap-[6px] rounded-lg border border-line bg-surface px-[10px] text-xs font-medium text-ink no-underline hover:bg-hover"
+                className="inline-flex h-7 max-w-[280px] items-center gap-[6px] rounded-md border border-line bg-surface px-[10px] text-[12.5px] font-medium text-ink no-underline transition-colors hover:border-line-2 hover:bg-hover"
               >
                 <SquareCheck className="size-[13px] shrink-0 text-ink-3" />
                 <span className="truncate">Open {link.label}</span>
@@ -98,7 +108,7 @@ export function AnnouncementRow({
               href={announcement.htmlUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-[27px] items-center gap-[6px] rounded-lg px-[10px] text-xs font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
+              className="inline-flex h-7 items-center gap-[6px] rounded-md px-[10px] text-[12.5px] font-medium text-ink-3 no-underline transition-colors hover:bg-hover hover:text-ink"
             >
               <ExternalLink className="size-[13px]" />
               Reply in Canvas

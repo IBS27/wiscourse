@@ -42,7 +42,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
         <Icon className="size-[12px] shrink-0" aria-hidden />
         <span className="ml-auto flex shrink-0 items-center gap-[6px]">
           {formatAgo(item.at, now)}
-          {!item.seen && <span className="size-[6px] rounded-full bg-[var(--course-sky)]" aria-label="Unread" />}
+          {!item.seen && <span className="size-[6px] rounded-full bg-unread" aria-label="Unread" />}
         </span>
       </div>
       <div className={cn("mt-[5px] text-[13px] leading-[1.4] tracking-[-0.005em]", item.seen ? "text-ink-2" : "font-medium text-ink")}>

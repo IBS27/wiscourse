@@ -1,4 +1,5 @@
 import { useDraft } from "@/lib/drafts";
+import { ArrowRight, CheckCheck, ChevronRight, Megaphone, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
@@ -14,11 +15,10 @@ import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 type CourseHub = NonNullable<FunctionReturnType<typeof api.courses.hub>>;
-
-const RAIL_ROW = "border-b-0 py-[7px] pr-[14px] pl-[30px] text-[12.5px]";
 
 export function OverviewRail({
   courseId,
@@ -58,25 +58,30 @@ export function OverviewRail({
 
   return (
     <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[300px] lg:border-t-0 lg:border-l">
-      {facts?.officeHours !== undefined && (
-        <Fact label="Office hours" value={facts.officeHours} />
-      )}
-      <ClassTimesFact canvasId={canvasId} />
-      <InstructorFact course={course} />
       {standing !== undefined && (
-        <Fact label="Standing" value={standing.value} sub={standing.sub} />
+        <Fact
+          label="Standing"
+          to={`/courses/${courseId}/grades`}
+          value={
+            <span className="tabular text-[17px] font-semibold tracking-[-0.01em] text-ink">
+              {standing.value}
+            </span>
+          }
+          sub={standing.sub}
+        />
       )}
+      <InstructorFact course={course} />
+      {facts?.officeHours !== undefined && <Fact label="Office hours" value={facts.officeHours} />}
+      <ClassTimesFact canvasId={canvasId} />
 
-      <div className="flex items-center gap-2 px-[14px] pt-4 pb-3">
-        <span className="text-[13px] font-semibold tracking-[-0.01em]">
-          New
-        </span>
+      <div className="flex items-center gap-2 px-5 pt-5 pb-2">
+        <span className="text-[13px] font-semibold tracking-[-0.005em] text-ink">New</span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
           <button
             type="button"
             onClick={markAll}
-            className="ml-auto text-[11.5px] text-ink-3 hover:text-ink"
+            className="-mr-2 ml-auto rounded-md px-2 py-[3px] text-[12px] text-ink-3 transition-colors hover:bg-hover hover:text-ink"
           >
             Mark read
           </button>
@@ -84,64 +89,86 @@ export function OverviewRail({
       </div>
 
       {feed !== undefined && items.length === 0 ? (
-        <div className="px-[14px] pb-3 text-xs text-ink-3">Nothing new.</div>
+        <div className="flex items-center gap-[10px] px-5 pt-1 pb-4 text-[12.5px] text-ink-3">
+          <CheckCheck className="size-[14px] shrink-0" aria-hidden />
+          You’re all caught up.
+        </div>
       ) : (
-        items.slice(0, 8).map((item) => (
-          <OverviewRow
-            key={item.key}
-            className={RAIL_ROW}
-            icon={
-              item.type === "assignment"
-                ? ROW_ICON.Assignment
-                : ROW_ICON[item.type]
-            }
-            title={feedTitle(item)}
-            unread={!item.seen}
-            meta={formatAgo(item.at, now)}
-            to={
-              item.type === "announcement"
-                ? announcementsHref(courseId, item.canvasId)
-                : todoHref("assignment", item.canvasId)
-            }
-            onClick={() => {
-              if (item.seen) return;
-              void markSeen({
-                kind: feedSeenKind(item.type),
-                canvasId: item.canvasId,
-                seenVersion: item.seenVersion,
-              });
-            }}
-          />
-        ))
+        <div className="px-3 pb-3">
+          {items.slice(0, 8).map((item) => (
+            <OverviewRow
+              key={item.key}
+              variant="rail"
+              icon={item.type === "assignment" ? ROW_ICON.Assignment : ROW_ICON[item.type]}
+              title={feedTitle(item)}
+              unread={!item.seen}
+              meta={formatAgo(item.at, now)}
+              to={
+                item.type === "announcement"
+                  ? announcementsHref(courseId, item.canvasId)
+                  : todoHref("assignment", item.canvasId)
+              }
+              onClick={() => {
+                if (item.seen) return;
+                void markSeen({
+                  kind: feedSeenKind(item.type),
+                  canvasId: item.canvasId,
+                  seenVersion: item.seenVersion,
+                });
+              }}
+            />
+          ))}
+        </div>
       )}
 
       <Link
         to={announcementsHref(courseId)}
-        className="mt-auto border-t border-line px-[14px] py-3 text-xs font-medium text-ink-2 no-underline hover:text-ink"
+        className="mt-auto flex items-center gap-[6px] border-t border-line px-5 py-3 text-[12.5px] font-medium text-ink-2 no-underline transition-colors hover:bg-hover hover:text-ink"
       >
-        All announcements <span className="text-ink-3">→</span>
+        <Megaphone className="size-[14px] text-ink-3" aria-hidden />
+        All announcements
+        <ArrowRight className="ml-auto size-[14px] text-ink-3" aria-hidden />
       </Link>
     </aside>
   );
 }
 
+const FACT = "block border-b border-line px-5 py-[14px] text-[13px] leading-[1.45] text-ink";
+const FACT_LABEL = "mb-1 text-[12px] font-medium text-ink-3";
+
 function Fact({
   label,
   value,
   sub,
+  to,
 }: {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
+  /** Makes the whole block a link, with a chevron to say so. */
+  to?: string;
 }) {
-  return (
-    <div className="border-b border-line px-[14px] pt-[13px] pb-3 text-[13px] text-ink">
-      <div className="eyebrow mb-[3px] text-[10.5px]">{label}</div>
+  const body = (
+    <>
+      <div className={cn(FACT_LABEL, to !== undefined && "flex items-center")}>
+        {label}
+        {to !== undefined && (
+          <ChevronRight
+            className="ml-auto size-[14px] text-ink-3 transition-transform group-hover:translate-x-px"
+            aria-hidden
+          />
+        )}
+      </div>
       {value}
-      {sub !== undefined && (
-        <div className="mt-[2px] text-xs text-ink-3">{sub}</div>
-      )}
-    </div>
+      {sub !== undefined && <div className="mt-[2px] text-[12px] text-ink-3">{sub}</div>}
+    </>
+  );
+  return to === undefined ? (
+    <div className={FACT}>{body}</div>
+  ) : (
+    <Link to={to} className={cn(FACT, "group no-underline transition-colors hover:bg-hover")}>
+      {body}
+    </Link>
   );
 }
 
@@ -152,26 +179,34 @@ function ClassTimesFact({ canvasId }: { canvasId: number }) {
   if (meetings === undefined) return null;
   return (
     <>
-      <div className="border-b border-line px-[14px] pt-[13px] pb-3 text-[13px] text-ink">
-        <div className="eyebrow mb-[3px] text-[10.5px]">Class times</div>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="block w-full text-left text-ink-2 hover:text-ink"
-        >
-          {meetings.length === 0 ? (
-            <span className="text-[12.5px]">Add class times</span>
-          ) : (
-            meetings.map((meeting) => (
+      <div className={FACT}>
+        <div className={FACT_LABEL}>Class times</div>
+        {meetings.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="mt-[2px] inline-flex h-7 items-center gap-[6px] rounded-md border border-dashed border-line-2 px-[10px] text-[12.5px] font-medium text-ink-2 transition-colors hover:border-ink-3 hover:bg-hover hover:text-ink"
+          >
+            <Plus className="size-[13px]" aria-hidden />
+            Add class times
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            aria-label="Edit class times"
+            className="-mx-2 block w-[calc(100%+16px)] rounded-md px-2 py-[2px] text-left transition-colors hover:bg-hover"
+          >
+            {meetings.map((meeting) => (
               <div key={meeting._id} className="tabular">
                 {dayLetters(meeting.days)} {minuteRange(meeting.startMinute, meeting.endMinute)}
                 {meeting.location !== undefined && (
                   <span className="text-ink-3"> · {meeting.location}</span>
                 )}
               </div>
-            ))
-          )}
-        </button>
+            ))}
+          </button>
+        )}
       </div>
       <MeetingsEditor open={open} onOpenChange={setOpen} courseCanvasId={canvasId} />
     </>
@@ -192,7 +227,7 @@ function InstructorFact({ course }: { course: Course | undefined }) {
               {teacher.email && (
                 <a
                   href={`mailto:${teacher.email}`}
-                  className="text-xs text-ink-3 hover:text-ink"
+                  className="text-[12px] text-ink-3 transition-colors hover:text-ink hover:underline"
                 >
                   {teacher.email}
                 </a>

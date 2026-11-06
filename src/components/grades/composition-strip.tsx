@@ -39,61 +39,92 @@ function segmentsOf(summary: Summary): Segment[] {
 }
 
 /**
- * The weights drawn once, to scale, each filled to the share of that group
- * that is graded — so an empty block says "this much is still entirely open"
- * without a sentence. Ink only: the course colour is carried elsewhere.
+ * The weights drawn once, to scale, each filled in the course colour to the
+ * share of that group that is graded — so an empty block says "this much is
+ * still entirely open" without a sentence.
  */
 export function CompositionStrip({
   summary,
   note,
 }: {
   summary: Summary;
-  /** Appended to the heading, e.g. "+25% from your edits". */
+  /** Shown beside the heading, e.g. "+25% from your edits". */
   note?: string;
 }) {
   const segments = segmentsOf(summary);
   if (segments.length === 0) return null;
 
   return (
-    <section className="pb-2">
-      <div className="eyebrow">
-        How the grade is built
-        <span className="ml-[6px] font-medium tracking-normal normal-case text-ink-3">
-          · {Math.round(summary.coverage * 100)}% graded so far
-          {note !== undefined && ` · ${note}`}
-        </span>
+    <section className="@container min-w-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-[12.5px] font-medium text-ink-3">
+          How the grade is built
+          {note !== undefined && <span className="font-normal"> · {note}</span>}
+        </h2>
+        <div className="flex items-center gap-3 text-[11.5px] text-ink-3" aria-hidden>
+          <span className="inline-flex items-center gap-[5px]">
+            <span className="size-2 rounded-full bg-c" />
+            graded
+          </span>
+          <span className="inline-flex items-center gap-[5px]">
+            <span className="size-2 rounded-full bg-ink/12" />
+            still to come
+          </span>
+        </div>
       </div>
-      <div className="mt-2 flex h-3 gap-[3px] overflow-hidden rounded-[3px]">
+      <div className="mt-3 flex h-2.5 gap-[3px]">
         {segments.map((segment) => (
           <span
             key={segment.key}
-            className="relative block h-full min-w-[3px] shrink grow-0 overflow-hidden rounded-[2px] bg-chip"
+            className="relative block h-full min-w-[6px] shrink grow-0 overflow-hidden rounded-full bg-ink/8"
             style={{ flexBasis: `${segment.share * 100}%` }}
           >
             <span
-              className="absolute inset-y-0 left-0 bg-ink-2"
+              className="absolute inset-y-0 left-0 bg-c"
               style={{ width: `${Math.max(0, Math.min(1, segment.fill)) * 100}%` }}
             />
           </span>
         ))}
       </div>
-      <ul className="mt-[10px] flex list-none flex-wrap gap-x-[22px] gap-y-1 p-0 text-xs text-ink-3">
-        {segments.map((segment) => (
-          <li key={segment.key} className="inline-flex items-center gap-[7px] whitespace-nowrap">
-            <span
-              className={cn(
-                "size-2 shrink-0 rounded-[2px]",
-                segment.percent === undefined ? "bg-chip" : "bg-ink-2",
-              )}
-              aria-hidden
-            />
-            <span className="font-medium text-ink">{segment.name}</span>
-            <span>{segment.size} ·</span>
-            <span className={segment.percent === undefined ? undefined : "tabular text-ink-2"}>
-              {segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}
-            </span>
-          </li>
-        ))}
+      <ul
+        className={cn(
+          "mt-4 grid list-none grid-cols-2 gap-x-6 gap-y-3 p-0",
+          segments.length >= 4 ? "@2xl:grid-cols-4" : segments.length === 3 ? "@lg:grid-cols-3" : undefined,
+        )}
+      >
+        {segments.map((segment) => {
+          const open = segment.percent === undefined;
+          return (
+            <li key={segment.key} className="min-w-0">
+              <div className="flex items-center gap-2 text-[13px]">
+                <span
+                  className={cn(
+                    "size-2 shrink-0 rounded-full",
+                    open ? "bg-ink/12" : "bg-c",
+                  )}
+                  aria-hidden
+                />
+                <span className="truncate font-medium text-ink" title={segment.name}>
+                  {segment.name}
+                </span>
+                {!open && (
+                  <span className="tabular ml-auto shrink-0 font-semibold">
+                    {formatPercent(segment.percent ?? 0)}
+                  </span>
+                )}
+              </div>
+              <div className="tabular mt-[2px] truncate pl-4 text-[12px] text-ink-3">
+                <span>{segment.size} of the grade</span>
+                {open && (
+                  <>
+                    {" · "}
+                    <span>not yet graded</span>
+                  </>
+                )}
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

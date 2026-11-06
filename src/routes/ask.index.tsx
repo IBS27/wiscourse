@@ -2,18 +2,28 @@ import { useDraft } from "@/lib/drafts";
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { Eye, Pencil } from "lucide-react";
+import {
+  ArrowUpRight,
+  BookOpen,
+  CalendarClock,
+  CalendarPlus,
+  ChartNoAxesColumn,
+  Eye,
+  MessageCircle,
+  Megaphone,
+  Pencil,
+  type LucideIcon,
+} from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Composer } from "@/components/ask/composer";
 import { AskMobileNav } from "@/components/ask/mobile-nav";
-import { Dot } from "@/components/app/bits";
+import { CourseTag } from "@/components/app/bits";
 import { isDone } from "@/lib/agenda";
 import { errorMessage } from "@/lib/ask";
 import { DAY_MS } from "@/lib/dates";
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { courseLabel, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { displayTimeZone } from "@/lib/time-zone";
-import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ask/")({
   component: NewChat,
@@ -21,6 +31,7 @@ export const Route = createFileRoute("/ask/")({
 
 interface Suggestion {
   prompt: string;
+  icon: LucideIcon;
   course?: number;
   note?: string;
 }
@@ -35,27 +46,27 @@ function useSuggestions(): Suggestion[] {
 
   const open = (items ?? []).filter((i) => !isDone(i) && i.dueAt !== undefined);
   const week = open.filter((i) => i.dueAt! >= now && i.dueAt! < now + 7 * DAY_MS);
-  out.push({ prompt: "What’s due this week?", note: week.length > 0 ? `${week.length} item${week.length === 1 ? "" : "s"}` : undefined });
+  out.push({ prompt: "What’s due this week?", icon: CalendarClock, note: week.length > 0 ? `${week.length} item${week.length === 1 ? "" : "s"} due` : undefined });
 
   const announcements = (feed ?? []).filter((f) => f.type === "announcement" && !f.seen);
   if (announcements.length > 0) {
-    out.push({ prompt: "Catch me up on new announcements", note: `${announcements.length} new` });
+    out.push({ prompt: "Catch me up on new announcements", icon: Megaphone, note: `${announcements.length} unread` });
   }
 
   const biggest = open
     .filter((i) => i.dueAt! >= now && i.dueAt! < now + 10 * DAY_MS && i.plannedDay === undefined)
     .sort((a, b) => (b.pointsPossible ?? 0) - (a.pointsPossible ?? 0))[0];
-  if (biggest) out.push({ prompt: `Plan time for ${biggest.title}`, course: biggest.courseCanvasId });
+  if (biggest) out.push({ prompt: `Plan time for ${biggest.title}`, icon: CalendarPlus, course: biggest.courseCanvasId });
 
-  out.push({ prompt: "How are my grades looking?" });
-  if (visible[0]) out.push({ prompt: `Summarize the ${courseLabel(visible[0])} syllabus`, course: visible[0].canvasId });
+  out.push({ prompt: "How are my grades looking?", icon: ChartNoAxesColumn });
+  if (visible[0]) out.push({ prompt: `Summarize the ${courseLabel(visible[0])} syllabus`, icon: BookOpen, course: visible[0].canvasId });
   return out.slice(0, 4);
 }
 
 function NewChat() {
   const send = useMutation(api.assistant.send);
   const navigate = useNavigate();
-  const { color } = useCourses();
+  const { color, label } = useCourses();
   const suggestions = useSuggestions();
   const [course, setCourse] = useDraft<number | undefined>("chat:course", undefined);
   const [error, setError] = useState<string | undefined>();
@@ -77,47 +88,76 @@ function NewChat() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-[54px] shrink-0 items-center gap-1 border-b border-line px-2 md:hidden">
+      <header className="flex h-14 shrink-0 items-center gap-1 border-b border-line px-2 md:hidden">
         <AskMobileNav />
         <span className="flex-1 text-center text-[15px] font-semibold tracking-[-0.015em]">Ask</span>
       </header>
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 md:px-6">
-        <div className="flex w-full max-w-[640px] flex-1 flex-col pt-10 pb-6 md:justify-center md:pt-0">
-          <h1 className="text-[20px] leading-[1.25] font-semibold tracking-[-0.025em]">
-            Ask about your courses, or tell it what to plan.
-          </h1>
-          <p className="mt-1 text-[13.5px] text-ink-2">Suggestions from this week:</p>
-          <div className="mt-4 overflow-hidden rounded-[10px] border border-line">
-            {suggestions.map((s) => (
-              <button
-                key={s.prompt}
-                type="button"
-                disabled={busy}
-                onClick={() => void start(s.prompt, s.course ?? course).catch(() => undefined)}
-                className="flex w-full items-center gap-[10px] border-b border-line px-3 py-[11px] text-left text-[13.5px] last:border-b-0 hover:bg-hover disabled:opacity-60"
-                style={courseStyle(color(s.course))}
-              >
-                <Dot />
-                <span className="min-w-0 flex-1 truncate">{s.prompt}</span>
-                {s.note && <span className="shrink-0 text-[11.5px] text-ink-3">{s.note}</span>}
-              </button>
-            ))}
+        <div className="flex w-full max-w-[640px] flex-1 flex-col pt-8 md:justify-center md:pt-0 md:pb-[8vh]">
+          <div className="flex flex-col items-start md:items-center md:text-center">
+            <span className="mb-4 grid size-10 place-items-center rounded-xl border border-line bg-sunken text-ink-2">
+              <MessageCircle className="size-[19px]" />
+            </span>
+            <h1 className="text-[22px] leading-[1.25] font-semibold tracking-[-0.025em] text-balance">
+              Ask about your courses, or tell it what to plan.
+            </h1>
           </div>
-          <div className="mt-6 flex flex-col gap-[7px] text-[12px] text-ink-3">
-            <div className="flex items-center gap-2">
-              <Eye className="size-[14px]" />
+
+          <div className="order-last mt-auto pt-6 pb-[max(12px,env(safe-area-inset-bottom))] md:order-none md:mt-8 md:pt-0 md:pb-0">
+            <Composer
+              onSend={(prompt) => start(prompt)}
+              courseCanvasId={course}
+              onCourseChange={setCourse}
+              autoFocus
+              className="shadow-[0_1px_2px_rgba(16,17,20,0.04),0_4px_16px_-6px_rgba(16,17,20,0.08)]"
+            />
+            {error && (
+              <p className="mt-2 text-[12.5px] text-red" role="status">
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-7 md:mt-6">
+            <div className="mb-2 px-[2px] text-[12.5px] font-medium text-ink-3">Suggestions from this week</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {suggestions.map((s) => {
+                const code = s.course === undefined ? undefined : label(s.course);
+                return (
+                  <button
+                    key={s.prompt}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void start(s.prompt, s.course ?? course).catch(() => undefined)}
+                    className="group flex items-start gap-3 rounded-[10px] border border-line bg-surface px-3 py-[11px] text-left transition-colors hover:border-line-2 hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none disabled:opacity-60"
+                    style={courseStyle(color(s.course))}
+                  >
+                    <s.icon className="mt-px size-4 shrink-0 text-ink-3 transition-colors group-hover:text-ink-2" />
+                    <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+                      <span className="line-clamp-2 text-[13.5px] leading-[1.35] font-medium text-ink">{s.prompt}</span>
+                      {(code !== undefined || s.note) && (
+                        <span className="flex min-w-0 items-center gap-2 text-[12px] text-ink-3">
+                          {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+                          {s.note && <span className="truncate tabular">{s.note}</span>}
+                        </span>
+                      )}
+                    </span>
+                    <ArrowUpRight className="mt-px size-[14px] shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-[6px] px-[2px] text-[12px] text-ink-3 md:items-center">
+            <span className="flex items-center gap-[7px]">
+              <Eye className="size-[13px] shrink-0" />
               Reads your Canvas courses, grades and files
-            </div>
-            <div className="flex items-center gap-2">
-              <Pencil className="size-[14px]" />
+            </span>
+            <span className="flex items-center gap-[7px]">
+              <Pencil className="size-[13px] shrink-0" />
               Changes only your wiscourse tasks, plans and calendar
-            </div>
-          </div>
-          <div className="mt-6 md:mt-8">
-            <Composer onSend={(prompt) => start(prompt)} courseCanvasId={course} onCourseChange={setCourse} autoFocus />
-            <p className={cn("mt-2 min-h-[18px] text-[12.5px]", error ? "text-red" : "text-transparent")} role="status">
-              {error ?? " "}
-            </p>
+            </span>
           </div>
         </div>
       </div>

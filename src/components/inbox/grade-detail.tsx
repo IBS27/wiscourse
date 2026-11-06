@@ -4,7 +4,7 @@ import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { Button } from "@/components/ui/button";
 import { todoHref } from "@/lib/course-routes";
-import { BlockLabel, CanvasButton, DetailShell, Fact, Facts, Initials, MarkUnreadButton } from "./detail-shell";
+import { BlockLabel, ByLine, CanvasButton, DetailShell, Fact, Facts, Initials, MarkUnreadButton } from "./detail-shell";
 import { percent, scoreOf, shortDateTime } from "./format";
 import { formatMonthDay } from "@/lib/dates";
 
@@ -29,7 +29,7 @@ export function GradeDetail({
   return (
     <DetailShell
       item={item}
-      eyebrow={`Grade posted · ${item.title}`}
+      kind="Grade posted"
       title={
         <>
           {item.title} graded
@@ -41,15 +41,7 @@ export function GradeDetail({
           )}
         </>
       }
-      by={
-        <>
-          {grader !== undefined && <Initials name={grader} />}
-          <span>
-            {grader !== undefined && `${grader} · `}
-            posted {shortDateTime(postedAt)}
-          </span>
-        </>
-      }
+      by={<ByLine name={grader} when={`Posted ${shortDateTime(postedAt)}`} />}
       actions={
         <>
           <Button asChild size="sm">
@@ -86,17 +78,19 @@ export function GradeDetail({
       {detail !== undefined && detail !== null && detail.comments.length > 0 && (
         <>
           <BlockLabel>Grader comments</BlockLabel>
-          {detail.comments.map((c, i) => (
-            <div
-              key={`${c.createdAt}-${i}`}
-              className="mt-[10px] border-l-2 border-line-2 py-[2px] pl-3 text-[13px] leading-[1.55]"
-            >
-              <div className="mb-[2px] text-[12px] text-ink-3">
-                {c.authorName} · {formatMonthDay(c.createdAt)}
+          <div className="space-y-[10px]">
+            {detail.comments.map((c, i) => (
+              <div key={`${c.createdAt}-${i}`} className="rounded-xl bg-sunken px-4 py-3">
+                <div className="mb-[6px] flex items-center gap-2 text-[12.5px] text-ink-3">
+                  <Initials name={c.authorName} />
+                  <span className="font-medium text-ink-2">{c.authorName}</span>
+                  <span aria-hidden>·</span>
+                  <span className="tabular">{formatMonthDay(c.createdAt)}</span>
+                </div>
+                <p className="text-[14px] leading-[1.6] whitespace-pre-wrap text-ink">{c.comment}</p>
               </div>
-              {c.comment}
-            </div>
-          ))}
+            ))}
+          </div>
         </>
       )}
     </DetailShell>

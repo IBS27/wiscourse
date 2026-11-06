@@ -45,7 +45,7 @@ const components: Components = {
 /** Assistant prose. Raw HTML in the text is never rendered. */
 export const Markdown = memo(function Markdown({ text, className }: { text: string; className?: string }) {
   return (
-    <div className={cn(PROSE, "text-[14px] leading-[1.6] [&_p]:mb-[10px] [&_ul]:mb-[10px] [&_ol]:mb-[10px]", className)}>
+    <div className={cn(PROSE, "text-[14px] leading-[1.65] [&_p]:mb-3 [&_ul]:mb-3 [&_ol]:mb-3 [&_li]:my-1", className)}>
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} skipHtml>
         {text}
       </ReactMarkdown>

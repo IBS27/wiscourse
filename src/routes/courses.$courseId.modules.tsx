@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Layers } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { ModuleAccordion } from "@/components/course/module-accordion";
 import { ModuleTimeline } from "@/components/course/module-timeline";
@@ -88,12 +88,14 @@ function useHashFocus(modules: ModuleWithItems[] | undefined): number | undefine
 
 function EmptyModules({ courseId }: { courseId: string }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-20 text-center">
-      <p className="text-[13px] text-ink-3">No modules.</p>
+    <div className="flex flex-col items-center justify-center gap-2 px-6 py-20 text-center">
+      <Layers className="size-5 text-ink-3" aria-hidden />
+      <p className="text-[13px] text-ink-2">This course has no modules.</p>
+      <p className="mb-2 text-[12.5px] text-ink-3">Its material may live in Files instead.</p>
       <Link
         to="/courses/$courseId/files"
         params={{ courseId }}
-        className="inline-flex h-[31px] items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 hover:bg-hover"
+        className="inline-flex h-8 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
       >
         <FolderOpen className="size-[14px]" />
         Browse files
@@ -106,7 +108,7 @@ function ModulesSkeleton() {
   return (
     <div className="animate-pulse">
       {[0, 1, 2].map((section) => (
-        <div key={section} className="border-b border-line px-4 py-[13px] md:px-5">
+        <div key={section} className="border-b border-line px-4 py-[15px] md:px-6">
           <div className="h-[15px] w-52 rounded bg-chip" />
           {section === 0 &&
             [0, 1, 2, 3].map((row) => (

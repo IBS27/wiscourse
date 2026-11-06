@@ -5,22 +5,22 @@ import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
 const USER_INPUT = ["wheel", "touchstart", "pointerdown", "mousedown", "keydown"] as const;
 
 /**
- * Opens a scrolling timeline at `top`. The offset is re-applied after each
- * render until the container has laid out and reached it (clamped to how
- * far it can scroll) — an early scroll on an unsized container is dropped —
- * and never again once the user has scrolled it themselves, so paging to
- * another day or week does not yank them back to the morning.
+ * Opens a scrolling timeline at `top`, rounded down to a whole `step` (an
+ * hour) so the first visible hour label sits fully clear of the headers.
+ *
+ * The offset is re-applied after each render and whenever the container is
+ * resized — the bands above the grid grow as data arrives, which changes
+ * how far it can scroll — until the user scrolls it themselves. After that
+ * it is never touched again, so paging to another day or week does not yank
+ * them back to the morning.
  */
-export function useTimelineScroll(ref: RefObject<HTMLElement | null>, top: number) {
+export function useTimelineScroll(ref: RefObject<HTMLElement | null>, top: number, step: number) {
   const settled = useRef(false);
+  const target = useRef(top);
 
   useLayoutEffect(() => {
-    const el = ref.current;
-    if (el === null || settled.current) return;
-    const max = el.scrollHeight - el.clientHeight;
-    if (max <= 0) return;
-    el.scrollTop = top;
-    if (Math.abs(el.scrollTop - Math.min(top, max)) < 1) settled.current = true;
+    target.current = top;
+    if (!settled.current) scrollTo(ref.current, top, step);
   });
 
   useEffect(() => {
@@ -29,9 +29,25 @@ export function useTimelineScroll(ref: RefObject<HTMLElement | null>, top: numbe
     const settle = () => {
       settled.current = true;
     };
+    const resize =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(() => {
+            if (!settled.current) scrollTo(el, target.current, step);
+          });
+    resize?.observe(el);
     for (const type of USER_INPUT) el.addEventListener(type, settle, { passive: true });
     return () => {
+      resize?.disconnect();
       for (const type of USER_INPUT) el.removeEventListener(type, settle);
     };
-  }, [ref]);
+  }, [ref, step]);
+}
+
+/** Snaps after clamping, so even a clamped offset lands on an hour line. */
+function scrollTo(el: HTMLElement | null, top: number, step: number) {
+  if (el === null) return;
+  const max = el.scrollHeight - el.clientHeight;
+  if (max <= 0) return;
+  el.scrollTop = Math.floor(Math.min(top, max) / step) * step;
 }

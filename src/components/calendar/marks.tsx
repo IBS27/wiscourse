@@ -2,6 +2,7 @@
 // as the only hue. Every calendar surface — bands, month cells, popover rows,
 // the mobile day list — draws its items with these.
 
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type MarkKind = "meeting" | "due" | "planned" | "event" | "done";
@@ -17,7 +18,7 @@ export function Mark({ kind, className }: { kind: MarkKind; className?: string }
       {kind === "planned" && (
         <i className="block size-[11px] rounded-[3px] border-[1.5px] border-c opacity-85" />
       )}
-      {kind === "done" && <i className="block size-[11px] rounded-full bg-ink-3" />}
+      {kind === "done" && <Check className="size-[12px] text-ink-3" strokeWidth={2.75} />}
     </span>
   );
 }

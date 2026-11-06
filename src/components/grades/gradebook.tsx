@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChevronLeft, ExternalLink, FlaskConical, RotateCcw } from "lucide-react";
+import { BarChart3, ChevronLeft, ExternalLink, FlaskConical, RotateCcw } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import {
   latestPosted,
@@ -11,7 +11,7 @@ import {
   summarize,
   type GradeRow,
 } from "../../../convex/lib/grades";
-import { BigGrade, Coverage, Fact } from "./bits";
+import { BigGrade, Stat } from "./bits";
 import { CompositionStrip } from "./composition-strip";
 import { GradebookTable, type TableFooter } from "./gradebook-table";
 import { TargetsRail } from "./targets-rail";
@@ -110,8 +110,9 @@ export function CourseGradebook({
   if (book === undefined) return <GradebookSkeleton embedded={embedded} />;
   if (book === null || base === undefined || live === undefined) {
     return (
-      <div className="px-5 py-10 text-center text-[13px] text-ink-3">
-        No gradebook for this course yet.
+      <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
+        <BarChart3 className="size-5 text-ink-3" aria-hidden />
+        <p className="text-[13.5px] font-medium">No gradebook for this course yet</p>
       </div>
     );
   }
@@ -162,6 +163,18 @@ export function CourseGradebook({
           letterEstimated,
         };
 
+  const heroNotes = [
+    hidden
+      ? "Hidden by the instructor until grades are final."
+      : whatIfOn
+        ? rescaleNote(live)
+        : (rescaleNote(base) ?? expectationNote(base)),
+    !hidden && !whatIfOn && letterEstimated && canvasScore !== undefined
+      ? "Letter estimated from the grading scale."
+      : undefined,
+  ].filter((note): note is string => note !== undefined);
+  const standing = standingOf(live, base, scheme, whatIfOn, hidden, canvasLetter);
+
   const toggle = (
     <ModeToggle
       on={whatIfOn}
@@ -178,31 +191,37 @@ export function CourseGradebook({
       style={courseStyle(color(courseCanvasId))}
     >
       {embedded ? (
-        <div className="flex items-center justify-between gap-4 px-4 pt-4 md:px-5">
-          <div className="min-w-0 truncate text-xs text-ink-3">{metaLine}</div>
+        <div className="flex items-center justify-between gap-4 px-4 pt-4 md:px-6">
+          <div className="min-w-0 truncate text-[12.5px] text-ink-3">{metaLine}</div>
           <div className="flex shrink-0 items-center gap-2">{toggle}</div>
         </div>
       ) : (
-        <header className="flex items-center justify-between gap-5 border-b border-line px-4 py-[14px] md:px-5">
+        <header className="flex min-h-[64px] items-center justify-between gap-5 border-b border-line px-4 py-3 md:px-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 page-title">
-              <Link to="/grades" aria-label="All grades" className="shrink-0 text-ink-3">
+            <div className="flex min-w-0 items-center gap-[6px]">
+              <Link
+                to="/grades"
+                aria-label="All grades"
+                className="-ml-[6px] grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              >
                 <ChevronLeft className="size-[18px]" />
               </Link>
-              <span className="truncate">{course ? courseTitle(course) : "Course"}</span>
+              <span className="page-title truncate">{course ? courseTitle(course) : "Course"}</span>
               {code !== undefined && (
-                <span className="shrink-0 text-[13px] font-medium text-ink-3">{code}</span>
+                <span className="ml-1 hidden shrink-0 text-[13px] font-medium text-ink-3 sm:inline">
+                  {code}
+                </span>
               )}
             </div>
-            <div className="mt-[3px] truncate text-xs text-ink-3">{metaLine}</div>
+            <div className="mt-[2px] truncate text-[12.5px] text-ink-3">{metaLine}</div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1">
             {toggle}
             <a
               href={canvasCourseUrl(courseCanvasId, sync?.instance)}
               target="_blank"
               rel="noreferrer"
-              className="hidden h-[31px] items-center gap-[7px] rounded-lg px-[6px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:inline-flex"
+              className="hidden h-8 items-center gap-[7px] rounded-lg px-[10px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
             >
               <ExternalLink className="size-[13px]" />
               Canvas
@@ -218,66 +237,71 @@ export function CourseGradebook({
             "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr] lg:items-start",
         )}
       >
-        <div className={cn("px-4 md:px-5", whatIfOn && "lg:col-start-1 lg:row-start-1")}>
-          {/* 2B: the number and the drawing of how it is built, side by side. */}
-          <div className="flex flex-col gap-5 py-5 lg:flex-row lg:items-start lg:gap-10">
-            <Fact
-              className="lg:w-[220px] lg:shrink-0"
-              label={whatIfOn ? "Current → what-if" : "Current"}
-              meta={
-                hidden
-                  ? "by the instructor until grades are final"
-                  : whatIfOn
-                    ? rescaleNote(live)
-                    : (rescaleNote(base) ?? expectationNote(base))
-              }
-            >
+        <section
+          aria-label="Summary"
+          className={cn("px-4 pt-6 pb-2 md:px-6", whatIfOn && "lg:col-start-1 lg:row-start-1")}
+        >
+          {/* The number, and the drawing of how it is built, side by side. */}
+          <div className="grid gap-7 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-12">
+            <div className="min-w-0">
+              <h2 className="text-[12.5px] font-medium text-ink-3">
+                {whatIfOn ? "Current → what-if" : "Current grade"}
+              </h2>
               <BigGrade
+                className="mt-3"
                 score={hidden ? undefined : whatIfOn ? live.score : canvasScore}
                 letter={whatIfOn ? localLetter : canvasLetter}
                 estimated={!whatIfOn && letterEstimated}
                 was={whatIfOn ? canvasScore : undefined}
                 placeholder={hidden ? "Hidden" : DASH}
               />
-            </Fact>
-
-            <div className="min-w-0 lg:flex-1">
-              <CompositionStrip
-                // Canvas mode draws Canvas's own picture; what-if draws the
-                // edited one, and says so, so the bar and the caption agree.
-                summary={whatIfOn ? live : base}
-                note={whatIfOn ? editedNote(live, base) : undefined}
-              />
+              {heroNotes.length > 0 && (
+                <div className="mt-3 space-y-1 text-[12.5px] leading-[1.45] text-ink-3">
+                  {heroNotes.map((note) => (
+                    <p key={note}>{note}</p>
+                  ))}
+                </div>
+              )}
             </div>
+
+            <CompositionStrip
+              // Canvas mode draws Canvas's own picture; what-if draws the
+              // edited one, and says so, so the bar and the caption agree.
+              summary={whatIfOn ? live : base}
+              note={whatIfOn ? editedNote(live, base) : undefined}
+            />
           </div>
 
-          <div className="flex flex-col gap-5 pb-5 md:flex-row md:gap-10">
-            <Fact
-              label="Graded so far"
-              meta={settledNote(live, base, scheme, whatIfOn, hidden, canvasLetter)}
-            >
-              <Coverage
-                className="mt-[2px]"
-                fraction={live.coverage}
-                label={coverageLabel(live, true) ?? "nothing graded yet"}
-                trackClassName="w-[140px] md:w-[160px]"
-              />
-            </Fact>
+          <dl className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-line pt-5 md:grid-cols-[minmax(0,240px)_minmax(0,220px)_minmax(0,1fr)] md:gap-x-12">
+            <Stat label="Graded so far" meta={standing.remaining}>
+              <span className="tabular text-[15px] font-semibold">
+                {coverageLabel(live, true) ?? "Nothing yet"}
+              </span>
+            </Stat>
+
+            {standing.keep !== undefined && (
+              <Stat label={`To keep ${withArticle(standing.keep.letter)}`} meta="average on what's left">
+                <span className="tabular text-[15px] font-semibold">
+                  {formatPercent(standing.keep.needed)}
+                </span>
+              </Stat>
+            )}
 
             {latest !== undefined && (
-              <Fact
-                label="Latest"
+              <Stat
+                label="Latest posted"
+                className="col-span-2 md:col-span-1"
                 meta={
                   latest.postedAt === undefined
                     ? undefined
-                    : `posted ${formatPlannedRelative(dayKeyOf(latest.postedAt), today)}, ${formatTime(latest.postedAt)}`
+                    : `${formatPlannedRelative(dayKeyOf(latest.postedAt), today)}, ${formatTime(latest.postedAt)}`
                 }
               >
                 <LatestScore row={latest} unseen={!seen.has(latest.canvasId, String(latest.postedAt))} />
-              </Fact>
+              </Stat>
             )}
-          </div>
-        </div>
+          </dl>
+        </section>
 
         {whatIfOn && (
           <TargetsRail
@@ -291,7 +315,7 @@ export function CourseGradebook({
         )}
 
         <div
-          className={cn("px-2 pb-8 md:px-3", whatIfOn && "lg:col-start-1 lg:row-start-2")}
+          className={cn("px-2 pt-4 pb-10 md:px-4", whatIfOn && "lg:col-start-1 lg:row-start-2")}
         >
           <GradebookTable summary={live} whatIf={whatIfOn ? whatIf : undefined} seen={seen} footer={footer} />
         </div>
@@ -303,11 +327,14 @@ export function CourseGradebook({
 function LatestScore({ row, unseen }: { row: GradeRow; unseen: boolean }) {
   const parts = scoreParts(row, row.score);
   return (
-    <div className="mt-[2px] flex items-center gap-2 text-[13.5px] font-medium">
-      {row.postedAt !== undefined && unseen && <UnreadDot />}
-      <span className="truncate">{row.name}</span>
-      <span className="tabular shrink-0 font-normal text-ink-3">
-        {parts.value}
+    <div className="relative flex min-w-0 items-center gap-2 text-[14px]">
+      {/* On a wide screen it hangs in the gutter, so the name starts under its label. */}
+      {row.postedAt !== undefined && unseen && (
+        <UnreadDot className="md:absolute md:top-[8px] md:-left-[13px]" />
+      )}
+      <span className="truncate font-medium">{row.name}</span>
+      <span className="tabular shrink-0 text-ink-3">
+        <span className="font-semibold text-ink">{parts.value}</span>
         {parts.of}
       </span>
     </div>
@@ -329,14 +356,14 @@ function ModeToggle({
 }) {
   if (disabled) return null;
   const button =
-    "inline-flex h-[31px] shrink-0 items-center gap-[7px] rounded-lg px-3 text-[12.5px] font-medium";
+    "inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
   return (
     <>
       {on && edits > 0 && (
         <button
           type="button"
           onClick={onReset}
-          className={cn(button, "px-[6px] text-ink-3 hover:text-ink")}
+          className={cn(button, "px-[10px] text-ink-3 hover:bg-hover hover:text-ink")}
         >
           <RotateCcw className="size-[13px]" />
           Reset
@@ -349,14 +376,14 @@ function ModeToggle({
         className={cn(
           button,
           on
-            ? "bg-today text-today-fg"
-            : "border border-line bg-surface text-ink-2 hover:bg-hover",
+            ? "bg-today px-3 text-today-fg hover:opacity-90"
+            : "border border-line-2 bg-surface px-[10px] text-ink md:pr-[6px] shadow-[0_1px_1px_rgba(0,0,0,0.04)] hover:bg-hover",
         )}
       >
-        <FlaskConical className="size-[13px]" />
+        <FlaskConical className={cn("size-[14px]", !on && "text-ink-3")} />
         {on ? "Done" : "What-if"}
-        {!on && edits > 0 && <span className="tabular text-ink-3">· {edits}</span>}
-        {!on && <Kbd className="ml-[2px]">W</Kbd>}
+        {!on && edits > 0 && <span className="tabular font-normal text-ink-3">· {edits}</span>}
+        {!on && <Kbd className="ml-[3px] hidden border-transparent bg-chip md:inline">W</Kbd>}
       </button>
     </>
   );
@@ -380,8 +407,11 @@ function expectationNote(summary: ReturnType<typeof summarize>): string | undefi
   return `first grade expected after ${next.name}${due ?? ""}`;
 }
 
-/** "670 pts still to come · 93.4% on them keeps an A" — or what the edits did. */
-function settledNote(
+/**
+ * The secondary numbers under the headline: what is still open, and the
+ * average on it that keeps Canvas's letter — or what the edits did.
+ */
+function standingOf(
   live: ReturnType<typeof summarize>,
   base: ReturnType<typeof summarize>,
   scheme: ReturnType<typeof schemeFor>,
@@ -389,32 +419,31 @@ function settledNote(
   hidden: boolean,
   /** Canvas's letter — the only one there is standing to "keep". */
   canvasLetter: string | undefined,
-): string | undefined {
-  const remaining =
-    live.pointsRemaining > 0 ? `${formatPoints(live.pointsRemaining)} pts still ` : undefined;
+): { remaining: string; keep?: { letter: string; needed: number } } {
+  const points = live.pointsRemaining > 0 ? `${formatPoints(live.pointsRemaining)} pts still ` : undefined;
   if (whatIfOn) {
-    return [editedNote(live, base), remaining === undefined ? undefined : `${remaining}open`]
-      .filter((part): part is string => part !== undefined)
-      .join(" · ");
+    return {
+      remaining: [editedNote(live, base), points === undefined ? undefined : `${points}open`]
+        .filter((part): part is string => part !== undefined)
+        .join(" · "),
+    };
   }
-  if (remaining === undefined) return "everything is graded";
+  if (points === undefined) return { remaining: "everything is graded" };
   // With totals hidden by the instructor there is no standing to keep.
-  if (hidden) return `${remaining}to come`;
+  if (hidden || canvasLetter === undefined) return { remaining: `${points}to come` };
   const cutoff = scheme.find((entry) => entry.name === canvasLetter);
   const needed = cutoff === undefined ? undefined : neededForTarget(live, cutoff.value * 100);
-  const keeps =
-    needed === undefined || needed > 100 || needed <= 0 || canvasLetter === undefined
-      ? undefined
-      : `${formatPercent(needed)} on them keeps ${withArticle(canvasLetter)}`;
-  return [`${remaining}to come`, keeps].filter((part): part is string => part !== undefined).join(" · ");
+  const keep =
+    needed === undefined || needed > 100 || needed <= 0 ? undefined : { letter: canvasLetter, needed };
+  return { remaining: `${points}to come`, keep };
 }
 
 function GradebookSkeleton({ embedded }: { embedded: boolean }) {
   return (
     <div className="flex flex-1 flex-col">
-      {!embedded && <div className="h-[62px] border-b border-line" />}
-      <div className="space-y-4 px-4 py-6 md:px-5">
-        <div className="h-8 w-32 rounded bg-chip" />
+      {!embedded && <div className="h-16 border-b border-line" />}
+      <div className="space-y-4 px-4 py-6 md:px-6">
+        <div className="h-10 w-36 rounded bg-chip" />
         <div className="h-3 w-full max-w-[520px] rounded bg-chip" />
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="h-4 w-full rounded bg-chip" />
