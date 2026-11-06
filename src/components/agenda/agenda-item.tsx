@@ -1,13 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { Check, ListTree, StickyNote, Undo2 } from "lucide-react";
+import { Check, Clock, ListTree, StickyNote, Undo2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
 import { Pill, CourseTag } from "@/components/app/bits";
 import { refOf } from "@/lib/todo-ref";
 import {
-  dayKeyOf,
   formatDueRelative,
   formatLate,
   formatLateShort,
@@ -70,8 +69,8 @@ export function AgendaItem({
       className={cn(
         "group relative flex items-start gap-3 bg-surface py-[11px] pr-4 pl-4 transition-colors hover:bg-hover md:pr-6 md:pl-6",
         // Hairline between rows, inset to the title column.
-        "after:absolute after:right-0 after:bottom-0 after:left-[45px] after:h-px after:bg-line md:after:left-[53px]",
-        first && "before:absolute before:top-0 before:right-0 before:left-[45px] before:h-px before:bg-line md:before:left-[53px]",
+        "after:absolute after:right-4 after:bottom-0 after:left-[45px] after:h-px after:bg-line md:after:right-6 md:after:left-[53px]",
+        first && "before:absolute before:top-0 before:right-4 before:left-[45px] before:h-px before:bg-line md:before:right-6 md:before:left-[53px]",
         compact && "pr-[14px] pl-[14px] after:left-[43px] before:left-[43px] md:pr-[14px] md:pl-[14px] md:after:left-[43px] md:before:left-[43px]",
       )}
       style={courseStyle(color(item.courseCanvasId))}
@@ -131,10 +130,13 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
   }
   if (overdue && item.dueAt !== undefined) {
     return (
-      <Pill tone="red" className="bg-transparent px-0">
+      // One small red mark per row; the words stay neutral so a column of
+      // overdue rows doesn't shout over the titles.
+      <span className="inline-flex shrink-0 items-center gap-[5px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 tabular">
+        <Clock className="size-[13px] text-red" aria-hidden />
         <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
         <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
-      </Pill>
+      </span>
     );
   }
   switch (item.submission) {
@@ -157,12 +159,10 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
     case "late":
       return <Pill tone="red">Late</Pill>;
     case "unsubmitted":
-      return <Pill tone="quiet">Not submitted</Pill>;
+      // Not submitted is the default for open work; saying it on every row is noise.
+      return null;
     case "none":
       if (item.dueAt === undefined) return <Pill tone="quiet">No due date</Pill>;
-      if (item.plannedDay === undefined && dayKeyOf(item.dueAt) !== dayKeyOf(now)) {
-        return <Pill tone="quiet">Not planned</Pill>;
-      }
       return null;
   }
 }

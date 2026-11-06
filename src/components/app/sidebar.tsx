@@ -46,7 +46,7 @@ export function Sidebar() {
             >
               <Icon className="size-4" />
               {label}
-              <CountBadge n={n} className="ml-auto" />
+              <CountBadge n={n} className="ml-auto bg-transparent px-0 font-medium tabular" />
               {to === "/ask" && <Kbd className="ml-auto">⌘J</Kbd>}
             </Link>
           );

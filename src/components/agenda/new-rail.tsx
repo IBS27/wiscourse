@@ -16,7 +16,8 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   const { label, color } = useCourses();
   const markSeen = useMutation(api.seenState.markSeen);
   const Icon = ICON[item.type];
-  const subtitle = feedSubtitle(item);
+  // The rail is a glance: what happened, not the announcement body.
+  const subtitle = item.type === "announcement" ? "Announcement" : feedSubtitle(item);
 
   return (
     <a
@@ -32,21 +33,23 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
           });
         }
       }}
-      className="group relative flex gap-3 px-4 py-[10px] text-inherit no-underline transition-colors after:absolute after:right-0 after:bottom-0 after:left-11 after:h-px after:bg-line last:after:hidden hover:bg-hover"
+      className="group relative flex gap-[10px] py-[10px] pr-4 pl-[10px] text-inherit no-underline transition-colors after:absolute after:bottom-0 after:right-4 after:left-[51px] after:h-px after:bg-line last:after:hidden hover:bg-hover"
       style={courseStyle(color(item.courseCanvasId))}
     >
+      {/* Unread lives in one fixed gutter, left of the icon, on every feed list. */}
+      <span className="flex w-[6px] shrink-0 justify-center pt-[7px]">
+        {!item.seen && <span className="size-[6px] rounded-full bg-unread" aria-label="Unread" />}
+      </span>
       <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" aria-hidden />
       <div className="min-w-0 flex-1">
-        <div className="flex items-start gap-2">
-          <div
-            className={cn(
-              "line-clamp-2 min-w-0 flex-1 text-[13px] leading-[1.4] tracking-[-0.005em]",
-              item.seen ? "text-ink-2" : "font-medium text-ink",
-            )}
-          >
-            {feedTitle(item)}
-          </div>
-          {!item.seen && <span className="mt-[6px] size-[7px] shrink-0 rounded-full bg-unread" aria-label="Unread" />}
+        <div
+          className={cn(
+            "truncate text-[13px] leading-[1.4] tracking-[-0.005em]",
+            item.seen ? "text-ink-2" : "font-medium text-ink",
+          )}
+          title={feedTitle(item)}
+        >
+          {feedTitle(item)}
         </div>
         <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12px] whitespace-nowrap text-ink-3">
           <CourseTag className="shrink-0">{label(item.courseCanvasId)}</CourseTag>

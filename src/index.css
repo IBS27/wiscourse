@@ -17,8 +17,8 @@
   --line-2: #dcdce1;
   --chip: #f2f2f4;
   --ink: #1b1b1f;
-  --ink-2: #4f4f59;
-  --ink-3: #6c6c76;
+  --ink-2: #45454e;
+  --ink-3: #64646e;
   --red: #c5050c;
   --red-bg: #fdf1f1;
   --today-bg: #18181b;
@@ -63,8 +63,10 @@
   /* UW–Madison Badger Red. Logo + overdue only — not a UI accent. */
   --brand: var(--red);
   --brand-ink: #101114;
-  /* Unread marker: one blue, used for "new since you looked" everywhere. */
-  --unread: #2f6feb;
+  /* Unread marker: neutral, so it never competes with a course dot. Used only
+     in the left gutter of feed lists (Home "New", Inbox); elsewhere read state
+     is carried by title weight. */
+  --unread: var(--ink);
 }
 
 .dark {
@@ -74,11 +76,11 @@
   --raised: #1d1d20;
   --hover: #212125;
   --line: #26262a;
-  --line-2: #35353b;
+  --line-2: #404047;
   --chip: #232327;
   --ink: #ececef;
-  --ink-2: #b0b0b8;
-  --ink-3: #8f8f99;
+  --ink-2: #c2c2ca;
+  --ink-3: #9d9da7;
   --red: #ff4b54;
   --red-bg: #2b1417;
   --today-bg: #ececef;
@@ -97,7 +99,6 @@
   --course-none: #8c8c8c;
 
   --brand-ink: #ececef;
-  --unread: #5b9bff;
 }
 
 @theme inline {
