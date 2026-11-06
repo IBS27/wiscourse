@@ -1,3 +1,4 @@
+import { formatPercent } from "@/lib/grades-ui";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -67,7 +68,7 @@ export function GradeDetail({
         )}
         {courseScore !== undefined && (
           <Fact label="Course now">
-            {`${Number(courseScore.toFixed(1))}%`}
+            {formatPercent(courseScore)}
             {detail?.course.currentGrade !== undefined && ` · ${detail.course.currentGrade}`}
           </Fact>
         )}
