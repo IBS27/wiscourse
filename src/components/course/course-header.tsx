@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { UnreadDot } from "./unread-dot";
 import { canvasCourseUrl } from "@/lib/course-routes";
-import { courseColorVar, courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
 import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
@@ -29,7 +29,7 @@ export function CourseHeader({
   const canvasHref = canvasCourseUrl(courseId, sync?.instance);
   const hub = useQuery(api.courses.hub, Number.isFinite(canvasId) ? { canvasId } : "skip");
 
-  const name = course === undefined ? "" : (course.nickname ?? course.name);
+  const name = course === undefined ? "" : courseTitle(course);
   const code = course === undefined ? undefined : shortCode(course);
   const meta = [
     code,
@@ -53,7 +53,7 @@ export function CourseHeader({
             {name || <span className="text-ink-3">Course</span>}
           </div>
           <div className="truncate text-xs text-ink-3">
-            {code !== undefined && <span className="font-medium text-c">{code}</span>}
+            {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
             {code !== undefined && course?.term !== undefined && " · "}
             {course?.term}
           </div>
@@ -72,8 +72,8 @@ export function CourseHeader({
         </div>
       </div>
 
-      <div className="hidden items-start gap-[14px] px-5 pt-[18px] md:flex">
-        <span className="mt-[9px] size-[10px] shrink-0 rounded-[3px] bg-c" aria-hidden />
+      <div className="hidden items-start gap-3 px-6 pt-5 md:flex">
+        <span className="mt-[9px] size-[10px] shrink-0 rounded-full bg-c" aria-hidden />
         <div className="min-w-0">
           <h1 className="truncate text-[22px] leading-[1.2] font-semibold tracking-[-0.02em]">
             {name || <span className="text-ink-3">Course</span>}
@@ -82,7 +82,7 @@ export function CourseHeader({
             {meta.map((part, i) => (
               <span key={`${i}-${part}`} className="contents">
                 {i > 0 && <span aria-hidden>·</span>}
-                <span className={cn("truncate", i === 0 && code !== undefined && "font-medium text-c")}>
+                <span className={cn("truncate", i === 0 && code !== undefined && "font-medium text-ink-2")}>
                   {part}
                 </span>
               </span>
@@ -93,14 +93,14 @@ export function CourseHeader({
           href={canvasHref}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto inline-flex h-[31px] shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 hover:bg-hover"
+          className="ml-auto inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
         >
           <ExternalLink className="size-[14px]" />
           Open in Canvas
         </a>
       </div>
 
-      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-4 md:mt-[14px] md:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-4 md:mt-4 md:px-[18px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
         <Tab
           to="/courses/$courseId/modules"

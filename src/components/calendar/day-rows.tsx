@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { TodoItem } from "../../../convex/todos";
 import { Mark, type MarkKind } from "./marks";
-import { Pill } from "@/components/app/bits";
+import { Pill, CourseTag } from "@/components/app/bits";
 import {
   blockLabel,
   clockTimeMeridiem,
@@ -126,7 +126,7 @@ export function DueRow({
   const code = label(item.courseCanvasId);
   const overdue = isOverdue(item, now);
   const meta: ReactNode[] = [];
-  if (code !== undefined) meta.push(<span key="code" className="font-medium text-c">{code}</span>);
+  if (code !== undefined) meta.push(<CourseTag key="code">{code}</CourseTag>);
   if (item.kind === "local" && code === undefined) meta.push(<span key="personal">Personal</span>);
   if (item.submittedAt !== undefined && settled) {
     meta.push(<span key="state">Submitted {formatTime(item.submittedAt)}</span>);
@@ -167,7 +167,7 @@ export function PlannedRow({
     code === undefined ? (
       <span key="code">Personal</span>
     ) : (
-      <span key="code" className="font-medium text-c">{code}</span>
+      <CourseTag key="code">{code}</CourseTag>
     ),
     <span key="due">
       {item.dueAt === undefined ? "No due date" : `Due ${formatDueRelative(item.dueAt, todayKey)}`}

@@ -7,7 +7,7 @@ import { UnreadDot } from "./unread-dot";
 import { Dot } from "@/components/app/bits";
 import { courseHref } from "@/lib/course-routes";
 import { formatDayShort, formatTime, formatWeekday, dayKeyOf } from "@/lib/dates";
-import { courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
@@ -50,13 +50,13 @@ export function LedgerRow({
         <Dot className="size-2" />
         <div className="min-w-0">
           <div className="truncate text-[14px] leading-[1.25] font-medium tracking-[-0.01em]">
-            {course.nickname ?? course.name}
+            {courseTitle(course)}
           </div>
           <div className="mt-[2px] truncate text-xs text-ink-3">
             {meta.map((part, i) => (
               <span key={`${i}-${part}`}>
                 {i > 0 && <span className="opacity-55"> · </span>}
-                <span className={cn(i === 0 && code !== undefined && "font-medium text-c")}>
+                <span className={cn(i === 0 && code !== undefined && "font-medium text-ink-2")}>
                   {part}
                 </span>
               </span>
@@ -120,7 +120,7 @@ export function LedgerPastRow({ course, color }: { course: Course; color: string
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Dot className="size-2 opacity-45" />
         <div className="min-w-0 truncate">
-          <span className="text-[13.5px] font-medium">{course.nickname ?? course.name}</span>
+          <span className="text-[13.5px] font-medium">{courseTitle(course)}</span>
           <span className="ml-[10px] text-xs text-ink-3">
             {[code, instructor].filter(Boolean).join(" · ")}
           </span>

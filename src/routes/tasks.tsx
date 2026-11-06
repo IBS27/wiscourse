@@ -63,7 +63,7 @@ function Tasks() {
     <div className="flex flex-1 flex-col">
       <header className="flex items-center justify-between gap-5 border-b border-line px-4 py-[14px] md:px-5">
         <div>
-          <div className="text-[15px] font-semibold tracking-[-0.015em]">Tasks</div>
+          <div className="page-title">Tasks</div>
           <div className="mt-[3px] text-xs text-ink-3">
             {scoped ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done` : ""}
           </div>

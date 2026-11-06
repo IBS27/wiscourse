@@ -10,7 +10,7 @@ import {
   Rows3,
   SquareCheck,
 } from "lucide-react";
-import { Kbd } from "@/components/app/bits";
+import { Kbd, CourseTag } from "@/components/app/bits";
 import { UnreadDot } from "@/components/course/unread-dot";
 import { formatAgo, formatMonthDay } from "@/lib/dates";
 import { formatBytes } from "@/lib/format";
@@ -112,7 +112,7 @@ export function PaletteRow({
 
       {(code !== undefined || hasMeta) && (
         <span className="shrink-0 truncate text-[12px] text-ink-3">
-          {code !== undefined && <span className="font-medium text-c">{code}</span>}
+          {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
           {code !== undefined && hasMeta && " · "}
           {meta}
         </span>

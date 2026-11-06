@@ -24,7 +24,7 @@ export function WeekStrip({
   const byDay = itemsByDay(items, days, todayKey, now);
 
   return (
-    <div className={cn("grid grid-cols-7 gap-[6px] border-b border-line px-4 pt-3 pb-[13px]", compact && "gap-1 px-3 pt-[2px]")}>
+    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-[10px] md:px-5", compact && "gap-1 px-3 pt-[2px]")}>
       {days.map((day) => {
         const isToday = day === todayKey;
         const isPast = day < todayKey;
@@ -45,21 +45,19 @@ export function WeekStrip({
             type="button"
             onClick={() => onSelect(isSelected ? null : day)}
             className={cn(
-              "rounded-lg border border-transparent px-1 pt-[7px] pb-2 text-center hover:bg-hover",
-              isToday && "border-line-2 bg-hover",
-              isSelected && !isToday && "border-line-2",
+              "rounded-[10px] px-1 pt-[6px] pb-[7px] text-center transition-colors hover:bg-hover",
+              isSelected && "bg-hover shadow-[inset_0_0_0_1px_var(--line-2)]",
             )}
           >
-            <div className={cn("text-[10.5px] font-semibold tracking-[0.08em] uppercase", isPast ? "text-ink-3" : isToday ? "text-ink-2" : "text-ink-3")}>
+            <div className={cn("text-[11px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
               {compact ? dow[0] : dow}
             </div>
             <div
               className={cn(
-                "mx-auto mt-[3px] grid size-6 place-items-center rounded-[7px] text-[14px] font-semibold tracking-[-0.02em]",
+                "mx-auto mt-[3px] grid size-7 place-items-center rounded-full text-[14px] font-semibold tracking-[-0.02em] tabular",
                 compact && "size-[26px]",
-                isPast && "text-ink-3",
+                isPast && "font-medium text-ink-3",
                 isToday && "bg-today text-today-fg",
-                isSelected && !isToday && "bg-chip",
               )}
             >
               {Number(day.slice(-2))}

@@ -37,7 +37,7 @@ import {
   usesWeights,
   withArticle,
 } from "@/lib/grades-ui";
-import { courseStyle, shortCode, useCourses, useNow, useToday } from "@/lib/hooks";
+import { courseStyle, courseTitle, shortCode, useCourses, useNow, useToday } from "@/lib/hooks";
 import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
@@ -185,11 +185,11 @@ export function CourseGradebook({
       ) : (
         <header className="flex items-center justify-between gap-5 border-b border-line px-4 py-[14px] md:px-5">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
+            <div className="flex items-center gap-2 page-title">
               <Link to="/grades" aria-label="All grades" className="shrink-0 text-ink-3">
                 <ChevronLeft className="size-[18px]" />
               </Link>
-              <span className="truncate">{course?.nickname ?? course?.name ?? "Course"}</span>
+              <span className="truncate">{course ? courseTitle(course) : "Course"}</span>
               {code !== undefined && (
                 <span className="shrink-0 text-[13px] font-medium text-ink-3">{code}</span>
               )}

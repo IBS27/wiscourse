@@ -6,7 +6,7 @@ import { Dot } from "@/components/app/bits";
 import { UnreadDot } from "@/components/course/unread-dot";
 import { dayKeyOf, formatPlannedRelative } from "@/lib/dates";
 import { coverageLabel, formatPercent, formatPoints, schemeLabel } from "@/lib/grades-ui";
-import { courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
@@ -75,10 +75,10 @@ export function GradesLedgerRow({
         <Dot className="size-2" />
         <div className="min-w-0">
           <div className="truncate text-[14px] leading-[1.25] font-medium tracking-[-0.01em]">
-            {course.nickname ?? course.name}
+            {courseTitle(course)}
           </div>
           <div className="mt-[1px] truncate text-xs text-ink-3">
-            {code !== undefined && <span className="font-medium text-c">{code}</span>}
+            {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
             {/* Desktop spells out the scheme; the phone spends the line on
                 coverage and what just landed instead. */}
             {summary !== undefined && (
@@ -177,7 +177,7 @@ export function GradesPastRow({ course, color }: { course: Course; color: string
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Dot className="size-2 opacity-45" />
         <div className="min-w-0 truncate">
-          <span className="text-[13.5px]">{course.nickname ?? course.name}</span>
+          <span className="text-[13.5px]">{courseTitle(course)}</span>
           <span className="ml-[10px] text-xs text-ink-3">{code}</span>
         </div>
       </div>

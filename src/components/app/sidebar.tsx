@@ -5,7 +5,7 @@ import { Logo } from "@/components/logo";
 import { CountBadge, Dot, Kbd } from "./bits";
 import { NAV, useNavCounts } from "./nav";
 import { ProfileMenu } from "./profile-menu";
-import { courseColorVar, courseStyle, shortCode, useCourses } from "@/lib/hooks";
+import { courseColorVar, courseLabel, courseStyle, courseTitle, useCourses } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
 import { cn } from "@/lib/utils";
 import type { Course } from "@/lib/hooks";
@@ -39,7 +39,7 @@ export function Sidebar() {
               key={to}
               to={to}
               activeOptions={{ exact: "exact" in rest && rest.exact }}
-              className="flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2 hover:bg-hover"
+              className="flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
               activeProps={{
                 className: "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface",
               }}
@@ -55,9 +55,9 @@ export function Sidebar() {
 
       {visible.length > 0 && (
         <>
-          <div className="flex items-center justify-between px-2 pt-[22px] pb-[7px] text-[10.5px] font-semibold tracking-[0.1em] text-ink-3 uppercase">
+          <div className="flex items-center justify-between px-2 pt-6 pb-[6px] text-[12px] font-medium text-ink-3">
             <span>Courses</span>
-            {termName && <span>{termName}</span>}
+            {termName && <span className="text-[11.5px] font-normal">{termName}</span>}
           </div>
           <div className="flex flex-col">
             {visible.map((c) => (
@@ -76,19 +76,20 @@ export function Sidebar() {
 }
 
 function CourseLink({ course: c }: { course: Course }) {
+  const label = courseLabel(c);
   return (
     <Link
       to="/courses/$courseId"
       params={{ courseId: String(c.canvasId) }}
-      className="flex h-[29px] items-center gap-[9px] rounded-lg px-2 text-[13px] text-ink-2 hover:bg-hover"
+      title={courseTitle(c)}
+      className="flex h-[30px] items-center gap-[9px] rounded-lg px-2 text-[13px] text-ink-2 transition-colors hover:bg-hover"
       activeProps={{
         className: "bg-surface text-ink! shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface",
       }}
       style={courseStyle(courseColorVar(c.color))}
     >
       <Dot />
-      <span className="min-w-0 flex-1 truncate">{c.nickname ?? c.name}</span>
-      {shortCode(c) && <span className="shrink-0 text-[11px] text-ink-3">{shortCode(c)}</span>}
+      <span className="min-w-0 flex-1 truncate">{label}</span>
     </Link>
   );
 }
@@ -103,14 +104,14 @@ function OtherCourses({ courses }: { courses: Course[] }) {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="flex h-7 w-full items-center gap-[6px] rounded-lg px-2 text-[10.5px] font-semibold tracking-[0.1em] text-ink-3 uppercase hover:bg-hover hover:text-ink-2"
+        className="flex h-[30px] w-full items-center gap-[6px] rounded-lg px-2 text-[12px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink-2"
       >
         <ChevronRight
           className={cn("size-[12px] transition-transform", open && "rotate-90")}
           aria-hidden
         />
         <span>Other</span>
-        <span className="ml-auto text-[11px] font-medium tracking-normal normal-case">
+        <span className="ml-auto text-[11.5px] font-normal tabular">
           {courses.length}
         </span>
       </button>

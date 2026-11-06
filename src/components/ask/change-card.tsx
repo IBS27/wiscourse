@@ -10,6 +10,7 @@ import { dayKeyOf, formatDay, formatDueRelative, formatTime } from "@/lib/dates"
 import { errorMessage } from "@/lib/ask";
 import { courseStyle, useCourses, useToday } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { CourseTag } from "@/components/app/bits";
 
 type Change = Doc<"assistantChanges">;
 type Op = Change["ops"][number];
@@ -155,7 +156,7 @@ function MarkIcon({ mark, added }: { mark: Mark; added?: boolean }) {
 function OpRow({ row }: { row: Row }) {
   const { label, color } = useCourses();
   const code = label(row.course);
-  const meta = [...(code ? [<span key="code" className="font-medium text-c">{code}</span>] : []), ...row.meta];
+  const meta = [...(code ? [<CourseTag key="code">{code}</CourseTag>] : []), ...row.meta];
   return (
     <div className="flex items-center gap-[10px] border-b border-line py-2 pr-[11px] pl-[10px] last:border-b-0" style={courseStyle(color(row.course))}>
       <MarkIcon mark={row.mark} added={row.added} />

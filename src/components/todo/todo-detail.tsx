@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
-import { Chip, Dot, Kbd, Pill } from "@/components/app/bits";
+import { Chip, Dot, Kbd, Pill, CourseTag } from "@/components/app/bits";
 import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
 import {
@@ -87,7 +87,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           <Dot />
           {course ? (
             <>
-              <span className="font-medium text-c">{label(course.canvasId)}</span>
+              <CourseTag>{label(course.canvasId)}</CourseTag>
               <span>·</span>
             </>
           ) : null}

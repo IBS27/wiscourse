@@ -32,18 +32,20 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
         }
       }}
       className={cn(
-        "relative mx-[14px] mb-2 block rounded-lg border border-line bg-raised px-[11px] py-[10px] text-inherit no-underline hover:border-line-2",
-        !item.seen &&
-          "before:absolute before:top-[11px] before:-left-px before:h-[15px] before:w-[3px] before:rounded-r-[3px] before:bg-c",
+        "relative mx-[10px] mb-[6px] block rounded-[10px] border border-line bg-raised px-3 py-[10px] text-inherit no-underline shadow-[0_1px_2px_rgba(16,17,20,0.04)] transition-colors hover:border-line-2",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
-      <div className="flex items-center gap-[6px] text-[11.5px] text-ink-3">
-        <Icon className="size-[13px]" />
-        <span className="font-medium text-c">{label(item.courseCanvasId)}</span>
-        <span className="ml-auto">{formatAgo(item.at, now)}</span>
+      <div className="flex items-center gap-[6px] text-[12px] text-ink-3">
+        <span className="size-[7px] shrink-0 rounded-full bg-c" aria-hidden />
+        <span className="truncate font-medium text-ink-2">{label(item.courseCanvasId)}</span>
+        <Icon className="size-[12px] shrink-0" aria-hidden />
+        <span className="ml-auto flex shrink-0 items-center gap-[6px]">
+          {formatAgo(item.at, now)}
+          {!item.seen && <span className="size-[6px] rounded-full bg-[var(--course-sky)]" aria-label="Unread" />}
+        </span>
       </div>
-      <div className="mt-[5px] text-[13px] leading-[1.35] font-medium tracking-[-0.005em]">
+      <div className={cn("mt-[5px] text-[13px] leading-[1.4] tracking-[-0.005em]", item.seen ? "text-ink-2" : "font-medium text-ink")}>
         {feedTitle(item)}
       </div>
       {subtitle && <div className="mt-[3px] truncate text-xs text-ink-3">{subtitle}</div>}
@@ -58,8 +60,8 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
   const groups = groupFeed((feed ?? []).slice(0, 12), todayKey, now);
 
   return (
-    <aside className="hidden w-[308px] shrink-0 flex-col border-l border-line bg-sunken xl:flex">
-      <div className="flex items-center gap-2 px-[14px] pt-[14px] pb-3">
+    <aside className="hidden w-[320px] shrink-0 flex-col border-l border-line bg-sunken xl:flex">
+      <div className="flex items-center gap-2 px-4 pt-4 pb-2">
         <span className="text-[13px] font-semibold tracking-[-0.01em]">New</span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
@@ -74,7 +76,7 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
         ) : (
           groups.map((g) => (
             <div key={g.label}>
-              <div className="eyebrow px-[14px] pt-[6px] pb-1 text-[10.5px]">{g.label}</div>
+              <div className="px-4 pt-3 pb-[6px] text-[12px] font-medium text-ink-3">{g.label}</div>
               {g.items.map((f) => (
                 <FeedCard key={f.key} item={f} now={now} />
               ))}
@@ -82,7 +84,7 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
           ))
         )}
       </div>
-      <div className="mt-auto border-t border-line px-[14px] py-3 text-xs text-ink-3">
+      <div className="mt-auto border-t border-line px-4 py-3 text-[12px] leading-[1.45] text-ink-3">
         Grades appear here only once the instructor posts them.
       </div>
     </aside>

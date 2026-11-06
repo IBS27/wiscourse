@@ -44,9 +44,9 @@ function Home() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {/* Top bar */}
-      <header className="flex items-end justify-between gap-5 border-b border-line px-4 py-[14px] md:items-center md:px-5">
+      <header className="flex min-h-[64px] items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
         <div>
-          <div className="text-[15px] font-semibold tracking-[-0.015em]">
+          <div className="page-title">
             <span className="md:hidden">{formatDayMedium(today)}</span>
             <span className="hidden md:inline">{formatDayLong(today)}</span>
           </div>
@@ -55,7 +55,7 @@ function Home() {
         <button
           type="button"
           onClick={quickAdd.open}
-          className="hidden h-[34px] w-[352px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-[11px] text-[13px] text-ink-3 hover:border-line-2 md:flex"
+          className="hidden h-9 w-[320px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 md:flex"
         >
           <Plus className="size-[14px]" />
           Add a task…
@@ -184,7 +184,7 @@ function BucketSection({
           <button
             type="button"
             onClick={onShowLater}
-            className="flex items-center gap-[6px] px-5 py-[11px] text-[12.5px] text-ink-3 hover:text-ink"
+            className="flex items-center gap-[6px] px-4 py-[11px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:px-6"
           >
             Show {hidden} more
             <ChevronRight className="size-[13px]" />
@@ -220,13 +220,13 @@ function Section({
 }) {
   return (
     <section>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-[7px] md:px-5">
-        <span className={cn("text-[11.5px] font-semibold tracking-[0.09em] uppercase", red && "text-red")}>{title}</span>
-        {detail && <span className="text-[11.5px] tracking-[0.01em] text-ink-3">{detail}</span>}
-        {action ?? <span className="ml-auto text-[11px] font-semibold text-ink-3">{count ?? items.length}</span>}
+      <div className="flex items-baseline gap-2 px-4 pt-6 pb-2 md:px-6">
+        <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
+        {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
+        {action ?? <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{count ?? items.length}</span>}
       </div>
       {items.length === 0 ? (
-        <div className="px-4 py-3 text-[12.5px] text-ink-3 md:px-5">{empty}</div>
+        <div className="mx-4 rounded-lg border border-dashed border-line-2 px-4 py-3 text-[12.5px] text-ink-3 md:mx-6">{empty}</div>
       ) : (
         items.map((item, i) => (
           <AgendaItem key={item.key} item={item} first={i === 0} todayKey={todayKey} now={now} />
@@ -260,7 +260,7 @@ function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
         <div className="border-b border-line bg-sunken pt-2 pb-1">
           {groups.map((g) => (
             <div key={g.label}>
-              <div className="eyebrow px-[14px] pt-[6px] pb-1 text-[10.5px]">{g.label}</div>
+              <div className="px-4 pt-2 pb-[6px] text-[12px] font-medium text-ink-3">{g.label}</div>
               {g.items.map((f) => (
                 <FeedCard key={f.key} item={f} now={now} />
               ))}

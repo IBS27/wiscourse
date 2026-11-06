@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { UnreadDot } from "@/components/course/unread-dot";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { CourseTag } from "@/components/app/bits";
 
 /** The frame every detail pane shares: eyebrow, title, by-line, body, actions. */
 export function DetailShell({
@@ -38,7 +39,7 @@ export function DetailShell({
 
       <div className="mb-2 flex items-center gap-2 text-[11.5px] text-ink-3">
         <UnreadDot />
-        <span className="font-medium text-c">{label(item.courseCanvasId) ?? "Course"}</span>
+        <CourseTag>{label(item.courseCanvasId) ?? "Course"}</CourseTag>
         <span>·</span>
         <span className="truncate">{eyebrow}</span>
       </div>

@@ -248,7 +248,7 @@ function ThreadHeader({ thread }: { thread: AskThread | undefined }) {
             className="h-8 min-w-0 flex-1 rounded-md border border-line-2 bg-surface px-2 text-[15px] font-semibold tracking-[-0.015em] outline-none"
           />
         ) : (
-          <h1 className="truncate text-[15px] font-semibold tracking-[-0.015em]">{thread?.title ?? ""}</h1>
+          <h1 className="truncate page-title">{thread?.title ?? ""}</h1>
         )}
         {course && !editing && (
           <span

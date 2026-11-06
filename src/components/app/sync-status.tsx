@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function SyncStatusLine({ compact = false, className }: { compact?: boolean; className?: string }) {
   const info = useSyncInfo();
-  const { courses } = useCourses();
+  const { visible } = useCourses();
   const now = useNow();
   if (info === undefined) return <div className={cn("h-4", className)} />;
 
@@ -20,13 +20,13 @@ export function SyncStatusLine({ compact = false, className }: { compact?: boole
   else text = `Synced ${formatSince(info.lastSyncedAt, now)}`;
 
   return (
-    <div className={cn("flex items-center gap-[6px] text-xs text-ink-3", className)}>
-      <RefreshCw className={cn("size-[13px]", info.syncing && "animate-spin")} />
+    <div className={cn("flex items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3", className)}>
+      <RefreshCw className={cn("size-[12px] shrink-0", info.syncing && "animate-spin")} />
       <span className={cn((info.invalid || info.error) && "text-red")}>{text}</span>
-      {!compact && info.connected && courses.length > 0 && (
+      {!compact && info.connected && visible.length > 0 && (
         <>
-          <span className="opacity-50">·</span>
-          <span>{courses.length} courses</span>
+          <span className="text-line-2 max-sm:hidden">·</span>
+          <span className="max-sm:hidden">{visible.length} {visible.length === 1 ? "course" : "courses"}</span>
         </>
       )}
     </div>

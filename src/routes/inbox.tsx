@@ -119,7 +119,7 @@ function InboxPage() {
       >
         <header className="flex items-center justify-between gap-5 border-b border-line px-4 py-[14px] lg:sticky lg:top-0 lg:z-10 lg:bg-surface">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
+            <div className="flex items-center gap-2 page-title">
               Inbox
               <CountBadge n={unreadTotal} />
             </div>

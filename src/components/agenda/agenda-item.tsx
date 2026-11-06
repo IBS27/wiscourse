@@ -4,7 +4,7 @@ import { useMutation } from "convex/react";
 import { Check, ListTree, StickyNote, Undo2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
-import { Pill } from "@/components/app/bits";
+import { Pill, CourseTag } from "@/components/app/bits";
 import { refOf } from "@/lib/todo-ref";
 import {
   dayKeyOf,
@@ -38,7 +38,11 @@ export function AgendaItem({
   const subDone = item.subtasks.filter((s) => s.done).length;
 
   const meta: ReactNode[] = [];
-  if (code) meta.push(<span key="code" className="font-medium text-c">{code}</span>);
+  if (code) {
+    meta.push(
+      <CourseTag key="code">{code}</CourseTag>,
+    );
+  }
   if (item.kind === "local" && !code) meta.push(<span key="personal">Personal</span>);
   if (done && item.doneAt !== undefined) {
     meta.push(<span key="done">Done {formatTime(item.doneAt)}</span>);
@@ -63,9 +67,11 @@ export function AgendaItem({
   return (
     <div
       className={cn(
-        "group flex items-start gap-[11px] border-b border-l-4 border-b-line border-l-c bg-surface py-[9px] pr-5 pl-4 hover:bg-hover",
-        first && "border-t border-t-line",
-        compact && "pr-[14px] pl-3",
+        "group relative flex items-start gap-3 bg-surface py-[11px] pr-5 pl-5 transition-colors hover:bg-hover",
+        // Hairline between rows, inset to the title column.
+        "after:absolute after:right-0 after:bottom-0 after:left-[49px] after:h-px after:bg-line",
+        first && "before:absolute before:top-0 before:right-0 before:left-[49px] before:h-px before:bg-line",
+        compact && "pr-[14px] pl-[14px] after:left-[43px] before:left-[43px]",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
@@ -74,7 +80,7 @@ export function AgendaItem({
         aria-label={done ? "Mark not done" : "Mark done"}
         onClick={() => void setDone({ ref: refOf(item), done: !done })}
         className={cn(
-          "mt-px grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 group-hover:border-ink-3",
+          "mt-[2px] grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 transition-colors group-hover:border-ink-3 hover:bg-chip",
           done && "border-ink-3 bg-ink-3",
         )}
       >
@@ -88,16 +94,16 @@ export function AgendaItem({
       >
         <div
           className={cn(
-            "text-[13.5px] font-medium tracking-[-0.005em]",
+            "text-[14px] leading-[1.4] font-medium tracking-[-0.006em] text-ink",
             done && "text-ink-3 line-through decoration-line-2",
           )}
         >
           {item.title}
         </div>
-        <div className={cn("mt-[3px] flex flex-wrap items-center gap-[6px] text-xs text-ink-3", done && "opacity-75")}>
+        <div className={cn("mt-[3px] flex flex-wrap items-center gap-x-[6px] gap-y-[2px] text-[12.5px] text-ink-3", done && "opacity-75")}>
           {meta.map((m, i) => (
             <span key={i} className="flex items-center gap-[6px]">
-              {i > 0 && <span className="opacity-55">·</span>}
+              {i > 0 && <span className="text-line-2" aria-hidden>·</span>}
               {m}
             </span>
           ))}
@@ -143,11 +149,11 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
     case "late":
       return <Pill tone="red">Late</Pill>;
     case "unsubmitted":
-      return <Pill tone="outline">Not submitted</Pill>;
+      return <Pill tone="quiet">Not submitted</Pill>;
     case "none":
-      if (item.dueAt === undefined) return <Pill tone="outline">No due date</Pill>;
+      if (item.dueAt === undefined) return <Pill tone="quiet">No due date</Pill>;
       if (item.plannedDay === undefined && dayKeyOf(item.dueAt) !== dayKeyOf(now)) {
-        return <Pill tone="outline">Not planned</Pill>;
+        return <Pill tone="quiet">Not planned</Pill>;
       }
       return null;
   }

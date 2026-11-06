@@ -5,6 +5,7 @@ import { formatAgo } from "@/lib/dates";
 import { feedSubtitle, feedTitle } from "@/lib/feed";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+import { CourseTag } from "@/components/app/bits";
 
 const FEED_ICON = {
   announcement: Megaphone,
@@ -53,7 +54,7 @@ export function InboxRow({
           {feedTitle(item)}
         </span>
         <span className="mt-[2px] block truncate text-[12px] text-ink-3">
-          <span className="font-medium text-c">{label(item.courseCanvasId) ?? "Course"}</span>
+          <CourseTag>{label(item.courseCanvasId) ?? "Course"}</CourseTag>
           {subtitle !== undefined && <> · {subtitle}</>}
         </span>
       </span>
