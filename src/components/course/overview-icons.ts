@@ -14,7 +14,7 @@ import {
   Megaphone,
   MessageSquare,
   SquareCheck,
-  Star,
+  GraduationCap,
 } from "lucide-react";
 
 export type RowIcon = ComponentType<{ className?: string }>;
@@ -29,7 +29,7 @@ export const ROW_ICON = {
   ExternalTool: ExternalLink,
   SubHeader: FileText,
   announcement: Megaphone,
-  grade: Star,
+  grade: GraduationCap,
   change: Clock,
   locked: Clock,
 } satisfies Record<string, RowIcon>;
