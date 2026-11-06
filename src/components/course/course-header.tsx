@@ -5,10 +5,10 @@ import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { EDGE_FADE, revealInRow, useEdgeFade } from "./edge-fade";
-import { UnreadDot } from "./unread-dot";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
+import { formatTerm } from "@/lib/terms";
 import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +33,8 @@ export function CourseHeader({
   const pathname = useLocation({ select: (location) => location.pathname });
 
   // On a phone the open tab can sit past the edge (Syllabus, Grades). The
-  // badges widen the row once the hub loads, so look again then.
-  const badges = `${hub?.unreadModules}:${hub?.newFiles}`;
+  // Files count widens the row once the hub loads, so look again then.
+  const badges = hub?.newFiles;
   useEffect(() => {
     const nav = tabsRef.current;
     const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]');
@@ -43,9 +43,10 @@ export function CourseHeader({
 
   const name = course === undefined ? "" : courseTitle(course);
   const code = course === undefined ? undefined : shortCode(course);
+  const term = formatTerm(course?.term);
   const meta = [
     code,
-    course?.term,
+    term,
     course?.verifiedInstructors?.[0]?.name,
     facts?.meets,
     facts?.location,
@@ -66,8 +67,8 @@ export function CourseHeader({
           </div>
           <div className="mt-[2px] truncate text-[12.5px] text-ink-3">
             {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
-            {code !== undefined && course?.term !== undefined && " · "}
-            {course?.term}
+            {code !== undefined && term !== undefined && " · "}
+            {term}
           </div>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-[10px] text-ink-3">
@@ -115,17 +116,12 @@ export function CourseHeader({
       <nav
         ref={tabsRef}
         className={cn(
-          "mt-1 flex scroll-px-4 gap-[2px] overflow-x-auto px-2 md:mt-4 md:px-[14px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          "mt-1 flex scroll-px-4 gap-5 overflow-x-auto px-4 md:mt-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           EDGE_FADE,
         )}
       >
         <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
-        <Tab
-          to="/courses/$courseId/modules"
-          courseId={courseId}
-          label="Modules"
-          badge={hub?.unreadModules === true && <UnreadDot />}
-        />
+        <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
         <Tab
           to="/courses/$courseId/files"
           courseId={courseId}
@@ -169,7 +165,7 @@ function Tab({
       to={to}
       params={{ courseId }}
       activeOptions={{ exact, includeSearch: false, includeHash: false }}
-      className="group -mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent px-2 pt-2 pb-[10px] text-[13px] font-medium text-ink-3 transition-colors outline-none hover:border-line-2 hover:text-ink focus-visible:text-ink md:px-[10px]"
+      className="group -mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent pt-2 pb-[10px] text-[13px] font-medium text-ink-3 transition-colors outline-none hover:border-line-2 hover:text-ink focus-visible:text-ink"
       activeProps={{ className: "border-ink! text-ink!" }}
     >
       {label}

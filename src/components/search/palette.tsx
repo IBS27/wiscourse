@@ -149,13 +149,11 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
     keyOf(item.kind, item.kind === "page" ? (item.pageSlug ?? "") : item.canvasId);
 
   const rowContext = (entry: Entry): RowContext => {
-    if (entry.type !== "result") return { courseColor: color(undefined), unseen: false, now };
+    if (entry.type !== "result") return { courseColor: color(undefined), now };
     const item = entry.item;
-    const kindSeen = seen[item.kind];
     return {
       courseLabel: scope !== undefined ? undefined : label(item.courseCanvasId),
       courseColor: color(item.courseCanvasId),
-      unseen: kindSeen !== undefined && !kindSeen.has(item.canvasId),
       moduleName: scope === undefined ? undefined : moduleContext.get(itemKey(item))?.name,
       now,
     };

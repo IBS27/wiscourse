@@ -134,8 +134,8 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         </div>
       </div>
 
-      {/* Plan */}
-      <Block title="Plan">
+      {/* Plan and Notes: compact property rows, so the description starts high. */}
+      <PropertyRow title="Plan">
         <div className="flex flex-wrap items-center gap-[6px]">
           <QuickPlan label="Today" active={item.plannedDay === today} onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
           <QuickPlan
@@ -148,16 +148,16 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             <button
               type="button"
               onClick={() => void setPlannedDay({ ref, plannedDay: null })}
-              className="h-8 rounded-lg px-[10px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              className="h-7 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
             >
               Clear
             </button>
           )}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-[6px]">
           {item.subtasks.map((s) => (
-            <div key={s.id} className="group -mx-2 flex items-center gap-[10px] rounded-md px-2 py-[6px] text-[13.5px] transition-colors hover:bg-hover">
+            <div key={s.id} className="group -mx-2 flex items-center gap-[10px] rounded-md px-2 py-[5px] text-[13.5px] transition-colors hover:bg-hover">
               <button
                 type="button"
                 onClick={() => void setSubtaskDone({ ref, subtaskId: s.id, done: !s.done })}
@@ -182,12 +182,11 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           ))}
           <AddSubtask onAdd={(title) => void addSubtask({ ref, title })} />
         </div>
-      </Block>
+      </PropertyRow>
 
-      {/* Notes */}
-      <Block title="Notes">
+      <PropertyRow title="Notes">
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
-      </Block>
+      </PropertyRow>
 
       {/* Description (Canvas) */}
       {!isLocal && description && (
@@ -301,7 +300,7 @@ const PROSE = cn(
 
 function Block({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
   return (
-    <section className="border-t border-line py-5">
+    <section className="border-t border-line py-4 md:py-5">
       <div className="mb-[10px] flex items-center gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
         {hint && <div className="ml-auto flex items-center max-md:[&>kbd]:hidden">{hint}</div>}
@@ -311,8 +310,21 @@ function Block({ title, hint, children }: { title: string; hint?: ReactNode; chi
   );
 }
 
+/**
+ * A label column beside its controls — the Linear-style property sheet —
+ * so an empty Plan or Notes costs one line, not a section.
+ */
+function PropertyRow({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="grid grid-cols-[52px_minmax(0,1fr)] items-start gap-x-3 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4">
+      <h2 className="pt-[5px] text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
 const PLAN_BUTTON =
-  "flex h-8 items-center gap-[7px] rounded-lg border px-[11px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "flex h-7 items-center gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
 function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -337,7 +349,7 @@ function PlanDate({ value, onChange }: { value: string | undefined; onChange: (d
     <label
       className={cn(
         PLAN_BUTTON,
-        "group relative min-w-[156px] cursor-pointer focus-within:ring-2 focus-within:ring-line-2",
+        "group relative cursor-pointer md:min-w-[148px] focus-within:ring-2 focus-within:ring-line-2",
         value !== undefined ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
       )}
     >
@@ -357,7 +369,7 @@ function PlanDate({ value, onChange }: { value: string | undefined; onChange: (d
             // Not supported or not allowed; the native field still works.
           }
         }}
-        className="absolute inset-0 cursor-pointer rounded-lg bg-transparent px-[11px] text-[13px] text-ink opacity-0 outline-none [color-scheme:light_dark] focus:bg-surface focus:opacity-100"
+        className="absolute inset-0 cursor-pointer rounded-lg bg-transparent px-[10px] text-[12.5px] text-ink opacity-0 outline-none [color-scheme:light_dark] focus:bg-surface focus:opacity-100"
       />
     </label>
   );
@@ -454,13 +466,14 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
     setValue("");
   };
   return (
-    <form onSubmit={submit} className="-mx-2 flex items-center gap-[10px] rounded-md px-2 py-[6px] text-ink-3 transition-colors focus-within:bg-hover hover:bg-hover">
+    <form onSubmit={submit} className="-mx-2 flex items-center gap-[10px] rounded-md px-2 py-[4px] text-ink-3 transition-colors focus-within:bg-hover hover:bg-hover">
       <Plus className="size-[15px] shrink-0" />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Add subtask"
-        className="flex-1 bg-transparent text-[13.5px] text-ink outline-none placeholder:text-ink-3"
+        aria-label="Add subtask"
+        className="h-5 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
       />
     </form>
   );
@@ -478,8 +491,9 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
         if (draft.trim() !== value.trim()) save(draft.trim(), onSave).catch(() => {});
       }}
       placeholder="Add notes…"
+      aria-label="Notes"
       rows={draft === "" ? 1 : Math.max(2, Math.min(10, draft.split("\n").length + 1))}
-      className="-mx-2 block w-[calc(100%+16px)] resize-none rounded-md bg-transparent px-2 py-[6px] text-[14px] leading-[1.6] text-ink-2 transition-colors outline-none placeholder:text-ink-3 hover:bg-hover focus:bg-hover"
+      className="-mx-2 block w-[calc(100%+16px)] resize-none rounded-md bg-transparent px-2 py-[4px] text-[13.5px] leading-[20px] text-ink-2 transition-colors outline-none placeholder:text-ink-3 hover:bg-hover focus:bg-hover"
     />
   );
 }

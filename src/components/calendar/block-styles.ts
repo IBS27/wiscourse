@@ -19,8 +19,8 @@ export function blockFill(local: boolean): string {
   return local ? LOCAL_BLOCK_FILL : BLOCK_FILL;
 }
 
-/** A barely-there wash on today's column, in both themes. */
-export const TODAY_TINT = "bg-[color-mix(in_srgb,var(--ink)_2.5%,transparent)]";
+/** A light wash on today's column, in both themes. */
+export const TODAY_TINT = "bg-[color-mix(in_srgb,var(--ink)_3.5%,transparent)]";
 
 /** Hour labels this close to now (in minutes) yield to the now label. */
 export const NOW_LABEL_CLEARANCE = 24;

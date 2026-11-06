@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The shared band row: mark, then the title. In the week's narrow columns
- * the title wraps to two lines rather than chopping to a few letters; the
+ * the title wraps up to three lines rather than chopping to a few letters; the
  * phone's Day band has the width for one line and a right-aligned time.
  */
 function Line({
@@ -83,13 +83,13 @@ function Line({
   );
 }
 
-/** The title's text: two lines in the week grid, one in the Day band. */
+/** The title's text: up to three lines in the week grid, one in the Day band. */
 function Title({ roomy, done, children }: { roomy?: boolean; done?: boolean; children: ReactNode }) {
   return (
     <span
       className={cn(
         "min-w-0 flex-1",
-        roomy ? "truncate" : "line-clamp-2",
+        roomy ? "truncate" : "line-clamp-3",
         done && "text-ink-3",
       )}
     >

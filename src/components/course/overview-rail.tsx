@@ -14,8 +14,7 @@ import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { formatPercent } from "@/lib/grades-ui";
-import { formatChange, scoreOf } from "@/components/inbox/format";
-import { feedSeenKind } from "@/lib/feed";
+import { feedSeenKind, feedSubtitle, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +58,7 @@ export function OverviewRail({
   };
 
   return (
-    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[340px] lg:border-t-0 lg:border-l">
+    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[300px] lg:border-t-0 lg:border-l">
       {standing !== undefined && (
         <Fact
           label="Standing"
@@ -96,15 +95,15 @@ export function OverviewRail({
           You’re all caught up.
         </div>
       ) : (
-        <div className="px-3 pb-3">
+        <div className="pb-3">
           {items.slice(0, 8).map((item) => (
             <OverviewRow
               key={item.key}
               variant="rail"
               icon={item.type === "assignment" ? ROW_ICON.Assignment : ROW_ICON[item.type]}
-              title={item.title}
+              title={feedTitle(item)}
               unread={!item.seen}
-              meta={`${railKind(item)} · ${formatAgo(item.at, now)}`}
+              meta={[railSubtitle(item), formatAgo(item.at, now)].filter(Boolean).join(" · ")}
               to={
                 item.type === "announcement"
                   ? announcementsHref(courseId, item.canvasId)
@@ -242,18 +241,9 @@ function InstructorFact({ course }: { course: Course | undefined }) {
   );
 }
 
-/** What happened, for the meta line under the item's own title. */
-function railKind(item: FeedItem): string {
-  if (item.type === "grade") {
-    return item.score !== undefined && item.pointsPossible !== undefined
-      ? `Graded ${scoreOf(item.score, item.pointsPossible)}`
-      : "Graded";
-  }
-  if (item.type === "change") {
-    const verb = item.change ? formatChange(item.change).verb : "updated";
-    return verb.charAt(0).toUpperCase() + verb.slice(1);
-  }
-  return item.type === "assignment" ? "New assignment" : "Announcement";
+/** What happened, as Home's rail says it: the announcement body stays out of a glance. */
+function railSubtitle(item: FeedItem): string | undefined {
+  return item.type === "announcement" ? "Announcement" : feedSubtitle(item);
 }
 
 /** "91.2% · A" over "4 of 12 graded · Projects weigh 50%". */

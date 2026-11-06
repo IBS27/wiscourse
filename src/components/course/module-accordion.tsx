@@ -106,29 +106,28 @@ export function ModuleAccordion({
   );
 }
 
-/** "3 of 10 viewed" with a hairline meter; a check once everything is seen. */
+/**
+ * Untouched modules give their size, finished ones say so, and only a
+ * module part-way through gets the 48×4 meter and a percent.
+ */
 function Progress({ viewed, total }: { viewed: number; total: number }) {
-  const done = viewed === total;
+  const pct = Math.round((viewed / total) * 100);
   return (
     <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
-      <span className="hidden h-1 w-14 overflow-hidden rounded-full bg-chip sm:block" aria-hidden>
-        <span
-          className="block h-full rounded-full bg-c"
-          style={{ width: `${Math.round((viewed / total) * 100)}%` }}
-        />
-      </span>
-      {done ? (
+      {viewed === 0 ? (
+        `${total} item${total === 1 ? "" : "s"}`
+      ) : viewed === total ? (
         <span className="flex items-center gap-1">
           <Check className="size-[13px]" aria-hidden />
-          All viewed
+          Done
         </span>
       ) : (
         <>
-          <span className="sm:hidden">
-            {viewed}/{total}
+          <span className="h-1 w-12 overflow-hidden rounded-full bg-chip" aria-hidden>
+            <span className="block h-full rounded-full bg-c" style={{ width: `${pct}%` }} />
           </span>
-          <span className="hidden sm:inline">
-            {viewed} of {total} viewed
+          <span className="w-8 text-right">
+            {pct}%<span className="sr-only"> viewed</span>
           </span>
         </>
       )}

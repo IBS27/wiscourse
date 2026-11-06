@@ -29,18 +29,16 @@ export function GradeDetail({
   return (
     <DetailShell
       item={item}
-      kind="Grade posted"
-      title={
-        <>
-          {item.title} graded
-          {score !== undefined && points !== undefined && (
-            <>
-              {" — "}
-              <span className="tabular">{scoreOf(score, points)}</span>
-            </>
-          )}
-        </>
+      kind={
+        score !== undefined && points !== undefined ? (
+          <>
+            Graded <span className="tabular font-medium text-ink-2">{scoreOf(score, points)}</span>
+          </>
+        ) : (
+          "Grade posted"
+        )
       }
+      title={item.title}
       by={<ByLine name={grader} when={`Posted ${shortDateTime(postedAt)}`} />}
       actions={
         <>

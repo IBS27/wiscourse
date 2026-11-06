@@ -121,6 +121,7 @@ export function WeekGrid({
         columns={grid}
         fold={fold}
         compact={compact}
+        tall
         onExpand={() => setExpanded(true)}
         collapse={expanded && overflows ? () => setExpanded(false) : undefined}
       />
@@ -221,6 +222,7 @@ function Band({
   columns,
   fold,
   compact,
+  tall,
   onExpand,
   collapse,
 }: {
@@ -233,6 +235,8 @@ function Band({
   /** Long days fold into "+N more" (until expanded). */
   fold: boolean;
   compact: boolean;
+  /** The Due band keeps a steady height, so wrapped titles have room. */
+  tall?: boolean;
   onExpand: () => void;
   /** Set while expanded: the fold-back control under the label. */
   collapse?: () => void;
@@ -263,6 +267,7 @@ function Band({
             key={day}
             className={cn(
               "flex min-h-[30px] min-w-0 border-l border-line p-1",
+              tall && !compact && "min-h-[132px]",
               compact ? "flex-wrap content-start justify-center" : "flex-col gap-px",
               day === todayKey && TODAY_TINT,
             )}
@@ -353,7 +358,7 @@ function Block({
   );
 }
 
-/** The current time: a dot on the day's edge and a crisp red rule. */
+/** The current time: an ink dot on the day's edge and a 2px ink rule (red is kept for overdue). */
 export function NowLine({ top, className }: { top: number; className?: string }) {
   return (
     <div
@@ -361,8 +366,8 @@ export function NowLine({ top, className }: { top: number; className?: string })
       style={{ top }}
       aria-hidden
     >
-      <span className="absolute top-1/2 -left-[4px] block size-2 -translate-y-1/2 rounded-full bg-red" />
-      <span className="block h-[1.5px] bg-red" />
+      <span className="absolute top-1/2 -left-[4px] block size-2 -translate-y-1/2 rounded-full bg-ink" />
+      <span className="block h-[2px] bg-ink" />
     </div>
   );
 }
@@ -380,7 +385,7 @@ export function NowLabel({
   return (
     <span
       className={cn(
-        "pointer-events-none absolute z-[2] -translate-y-1/2 rounded-[4px] bg-red px-[4px] py-px text-[10px] leading-[13px] font-semibold tabular text-surface",
+        "pointer-events-none absolute z-[2] -translate-y-1/2 rounded-[4px] bg-today px-[4px] py-px text-[10px] leading-[13px] font-semibold tabular text-today-fg",
         className,
       )}
       style={{ top }}

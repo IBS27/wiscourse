@@ -38,17 +38,10 @@ function segmentsOf(summary: Summary): Segment[] {
   });
 }
 
-// Each group gets its own step of the course colour so the legend maps to
-// the bar; mixing with the surface keeps the steps right in both themes.
-const TONES = [100, 68, 46, 30];
-function toneOf(index: number): string {
-  return `color-mix(in oklab, var(--c) ${TONES[index % TONES.length]}%, var(--surface))`;
-}
-
 /**
- * The weights drawn once, to scale, each filled in the course colour to the
- * share of that group that is graded — so an empty block says "this much is
- * still entirely open" without a sentence.
+ * One compact row per group: its name, its share of the grade, a small bar
+ * of how much of it is graded, and its score. Every row reads on its own, so
+ * there is no legend to map back to.
  */
 export function CompositionStrip({
   summary,
@@ -63,71 +56,48 @@ export function CompositionStrip({
 
   return (
     <section className="@container min-w-0">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="text-[12.5px] font-medium text-ink-3">
-          How the grade is built
-          {note !== undefined && <span className="font-normal"> · {note}</span>}
-        </h2>
-        <div className="flex items-center gap-3 text-[11.5px] text-ink-3" aria-hidden>
-          <span className="inline-flex items-center gap-[5px]">
-            <span className="size-2 rounded-full bg-ink-2" />
-            graded
-          </span>
-          <span className="inline-flex items-center gap-[5px]">
-            <span className="size-2 rounded-full bg-ink/12" />
-            still to come
-          </span>
-        </div>
-      </div>
-      <div className="mt-3 flex h-2.5 gap-[3px]">
-        {segments.map((segment, index) => (
-          <span
-            key={segment.key}
-            title={segment.name}
-            className="relative block h-full min-w-[18px] shrink grow-0 overflow-hidden rounded-full bg-ink/8"
-            style={{ flexBasis: `${segment.share * 100}%` }}
-          >
-            <span
-              className="absolute inset-y-0 left-0"
-              style={{ width: `${Math.max(0, Math.min(1, segment.fill)) * 100}%`, background: toneOf(index) }}
-            />
-          </span>
-        ))}
-      </div>
+      <h2 className="text-[12.5px] font-medium text-ink-3">
+        How the grade is built
+        {note !== undefined && <span className="font-normal"> · {note}</span>}
+      </h2>
       <ul
         className={cn(
-          "mt-4 grid list-none grid-cols-2 gap-x-6 gap-y-3 p-0",
-          segments.length >= 4 ? "@2xl:grid-cols-4" : segments.length === 3 ? "@lg:grid-cols-3" : undefined,
+          "mt-2 grid list-none grid-cols-1 gap-x-10 p-0",
+          segments.length > 1 && "@2xl:grid-cols-2",
         )}
       >
-        {segments.map((segment, index) => {
-          const open = segment.percent === undefined;
+        {segments.map((segment) => {
+          const fill = Math.max(0, Math.min(1, segment.fill));
+          const graded = `${Math.round(fill * 100)}% graded`;
           return (
-            <li key={segment.key} className="min-w-0">
-              <div className="flex items-center gap-2 text-[13px]">
-                <span
-                  className={cn("size-[10px] shrink-0 rounded-[3px]", open && "border-2 bg-transparent!")}
-                  style={{ background: toneOf(index), borderColor: toneOf(index) }}
-                  aria-hidden
-                />
-                <span className="truncate font-medium text-ink" title={segment.name}>
-                  {segment.name}
+            <li
+              key={segment.key}
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_72px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(0,1fr)_auto_96px_52px]"
+            >
+              <span className="truncate font-medium text-ink" title={segment.name}>
+                {segment.name}
+              </span>
+              <span className="tabular text-[12.5px] whitespace-nowrap text-ink-3">
+                {segment.size} of grade
+              </span>
+              <span
+                role="img"
+                aria-label={`${segment.name}: ${graded}`}
+                title={graded}
+                className="relative block h-1.5 overflow-hidden rounded-full"
+                style={{ background: "color-mix(in oklab, var(--c) 20%, var(--surface))" }}
+              >
+                <span className="absolute inset-y-0 left-0 rounded-full bg-c" style={{ width: `${fill * 100}%` }} />
+              </span>
+              {segment.percent === undefined ? (
+                <span className="text-right text-ink-3" title="not yet graded">
+                  —<span className="sr-only"> not yet graded</span>
                 </span>
-                {!open && (
-                  <span className="tabular ml-auto shrink-0 font-semibold">
-                    {formatPercent(segment.percent ?? 0)}
-                  </span>
-                )}
-              </div>
-              <div className="tabular mt-[2px] truncate pl-[18px] text-[12px] text-ink-3">
-                <span>{segment.size} of the grade</span>
-                {open && (
-                  <>
-                    {" · "}
-                    <span>not yet graded</span>
-                  </>
-                )}
-              </div>
+              ) : (
+                <span className="tabular text-right font-semibold text-ink">
+                  {formatPercent(segment.percent)}
+                </span>
+              )}
             </li>
           );
         })}

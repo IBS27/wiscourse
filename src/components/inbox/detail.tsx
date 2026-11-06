@@ -10,6 +10,7 @@ import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { BackToInbox, ByLine, CanvasButton, DetailShell, Fact, Facts, MarkUnreadButton, READING } from "./detail-shell";
 import { formatChange, pointsLabel, shortDateTime } from "./format";
 import { GradeDetail } from "./grade-detail";
+import { feedTitle } from "@/lib/feed";
 
 export function InboxDetail({
   item,
@@ -104,7 +105,7 @@ function ChangeDetail({ item, onMarkUnread }: { item: FeedItem; onMarkUnread: ()
     <DetailShell
       item={item}
       kind="Assignment updated"
-      title={`${item.title} ${change?.verb ?? "updated"}`}
+      title={feedTitle(item)}
       by={<ByLine when={`Changed ${shortDateTime(item.at)}`} />}
       actions={
         <>

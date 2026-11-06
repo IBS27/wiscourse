@@ -11,7 +11,6 @@ import { FileTreePane } from "@/components/course/file-tree-pane";
 import {
   buildTree,
   fileAddedAt,
-  unreadFolderIds,
   type FileDoc,
 } from "@/components/course/file-tree";
 import { courseStyle, useCourses, useIsMobile, useNow } from "@/lib/hooks";
@@ -68,7 +67,7 @@ function CourseFiles() {
   const folderId = search.folder ?? selectedFile?.folderCanvasId ?? tree.root?.folder.canvasId;
   const folder = folderId === undefined ? undefined : tree.byId.get(folderId);
 
-  /** Posted recently and never opened — the one thing a dot ever means here. */
+  /** Posted recently and never opened: the title goes medium and counts as new. */
   const isNew = (file: FileDoc) =>
     fileAddedAt(file) >= now - FRESH_MS && !seen.has(file.canvasId);
   const newCount = tree.files.filter(isNew).length;
@@ -134,14 +133,11 @@ function CourseFiles() {
     );
   }
 
-  const unreadFolders = unreadFolderIds(tree, isNew);
-
   return (
     <div className="flex min-h-0 flex-1" style={style}>
       <FileTreePane
         tree={tree}
         selectedFolderId={folderId}
-        unreadFolders={unreadFolders}
         onSelect={selectFolder}
         className="w-[240px] shrink-0 xl:w-[264px]"
       />

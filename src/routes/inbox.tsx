@@ -1,5 +1,5 @@
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
-import { useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -73,6 +73,11 @@ function InboxPage() {
   // Looked up across the whole feed, not the filtered list: reading an item
   // with "Unread only" on drops it from the list but must not close it.
   const selected = search.item === undefined ? undefined : all.find((f) => f.key === search.item);
+  // With nothing picked, the wide layout previews the top of the list instead
+  // of an empty pane. A preview is not a read: only `selected` marks seen.
+  const wide = useWide();
+  const preview = selected === undefined && search.item === undefined && wide ? items[0] : undefined;
+  const shown = selected ?? preview;
 
   const setSearch = useCallback(
     (patch: Partial<InboxSearch>) => {
@@ -95,12 +100,12 @@ function InboxPage() {
   }, [selectedKey]);
 
   const onMarkUnread = useCallback(() => {
-    if (selected === undefined) return;
+    if (shown === undefined) return;
     void markUnseen({
-      kind: feedSeenKind(selected.type),
-      canvasId: selected.canvasId,
+      kind: feedSeenKind(shown.type),
+      canvasId: shown.canvasId,
     });
-  }, [selected, markUnseen]);
+  }, [shown, markUnseen]);
 
   const checked =
     info?.syncing === true
@@ -178,7 +183,7 @@ function InboxPage() {
             ) : (
               groupFeed(items, today, now).map((group) => (
                 <section key={group.label} aria-label={group.label}>
-                  <h2 className="flex items-baseline justify-between px-4 pt-5 pb-[6px] text-[13px] font-semibold tracking-[-0.01em] text-ink md:px-6">
+                  <h2 className="flex items-baseline justify-between pt-5 pr-4 pb-[6px] pl-6 text-[13px] font-semibold tracking-[-0.01em] text-ink md:pr-6 md:pl-8">
                     {group.label}
                     <span className="tabular text-[12px] font-normal text-ink-3">{group.items.length}</span>
                   </h2>
@@ -188,7 +193,7 @@ function InboxPage() {
                       item={f}
                       now={now}
                       dueAt={dueByAssignment.get(f.canvasId)}
-                      selected={f.key === search.item}
+                      selected={f.key === shown?.key}
                     />
                   ))}
                 </section>
@@ -204,15 +209,15 @@ function InboxPage() {
             search.item === undefined && "hidden lg:block",
           )}
         >
-          {selected !== undefined ? (
+          {shown !== undefined ? (
             <InboxDetail
-              key={selected.key}
-              item={selected}
-              dueAt={dueByAssignment.get(selected.canvasId)}
+              key={shown.key}
+              item={shown}
+              dueAt={dueByAssignment.get(shown.canvasId)}
               onMarkUnread={onMarkUnread}
             />
           ) : search.item === undefined ? (
-            <DetailEmpty />
+            feed === undefined ? null : <DetailEmpty />
           ) : feed === undefined ? (
             <DetailLoading />
           ) : (
@@ -233,6 +238,21 @@ function InboxPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+const WIDE = "(min-width: 1024px)";
+
+/** True at Tailwind's `lg`, where the list and reading pane sit side by side. */
+function useWide(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window.matchMedia !== "function") return () => {};
+      const mq = window.matchMedia(WIDE);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    },
+    () => typeof window.matchMedia === "function" && window.matchMedia(WIDE).matches,
   );
 }
 
@@ -263,7 +283,7 @@ function ListSkeleton() {
   return (
     <div className="pt-5">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 px-4 py-[13px] md:px-6">
+        <div key={i} className="flex items-start gap-3 py-[13px] pr-4 pl-6 md:pr-6 md:pl-8">
           <div className="mt-[2px] size-[15px] rounded bg-chip" />
           <div className="flex-1 space-y-2">
             <div className="h-3 w-2/3 rounded bg-chip" />

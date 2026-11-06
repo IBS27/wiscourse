@@ -35,8 +35,8 @@ export function DetailShell({
   children,
 }: {
   item: FeedItem;
-  /** What happened: "Announcement", "Grade posted", … */
-  kind: string;
+  /** What happened: "Announcement", "Graded 10/10", … */
+  kind: ReactNode;
   title: ReactNode;
   by?: ReactNode;
   actions: ReactNode;

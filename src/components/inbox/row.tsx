@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CourseTag } from "@/components/app/bits";
 import { FEED_ICON } from "./format";
 
-/** Icon, title, then "CS 537 · preview… · 2h"; a dot and a heavier title when unseen. */
+/** Unread gutter, icon, title, then "MATH 234 · Graded 10/10 · 2h". Unread rows carry a dot and a heavier title. */
 export function InboxRow({
   item,
   now,
@@ -29,15 +29,19 @@ export function InboxRow({
       search={(prev) => ({ ...prev, item: item.key })}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "group relative flex cursor-pointer items-start gap-3 px-4 py-[11px] text-inherit no-underline transition-colors md:px-6",
-        // Hairline between rows, inset to the title column.
-        "after:absolute after:right-0 after:bottom-0 after:left-[43px] after:h-px after:bg-line md:after:left-[51px]",
+        "group relative flex cursor-pointer items-start py-[11px] pr-4 pl-[10px] text-inherit no-underline transition-colors md:pr-6 md:pl-[18px]",
+        // Hairline between rows, from the title column to the content edge.
+        "after:absolute after:right-4 after:bottom-0 after:left-[51px] after:h-px after:bg-line md:after:right-6 md:after:left-[59px]",
         "focus-visible:bg-hover focus-visible:outline-none",
         selected ? "bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]" : "hover:bg-hover",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
-      <Icon className={cn("mt-[3px] size-[15px] shrink-0", item.seen ? "text-ink-3" : "text-ink-2")} aria-hidden />
+      {/* Unread lives in one fixed gutter, left of the icon, on every feed list. */}
+      <span className="mr-2 flex w-[6px] shrink-0 justify-center pt-[7px]">
+        {!item.seen && <span className="size-[6px] rounded-full bg-unread" role="img" aria-label="Unread" />}
+      </span>
+      <Icon className="mt-[3px] mr-3 size-[15px] shrink-0 text-ink-3" aria-hidden />
       <span className="min-w-0 flex-1">
         <span
           className={cn(
@@ -55,14 +59,7 @@ export function InboxRow({
               <span className="min-w-0 truncate">{subtitle}</span>
             </>
           )}
-          <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-2">
-            <span className="tabular">{formatAgo(item.at, now)}</span>
-            <span
-              className={cn("size-[6px] rounded-full", item.seen ? "bg-transparent" : "bg-unread")}
-              aria-label={item.seen ? undefined : "Unread"}
-              role={item.seen ? undefined : "img"}
-            />
-          </span>
+          <span className="tabular ml-auto shrink-0 pl-2">{formatAgo(item.at, now)}</span>
         </span>
       </span>
     </Link>

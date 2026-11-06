@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 import type { GroupResult, RowResult, Summary } from "../../../convex/lib/grades";
 import type { WhatIf } from "./what-if";
 import { Letter } from "./bits";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { todoHref } from "@/lib/course-routes";
 import {
   DASH,
@@ -213,8 +212,6 @@ function AssignmentRow({
       )}
     >
       <div role="rowheader" className={cn(MOBILE_1, "flex min-w-0 items-center gap-2")}>
-        {/* A fixed slot, so names line up whether or not the dot shows. */}
-        <span className="flex w-[6px] shrink-0 justify-center">{unseen && <UnreadDot />}</span>
         <Link
           to={todoHref("assignment", row.canvasId)}
           onClick={() => {
@@ -222,7 +219,8 @@ function AssignmentRow({
           }}
           className={cn(
             "truncate no-underline hover:underline hover:underline-offset-4",
-            result.dropped ? "text-ink-3" : "text-inherit",
+            // New grades carry weight, not a dot; seen ones settle to ink-2.
+            result.dropped ? "text-ink-3" : unseen ? "font-medium text-ink" : "text-ink-2",
           )}
         >
           {row.name}

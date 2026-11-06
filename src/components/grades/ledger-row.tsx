@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import { latestPosted, letterFor, schemeFor, summarize, type Gradebook } from "../../../convex/lib/grades";
 import { CoverageBar, GradeNumber, Letter } from "./bits";
 import { CourseTag } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { dayKeyOf, formatPlannedRelative } from "@/lib/dates";
 import { coverageLabel, formatPercent, formatPoints, schemeLabel } from "@/lib/grades-ui";
 import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
@@ -123,10 +122,8 @@ export function GradesLedgerRow({
           <span className="text-[13px] text-ink-3">—</span>
         ) : (
           <>
-            <div className="relative text-[13px]">
-              {/* Hangs in the gutter so every name starts on the column edge. */}
-              {unseen && <UnreadDot className="absolute top-[7px] -left-[14px]" />}
-              <div className="truncate">{latest.name}</div>
+            <div className={cn("truncate text-[13px]", unseen ? "font-medium text-ink" : "text-ink-2")}>
+              {latest.name}
             </div>
             <div className="tabular mt-[3px] truncate text-[12.5px] text-ink-3">
               <span className="font-medium text-ink-2">{formatPoints(latest.score ?? 0)}</span>

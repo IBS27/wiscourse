@@ -1,40 +1,40 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Folder, FolderOpen } from "lucide-react";
-import { UnreadDot } from "./unread-dot";
-import { folderPath, type FolderNode, type FolderTree } from "./file-tree";
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Images } from "lucide-react";
+import { folderPath, splitAssetFolders, type FolderNode, type FolderTree } from "./file-tree";
 import { cn } from "@/lib/utils";
 
 /** The left pane of 4-A: Canvas' folder hierarchy, and the only place
  *  subfolders are listed. Folders above the selection are forced open — a
  *  deep link cannot land on a hidden row — and the selected folder opens
- *  by default so its subfolders show. */
+ *  by default so its subfolders show. Canvas' image-asset folders fold
+ *  into one "Course images" group under the folders people named. */
 export function FileTreePane({
   tree,
   selectedFolderId,
-  unreadFolders,
   onSelect,
   className,
 }: {
   tree: FolderTree;
   selectedFolderId: number | undefined;
-  /** Folders holding an unseen, recently added file. */
-  unreadFolders: Set<number>;
   onSelect: (folderCanvasId: number) => void;
   className?: string;
 }) {
   const [overrides, setOverrides] = useState<ReadonlyMap<number, boolean>>(
     () => new Map<number, boolean>(),
   );
+  /** Parents whose "Course images" group the student opened. */
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<number>>(() => new Set<number>());
 
-  /** Strict ancestors of the selection — forced open. */
-  const ancestors = useMemo(() => {
-    const path = folderPath(tree, selectedFolderId);
-    return new Set(path.slice(0, -1).map((node) => node.folder.canvasId));
-  }, [tree, selectedFolderId]);
+  /** Root to selection. All but the last are forced open. */
+  const path = useMemo(
+    () => new Set(folderPath(tree, selectedFolderId).map((node) => node.folder.canvasId)),
+    [tree, selectedFolderId],
+  );
 
   const rootId = tree.root?.folder.canvasId;
+  const ancestor = (canvasId: number) => path.has(canvasId) && canvasId !== selectedFolderId;
   const isOpen = (canvasId: number) =>
-    ancestors.has(canvasId) ||
+    ancestor(canvasId) ||
     (overrides.get(canvasId) ?? (canvasId === rootId || canvasId === selectedFolderId));
 
   const toggle = (canvasId: number) => {
@@ -42,56 +42,95 @@ export function FileTreePane({
     setOverrides((prev) => new Map(prev).set(canvasId, !closing));
     // Collapsing a folder that holds the selection would hide it, so the
     // folder becomes the selection instead.
-    if (closing && ancestors.has(canvasId)) onSelect(canvasId);
+    if (closing && ancestor(canvasId)) onSelect(canvasId);
   };
+
+  const groupOpen = (parentId: number, assets: FolderNode[]) =>
+    openGroups.has(parentId) || assets.some((node) => path.has(node.folder.canvasId));
+  const toggleGroup = (parentId: number) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(parentId)) next.add(parentId);
+      return next;
+    });
 
   if (tree.root === undefined) return null;
 
   return (
     <nav
       aria-label="Folders"
-      className={cn("overflow-y-auto border-r border-line bg-sunken px-2 py-[6px] text-[13px]", className)}
+      className={cn("overflow-y-auto border-r border-line bg-surface px-2 py-[6px] text-[13px]", className)}
     >
       <FolderRows
         node={tree.root}
+        indent={0}
         isOpen={isOpen}
+        groupOpen={groupOpen}
         selectedFolderId={selectedFolderId}
-        unreadFolders={unreadFolders}
         onSelect={onSelect}
         onToggle={toggle}
+        onToggleGroup={toggleGroup}
       />
     </nav>
   );
 }
 
+const ROW = "flex h-[30px] items-center rounded-md pr-2 transition-colors";
+const indentStyle = (level: number) => ({ paddingLeft: 2 + level * 14 });
+
 function FolderRows({
   node,
+  indent,
   isOpen,
+  groupOpen,
   selectedFolderId,
-  unreadFolders,
   onSelect,
   onToggle,
+  onToggleGroup,
 }: {
   node: FolderNode;
+  /** Levels added by enclosing "Course images" groups. */
+  indent: number;
   isOpen: (canvasId: number) => boolean;
+  groupOpen: (parentId: number, assets: FolderNode[]) => boolean;
   selectedFolderId: number | undefined;
-  unreadFolders: Set<number>;
   onSelect: (canvasId: number) => void;
   onToggle: (canvasId: number) => void;
+  onToggleGroup: (parentId: number) => void;
 }) {
   const id = node.folder.canvasId;
   const open = isOpen(id);
   const selected = selectedFolderId === id;
   const hasChildren = node.children.length > 0;
+  const level = node.depth + indent;
+  const { named, assets } = splitAssetFolders(node.children);
+  const assetsOpen = open && assets.length > 0 && groupOpen(id, assets);
+
+  const rows = (list: FolderNode[], extra: number) =>
+    list.map((child) => (
+      <FolderRows
+        key={child.folder.canvasId}
+        node={child}
+        indent={extra}
+        isOpen={isOpen}
+        groupOpen={groupOpen}
+        selectedFolderId={selectedFolderId}
+        onSelect={onSelect}
+        onToggle={onToggle}
+        onToggleGroup={onToggleGroup}
+      />
+    ));
 
   return (
     <>
       <div
         className={cn(
-          "flex h-[30px] items-center rounded-md pr-2 text-ink-2 transition-colors hover:bg-hover hover:text-ink",
-          selected && "bg-surface font-medium text-ink shadow-[0_0_0_1px_var(--line)] hover:bg-surface",
+          ROW,
+          selected
+            ? "bg-chip font-medium text-ink"
+            : "text-ink-2 hover:bg-hover hover:text-ink",
         )}
-        style={{ paddingLeft: 2 + node.depth * 14 }}
+        style={indentStyle(level)}
       >
         {hasChildren ? (
           <button
@@ -123,25 +162,41 @@ function FolderRows({
             <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
           )}
           <span className="truncate">{node.folder.name}</span>
-          <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-2">
-            {unreadFolders.has(id) && <UnreadDot />}
-            <span className="text-[11.5px] font-normal text-ink-3 tabular">{node.totalFiles}</span>
+          <span className="tabular ml-auto shrink-0 pl-2 text-[11.5px] font-normal text-ink-3">
+            {node.totalFiles}
           </span>
         </button>
       </div>
 
-      {open &&
-        node.children.map((child) => (
-          <FolderRows
-            key={child.folder.canvasId}
-            node={child}
-            isOpen={isOpen}
-            selectedFolderId={selectedFolderId}
-            unreadFolders={unreadFolders}
-            onSelect={onSelect}
-            onToggle={onToggle}
-          />
-        ))}
+      {open && rows(named, indent)}
+      {open && assets.length > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => onToggleGroup(id)}
+            aria-expanded={assetsOpen}
+            className={cn(
+              ROW,
+              "w-full gap-2 text-left text-ink-3 outline-none hover:bg-hover hover:text-ink-2 focus-visible:bg-hover",
+            )}
+            style={indentStyle(level + 1)}
+          >
+            <span className="grid size-[18px] shrink-0 place-items-center">
+              {assetsOpen ? (
+                <ChevronDown className="size-[14px]" aria-hidden />
+              ) : (
+                <ChevronRight className="size-[14px]" aria-hidden />
+              )}
+            </span>
+            <Images className="-ml-[6px] size-[14px] shrink-0" aria-hidden />
+            <span className="truncate">Course images</span>
+            <span className="tabular ml-auto shrink-0 pl-2 text-[11.5px]">
+              {assets.length} folder{assets.length === 1 ? "" : "s"}
+            </span>
+          </button>
+          {assetsOpen && rows(assets, indent + 1)}
+        </>
+      )}
     </>
   );
 }

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { FolderOpen, Lock, Search, SearchX } from "lucide-react";
-import { UnreadDot } from "./unread-dot";
 import { FileTypeIcon } from "./file-icon";
 import {
   folderPath,
@@ -85,7 +84,7 @@ export function FileList({
 
   const rowCls = cn(
     "relative grid min-h-10 w-full items-center gap-x-3 px-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
-    "grid-cols-[minmax(0,1fr)_6px] after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line",
+    "grid-cols-[minmax(0,1fr)] after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line",
   );
 
   return (
@@ -181,17 +180,17 @@ export function FileList({
                         <span
                           className={cn(
                             compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
-                            unread && "font-medium",
+                            unread ? "font-medium text-ink" : selected ? "text-ink" : "text-ink-2",
                           )}
                         >
                           {file.displayName}
+                          {unread && <span className="sr-only"> (new)</span>}
                         </span>
                         {path !== undefined && path !== "" && (
                           <span className="block truncate text-[12px] text-ink-3">{path}</span>
                         )}
                       </span>
                     </span>
-                    <span className="flex justify-end">{unread && <UnreadDot />}</span>
                   </button>
                 );
               })}

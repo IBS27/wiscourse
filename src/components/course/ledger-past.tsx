@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { LedgerFold } from "./ledger-fold";
 import { LedgerPastRow } from "./ledger-row";
 import type { Course } from "@/lib/hooks";
-import { formatTerm } from "@/lib/terms";
+import { formatTerm, termSortKey } from "@/lib/terms";
 
 export function LedgerPastTerms({
   courses,
@@ -14,9 +14,17 @@ export function LedgerPastTerms({
   /** Grades reads the same folds with a final-letter row of its own. */
   renderRow?: (course: Course) => ReactNode;
 }) {
+  const groups = groupByTerm(courses);
+  if (groups.length === 0) return null;
   return (
-    <>
-      {groupByTerm(courses).map((group) => (
+    <section aria-labelledby="past-terms" className="pt-6">
+      <h2
+        id="past-terms"
+        className="px-4 pb-1 text-[13px] font-semibold tracking-[-0.005em] text-ink md:px-6"
+      >
+        Past terms
+      </h2>
+      {groups.map((group) => (
         <LedgerFold
           key={group.term}
           label={formatTerm(group.term) ?? group.term}
@@ -31,12 +39,12 @@ export function LedgerPastTerms({
           )}
         </LedgerFold>
       ))}
-    </>
+    </section>
   );
 }
 
-// Canvas terms carry no ordering field we can trust, so groups sort by the
-// latest course end date they contain.
+// Seasonal terms sort newest first by their real calendar season; terms with
+// no season ("Ongoing") follow, by the latest end date they contain.
 function groupByTerm(courses: Course[]): { term: string; courses: Course[] }[] {
   const byTerm = new Map<string, Course[]>();
   for (const course of courses) {
@@ -51,5 +59,12 @@ function groupByTerm(courses: Course[]): { term: string; courses: Course[] }[] {
       courses: list,
       endAt: Math.max(...list.map((c) => c.endAt ?? c.startAt ?? 0)),
     }))
-    .sort((a, b) => b.endAt - a.endAt);
+    .sort((a, b) => {
+      const ka = termSortKey(a.term);
+      const kb = termSortKey(b.term);
+      if (ka !== undefined && kb !== undefined) return kb - ka;
+      if (ka !== undefined) return -1;
+      if (kb !== undefined) return 1;
+      return b.endAt - a.endAt;
+    });
 }

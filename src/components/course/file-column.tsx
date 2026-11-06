@@ -1,24 +1,22 @@
-import { ChevronLeft, ChevronRight, Folder, FolderOpen, Lock } from "lucide-react";
-import { UnreadDot } from "./unread-dot";
+import { useState } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, Folder, FolderOpen, Images, Lock } from "lucide-react";
 import { FileTypeIcon } from "./file-icon";
 import {
-  fileAddedAt,
   folderPath,
   folderPathLabel,
   recentFiles,
+  splitAssetFolders,
   type FileDoc,
   type FolderNode,
   type FolderTree,
 } from "./file-tree";
-import { formatMonthDayYear } from "@/lib/dates";
-import { formatBytes } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const RECENT_COUNT = 5;
 
 /** Hairline inset to the name column, as on every other list. */
 const ROW =
-  "relative transition-colors outline-none hover:bg-hover active:bg-hover focus-visible:bg-hover after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line";
+  "relative transition-colors outline-none hover:bg-hover active:bg-hover focus-visible:bg-hover after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line";
 
 /**
  * 4-B, the mobile Files tab: one column, folders as rows, and the five
@@ -48,6 +46,10 @@ export function FileColumn({
   const parent = crumbs.length >= 2 ? crumbs[crumbs.length - 2] : undefined;
   const recent = atRoot ? recentFiles(tree, RECENT_COUNT) : [];
   const empty = (folder?.children.length ?? 0) === 0 && (folder?.files.length ?? 0) === 0;
+  const { named, assets } = splitAssetFolders(folder?.children ?? []);
+  // Keyed to the folder, so the group starts folded in every folder.
+  const [assetsOpenIn, setAssetsOpenIn] = useState<number>();
+  const assetsOpen = folder !== undefined && assetsOpenIn === folder.folder.canvasId;
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
@@ -72,21 +74,35 @@ export function FileColumn({
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {(folder?.children ?? []).map((child) => (
-          <button
-            key={child.folder.canvasId}
-            type="button"
-            onClick={() => onSelectFolder(child.folder.canvasId)}
-            className={cn("flex h-11 shrink-0 items-center gap-[10px] px-4 text-left text-[13px]", ROW)}
-          >
-            <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
-            <span className="min-w-0 flex-1 truncate">{child.folder.name}</span>
-            <span className="tabular shrink-0 text-xs text-ink-3">
-              {child.totalFiles} file{child.totalFiles === 1 ? "" : "s"}
-            </span>
-            <ChevronRight className="size-[14px] shrink-0 text-ink-3" aria-hidden />
-          </button>
+        {named.map((child) => (
+          <FolderRow key={child.folder.canvasId} node={child} onSelect={onSelectFolder} />
         ))}
+
+        {assets.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => setAssetsOpenIn(assetsOpen ? undefined : folder?.folder.canvasId)}
+              aria-expanded={assetsOpen}
+              className={cn("flex h-11 shrink-0 items-center gap-[10px] px-4 text-left text-[13px] text-ink-3", ROW)}
+            >
+              <Images className="size-[14px] shrink-0" aria-hidden />
+              <span className="min-w-0 flex-1 truncate">Course images</span>
+              <span className="tabular shrink-0 text-xs">
+                {assets.length} folder{assets.length === 1 ? "" : "s"}
+              </span>
+              {assetsOpen ? (
+                <ChevronDown className="size-[14px] shrink-0" aria-hidden />
+              ) : (
+                <ChevronRight className="size-[14px] shrink-0" aria-hidden />
+              )}
+            </button>
+            {assetsOpen &&
+              assets.map((child) => (
+                <FolderRow key={child.folder.canvasId} node={child} onSelect={onSelectFolder} nested />
+              ))}
+          </>
+        )}
 
         {(folder?.files ?? []).map((file) => (
           <FileRow
@@ -114,7 +130,7 @@ export function FileColumn({
                 key={`recent-${file.canvasId}`}
                 file={file}
                 unread={isNew(file)}
-                meta={`${folderPathLabel(tree, file.folderCanvasId)} · ${formatMonthDayYear(fileAddedAt(file))}`}
+                meta={folderPathLabel(tree, file.folderCanvasId)}
                 onSelect={() => onSelectFile(file.canvasId)}
               />
             ))}
@@ -122,6 +138,36 @@ export function FileColumn({
         )}
       </div>
     </div>
+  );
+}
+
+function FolderRow({
+  node,
+  onSelect,
+  nested = false,
+}: {
+  node: FolderNode;
+  onSelect: (canvasId: number) => void;
+  /** Inside the "Course images" group: one step in. */
+  nested?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(node.folder.canvasId)}
+      className={cn(
+        "flex h-11 shrink-0 items-center gap-[10px] px-4 text-left text-[13px] text-ink-2",
+        ROW,
+        nested && "pl-8 after:left-14",
+      )}
+    >
+      <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{node.folder.name}</span>
+      <span className="tabular shrink-0 text-xs text-ink-3">
+        {node.totalFiles} file{node.totalFiles === 1 ? "" : "s"}
+      </span>
+      <ChevronRight className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+    </button>
   );
 }
 
@@ -149,14 +195,13 @@ function FileRow({
         <FileTypeIcon contentType={file.contentType} filename={file.filename} />
       )}
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate", unread && "font-medium")}>{file.displayName}</span>
+        <span className={cn("block truncate", unread ? "font-medium text-ink" : "text-ink-2")}>
+          {file.displayName}
+          {unread && <span className="sr-only"> (new)</span>}
+        </span>
         {meta !== undefined && (
-          <span className="block truncate text-[11.5px] text-ink-3">{meta}</span>
+          <span className="block truncate text-[12px] text-ink-3">{meta}</span>
         )}
-      </span>
-      <span className="flex shrink-0 items-center gap-2">
-        <span className="tabular text-xs text-ink-3">{formatBytes(file.size)}</span>
-        {unread && <UnreadDot />}
       </span>
     </button>
   );

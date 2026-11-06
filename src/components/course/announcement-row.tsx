@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ExternalLink, ClipboardList } from "lucide-react";
 import { CanvasHtml } from "@/components/reader/canvas-html";
-import { UnreadDot } from "./unread-dot";
 import { fileHref, rewriteCanvasHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -48,28 +47,23 @@ export function AnnouncementRow({
   return (
     <article
       ref={ref}
-      className="relative after:absolute after:right-0 after:bottom-0 after:left-10 after:h-px after:bg-line md:after:left-12"
+      className="relative after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="group relative block w-full py-[14px] pr-4 pl-10 text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:pr-6 md:pl-12"
+        className="group relative block w-full px-4 py-[14px] text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6"
       >
-        {unread && (
-          <span className="absolute top-[22px] left-4 flex md:left-6">
-            <UnreadDot />
-            <span className="sr-only">Unread</span>
-          </span>
-        )}
         <div className="flex items-baseline gap-4">
           <div
             className={cn(
-              "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
-              unread ? "font-semibold" : "font-medium",
+              "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em]",
+              unread ? "font-medium text-ink" : "text-ink-2",
             )}
           >
             {announcement.title}
+            {unread && <span className="sr-only"> (unread)</span>}
           </div>
           <span className="tabular hidden shrink-0 text-[12px] text-ink-3 md:block">{meta}</span>
         </div>
@@ -87,7 +81,7 @@ export function AnnouncementRow({
       </button>
 
       {open && (
-        <div className="pr-4 pb-5 pl-10 md:pr-6 md:pl-12">
+        <div className="px-4 pb-5 md:px-6">
           <CanvasHtml
             html={announcement.message}
             courseId={courseId}

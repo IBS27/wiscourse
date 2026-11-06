@@ -12,7 +12,6 @@ import {
   ClipboardList,
 } from "lucide-react";
 import { Kbd, CourseTag } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { formatAgo, formatMonthDay } from "@/lib/dates";
 import { formatBytes } from "@/lib/format";
 import { courseStyle } from "@/lib/hooks";
@@ -40,8 +39,6 @@ export interface RowContext {
   /** Short course label, omitted once the palette is scoped to one course. */
   courseLabel?: string;
   courseColor: string;
-  /** Never opened: a small dot on the kind icon. */
-  unseen: boolean;
   /** Module name for a scoped result. */
   moduleName?: string;
   now: number;
@@ -143,12 +140,6 @@ export function PaletteRow({
             <CourseTag className="w-[92px] shrink-0 text-[12px]">{code}</CourseTag>
           )}
         </>
-      )}
-
-      {entry.type === "result" && (
-        <span className="grid w-[6px] shrink-0 place-items-center" aria-hidden>
-          {context.unseen && <UnreadDot />}
-        </span>
       )}
     </div>
   );

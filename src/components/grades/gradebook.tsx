@@ -17,7 +17,6 @@ import { GradebookTable, type TableFooter } from "./gradebook-table";
 import { TargetsRail } from "./targets-rail";
 import { useWhatIf } from "./what-if";
 import { Kbd } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import {
   dayKeyOf,
@@ -327,12 +326,8 @@ export function CourseGradebook({
 function LatestScore({ row, unseen }: { row: GradeRow; unseen: boolean }) {
   const parts = scoreParts(row, row.score);
   return (
-    <div className="relative flex min-w-0 items-center gap-2 text-[14px]">
-      {/* On a wide screen it hangs in the gutter, so the name starts under its label. */}
-      {row.postedAt !== undefined && unseen && (
-        <UnreadDot className="md:absolute md:top-[8px] md:-left-[13px]" />
-      )}
-      <span className="truncate font-medium">{row.name}</span>
+    <div className="flex min-w-0 items-center gap-2 text-[14px]">
+      <span className={cn("truncate", unseen ? "font-medium text-ink" : "text-ink-2")}>{row.name}</span>
       <span className="tabular shrink-0 text-ink-3">
         <span className="font-semibold text-ink">{parts.value}</span>
         {parts.of}

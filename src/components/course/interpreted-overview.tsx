@@ -76,8 +76,7 @@ export function InterpretedOverview({
     sectionResources(ids, resources, modules, courseId);
   const rows = resolve(active.resourceIds);
 
-  // Below xl the sections are a sideways chip strip; bring the open one
-  // into view. Only the strip scrolls, never the page.
+  // The sections are a sideways chip strip; bring the open one into view. Only the strip scrolls, never the page.
   useEffect(() => {
     const nav = navRef.current;
     const chip = nav?.querySelector<HTMLElement>('[aria-pressed="true"]');
@@ -149,13 +148,7 @@ export function InterpretedOverview({
           })}
         </ul>
       )}
-      <div
-        className={
-          cards
-            ? "space-y-4"
-            : "grid min-w-0 items-start gap-4 xl:grid-cols-[216px_minmax(0,1fr)] xl:gap-6"
-        }
-      >
+      <div className={cn("group/strip flex min-w-0 items-center gap-2", cards && "block")}>
         <nav
           ref={navRef}
           aria-label={chapterLayout ? "Chapter navigation" : "Course sections"}
@@ -163,7 +156,7 @@ export function InterpretedOverview({
             cards
               ? "grid gap-1 sm:grid-cols-2"
               : cn(
-                  "-mx-4 flex min-w-0 scroll-px-4 gap-[6px] overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:-mx-6 md:scroll-px-6 md:px-6 xl:mx-0 xl:block xl:max-h-[440px] xl:space-y-px xl:overflow-y-auto xl:px-0 xl:pb-0 [&::-webkit-scrollbar]:hidden",
+                  "-mx-4 flex min-w-0 flex-1 scroll-px-4 gap-2 overflow-x-auto px-4 py-px [scrollbar-width:none] md:mr-0 md:-ml-6 md:scroll-px-6 md:pr-0 md:pl-6 [&::-webkit-scrollbar]:hidden",
                   EDGE_FADE,
                 )
           }
@@ -179,127 +172,149 @@ export function InterpretedOverview({
               }}
               title={s.title}
               className={cn(
-                "max-w-[240px] shrink-0 rounded-full border px-3 py-[5px] text-left text-[12.5px] leading-[18px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-line-2 xl:w-full xl:max-w-none xl:rounded-md xl:border-0 xl:px-[10px] xl:py-[7px] xl:text-[13px]",
+                "shrink-0 rounded-full border px-3 py-[5px] text-left text-[12.5px] leading-[18px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-line-2",
+                cards ? "max-w-none rounded-md" : "max-w-[200px]",
                 s.id === active.id
                   ? "border-line-2 bg-chip font-medium text-ink"
                   : "border-line text-ink-2 hover:bg-hover hover:text-ink",
               )}
             >
-              <span className="block truncate xl:line-clamp-2 xl:whitespace-normal">{s.title}</span>
-              {s.teachingDates && (
-                <span className="mt-[2px] hidden text-[12px] font-normal text-ink-3 xl:block">
-                  {formatDay(s.teachingDates.start)}
-                  {s.teachingDates.end !== s.teachingDates.start &&
-                    ` – ${formatDay(s.teachingDates.end)}`}
-                </span>
-              )}
+              <span className="block truncate">{s.title}</span>
             </button>
           ))}
         </nav>
-        <div className="min-w-0" aria-label="Selected course section">
-          <h3 className="text-[15px] leading-[1.35] font-semibold tracking-[-0.01em] text-ink xl:pt-[5px]">
-            {active.title}
-          </h3>
-          {active.teachingDates && (
-            <p className="tabular mt-[2px] text-[12.5px] text-ink-3">
-              {formatDay(active.teachingDates.start)}
-              {active.teachingDates.end !== active.teachingDates.start &&
-                ` – ${formatDay(active.teachingDates.end)}`}
-            </p>
-          )}
-          {!!active.entries?.length && (
-            <ol
-              className="mt-3 border-t border-line"
-              aria-label={`${active.title} schedule`}
-            >
-              {active.entries.map((e, i) => (
-                <li
-                  key={i}
-                  className={cn(
-                    "flex flex-col gap-[2px] border-b border-line py-[10px] text-[13px] leading-[1.45] sm:flex-row sm:gap-4",
-                    e.date && e.date < today ? "text-ink-2" : "text-ink",
+        {!cards && (
+          // A mouse has no sideways scroll; these only show while the strip overflows.
+          <div className="hidden shrink-0 items-center gap-[2px] md:group-has-[[data-fade-end=true]]/strip:flex md:group-has-[[data-fade-start=true]]/strip:flex">
+            {([-1, 1] as const).map((dir) => (
+              <button
+                key={dir}
+                type="button"
+                aria-label={dir < 0 ? "Earlier sections" : "Later sections"}
+                onClick={() =>
+                  navRef.current?.scrollBy({
+                    left: dir * navRef.current.clientWidth * 0.7,
+                    behavior: "smooth",
+                  })
+                }
+                className={cn(
+                  "grid size-7 place-items-center rounded-md text-ink-3 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2",
+                  dir < 0
+                    ? "opacity-40 group-has-[[data-fade-start=true]]/strip:opacity-100"
+                    : "opacity-40 group-has-[[data-fade-end=true]]/strip:opacity-100",
+                )}
+              >
+                <ChevronRight className={cn("size-4", dir < 0 && "rotate-180")} aria-hidden />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="mt-4 min-w-0" aria-label="Selected course section">
+        {active.teachingDates && !active.entries?.length && (
+          <p className="tabular text-[12.5px] text-ink-3">
+            {formatDay(active.teachingDates.start)}
+            {active.teachingDates.end !== active.teachingDates.start &&
+              ` – ${formatDay(active.teachingDates.end)}`}
+          </p>
+        )}
+        {!!active.entries?.length && (
+          <ol aria-label={`${active.title} schedule`}>
+            {active.entries.map((e, i) => {
+              const links = resolve(e.resourceIds);
+              return (
+                <li key={i} className="border-b border-line py-3 first:pt-1 last:border-b-0">
+                  {e.date && (
+                    <p className="tabular text-[12.5px] leading-[1.4] text-ink-3">
+                      {formatDay(e.date)}
+                    </p>
                   )}
-                >
-                  <span className="shrink-0 text-[12.5px] text-ink-3 tabular-nums sm:w-[84px] sm:pt-px">
-                    {e.date ? formatDay(e.date) : ""}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium">{e.title}</p>
-                    {resolve(e.resourceIds).map((r) => (
-                      <Link
-                        key={r.href}
-                        to={r.href}
-                        className="mt-1 mr-4 inline-flex items-center gap-[5px] text-[12.5px] text-ink-3 transition-colors hover:text-ink hover:underline"
-                      >
-                        <FileText className="size-3 shrink-0" aria-hidden />
-                        {r.title}
-                      </Link>
-                    ))}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-          {rows.length > 0 && (
-            <ul
-              className={cn(
-                "max-h-80 overflow-y-auto border-t border-line",
-                active.entries?.length ? "mt-5" : "mt-3",
-              )}
-            >
-              {rows.map((r) => (
-                <li key={r.href}>
-                  {r.id.startsWith("page:") ? (
-                    <button
-                      type="button"
-                      className={cn(
-                        "group flex w-full items-start gap-[10px] border-b border-line px-2 py-[9px] text-left text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
-                        page === r.id && "bg-hover font-medium",
-                      )}
-                      onClick={() => setPage(r.id)}
-                      aria-pressed={page === r.id}
-                      aria-label={`Read ${r.title}`}
-                    >
-                      <FileText
-                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1">{r.title}</span>
-                      <ChevronRight
-                        className="mt-0.5 size-3.5 shrink-0 text-ink-3 group-hover:text-ink-2"
-                        aria-hidden
-                      />
-                    </button>
-                  ) : (
-                    <Link
-                      to={r.href}
-                      className="flex items-start gap-[10px] border-b border-line px-2 py-[9px] text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
-                    >
-                      <FileText
-                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                        aria-hidden
-                      />
-                      <span className="min-w-0 flex-1">{r.title}</span>
-                      <ArrowUpRight
-                        className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                        aria-hidden
-                      />
-                    </Link>
+                  <p
+                    className={cn(
+                      "mt-[2px] text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]",
+                      e.date && e.date < today ? "text-ink-2" : "text-ink",
+                    )}
+                  >
+                    {e.title}
+                  </p>
+                  {links.length > 0 && (
+                    <div className="mt-[6px] flex flex-wrap gap-x-5 gap-y-1">
+                      {links.map((r) => (
+                        <Link
+                          key={r.href}
+                          to={r.href}
+                          className="inline-flex min-w-0 items-center gap-[6px] text-[12.5px] leading-[1.5] text-ink-2 transition-colors hover:text-ink hover:underline"
+                        >
+                          <FileText className="size-3 shrink-0 text-ink-3" aria-hidden />
+                          {r.title}
+                        </Link>
+                      ))}
+                    </div>
                   )}
                 </li>
-              ))}
-            </ul>
-          )}
-          {shownPage && (
-            <PageReader
-              key={`${active.id}:${shownPage}`}
-              courseId={Number(courseId)}
-              slug={shownPage.slice(5)}
-              section={active.title}
-              explicit={page !== undefined}
-            />
-          )}
-        </div>
+              );
+            })}
+          </ol>
+        )}
+        {rows.length > 0 && (
+          <ul
+            className={cn(
+              "max-h-80 overflow-y-auto border-t border-line",
+              (!!active.entries?.length || active.teachingDates !== undefined) && "mt-3",
+            )}
+          >
+            {rows.map((r) => (
+              <li key={r.href}>
+                {r.id.startsWith("page:") ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "group flex w-full items-start gap-[10px] border-b border-line px-2 py-[9px] text-left text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+                      page === r.id && "bg-hover font-medium",
+                    )}
+                    onClick={() => setPage(r.id)}
+                    aria-pressed={page === r.id}
+                    aria-label={`Read ${r.title}`}
+                  >
+                    <FileText
+                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1">{r.title}</span>
+                    <ChevronRight
+                      className="mt-0.5 size-3.5 shrink-0 text-ink-3 group-hover:text-ink-2"
+                      aria-hidden
+                    />
+                  </button>
+                ) : (
+                  <Link
+                    to={r.href}
+                    className="flex items-start gap-[10px] border-b border-line px-2 py-[9px] text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
+                  >
+                    <FileText
+                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 flex-1">{r.title}</span>
+                    <ArrowUpRight
+                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
+                      aria-hidden
+                    />
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {shownPage && (
+          <PageReader
+            key={`${active.id}:${shownPage}`}
+            courseId={Number(courseId)}
+            slug={shownPage.slice(5)}
+            section={active.title}
+            explicit={page !== undefined}
+          />
+        )}
       </div>
       <details className="group/more mt-6 text-[12.5px]">
         <summary className="inline-flex cursor-pointer list-none items-center gap-[6px] text-ink-3 transition-colors hover:text-ink [&::-webkit-details-marker]:hidden">

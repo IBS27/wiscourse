@@ -104,8 +104,9 @@ export function itemStatus(item: ModuleItemDoc, ctx: StatusContext): ItemStatus 
   switch (item.type) {
     case "SubHeader":
       return { kind: "none" };
+    // The type icon already says "page", "quiz" or "assignment".
     case "Page":
-      return { kind: "text", text: "Page" };
+      return { kind: "none" };
     case "File": {
       const file =
         item.contentCanvasId === undefined ? undefined : ctx.files.get(item.contentCanvasId);
@@ -127,11 +128,8 @@ export function fileMeta(file: { filename: string; size: number }): string {
 
 function todoStatus(item: ModuleItemDoc, ctx: StatusContext): ItemStatus {
   const todo = findTodo(item, ctx);
-  if (todo === undefined) {
-    // Outside the todo window (or ungraded): say what it is, not when.
-    const noun = item.type === "Quiz" || item.type === "Discussion" ? item.type : "Assignment";
-    return { kind: "text", text: noun };
-  }
+  // Outside the todo window (or ungraded): the icon says what it is.
+  if (todo === undefined) return { kind: "none" };
   if (todo.submission === "submitted" || todo.submission === "graded") return { kind: "submitted" };
   if (isDone(todo)) return { kind: "text", text: "Done" };
   if (isOverdue(todo, ctx.now)) return { kind: "overdue" };

@@ -1,8 +1,7 @@
 import { createElement, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight, Check, Clock } from "lucide-react";
 import { Pill } from "@/components/app/bits";
-import { UnreadDot } from "./unread-dot";
 import type { ModuleRowContext } from "./module-context";
 import {
   itemIcon,
@@ -64,16 +63,11 @@ export function ModuleRow({
         gutter,
         // Hairline above each row, inset to the title column.
         !dense &&
-          "before:absolute before:top-0 before:right-0 before:left-[calc(var(--pl)+24px)] before:h-px before:bg-line",
+          "before:absolute before:top-0 before:right-4 before:left-[calc(var(--pl)+24px)] before:h-px before:bg-line md:before:right-6",
         className,
       )}
       style={style}
     >
-      {unread ? (
-        <UnreadDot className="-ml-4" />
-      ) : (
-        <span className="-ml-4 size-[6px] shrink-0" aria-hidden />
-      )}
       {createElement(itemIcon(item, ctx.files), {
         className: "size-[14px] shrink-0 text-ink-3",
       })}
@@ -84,6 +78,7 @@ export function ModuleRow({
         )}
       >
         {item.title}
+        {unread && <span className="sr-only"> (unread)</span>}
       </span>
       {target.kind === "external" && (
         <ArrowUpRight className="-ml-[4px] size-3 shrink-0 text-ink-3" />
@@ -150,9 +145,10 @@ function StatusMeta({ status }: { status: ItemStatus }) {
   return (
     <span className="tabular ml-auto shrink-0 pl-3 text-[12px] whitespace-nowrap text-ink-3">
       {status.kind === "overdue" ? (
-        <Pill tone="red" className="h-[19px] text-[11px]">
+        <span className="flex items-center gap-[5px] text-ink-2">
+          <Clock className="size-3 text-red" aria-hidden />
           Overdue
-        </Pill>
+        </span>
       ) : status.kind === "submitted" ? (
         <Pill className="h-[19px] text-[11px]">
           <Check />
