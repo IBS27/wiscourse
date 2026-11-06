@@ -116,6 +116,7 @@ export function CourseHeader({
             hub !== undefined && hub !== null && hub.newFiles > 0 && <TabCount n={hub.newFiles} />
           }
         />
+        <Tab to="/courses/$courseId/announcements" courseId={courseId} label="Announcements" />
         <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
         <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
       </nav>
@@ -127,6 +128,7 @@ type TabPath =
   | "/courses/$courseId"
   | "/courses/$courseId/modules"
   | "/courses/$courseId/files"
+  | "/courses/$courseId/announcements"
   | "/courses/$courseId/syllabus"
   | "/courses/$courseId/grades"
   | "/courses/$courseId/interpretation";

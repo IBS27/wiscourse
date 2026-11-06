@@ -31,8 +31,10 @@
   --course-amber: #b45309;
   --course-teal: #0f766e;
   --course-sky: #0369a1;
-  --course-rose: #be123c;
-  --course-emerald: #047857;
+  /* Keys are stored per course; values avoid red (overdue owns it) and keep
+     neighbouring hues apart. */
+  --course-rose: #a21caf;
+  --course-emerald: #4d7c0f;
   --course-violet: #6d28d9;
   --course-orange: #c2410c;
   --course-none: #71717a;
@@ -84,14 +86,14 @@
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   --menu-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
 
-  --course-indigo: #818cf8;
-  --course-amber: #f0a13a;
-  --course-teal: #2dd4bf;
-  --course-sky: #4cb4ec;
-  --course-rose: #fb7185;
-  --course-emerald: #34d399;
-  --course-violet: #a78bfa;
-  --course-orange: #fb923c;
+  --course-indigo: #8f96f3;
+  --course-amber: #e2a756;
+  --course-teal: #4cc2b2;
+  --course-sky: #6cb6e6;
+  --course-rose: #dc8ae3;
+  --course-emerald: #9bcf5f;
+  --course-violet: #b39cf2;
+  --course-orange: #ef9b62;
   --course-none: #8c8c8c;
 
   --brand-ink: #ececef;

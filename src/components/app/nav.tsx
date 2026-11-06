@@ -21,7 +21,7 @@ export const NAV = [
   { to: "/ask", label: "Ask", icon: MessageCircle },
 ] as const;
 
-export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar", "/tasks"] as const;
+export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar", "/grades", "/tasks"] as const;
 
 /** Badge counts for the nav: open items due/overdue today, unseen feed items. */
 export function useNavCounts(): { home: number; inbox: number } {

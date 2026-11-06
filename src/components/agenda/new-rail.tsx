@@ -1,6 +1,6 @@
 import { useInboxFeed } from "@/lib/list-queries";
 import { useMutation } from "convex/react";
-import { Clock, Megaphone, Star, FilePlus2 } from "lucide-react";
+import { Clock, FilePlus2, GraduationCap, Megaphone } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge } from "@/components/app/bits";
@@ -9,7 +9,7 @@ import { feedSeenKind, feedSubtitle, feedTitle, groupFeed } from "@/lib/feed";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-const ICON = { announcement: Megaphone, grade: Star, assignment: FilePlus2, change: Clock } as const;
+const ICON = { announcement: Megaphone, grade: GraduationCap, assignment: FilePlus2, change: Clock } as const;
 
 export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   const { label, color } = useCourses();

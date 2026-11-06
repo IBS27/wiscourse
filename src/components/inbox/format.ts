@@ -1,11 +1,11 @@
 import type { FeedItem } from "../../../convex/inbox";
-import { Clock, FilePlus2, Megaphone, Star } from "lucide-react";
+import { Clock, FilePlus2, GraduationCap, Megaphone } from "lucide-react";
 import { formatMonthDay, formatTime } from "@/lib/dates";
 
 /** One icon per feed kind, shared by the list rows and the reading pane. */
 export const FEED_ICON = {
   announcement: Megaphone,
-  grade: Star,
+  grade: GraduationCap,
   assignment: FilePlus2,
   change: Clock,
 } as const;

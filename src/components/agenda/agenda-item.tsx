@@ -102,9 +102,9 @@ export function AgendaItem({
         </div>
         <div className={cn("mt-[3px] flex min-w-0 items-center gap-x-[6px] overflow-hidden text-[12.5px] whitespace-nowrap text-ink-3", done && "opacity-75")}>
           {meta.map((m, i) => (
-            <span key={i} className={cn("flex items-center gap-[6px]", i === meta.length - 1 ? "min-w-0 truncate" : "shrink-0")}>
+            <span key={i} className={cn("flex items-center gap-[6px]", i === meta.length - 1 ? "min-w-0" : "shrink-0")}>
               {i > 0 && <span className="text-line-2" aria-hidden>·</span>}
-              {m}
+              {i === meta.length - 1 ? <span className="min-w-0 truncate">{m}</span> : m}
             </span>
           ))}
         </div>
