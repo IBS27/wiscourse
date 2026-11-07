@@ -140,7 +140,9 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             <Button
               asChild
               size="sm"
-              className="h-11 w-full shrink-0 rounded-lg px-3 text-[14px] md:-mt-1 md:h-8 md:w-auto md:text-[13px]"
+              // Primary on desktop; on a phone it's a secondary outline so the
+              // page's own Plan controls aren't outranked.
+              className="h-10 w-full shrink-0 rounded-lg border border-line bg-surface px-3 text-[14px] text-ink hover:bg-hover md:-mt-1 md:h-8 md:w-auto md:border-transparent md:bg-primary md:text-[13px] md:text-primary-foreground md:hover:bg-primary/90"
             >
               <a href={item.htmlUrl} target="_blank" rel="noreferrer">
                 Open in Canvas
