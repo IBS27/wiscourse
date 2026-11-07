@@ -26,7 +26,8 @@ export function InboxFilters({ search, counts, onChange }: FilterProps & { count
       <div
         role="group"
         aria-label="Type"
-        className="-mx-1 flex items-center gap-[2px] overflow-x-auto py-px pr-4 pl-1 [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // The same segmented track as Tasks' Open / Undated / Done.
+        className="flex h-8 w-fit max-w-full items-center overflow-x-auto rounded-lg bg-chip p-[2px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {TABS.map((tab) => {
           const on = search.type === tab.key;
@@ -38,9 +39,11 @@ export function InboxFilters({ search, counts, onChange }: FilterProps & { count
               aria-pressed={on}
               onClick={() => onChange({ type: tab.key })}
               className={cn(
-                "inline-flex h-7 shrink-0 cursor-pointer items-center gap-[5px] rounded-md px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors",
+                "inline-flex h-full shrink-0 cursor-pointer items-center gap-[5px] rounded-[6px] px-[10px] text-[12.5px] font-medium whitespace-nowrap transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
-                on ? "bg-chip text-ink" : "text-ink-3 hover:bg-hover hover:text-ink",
+                on
+                  ? "bg-surface text-ink shadow-[0_1px_2px_rgba(16,17,20,0.06),inset_0_0_0_1px_var(--line)]"
+                  : "text-ink-3 hover:text-ink",
               )}
             >
               {tab.label}

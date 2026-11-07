@@ -91,7 +91,7 @@ export function WeekGrid({
   const empty = first === undefined;
   const viewHeight = useViewHeight(scrollRef);
   const bounds = empty
-    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, viewHeight / EMPTY_VIEW_HOURS))
+    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, Math.floor(viewHeight / EMPTY_VIEW_HOURS)))
     : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);

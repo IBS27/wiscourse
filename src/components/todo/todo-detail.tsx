@@ -361,7 +361,7 @@ function PropertyRow({
 }
 
 const PLAN_BUTTON =
-  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
 function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -526,7 +526,7 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
     setValue("");
   };
   return (
-    <form onSubmit={submit} className={cn(FIELD, "mt-1 flex h-10 items-center gap-2 px-[10px] text-ink-3 md:h-8")}>
+    <form onSubmit={submit} className={cn(FIELD, "mt-1 flex h-10 items-center gap-2 px-[10px] text-[13px] text-ink-3 md:h-8")}>
       <Plus className="size-[14px] shrink-0" />
       <input
         value={value}
@@ -553,7 +553,7 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
       placeholder="Add notes…"
       aria-label="Notes"
       rows={draft === "" ? 1 : Math.max(2, Math.min(10, draft.split("\n").length + 1))}
-      className={cn(FIELD, "block w-full resize-none px-[10px] py-[9px] text-[13.5px] leading-[20px] text-ink-2 placeholder:text-ink-3 md:py-[5px]")}
+      className={cn(FIELD, "block w-full resize-none px-[10px] py-[9px] text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3 md:py-[5px]")}
     />
   );
 }

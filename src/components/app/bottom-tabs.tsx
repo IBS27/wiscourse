@@ -20,9 +20,9 @@ export function BottomTabs() {
             activeOptions={{ exact: to === "/" }}
             className={cn(
               "group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3",
-              underHome && to === "/" && "text-ink",
+              underHome && to === "/" && "font-semibold text-ink",
             )}
-            activeProps={{ className: "text-ink" }}
+            activeProps={{ className: "font-semibold text-ink" }}
           >
             <span
               className={cn(
@@ -34,7 +34,7 @@ export function BottomTabs() {
               {unread > 0 && (
                 <span
                   aria-hidden
-                  className="tabular absolute -top-[5px] left-[calc(50%+8px)] grid h-4 min-w-4 place-items-center rounded-full bg-chip px-1 text-[10.5px] leading-none font-semibold text-ink-2 ring-2 ring-surface"
+                  className="tabular absolute top-[1px] left-[calc(50%+6px)] grid h-4 min-w-4 place-items-center rounded-full bg-chip px-1 text-[10.5px] leading-none font-semibold text-ink-2 ring-2 ring-surface"
                 >
                   {unread > 99 ? "99+" : unread}
                 </span>

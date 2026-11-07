@@ -249,14 +249,14 @@ function Switch({
       aria-label={label}
       onClick={onChange}
       className={cn(
-        "relative ml-auto h-[18px] w-8 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
-        on && "bg-ink",
+        "relative ml-auto h-4 w-7 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
+        on && "bg-ink-2",
       )}
     >
       <span
         className={cn(
-          "absolute top-[2px] left-[2px] block size-[14px] rounded-full bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.12)] transition-transform",
-          on && "translate-x-[14px]",
+          "absolute top-[2px] left-[2px] block size-3 rounded-full bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.12)] transition-transform",
+          on && "translate-x-3",
         )}
       />
     </button>

@@ -61,11 +61,11 @@ export function CompositionStrip({
         {note !== undefined && <span className="font-normal"> · {note}</span>}
       </h2>
       {/* Fills the content width, so its right edge meets the table's below. */}
-      <ul className="mt-1 grid list-none grid-cols-1 p-0">
+      <ul className="mt-1 grid list-none grid-cols-1 p-0 @2xl:pr-2">
         {/* Column labels, so the bar reads as the score, not the share graded. */}
         <li
           aria-hidden
-          className="hidden min-w-0 grid-cols-[160px_220px_160px_64px] gap-x-4 pt-1 text-[11.5px] text-ink-3 @2xl:grid"
+          className="hidden min-w-0 grid-cols-[160px_220px_minmax(160px,1fr)_64px] gap-x-4 pt-1 text-[11.5px] text-ink-3 @2xl:grid"
         >
           <span />
           <span>Weight · graded so far</span>
@@ -79,7 +79,7 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @2xl:grid-cols-[160px_220px_160px_64px]"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @2xl:grid-cols-[160px_220px_minmax(160px,1fr)_64px]"
             >
               <span className="min-w-0">
                 <span className="block truncate font-medium text-ink" title={segment.name}>

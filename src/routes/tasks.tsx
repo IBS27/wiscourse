@@ -84,7 +84,7 @@ function Tasks() {
         title="Tasks"
         // One 960px column for header, filters and list, so a row's status
         // sits near its title instead of across a 1200px row.
-        contentClassName="max-w-[1008px]"
+        contentClassName="max-w-[960px]"
         subtitle={
           scoped
             ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done`
