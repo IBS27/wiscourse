@@ -167,6 +167,8 @@ export function CanvasButton({ href, children }: { href: string; children: React
 }
 
 export function MarkUnreadButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
+  // An item that is already unread has nothing to undo; a greyed button would read as broken.
+  if (disabled) return null;
   return (
     <Action title="Mark unread" className="ml-auto border-transparent bg-transparent text-ink shadow-none hover:bg-hover dark:border-transparent dark:bg-transparent dark:hover:bg-hover max-sm:w-8 max-sm:px-0" onClick={onClick} disabled={disabled}>
       <Mail className="size-[14px] text-ink-2" aria-hidden />
