@@ -69,7 +69,7 @@ export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "av
           </button>
         ) : (
           <button type="button" className="rounded-full outline-none" aria-label="Account">
-            <Avatar initials={initials} attention={attention} size={30} />
+            <Avatar initials={initials} attention={attention} size={36} />
           </button>
         )}
       </DropdownMenuTrigger>

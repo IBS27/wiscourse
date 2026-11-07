@@ -67,7 +67,7 @@ function Home() {
           <Link
             to="/ask"
             aria-label="Ask"
-            className="grid size-8 place-items-center rounded-lg border border-line text-ink-2"
+            className="grid size-9 place-items-center rounded-full border border-line text-ink-2"
           >
             <MessageCircle className="size-[15px]" />
           </Link>
@@ -75,7 +75,7 @@ function Home() {
             type="button"
             onClick={quickAdd.open}
             aria-label="Add a task"
-            className="grid size-8 place-items-center rounded-lg bg-today text-today-fg"
+            className="grid size-9 place-items-center rounded-full bg-today text-today-fg"
           >
             <Plus className="size-[14px]" />
           </button>

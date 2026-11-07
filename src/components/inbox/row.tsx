@@ -38,7 +38,7 @@ export function InboxRow({
         // Selected sits a clear step above hover in both themes; its own hairline drops so the plate reads as one block.
         // The row above drops its hairline too, so nothing touches the plate.
         "[&:has(+[aria-current])]:after:hidden",
-        selected ? "before:bg-[color-mix(in_oklab,var(--ink)_10%,transparent)] after:hidden" : "hover:before:bg-hover",
+        selected ? "before:bg-[color-mix(in_oklab,var(--ink)_6%,transparent)] before:shadow-[inset_2px_0_0_var(--ink)] after:hidden" : "hover:before:bg-hover",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
@@ -51,7 +51,7 @@ export function InboxRow({
         <span
           className={cn(
             "line-clamp-2 text-[14px] leading-[1.4] tracking-[-0.005em]",
-            item.seen ? "text-ink-2" : "font-medium text-ink",
+            item.seen ? "font-normal text-ink" : "font-semibold text-ink",
           )}
         >
           {feedTitle(item)}
