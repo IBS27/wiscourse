@@ -305,10 +305,10 @@ function StandingFact({
       sub={
         sub === "" ? undefined : (
           <>
-            {coverage !== undefined && (
-              <CoverageBar fraction={summary?.coverage ?? 0} className="mt-[6px] mb-[7px]" />
-            )}
             <span className="tabular">{sub}</span>
+            {coverage !== undefined && (
+              <CoverageBar fraction={summary?.coverage ?? 0} className="mt-[6px]" />
+            )}
           </>
         )
       }

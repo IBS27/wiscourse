@@ -305,7 +305,7 @@ export function InterpretedOverview({
               </li>
             ))}
           </ul>
-          <h2 className="sr-only">{planTitle}</h2>
+          <h2 className="mb-3 text-[13px] font-semibold tracking-[-0.005em] text-ink">{planTitle}</h2>
         </>
       )}
       {cards ? (

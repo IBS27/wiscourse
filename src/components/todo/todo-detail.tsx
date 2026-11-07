@@ -202,7 +202,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         </div>
       </PropertyRow>
 
-      <PropertyRow title="Notes">
+      <PropertyRow title="Notes" inline>
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </PropertyRow>
 
@@ -317,10 +317,16 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
  * so an empty Plan or Notes costs one line, not a section. On a phone the
  * label sits above, so the controls get the full width.
  */
-function PropertyRow({ title, children }: { title: string; children: ReactNode }) {
+function PropertyRow({ title, inline = false, children }: { title: string; inline?: boolean; children: ReactNode }) {
   return (
-    <section className="grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4">
-      <h2 className="text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink md:pt-[5px]">{title}</h2>
+    <section
+      className={cn(
+        "grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4",
+        // A one-line control (Notes) keeps its label beside it even on a phone.
+        inline && "grid-cols-[64px_minmax(0,1fr)] gap-x-3",
+      )}
+    >
+      <h2 className={cn("text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink md:pt-[5px]", inline && "pt-[5px]")}>{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   );

@@ -143,7 +143,7 @@ export function DueLine({
     // The end-of-day default is left out so the title keeps the room; the
     // tooltip always carries it.
     const time =
-      minute === undefined || minute === END_OF_DAY ? undefined : clockTimeMeridiem(minute);
+      minute === undefined || minute === END_OF_DAY ? undefined : `Due ${clockTimeMeridiem(minute)}`;
     return (
       <Line todoKey={item.key} color={color(item.courseCanvasId)} title={tooltip} muted={done}>
         <ChipBody time={time} done={done}>

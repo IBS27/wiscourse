@@ -123,7 +123,7 @@ function Progress({ viewed, total }: { viewed: number; total: number }) {
         </span>
       ) : (
         <>
-          <span className="h-1 w-12 overflow-hidden rounded-full bg-chip" aria-hidden>
+          <span className="h-[5px] w-[88px] overflow-hidden rounded-full bg-chip" aria-hidden>
             <span className="block h-full rounded-full bg-c" style={{ width: `${pct}%` }} />
           </span>
           <span className="w-8 text-right">
