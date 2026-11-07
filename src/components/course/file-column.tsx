@@ -47,6 +47,7 @@ export function FileColumn({
   const recent = atRoot ? recentFiles(tree, RECENT_COUNT) : [];
   const empty = (folder?.children.length ?? 0) === 0 && (folder?.files.length ?? 0) === 0;
   const { named, assets } = splitAssetFolders(folder?.children ?? []);
+  const assetFiles = assets.reduce((n, node) => n + node.totalFiles, 0);
   // Keyed to the folder, so the group starts folded in every folder.
   const [assetsOpenIn, setAssetsOpenIn] = useState<number>();
   const assetsOpen = folder !== undefined && assetsOpenIn === folder.folder.canvasId;
@@ -88,8 +89,11 @@ export function FileColumn({
             >
               <Images className="size-[14px] shrink-0" aria-hidden />
               <span className="min-w-0 flex-1 truncate">Course images</span>
-              <span className="tabular shrink-0 text-xs">
-                {assets.length} folder{assets.length === 1 ? "" : "s"}
+              <span
+                className="tabular shrink-0 text-xs"
+                title={`${assets.length} folder${assets.length === 1 ? "" : "s"}`}
+              >
+                {assetFiles} file{assetFiles === 1 ? "" : "s"}
               </span>
               {assetsOpen ? (
                 <ChevronDown className="size-[14px] shrink-0" aria-hidden />
@@ -179,7 +183,7 @@ function FileRow({
 }: {
   file: FileDoc;
   unread: boolean;
-  /** Second line: where the file lives, for rows outside their folder. */
+  /** Where the file lives, right-aligned on the row, for rows outside their folder. */
   meta?: string;
   onSelect: () => void;
 }) {
@@ -187,22 +191,20 @@ function FileRow({
     <button
       type="button"
       onClick={onSelect}
-      className={cn("flex min-h-11 shrink-0 items-center gap-[10px] px-4 py-[9px] text-left text-[13px]", ROW)}
+      className={cn("flex h-11 shrink-0 items-center gap-[10px] px-4 text-left text-[13px]", ROW)}
     >
       {file.lockedForUser === true ? (
         <Lock className="size-[14px] shrink-0 text-ink-3" aria-label="Locked" />
       ) : (
         <FileTypeIcon contentType={file.contentType} filename={file.filename} />
       )}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-ink">
-          {file.displayName}
-          {unread && <span className="sr-only"> (new)</span>}
-        </span>
-        {meta !== undefined && (
-          <span className="block truncate text-[12px] text-ink-3">{meta}</span>
-        )}
+      <span className="min-w-0 flex-1 truncate text-ink">
+        {file.displayName}
+        {unread && <span className="sr-only"> (new)</span>}
       </span>
+      {meta !== undefined && meta !== "" && (
+        <span className="max-w-[40%] shrink-0 truncate text-[12.5px] text-ink-3">{meta}</span>
+      )}
     </button>
   );
 }

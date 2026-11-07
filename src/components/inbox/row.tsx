@@ -29,12 +29,16 @@ export function InboxRow({
       search={(prev) => ({ ...prev, item: item.key })}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "group relative flex cursor-pointer items-start py-[11px] pr-4 pl-[10px] text-inherit no-underline transition-colors md:pr-6 md:pl-[18px]",
+        "group relative isolate flex cursor-pointer items-start py-[11px] pr-4 pl-[10px] text-inherit no-underline focus-visible:outline-none md:pr-6 md:pl-[18px]",
         // Hairline between rows, from the title column to the content edge.
         "after:absolute after:right-4 after:bottom-0 after:left-[51px] after:h-px after:bg-line md:after:right-6 md:after:left-[59px]",
-        "focus-visible:bg-hover focus-visible:outline-none",
-        // Selected sits a clear step above hover in both themes; its own hairline drops so the band reads as one block.
-        selected ? "bg-[color-mix(in_oklab,var(--ink)_8%,transparent)] after:hidden" : "hover:bg-hover",
+        // Hover, focus and selection fill an inset rounded plate, 8px in from the list edges.
+        "before:absolute before:inset-x-1 before:inset-y-[2px] before:-z-10 before:rounded-[6px] before:transition-colors md:before:inset-x-2",
+        "focus-visible:before:bg-hover",
+        // Selected sits a clear step above hover in both themes; its own hairline drops so the plate reads as one block.
+        // The row above drops its hairline too, so nothing touches the plate.
+        "[&:has(+[aria-current])]:after:hidden",
+        selected ? "before:bg-[color-mix(in_oklab,var(--ink)_10%,transparent)] after:hidden" : "hover:before:bg-hover",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >

@@ -57,21 +57,21 @@ export function CourseHeader({
       className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-center gap-[10px] px-4 pt-2 pb-[10px] md:hidden">
-        <Link to="/courses" aria-label="All courses" className="shrink-0 text-ink-3">
+      <div className="flex items-start gap-[10px] px-4 pt-3 pb-[10px] md:hidden">
+        <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0">
-          <div className="line-clamp-2 text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">
+          <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance">
             {name || <span className="text-ink-3">Course</span>}
-          </div>
-          <div className="mt-[2px] truncate text-[12.5px] text-ink-3">
+          </h1>
+          <div className="mt-1 truncate text-[12.5px] text-ink-3">
             {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
             {code !== undefined && term !== undefined && " · "}
             {term}
           </div>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-[10px] text-ink-3">
+        <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
           <button
             type="button"
             aria-label="Search this course"
@@ -133,16 +133,14 @@ export function CourseHeader({
           <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
           <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
         </nav>
+        {/* Each edge covers the tab it would cut mid-word (`--cover-*`, set
+            by useEdgeFade), so the visible row ends on whole tabs; a short
+            fade softens the cover's inner edge. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-linear-to-r from-surface to-transparent opacity-0 transition-opacity group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
+          className="pointer-events-none absolute top-0 bottom-[2px] left-0 w-[max(var(--cover-start,0px),16px)] bg-linear-to-r from-surface from-[calc(100%-12px)] to-transparent opacity-0 transition-[opacity,width] group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
         />
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-linear-to-l from-surface to-transparent opacity-0 transition-opacity group-has-[[data-fade-end=true]]/tabs:opacity-100"
-        />
-        {/* The fade alone can land on the gap between two tabs; the chevron
-            says "more" either way, and a tap brings the rest in. */}
+        {/* The chevron says "more" either way, and a tap brings the rest in. */}
         <button
           type="button"
           tabIndex={-1}
@@ -150,7 +148,7 @@ export function CourseHeader({
           onClick={() =>
             tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
           }
-          className="invisible absolute top-0 right-0 bottom-[2px] flex w-8 items-center justify-end bg-linear-to-l from-surface from-60% to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:hidden"
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-[max(var(--cover-end,0px),32px)] items-center justify-end bg-linear-to-l from-surface from-[calc(100%-12px)] to-transparent pr-[6px] text-ink-3 transition-[width] group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none md:w-6 md:from-0% md:[&>svg]:hidden"
         >
           <ChevronRight className="size-[14px]" />
         </button>

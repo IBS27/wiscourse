@@ -6,6 +6,7 @@ import {
   denseTime,
   eventCourseId,
   EMPTY_PX_PER_HOUR,
+  emptyPxPerHour,
   GRID_BOUNDS,
   gridBounds,
   firstBlockMinute,
@@ -92,6 +93,14 @@ describe("grid bounds", () => {
     const empty = gridBounds(EMPTY_PX_PER_HOUR);
     expect(empty.height).toBe(10 + 24 * EMPTY_PX_PER_HOUR);
     expect(gridScrollTop(undefined, empty)).toBe(8 * EMPTY_PX_PER_HOUR);
+  });
+
+  it("sizes an empty grid so it can open at 8 AM in any window", () => {
+    expect(emptyPxPerHour(0)).toBe(EMPTY_PX_PER_HOUR);
+    for (const view of [480, 640, 700, 900]) {
+      const bounds = gridBounds(emptyPxPerHour(view));
+      expect(bounds.height - view).toBeGreaterThanOrEqual(gridScrollTop(undefined, bounds));
+    }
   });
 
   it("opens at 8 AM when today is not in view", () => {

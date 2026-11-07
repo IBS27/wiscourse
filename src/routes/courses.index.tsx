@@ -71,7 +71,7 @@ function CoursesIndex() {
           {visible.length > 0 && (
             <div
               className={cn(
-                "hidden h-9 items-center gap-x-8 border-b border-line px-6 text-[12px] font-medium text-ink-3 md:grid",
+                "hidden items-end gap-x-8 border-b border-line px-6 pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
                 LEDGER_COLS,
               )}
             >

@@ -53,7 +53,7 @@ export function ModuleAccordion({
           <section
             key={module.canvasId}
             id={`module-${module.canvasId}`}
-            className="scroll-mt-24 border-b border-line"
+            className="relative scroll-mt-24 after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6"
           >
             <button
               type="button"
@@ -88,7 +88,7 @@ export function ModuleAccordion({
 
             {expanded &&
               (contentItems(module.items).length === 0 ? (
-                <div className="flex items-center gap-[10px] border-t border-line py-3 pr-4 pl-10 text-[12.5px] text-ink-3 md:pl-12">
+                <div className="flex items-center gap-[10px] py-3 pr-4 pl-10 text-[12.5px] text-ink-3 md:pl-12">
                   <Inbox className="size-[14px] shrink-0" aria-hidden />
                   Nothing in this module yet.
                 </div>

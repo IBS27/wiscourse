@@ -47,48 +47,44 @@ export function AnnouncementRow({
   return (
     <article
       ref={ref}
-      className="relative after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6"
+      className="relative after:absolute after:right-4 after:bottom-0 after:left-[34px] after:h-px after:bg-line md:after:right-6 md:after:left-[42px]"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="group relative block w-full px-4 py-[14px] text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6"
+        className="group grid w-full grid-cols-[6px_minmax(0,1fr)] gap-x-3 px-4 py-[13px] text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6"
       >
-        {/* Unread: a dot in the left gutter, beside a medium title. */}
-        {unread && (
+        {/* The dot gutter is kept on read rows too, so titles never shift. */}
+        <span className="flex justify-center pt-[8px]" aria-hidden>
+          {unread && <span className="size-[6px] rounded-full bg-unread" />}
+        </span>
+        <span className="min-w-0">
           <span
-            className="absolute top-[21px] left-[6px] size-[6px] rounded-full bg-unread md:left-[10px]"
-            aria-hidden
-          />
-        )}
-        <div className="flex items-baseline gap-4">
-          <div
             className={cn(
-              "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em]",
+              "block text-[14.5px] leading-[1.4] tracking-[-0.01em]",
               unread ? "font-medium text-ink" : "text-ink-2",
             )}
           >
             {announcement.title}
             {unread && <span className="sr-only"> (unread)</span>}
-          </div>
-          <span className="tabular hidden shrink-0 text-[12px] text-ink-3 md:block">{meta}</span>
-        </div>
-        <div className="tabular mt-[2px] text-[12.5px] text-ink-3 md:hidden">{meta}</div>
-        {!open && (
-          <p
-            className={cn(
-              "mt-[5px] line-clamp-2 max-w-[700px] text-[13px] leading-[1.55]",
-              unread ? "text-ink-2" : "text-ink-3",
-            )}
-          >
-            {preview(announcement.message)}
-          </p>
-        )}
+          </span>
+          <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
+          {!open && (
+            <span
+              className={cn(
+                "mt-[6px] line-clamp-2 max-w-[700px] text-[13px] leading-[1.55]",
+                unread ? "text-ink-2" : "text-ink-3",
+              )}
+            >
+              {preview(announcement.message)}
+            </span>
+          )}
+        </span>
       </button>
 
       {open && (
-        <div className="px-4 pb-5 md:px-6">
+        <div className="pr-4 pb-5 pl-[34px] md:pr-6 md:pl-[42px]">
           <CanvasHtml
             html={announcement.message}
             courseId={courseId}
@@ -143,10 +139,15 @@ function detectLinks(html: string | undefined, courseId: number): { to: string; 
   return out;
 }
 
-function preview(html: string | undefined): string {
+/** Plain text of the body, cut at a word boundary well past two lines; CSS clamps the rest. */
+function preview(html: string | undefined, max = 180): string {
   if (html === undefined) return "";
-  return new DOMParser()
+  const text = new DOMParser()
     .parseFromString(html, "text/html")
     .body.textContent!.replace(/\s+/g, " ")
     .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max + 1);
+  const end = cut.lastIndexOf(" ");
+  return `${(end > max * 0.6 ? cut.slice(0, end) : cut.slice(0, max)).replace(/[\s,;:.–—-]+$/, "")}…`;
 }

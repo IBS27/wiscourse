@@ -142,7 +142,7 @@ function StatusMeta({ status }: { status: ItemStatus }) {
           Overdue
         </span>
       ) : status.kind === "submitted" ? (
-        <Pill className="h-[19px] text-[11px]">
+        <Pill className="h-[20px] text-[12px]">
           <Check />
           Submitted
         </Pill>

@@ -102,43 +102,46 @@ function Tasks() {
         </div>
       </header>
 
-      <div className="flex items-center gap-2 overflow-x-auto border-b border-line px-4 py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:px-6">
-        <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
-        {courseOptions.length > 0 && (
-          <>
-            <span className="mx-1 h-4 w-px shrink-0 bg-line-2" aria-hidden />
-            <div className="flex shrink-0 items-center gap-[2px]" role="group" aria-label="Course">
-              <FilterChip active={course === null} onClick={() => setCourse(null)}>
-                All courses
-              </FilterChip>
-              {courseOptions.map((c) => (
-                <FilterChip
-                  key={c.canvasId}
-                  active={course === c.canvasId}
-                  onClick={() => setCourse(course === c.canvasId ? null : c.canvasId)}
-                  style={courseStyle(color(c.canvasId))}
-                >
-                  <Dot />
-                  <span className="max-w-[160px] truncate">{courseLabel(c)}</span>
+      {/* Filters and sections share one readable column, left-aligned at the gutter. */}
+      <div className="border-b border-line">
+        <div className="flex items-center gap-2 overflow-x-auto px-4 py-[10px] [scrollbar-width:none] md:max-w-[1008px] md:flex-wrap md:overflow-visible md:px-6">
+          <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
+          {courseOptions.length > 0 && (
+            <>
+              <span className="mx-1 h-4 w-px shrink-0 bg-line-2" aria-hidden />
+              <div className="flex shrink-0 items-center gap-[2px]" role="group" aria-label="Course">
+                <FilterChip active={course === null} onClick={() => setCourse(null)}>
+                  All courses
                 </FilterChip>
-              ))}
-            </div>
-          </>
-        )}
-        <div className="flex shrink-0 items-center max-md:pr-4 md:ml-auto">
-          <FilterMenu
-            source={source}
-            onSource={setSource}
-            semester={semester}
-            onSemester={(value) => {
-              setSemester(value);
-              setCourse(null);
-            }}
-          />
+                {courseOptions.map((c) => (
+                  <FilterChip
+                    key={c.canvasId}
+                    active={course === c.canvasId}
+                    onClick={() => setCourse(course === c.canvasId ? null : c.canvasId)}
+                    style={courseStyle(color(c.canvasId))}
+                  >
+                    <Dot />
+                    <span className="max-w-[160px] truncate">{courseLabel(c)}</span>
+                  </FilterChip>
+                ))}
+              </div>
+            </>
+          )}
+          <div className="flex shrink-0 items-center max-md:pr-4 md:ml-auto">
+            <FilterMenu
+              source={source}
+              onSource={setSource}
+              semester={semester}
+              onSemester={(value) => {
+                setSemester(value);
+                setCourse(null);
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      <div className="pb-8">
+      <div className="pb-8 md:max-w-[1008px]">
         {filtered === undefined ? null : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-10 py-20 text-center">
             <span className="mb-1 grid size-10 place-items-center rounded-full bg-chip text-ink-3">

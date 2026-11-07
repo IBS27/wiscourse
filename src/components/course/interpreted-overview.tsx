@@ -72,6 +72,44 @@ function byDate(entries: Entry[]): Entry[] {
     .map(({ e }) => e);
 }
 
+/** Every date a section carries: its teaching range and its groups' days. */
+function sectionDays(s: Section): string[] {
+  return [
+    ...(s.teachingDates ? [s.teachingDates.start, s.teachingDates.end] : []),
+    ...(s.entries ?? []).flatMap((e) => (e.date ? [e.date] : [])),
+  ].sort();
+}
+
+/**
+ * The section to open on: the one whose dates bracket today, else the next
+ * one to start, else the last one that ran; undated maps fall back to the
+ * first chapter. Presentation only — reads dates already in the map.
+ */
+function currentSection(map: CourseMap, today: string): string {
+  const spans = map.sections.flatMap((s) => {
+    const days = sectionDays(s);
+    return days.length ? [{ id: s.id, start: days[0], end: days[days.length - 1] }] : [];
+  });
+  const by = (key: "start" | "end", dir: 1 | -1) => (a: (typeof spans)[number], b: (typeof spans)[number]) =>
+    a[key] < b[key] ? -dir : a[key] > b[key] ? dir : 0;
+  return (
+    spans.filter((s) => s.start <= today && s.end >= today).sort(by("start", -1))[0] ??
+    spans.filter((s) => s.start > today).sort(by("start", 1))[0] ??
+    spans.filter((s) => s.end < today).sort(by("end", -1))[0]
+  )?.id ?? defaultSection(map, today);
+}
+
+/** Whole days from `from` to `to`, both YYYY-MM-DD. */
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+}
+
+/** "Today" / "This week" (the next seven days) / "Up next" for the first group not yet behind us. */
+function nowLabel(date: string, today: string): string {
+  if (date === today) return "Today";
+  return daysBetween(today, date) < 7 ? "This week" : "Up next";
+}
+
 const STEP =
   "grid size-8 shrink-0 place-items-center rounded-lg border border-line text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 disabled:pointer-events-none disabled:opacity-40";
 
@@ -81,11 +119,14 @@ const STEP =
  */
 function SectionSwitcher({
   label,
+  noun,
   sections,
   active,
   onSelect,
 }: {
   label: string;
+  /** "chapter" / "week" / "section", for the trigger's tooltip. */
+  noun: string;
   sections: Section[];
   active: string;
   onSelect: (id: string) => void;
@@ -95,7 +136,11 @@ function SectionSwitcher({
   return (
     <nav aria-label={label} className="flex items-start gap-2">
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:max-w-max md:flex-initial">
+        <DropdownMenuTrigger
+          aria-label={`${current?.title ?? ""}, ${index + 1} of ${sections.length}. Jump to ${noun}`}
+          title={`Jump to ${noun}`}
+          className="flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:max-w-max md:flex-initial"
+        >
           <span className="min-w-0 flex-1">{current?.title}</span>
           <span className="tabular shrink-0 text-[12px] font-normal text-ink-3">
             {index + 1} of {sections.length}
@@ -159,7 +204,7 @@ export function InterpretedOverview({
   const [page, setPage] = useState<string>();
   const active =
     map.sections.find((s) => s.id === selection) ??
-    map.sections.find((s) => s.id === defaultSection(map, today))!;
+    map.sections.find((s) => s.id === currentSection(map, today))!;
   const byId = new Map(resources.map((r) => [r.id, r]));
   const resolve = (ids: string[]) =>
     sectionResources(ids, resources, modules, courseId);
@@ -170,6 +215,7 @@ export function InterpretedOverview({
     setPage(undefined);
   };
   const entries = byDate(active.entries ?? []);
+  const nextEntry = entries.find((e) => e.date && e.date >= today);
   const chapterLayout = map.sections.some((s) =>
     /^chapter\s+\d/i.test(s.title),
   );
@@ -199,42 +245,54 @@ export function InterpretedOverview({
       !r.id.startsWith("module:") &&
       !r.id.startsWith("item:"),
   );
+  const essentials = map.essentials.flatMap((e) => {
+    const r = byId.get(e.resourceId);
+    return r ? [{ label: e.label, href: r.href }] : [];
+  });
+  const planTitle = chapterLayout
+    ? "Chapters"
+    : weekly
+      ? "Weekly course plan"
+      : "Course materials";
+  const review = (
+    <Link
+      to="/courses/$courseId/interpretation"
+      params={{ courseId }}
+      className="shrink-0 text-[12px] text-ink-3 transition-colors hover:text-ink"
+    >
+      Review AI grouping
+      {map.conflicts.length > 0 && ` · ${map.conflicts.length} flagged`}
+    </Link>
+  );
   return (
     <section className="px-4 pt-6 pb-5 md:px-6">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">
-          {chapterLayout
-            ? "Chapters & course resources"
-            : weekly
-              ? "Weekly course plan"
-              : "Course materials"}
+          {essentials.length > 0 ? "Course resources" : planTitle}
         </h2>
-        <Link
-          to="/courses/$courseId/interpretation"
-          params={{ courseId }}
-          className="text-[12px] text-ink-3 transition-colors hover:text-ink"
-        >
-          Review AI grouping
-          {map.conflicts.length > 0 && ` · ${map.conflicts.length} flagged`}
-        </Link>
+        {review}
       </div>
-      {map.essentials.length > 0 && (
-        <ul className="mb-5 space-y-px" aria-label="Course essentials">
-          {map.essentials.map((e, i) => {
-            const r = byId.get(e.resourceId);
-            return r ? (
-              <li key={i}>
+      {essentials.length > 0 && (
+        <>
+          <ul
+            className="mb-6 overflow-hidden rounded-[10px] border border-line"
+            aria-label="Course resources"
+          >
+            {essentials.map((e, i) => (
+              <li key={i} className="border-b border-line last:border-b-0">
                 <Link
-                  to={r.href}
-                  className="-mx-2 flex items-start gap-[10px] rounded-md px-2 py-[6px] text-[13px] leading-[1.4] text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:bg-hover"
+                  to={e.href}
+                  className="flex items-start gap-[10px] px-3 py-[9px] text-[13px] leading-[18px] text-ink transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
                 >
                   <FileText className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
-                  <span className="min-w-0">{e.label}</span>
+                  <span className="min-w-0 flex-1">{e.label}</span>
+                  <ChevronRight className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
                 </Link>
               </li>
-            ) : null;
-          })}
-        </ul>
+            ))}
+          </ul>
+          <h2 className="sr-only">{planTitle}</h2>
+        </>
       )}
       {cards ? (
         <nav aria-label="Course sections" className="grid gap-1 sm:grid-cols-2">
@@ -258,6 +316,7 @@ export function InterpretedOverview({
       ) : (
         <SectionSwitcher
           label={chapterLayout ? "Chapter navigation" : "Course sections"}
+          noun={chapterLayout ? "chapter" : weekly ? "week" : "section"}
           sections={map.sections}
           active={active.id}
           onSelect={select}
@@ -275,35 +334,47 @@ export function InterpretedOverview({
           <ol aria-label={`${active.title} schedule`}>
             {entries.map((e, i) => {
               const links = resolve(e.resourceIds);
+              const past = !!e.date && e.date < today;
+              const marker = e === nextEntry && e.date ? nowLabel(e.date, today) : undefined;
               return (
-                <li key={i} className="border-b border-line py-3 first:pt-1 last:border-b-0">
-                  {e.date && (
-                    <p className="tabular text-[12.5px] leading-[1.4] text-ink-3">
-                      {formatDay(e.date)}
-                    </p>
-                  )}
-                  <p
-                    className={cn(
-                      "mt-[2px] text-[15px] leading-[1.35] font-semibold tracking-[-0.01em]",
-                      e.date && e.date < today ? "text-ink-2" : "text-ink",
+                <li
+                  key={i}
+                  aria-current={marker === "Today" ? "date" : undefined}
+                  className="relative grid gap-x-4 py-3 after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:bg-line last:after:hidden first:pt-1 md:grid-cols-[104px_minmax(0,1fr)] md:after:left-[120px]"
+                >
+                  <p className="tabular flex items-center gap-2 text-[12.5px] leading-[1.4] text-ink-3 md:flex-col md:items-start md:gap-[5px] md:pt-[2px]">
+                    {e.date ? formatDay(e.date) : <span className="hidden md:inline" aria-hidden />}
+                    {marker && (
+                      <span className="rounded-full bg-chip px-[7px] py-px text-[12px] leading-[17px] font-medium text-ink-2">
+                        {marker}
+                      </span>
                     )}
-                  >
-                    {e.title}
                   </p>
-                  {links.length > 0 && (
-                    <div className="mt-[6px] flex flex-wrap gap-x-5 gap-y-1">
-                      {links.map((r) => (
-                        <Link
-                          key={r.href}
-                          to={r.href}
-                          className="inline-flex min-w-0 items-center gap-[6px] text-[12.5px] leading-[1.5] text-ink-2 transition-colors hover:text-ink hover:underline"
-                        >
-                          <FileText className="size-3 shrink-0 text-ink-3" aria-hidden />
-                          {r.title}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  <div className="min-w-0">
+                    <p
+                      className={cn(
+                        "mt-[2px] text-[15px] leading-[1.35] font-semibold tracking-[-0.01em] md:mt-0",
+                        past ? "text-ink-2" : "text-ink",
+                      )}
+                    >
+                      {e.title}
+                    </p>
+                    {links.length > 0 && (
+                      <ul className="mt-[6px] space-y-[3px]">
+                        {links.map((r) => (
+                          <li key={r.href}>
+                            <Link
+                              to={r.href}
+                              className="inline-flex max-w-full items-start gap-[8px] text-[13px] leading-[1.45] text-ink-2 transition-colors hover:text-ink hover:underline"
+                            >
+                              <FileText className="mt-[3px] size-3 shrink-0 text-ink-3" aria-hidden />
+                              <span className="min-w-0">{r.title}</span>
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </li>
               );
             })}

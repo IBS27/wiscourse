@@ -108,7 +108,7 @@ function ModulesSkeleton() {
   return (
     <div className="animate-pulse">
       {[0, 1, 2].map((section) => (
-        <div key={section} className="border-b border-line px-4 py-[15px] md:px-6">
+        <div key={section} className="relative px-4 py-[15px] after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:px-6 md:after:right-6 md:after:left-6">
           <div className="h-[15px] w-52 rounded bg-chip" />
           {section === 0 &&
             [0, 1, 2, 3].map((row) => (

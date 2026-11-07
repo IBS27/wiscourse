@@ -12,9 +12,8 @@ import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
-/** Course · next due · new, ~42/38/20; the new column never narrows past its slots. */
-export const LEDGER_COLS =
-  "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,42fr)_minmax(0,38fr)_minmax(264px,20fr)]";
+/** Course · next due · new; the new column is exactly as wide as its slots. */
+export const LEDGER_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =
@@ -25,12 +24,12 @@ const NEW_SLOTS = [
   { key: "announcement", label: "Announcements", short: "Ann." },
   { key: "file", label: "Files", short: "Files" },
   { key: "grade", label: "Grades", short: "Grades" },
-  { key: "assignment", label: "Assignments", short: "Due" },
+  { key: "assignment", label: "Assignments", short: "Assign." },
 ] as const;
 type SlotKey = (typeof NEW_SLOTS)[number]["key"];
 
-/** One slot: 56px, right-aligned, so a column of numbers lines up under its label. */
-const SLOT = "w-14 text-right";
+/** One slot, right-aligned so a column of numbers lines up under its label: 88px names it in full, 56px abbreviates. */
+const SLOT = "w-14 text-right xl:w-[88px]";
 
 export function LedgerRow({
   course,
@@ -133,17 +132,26 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
   );
 }
 
-/** The header cell over `NewCounts`: "New" heads the column, each slot's short name sits over its numbers. */
+/**
+ * The header cell over `NewCounts`: "New since you looked" spans the slots
+ * with a rule under it, and each slot is named in full beneath (abbreviated
+ * where the row is too narrow to spell them out).
+ */
 export function NewCountsHead() {
   return (
-    <span className="flex items-center justify-end">
-      <span className="mr-auto pr-2">New</span>
-      {NEW_SLOTS.map(({ key, label, short }) => (
-        <span key={key} className={cn(SLOT, "font-normal")} title={label}>
-          <span aria-hidden>{short}</span>
-          <span className="sr-only">{label}</span>
-        </span>
-      ))}
+    <span className="flex flex-col items-stretch">
+      <span className="border-b border-line pb-[5px] text-center">New since you looked</span>
+      <span className="flex justify-end pt-[5px]">
+        {NEW_SLOTS.map(({ key, label, short }) => (
+          <span key={key} className={cn(SLOT, "font-normal")} title={label}>
+            <span className="hidden xl:inline">{label}</span>
+            <span className="xl:hidden" aria-hidden>
+              {short}
+            </span>
+            <span className="sr-only xl:hidden">{label}</span>
+          </span>
+        ))}
+      </span>
     </span>
   );
 }

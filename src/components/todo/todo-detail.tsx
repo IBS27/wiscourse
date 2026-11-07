@@ -80,9 +80,10 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   }, [ref, done, setDone]);
 
   return (
-    <div className="mx-auto w-full max-w-[760px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
+    // Left-aligned at the header's gutter; 720px of content (768 incl. padding).
+    <div className="w-full max-w-[688px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
-      <div className="pt-5 pb-5 md:pt-8 md:pb-6">
+      <div className="pt-4 pb-4 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
           {course ? (
             <>
@@ -133,9 +134,9 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           {isLocal && !course && <StatusChip>No course</StatusChip>}
           <SubmissionChip item={item} overdue={overdue && !done} />
           {!isLocal && item.htmlUrl && (
-            // The page's primary action: right of the chips on desktop, on
-            // its own line under them on a phone.
-            <div className="max-md:mt-2 max-md:basis-full md:ml-auto">
+            // The page's primary action: flows after the chips and sits at
+            // the content's right edge, the same edge the description ends at.
+            <div className="ml-auto">
               <Button asChild size="sm" className="h-8 rounded-lg px-3 text-[13px]">
                 <a href={item.htmlUrl} target="_blank" rel="noreferrer">
                   Open in Canvas
@@ -278,7 +279,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
 /** Reading typography for Canvas-authored HTML. */
 const PROSE = cn(
-  "max-w-[68ch] text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
+  "text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
   "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
   "[&_p]:my-3 [&_strong]:font-semibold [&_strong]:text-ink [&_b]:font-semibold [&_b]:text-ink",
   "[&_h1]:mt-6 [&_h1]:mb-2 [&_h1]:text-[16px] [&_h1]:font-semibold [&_h1]:tracking-[-0.01em] [&_h1]:text-ink",
@@ -298,7 +299,7 @@ const PROSE = cn(
 
 function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border-t border-line py-4 md:py-5">
+    <section className="border-t border-line py-3 md:py-5">
       <div className="mb-[10px] flex items-center gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
       </div>

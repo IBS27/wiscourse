@@ -176,20 +176,21 @@ export function FileList({
                       ) : (
                         <FileTypeIcon contentType={file.contentType} filename={file.filename} />
                       )}
-                      <span className="min-w-0">
-                        <span
-                          className={cn(
-                            compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
-                            "text-ink",
-                          )}
-                        >
-                          {file.displayName}
-                          {unread && <span className="sr-only"> (new)</span>}
-                        </span>
-                        {path !== undefined && path !== "" && (
-                          <span className="block truncate text-[12px] text-ink-3">{path}</span>
+                      <span
+                        className={cn(
+                          compact ? "line-clamp-2 leading-[1.4]" : "truncate",
+                          "min-w-0 flex-1 text-ink",
                         )}
+                      >
+                        {file.displayName}
+                        {unread && <span className="sr-only"> (new)</span>}
                       </span>
+                      {/* Where it lives, on the same line: only for rows out of their folder. */}
+                      {path !== undefined && path !== "" && !compact && (
+                        <span className="max-w-[40%] shrink-0 truncate text-[12.5px] text-ink-3" title={path}>
+                          {path}
+                        </span>
+                      )}
                     </span>
                   </button>
                 );

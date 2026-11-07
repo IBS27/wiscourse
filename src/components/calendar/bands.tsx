@@ -18,8 +18,9 @@ import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 /**
- * The shared band row: mark, then the title, on one line. In the week's
- * narrow columns the time leads the title; the Day band has the width for a
+ * The shared band row: mark, then the title. In the week's narrow columns
+ * the title wraps to two lines, led by a small time, so an item reads
+ * without opening it; the Day band has the width for one line and a
  * right-aligned time instead. The tooltip always carries the full title.
  */
 function Line({
@@ -51,7 +52,7 @@ function Line({
       ? "size-[22px] items-center justify-center"
       : roomy
         ? "h-[28px] w-full items-center gap-[6px] px-[6px] text-[12.5px] whitespace-nowrap"
-        : "h-[22px] w-full shrink-0 items-center pr-1 pl-[3px] text-[12px] whitespace-nowrap",
+        : "w-full shrink-0 items-start py-[3px] pr-1 pl-[3px] text-[12.5px] leading-[16px]",
     className,
   );
   const label = compact ? title : undefined;
@@ -83,10 +84,35 @@ function Line({
   );
 }
 
-/** The title's text, one truncated line. */
-function Title({ done, children }: { done?: boolean; children: ReactNode }) {
-  return <span className={cn("min-w-0 flex-1 truncate", done && "text-ink-3")}>{children}</span>;
+/**
+ * The title's text: one truncated line in the roomy Day band, otherwise up
+ * to two wrapped lines.
+ */
+function Title({
+  done,
+  roomy,
+  children,
+}: {
+  done?: boolean;
+  roomy?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={cn(
+        "min-w-0 flex-1",
+        roomy ? "truncate" : "line-clamp-2 break-words",
+        done && "text-ink-3",
+      )}
+    >
+      {children}
+    </span>
+  );
 }
+
+/** The mark beside a wrapping title sits level with its first line. */
+const markFor = (roomy?: boolean, compact?: boolean) =>
+  roomy || compact ? undefined : "h-4";
 
 /** 11:59 PM — Canvas's default deadline, which the Due band already implies. */
 const END_OF_DAY = 23 * 60 + 59;
@@ -118,12 +144,14 @@ export function DueLine({
       compact={compact}
       className={cn(done && "text-ink-3")}
     >
-      <Mark kind={done ? "done" : "due"} />
+      <Mark kind={done ? "done" : "due"} className={markFor(roomy, compact)} />
       {!compact && (
-        <Title done={done}>
+        <Title done={done} roomy={roomy}>
           {lead && (
             <>
-              <span className="font-normal tabular text-ink-3">{denseTime(minute)}</span>{" "}
+              <span className="text-[11.5px] font-normal tabular text-ink-3">
+                {denseTime(minute)}
+              </span>{" "}
             </>
           )}
           {item.title}
@@ -156,8 +184,8 @@ export function PlanLine({
       roomy={roomy}
       compact={compact}
     >
-      <Mark kind="planned" />
-      {!compact && <Title>{item.title}</Title>}
+      <Mark kind="planned" className={markFor(roomy, compact)} />
+      {!compact && <Title roomy={roomy}>{item.title}</Title>}
     </Line>
   );
 }
@@ -184,8 +212,8 @@ export function AllDayLine({
       compact={compact}
       className="font-medium text-ink-2"
     >
-      <Mark kind="event" />
-      {!compact && <Title>{event.title}</Title>}
+      <Mark kind="event" className={markFor(roomy, compact)} />
+      {!compact && <Title roomy={roomy}>{event.title}</Title>}
     </Line>
   );
 }

@@ -1,19 +1,28 @@
 // Direction A: a time grid for the things that occupy time, with two thin
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening at 8 AM or
-// an hour before the week's first block, whichever is earlier.
+// an hour before the week's first block, whichever is earlier. A week with
+// nothing timed draws shorter hours, sized so 8 AM to midnight fills the view.
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "../../../convex/todos";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
+  emptyPxPerHour,
   blockLabel,
   blockTimeLabel,
   clockTime,
-  EMPTY_PX_PER_HOUR,
   firstBlockMinute,
   GRID_BOUNDS,
   gridBounds,
@@ -54,8 +63,6 @@ const hourLines = (pxPerHour: number): CSSProperties => ({
 /** A day's band shows this many rows before folding the rest into "+N more". */
 const BAND_ROWS = 3;
 
-const EMPTY_BOUNDS = gridBounds(EMPTY_PX_PER_HOUR);
-
 export function WeekGrid({
   days,
   models,
@@ -80,12 +87,13 @@ export function WeekGrid({
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
   const first = firstBlockMinute(days, models);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const viewHeight = useHeight(scrollRef);
   // A week with nothing timed draws its empty hours shorter.
-  const bounds = first === undefined ? EMPTY_BOUNDS : GRID_BOUNDS;
+  const bounds = first === undefined ? gridBounds(emptyPxPerHour(viewHeight)) : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
-  const scrollRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
   useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
 
@@ -143,7 +151,6 @@ export function WeekGrid({
         columns={grid}
         fold={fold}
         compact={compact}
-        tall
         onExpand={() => setExpanded(true)}
         collapse={expanded && expandable ? () => setExpanded(false) : undefined}
       />
@@ -203,7 +210,7 @@ export function WeekGrid({
                   onOpen={onOpenBlock}
                 />
               ))}
-              {isToday && showNow && <NowLine top={nowTop} className="left-[4px]" />}
+              {isToday && showNow && <NowLine top={nowTop} inset />}
             </div>
           );
         })}
@@ -247,7 +254,6 @@ function Band({
   columns,
   fold,
   compact,
-  tall,
   onExpand,
   collapse,
 }: {
@@ -262,8 +268,6 @@ function Band({
   /** Long days fold into "+N more" (until expanded). */
   fold: boolean;
   compact: boolean;
-  /** The Due band keeps a steady minimum height, so the week reads as one. */
-  tall?: boolean;
   onExpand: () => void;
   /** Set while expanded: the fold-back control under the label. */
   collapse?: () => void;
@@ -293,8 +297,7 @@ function Band({
           <div
             key={day}
             className={cn(
-              "flex min-h-[30px] min-w-0 border-l border-line p-1",
-              tall && !compact && "min-h-[96px]",
+              "flex min-h-8 min-w-0 border-l border-line p-1",
               compact ? "flex-wrap content-start justify-center" : "flex-col gap-px",
               day === todayKey && TODAY_TINT,
             )}
@@ -387,18 +390,50 @@ function Block({
   );
 }
 
-/** The current time: an ink dot on the day's edge and a 2px ink rule (red is kept for overdue). */
-export function NowLine({ top, className }: { top: number; className?: string }) {
+/**
+ * The current time: a 2px ink rule across the day (red is kept for overdue),
+ * with an ink dot at its start. The dot is centred on the start, or sits
+ * just inside it (`inset`) where the column clips its overflow.
+ */
+export function NowLine({
+  top,
+  inset,
+  className,
+}: {
+  top: number;
+  inset?: boolean;
+  className?: string;
+}) {
   return (
     <div
       className={cn("pointer-events-none absolute right-0 left-0 z-[2] -translate-y-1/2", className)}
       style={{ top }}
       aria-hidden
     >
-      <span className="absolute top-1/2 -left-[4px] block size-2 -translate-y-1/2 rounded-full bg-ink" />
+      <span
+        className={cn(
+          "absolute top-1/2 block size-2 -translate-y-1/2 rounded-full bg-ink",
+          inset ? "left-0" : "-left-[4px]",
+        )}
+      />
       <span className="block h-[2px] bg-ink" />
     </div>
   );
+}
+
+/** The element's client height, tracked as it resizes (0 until measured). */
+function useHeight(ref: RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (el === null) return;
+    setHeight(el.clientHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
 }
 
 /**

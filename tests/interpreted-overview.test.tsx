@@ -314,3 +314,47 @@ it("lists a chapter's groups by date, undated last", () => {
     "Review",
   ]);
 });
+it("opens on the chapter whose dated groups bracket today and marks the next group", () => {
+  const entry = (title: string, date: string) => ({
+    title,
+    date,
+    resourceIds: [],
+    evidence: proof,
+  });
+  const chapter = (id: string, title: string, entries: ReturnType<typeof entry>[]) => ({
+    ...map.sections[0],
+    id,
+    title,
+    resourceIds: [],
+    entries,
+  });
+  const chapters: CourseMap = {
+    ...map,
+    sections: [
+      chapter("c12", "Chapter 12: Vectors", [entry("Quiz 1", "2026-09-06")]),
+      chapter("c15", "Chapter 15: Integrals", [
+        entry("Homework 15.1", "2026-10-29"),
+        entry("Quiz 18", "2026-11-08"),
+        entry("Homework 15.9", "2026-11-19"),
+      ]),
+      chapter("c16", "Chapter 16: Vector calculus", [entry("Homework 16.1", "2026-11-26")]),
+    ],
+  };
+  render(
+    <InterpretedOverview
+      map={chapters}
+      resources={resources}
+      modules={[]}
+      courseId="1"
+      today="2026-11-06"
+    />,
+  );
+  const items = screen
+    .getByRole("list", { name: "Chapter 15: Integrals schedule" })
+    .querySelectorAll(":scope > li");
+  expect([...items].map((li) => li.querySelector(".tabular")?.textContent)).toEqual([
+    "Thu, Oct 29",
+    "Sun, Nov 8This week",
+    "Thu, Nov 19",
+  ]);
+});

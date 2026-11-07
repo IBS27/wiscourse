@@ -23,10 +23,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * Assignment · Due · Score · % · Class median. Below `md` the median and the
- * due column fold away and score/percent stack on the right.
+ * due column fold away and score/percent stack on the right. On desktop the
+ * due and median columns collapse to zero width when no row has a value.
  */
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_112px_136px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,112px)_136px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
 const MOBILE_1 = "col-start-1 row-start-1 md:col-auto md:row-auto";
 const MOBILE_2 = "col-start-1 row-start-2 md:col-auto md:row-auto";
 const MOBILE_3 = "col-start-2 row-start-1 md:col-auto md:row-auto";
@@ -56,8 +57,13 @@ export function GradebookTable({
 }) {
   // Canvas only sends medians for some courses; an all-empty column is noise.
   const hasMedian = summary.groups.some((g) => g.rows.some((r) => r.row.median !== undefined));
+  const hasDue = summary.groups.some((g) => g.rows.some((r) => dueLabel(r.row) !== undefined));
+  const columns = {
+    ...(hasDue ? {} : { "--due-col": "0px" }),
+    ...(hasMedian ? {} : { "--median-col": "0px" }),
+  } as CSSProperties;
   return (
-    <div role="table" aria-label="Grades" style={hasMedian ? undefined : ({ "--median-col": "0px" } as CSSProperties)}>
+    <div role="table" aria-label="Grades" style={columns}>
       <div
         role="row"
         className={cn(
@@ -66,7 +72,7 @@ export function GradebookTable({
         )}
       >
         <span role="columnheader">Assignment</span>
-        <span role="columnheader">Due</span>
+        <span role="columnheader">{hasDue ? "Due" : ""}</span>
         <span role="columnheader" className="text-right">
           Score
         </span>

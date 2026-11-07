@@ -46,7 +46,7 @@ export function ModuleTimeline({
           <section
             key={group.key}
             className={cn(
-              "grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)] md:px-6",
+              "relative grid grid-cols-1 after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:grid-cols-[132px_minmax(0,1fr)] md:px-6 md:after:right-6 md:after:left-6",
               current && "bg-sunken",
             )}
           >

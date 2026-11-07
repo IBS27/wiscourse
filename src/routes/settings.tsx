@@ -50,8 +50,8 @@ function Settings() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Settings" />
-      <div className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-4 pt-6 pb-16 md:gap-10 md:px-6 md:pt-8">
+      <PageHeader title="Settings" subtitle="Appearance, calendar feed and your Canvas connection" />
+      <div className="flex w-full max-w-[768px] flex-col gap-8 px-4 pt-6 pb-16 md:gap-10 md:px-6 md:pt-8">
         <SettingsSection title="Appearance" description="How wiscourse looks in this browser.">
           <Card>
             <Row label="Theme" description="System follows your device's light or dark setting.">

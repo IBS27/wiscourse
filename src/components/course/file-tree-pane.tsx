@@ -76,6 +76,8 @@ export function FileTreePane({
 }
 
 const ROW = "flex h-[30px] items-center rounded-md pr-2 transition-colors";
+/** File counts: one fixed right-aligned column, whatever the row. */
+const COUNT = "tabular ml-auto w-9 shrink-0 text-right text-[12px] text-ink-3";
 const indentStyle = (level: number) => ({ paddingLeft: 2 + level * 14 });
 
 function FolderRows({
@@ -162,9 +164,7 @@ function FolderRows({
             <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
           )}
           <span className="truncate">{node.folder.name}</span>
-          <span className="tabular ml-auto shrink-0 pl-2 text-[12px] font-normal text-ink-3">
-            {node.totalFiles}
-          </span>
+          <span className={cn(COUNT, "font-normal")}>{node.totalFiles}</span>
         </button>
       </div>
 
@@ -190,8 +190,11 @@ function FolderRows({
             </span>
             <Images className="-ml-[6px] size-[14px] shrink-0" aria-hidden />
             <span className="truncate">Course images</span>
-            <span className="tabular ml-auto shrink-0 pl-2 text-[12px]">
-              {assets.length} folder{assets.length === 1 ? "" : "s"}
+            <span
+              className={COUNT}
+              title={`${assets.length} folder${assets.length === 1 ? "" : "s"}`}
+            >
+              {assets.reduce((n, node) => n + node.totalFiles, 0)}
             </span>
           </button>
           {assetsOpen && rows(assets, indent + 1)}

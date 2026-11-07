@@ -334,6 +334,16 @@ export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
  */
 export const EMPTY_PX_PER_HOUR = 32;
 
+/**
+ * The empty grid's hour height for a `viewHeight`px window: the shortest
+ * that still lets it scroll to open at 8 AM, so 8 AM to midnight fills the
+ * view (never shorter than EMPTY_PX_PER_HOUR).
+ */
+export function emptyPxPerHour(viewHeight: number): number {
+  const hoursShown = 24 - GRID_OPENS_AT / 60;
+  return Math.max(EMPTY_PX_PER_HOUR, Math.ceil((viewHeight - GRID_TOP_PAD) / hoursShown));
+}
+
 /** The midnight-to-midnight grid at `pxPerHour`. */
 export function gridBounds(pxPerHour: number): GridBounds {
   return {
