@@ -50,12 +50,12 @@ function TodoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* The page frame: a 64px bar whose crumb sits on the title line, in
-          the body's left-aligned 720px column. Phones, where this is a
-          sub-page without a title, get a compact 48px back bar. */}
+      {/* The page frame: a 64px bar with the breadcrumb centred in it, in
+          the body's left-aligned 720px column (the page's title is the
+          heading below). Phones get a compact 48px back bar. */}
       <header className={cn(HEADER_BAR, "max-md:h-12")}>
         <div className="flex h-full w-full max-w-[720px] items-center">
-          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-start md:h-[42px]">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center">
             <div className="flex h-6 min-w-0 items-center gap-2">
               <Link
                 to="/"
