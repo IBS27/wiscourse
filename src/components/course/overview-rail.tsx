@@ -269,7 +269,7 @@ function StandingFact({
   const estimated = canvasLetter === undefined && letter !== undefined;
   const coverage = summary === undefined || hidden ? undefined : coverageLabel(summary);
   const heavy =
-    hub.heaviestGroup === undefined ? undefined : `${hub.heaviestGroup.name} weigh ${hub.heaviestGroup.weight}%`;
+    hub.heaviestGroup === undefined ? undefined : `${hub.heaviestGroup.name} are ${hub.heaviestGroup.weight}% of grade`;
   const sub = [coverage, heavy].filter(Boolean).join(" · ");
   if (score === undefined && sub === "") return null;
 

@@ -37,7 +37,6 @@ import {
   withArticle,
 } from "@/lib/grades-ui";
 import { courseStyle, courseTitle, shortCode, useCourses, useNow, useToday } from "@/lib/hooks";
-import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 import { isTyping, cn } from "@/lib/utils";
@@ -128,7 +127,8 @@ export function CourseGradebook({
   const localLetter = live.score === undefined ? undefined : letterFor(live.score, scheme);
 
   const code = course === undefined ? undefined : shortCode(course);
-  const instructor = familyName(course?.verifiedInstructors?.[0]);
+  // The full name, as the course page shows it.
+  const instructor = course?.verifiedInstructors?.[0]?.name;
   const synced =
     sync?.lastSyncedAt === undefined ? undefined : `synced ${formatSince(sync.lastSyncedAt, now)}`;
   const meta = whatIfOn
