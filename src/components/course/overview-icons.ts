@@ -49,11 +49,11 @@ export function iconsDiffer(icons: readonly RowIcon[]): boolean {
 
 /**
  * A list's section label ("Due", "Course resources", "Chapters"): Home's
- * section heading — 13px semibold ink, quiet meta beside it, count right.
+ * section heading — 13px semibold ink, quiet meta and count beside it.
  */
 export const SECTION_TITLE = "text-[13px] leading-[20px] font-semibold tracking-[-0.005em] text-ink";
 
-/** The count at a section heading's right edge, as Home draws it. */
+/** A section heading's count: muted, inline right after its label and detail. */
 export const SECTION_COUNT = "tabular text-[12px] font-medium text-ink-3";
 
 /**

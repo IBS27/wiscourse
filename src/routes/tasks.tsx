@@ -3,7 +3,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, ChevronRight, CircleCheck, Inbox, ListFilter, Plus } from "lucide-react";
 import type { TodoItem } from "../../convex/todos";
-import { Dot, Kbd } from "@/components/app/bits";
+import { Dot, Kbd, SectionCount } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
 import { HEADER_BUTTON, PageHeader, READING_FRAME, READING_WIDTH } from "@/components/app/page-header";
 import {
@@ -209,7 +209,7 @@ function HandledSection({ items, todayKey, now }: { items: TodoItem[]; todayKey:
         <ChevronRight className={cn("size-[13px] self-center text-ink-3 transition-transform", open && "rotate-90")} aria-hidden />
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink-2">Submitted or graded</h2>
         <span className="text-[12.5px] text-ink-3">Canvas has these; mark them done to clear them</span>
-        <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
+        <SectionCount n={items.length} sep />
       </button>
       {open && items.map((it, i) => <AgendaItem key={it.key} item={it} first={i === 0} todayKey={todayKey} now={now} />)}
     </section>
@@ -222,7 +222,7 @@ function Section({ title, detail, items, red, todayKey, now }: { title: string; 
       <div className="flex items-baseline gap-2 px-4 pt-6 pb-2 md:px-6">
         <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
         {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
-        <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
+        <SectionCount n={items.length} sep={Boolean(detail)} />
       </div>
       {items.map((it, i) => (
         <AgendaItem key={it.key} item={it} first={i === 0} todayKey={todayKey} now={now} />

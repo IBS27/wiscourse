@@ -171,7 +171,7 @@ it("renders the week as bands over a time grid", () => {
   expect(screen.getByText("Study group — P3")).toBeDefined();
   expect(screen.getByText(`Times in ${ZONE}`)).toBeDefined();
   expect(screen.getByText("Noon")).toBeDefined();
-  expect(screen.queryByText("Nothing scheduled this week")).toBeNull();
+  expect(screen.queryByText("No classes or events this week")).toBeNull();
   // Exactly one new-event affordance per layout: the desktop button carries
   // its own label, the phone FAB is the only one named "New event".
   expect(screen.getAllByLabelText("New event")).toHaveLength(1);
@@ -194,7 +194,7 @@ it("replaces the hours with a note when nothing in the week is timed", () => {
   const Calendar = setup({ view: "week", date: "2026-09-10" });
   render(<Calendar />);
 
-  expect(screen.getByText("Nothing scheduled this week")).toBeDefined();
+  expect(screen.getByText("No classes or events this week")).toBeDefined();
   // The Due band stays; the empty hours and the redundant nudge go.
   expect(screen.getByText("Due")).toBeDefined();
   expect(screen.getByText("Problem Set 3")).toBeDefined();
@@ -210,7 +210,7 @@ it("replaces the hours with a note when nothing in the week is timed", () => {
 it("shows the note for a day with nothing timed", () => {
   const Calendar = setup({ view: "day", date: "2026-09-09" });
   render(<Calendar />);
-  expect(screen.getByText("Nothing scheduled this day")).toBeDefined();
+  expect(screen.getByText("No classes or events this day")).toBeDefined();
   expect(screen.queryByText("Noon")).toBeNull();
   // Class times exist, so only the event action is offered.
   expect(screen.queryByRole("button", { name: "Add class times" })).toBeNull();

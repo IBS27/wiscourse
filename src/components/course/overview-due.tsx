@@ -39,8 +39,8 @@ export function OverviewDue({
   );
   const items = [...overdue, ...soon].sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0));
 
-  // The total sits at the right; the detail names the window, and the
-  // overdue share when there is one.
+  // The detail names the window, the overdue share when there is one, and
+  // the total right after them — never alone at the far edge.
   const detail = (
     <>
       Next 7 days
@@ -50,16 +50,14 @@ export function OverviewDue({
           <span className="text-red">{overdue.length} overdue</span>
         </>
       )}
+      {" · "}
+      <span className={SECTION_COUNT}>{items.length}</span>
     </>
   );
 
   return (
     <section>
-      <SectionHead
-        title="Due"
-        detail={detail}
-        right={<span className={SECTION_COUNT}>{items.length}</span>}
-      />
+      <SectionHead title="Due" detail={detail} />
       {items.length === 0 ? (
         <div className="flex items-center gap-[10px] px-4 py-2 text-[13px] text-ink-3 md:px-6">
           <CalendarCheck className="size-[14px] shrink-0" aria-hidden />

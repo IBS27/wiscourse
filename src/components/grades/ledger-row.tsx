@@ -29,7 +29,8 @@ export function GradesLedgerHeader() {
       )}
     >
       <span>Course</span>
-      <span className="text-right">Current grade</span>
+      {/* Ends over the % edge, not the letter chip beside it (26px chip + 10px gap). */}
+      <span className="pr-9 text-right whitespace-nowrap">Current grade</span>
       <span>Graded so far</span>
       <span>Latest posted</span>
     </div>
@@ -69,7 +70,7 @@ export function GradesLedgerRow({
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
+        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-6 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
         GUTTER,
         RULE,
         LEDGER_COLUMNS,

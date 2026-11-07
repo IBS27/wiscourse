@@ -142,9 +142,10 @@ function ChipMeta({
 }
 
 /**
- * A chip's body: the title (two lines at most), led by a check when the
- * item is done, then one quiet meta line ("11:00 AM · ASTRON 103") that
- * truncates rather than wraps. `late` turns the time red.
+ * A chip's body: the title (three lines at most, so typical titles show in
+ * full), led by a check when the item is done, then one quiet meta line
+ * ("11:00 AM · ASTRON 103") that truncates rather than wraps. `late` turns
+ * the time red.
  */
 function ChipBody({
   time,
@@ -163,7 +164,7 @@ function ChipBody({
     <>
       <span className="flex items-start gap-[3px]">
         {done && <Mark kind="done" className="h-4 w-3" />}
-        <span className="line-clamp-2 min-w-0 flex-1 break-words">{children}</span>
+        <span className="line-clamp-3 min-w-0 flex-1 break-words">{children}</span>
       </span>
       {(time !== undefined || course !== undefined || late) && (
         <ChipMeta

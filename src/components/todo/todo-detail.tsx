@@ -264,8 +264,12 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           starts high; at xl a properties rail with stacked labels. */}
       <aside
         aria-label="Plan and notes"
-        className="order-1 max-md:order-2 xl:w-[340px] xl:shrink-0 xl:border-l xl:border-line xl:bg-surface xl:px-5 xl:pt-8 xl:pb-6"
+        className="order-1 max-md:order-2 xl:w-[340px] xl:shrink-0 xl:border-l xl:border-line xl:bg-surface"
       >
+      {/* At xl a flex column pinned to the viewport below the 64px bar, so
+          Notes fills the rail's height and stays in view beside a long
+          description. */}
+      <div className="contents xl:sticky xl:top-0 xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-y-auto xl:px-5 xl:pt-8 xl:pb-6">
       {/* On a phone the plan controls sit in the header, so this row is
           just the subtasks. */}
       <PropertyRow
@@ -314,9 +318,10 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         </div>
       </PropertyRow>
 
-      <PropertyRow title="Notes" rail>
+      <PropertyRow title="Notes" rail fill>
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </PropertyRow>
+      </div>
       </aside>
     </div>
   );
@@ -354,6 +359,7 @@ function PropertyRow({
   inline = false,
   prose = false,
   rail = false,
+  fill = false,
   className,
   children,
 }: {
@@ -363,6 +369,8 @@ function PropertyRow({
   prose?: boolean;
   /** In the xl properties rail: label stacked above, no rule above the first row. */
   rail?: boolean;
+  /** The rail's last row: takes the rail's remaining height at xl. */
+  fill?: boolean;
   className?: string;
   children: ReactNode;
 }) {
@@ -373,6 +381,7 @@ function PropertyRow({
         inline && "grid-cols-[64px_minmax(0,1fr)] gap-x-3",
         prose && "md:py-5",
         rail && "xl:grid-cols-1 xl:py-5 xl:first:border-t-0 xl:first:pt-0",
+        fill && "xl:flex-1 xl:grid-rows-[auto_1fr] xl:pb-0",
         className,
       )}
     >
@@ -386,15 +395,15 @@ function PropertyRow({
       >
         {title}
       </h2>
-      <div className="min-w-0">{children}</div>
+      <div className={cn("min-w-0", fill && "xl:flex xl:flex-col xl:self-stretch")}>{children}</div>
     </section>
   );
 }
 
 /**
  * Today / Tomorrow / Pick a date (and Clear once planned). `grid` sets where
- * the three share one row with the date cell taking the rest: always (the
- * phone header) or only at xl (the rail); between, they wrap as a flex row.
+ * the three share one row as equal thirds: always (the phone header) or only
+ * at xl (the 300px rail); between, they wrap as a flex row.
  */
 function PlanControls({
   value,
@@ -417,14 +426,14 @@ function PlanControls({
     <div
       className={cn(
         grid === "always"
-          ? "grid grid-cols-[auto_auto_minmax(0,1fr)] gap-[6px]"
-          : "flex flex-wrap items-center gap-[6px] xl:grid xl:grid-cols-[auto_auto_minmax(0,1fr)]",
+          ? "grid grid-cols-3 gap-[6px]"
+          : "flex flex-wrap items-center gap-[6px] xl:grid xl:grid-cols-3",
         className,
       )}
     >
-      <QuickPlan label="Today" active={value === today} onClick={() => onPlan(today)} />
-      <QuickPlan label="Tomorrow" active={value === tomorrow} onClick={() => onPlan(tomorrow)} />
-      <PlanDate id={dateId} value={value} onChange={onPlan} />
+      <QuickPlan label="Today" active={value === today} onClick={() => onPlan(today)} grid={grid} />
+      <QuickPlan label="Tomorrow" active={value === tomorrow} onClick={() => onPlan(tomorrow)} grid={grid} />
+      <PlanDate id={dateId} value={value} onChange={onPlan} grid={grid} />
       {value !== undefined && (
         <button
           type="button"
@@ -444,15 +453,22 @@ function PlanControls({
 }
 
 const PLAN_BUTTON =
-  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
-function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+/** Equal-third cells centre their label and trim the side padding. */
+const planCell = (grid: "always" | "xl") => (grid === "always" ? "justify-center px-2" : "xl:justify-center xl:px-2");
+
+function QuickPlan({ label, active, onClick, grid }: { label: string; active: boolean; onClick: () => void; grid: "always" | "xl" }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(PLAN_BUTTON, active ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink")}
+      className={cn(
+        PLAN_BUTTON,
+        planCell(grid),
+        active ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
+      )}
     >
       {label}
     </button>
@@ -468,27 +484,39 @@ function PlanDate({
   id,
   value,
   onChange,
+  grid,
 }: {
   id?: string;
   value: string | undefined;
   onChange: (day: string | null) => void;
+  grid: "always" | "xl";
 }) {
   return (
     <label
       className={cn(
         PLAN_BUTTON,
+        planCell(grid),
         "group relative min-w-0 cursor-pointer focus-within:ring-2 focus-within:ring-line-2 md:min-w-[124px] xl:min-w-0",
         value !== undefined ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
       )}
     >
-      <CalendarDays className="size-[14px] shrink-0 text-ink-3 group-focus-within:invisible" />
+      {/* A third of the 300px rail fits "Pick a date" only without the icon;
+          phones keep it unless the screen is narrower than 375px. */}
+      <CalendarDays
+        className={cn(
+          "size-[14px] shrink-0 text-ink-3 group-focus-within:invisible",
+          grid === "always" ? "max-[374px]:hidden" : "xl:hidden",
+        )}
+      />
       <span className="truncate group-focus-within:invisible">
         {value === undefined ? (
           "Pick a date"
+        ) : grid === "always" ? (
+          formatDayShort(value)
         ) : (
           <>
             <span className="xl:hidden">{formatDayLong(value)}</span>
-            {/* The rail's date cell is narrow: "Fri Nov 13". */}
+            {/* The rail's date cell is a third: "Fri Nov 13". */}
             <span className="max-xl:hidden">{formatDayShort(value)}</span>
           </>
         )}
@@ -653,9 +681,10 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
       }}
       placeholder="Add notes…"
       aria-label="Notes"
-      // At least 96px, so it reads as a place to write; grows with the text up to 12 lines.
+      // At least 96px, so it reads as a place to write; grows with the text up
+      // to 12 lines. In the xl rail it fills the rail's remaining height.
       rows={Math.max(4, Math.min(12, draft.split("\n").length + 1))}
-      className={cn(FIELD, "block min-h-[96px] w-full resize-none px-[10px] py-2 text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3")}
+      className={cn(FIELD, "block min-h-[96px] w-full resize-none px-[10px] py-2 text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3 xl:min-h-[240px] xl:flex-1")}
     />
   );
 }

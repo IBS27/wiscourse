@@ -59,22 +59,20 @@ export function AnnouncementRow({
           {unread && <span className="size-[6px] rounded-full bg-unread" />}
         </span>
         <span className="min-w-0">
-          {/* Date on the title line at the row's right edge, as on every feed list. */}
-          <span className="flex items-start gap-3">
-            <span
-              className={cn(
-                "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
-                unread ? "font-semibold" : "font-normal",
-              )}
-            >
-              {announcement.title}
-              {unread && <span className="sr-only"> (unread)</span>}
-            </span>
-            {when !== undefined && (
-              <span className="tabular shrink-0 pt-[2px] text-xs text-ink-3">{when}</span>
+          <span
+            className={cn(
+              "block text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
+              unread ? "font-semibold" : "font-normal",
             )}
+          >
+            {announcement.title}
+            {unread && <span className="sr-only"> (unread)</span>}
           </span>
-          <span className="mt-[2px] block truncate text-[12.5px] text-ink-3">{author}</span>
+          {/* The date rides the byline, next to the copy rather than at the far edge. */}
+          <span className="mt-[2px] flex min-w-0 text-xs text-ink-3">
+            <span className="truncate">{author}</span>
+            {when !== undefined && <span className="tabular shrink-0">&nbsp;· {when}</span>}
+          </span>
           {!open && (
             <span className="mt-[5px] line-clamp-2 max-w-[72ch] text-[13px] leading-[1.5] text-ink-3">
               {preview(announcement.message)}

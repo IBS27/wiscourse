@@ -84,6 +84,24 @@ export function CountBadge({ n, className }: { n: number; className?: string }) 
   );
 }
 
+/**
+ * A section's count, inline right after its label: "Overdue 5". `sep` adds a
+ * middle dot when a sub-label sits between ("This week through Fri · 13").
+ * Sits in the label's gap-2 flex row; never pushed to the far edge.
+ */
+export function SectionCount({ n, sep, className }: { n: number; sep?: boolean; className?: string }) {
+  return (
+    <span className={cn("text-xs font-normal tracking-normal text-ink-3 tabular", className)}>
+      {sep && (
+        <span className="mr-2" aria-hidden>
+          ·
+        </span>
+      )}
+      {n}
+    </span>
+  );
+}
+
 export function SectionLabel({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("eyebrow", className)}>{children}</div>;
 }

@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ArrowUpRight, ExternalLink, Search } from "l
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
+import { COURSE_CONTENT } from "./content-width";
 import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import {
@@ -19,6 +20,7 @@ import { CourseTag } from "@/components/app/bits";
 import { HeaderTitle } from "@/components/app/page-header";
 import { formatTerm } from "@/lib/terms";
 import { useSyncInfo } from "@/lib/sync-info";
+import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 
@@ -54,6 +56,7 @@ export function CourseHeader({
   const label = course === undefined ? "" : courseLabel(course);
   const code = course === undefined ? undefined : shortCode(course);
   const term = formatTerm(course?.term);
+  const subtitle = [name !== label ? name : undefined, term].filter(Boolean).join(" · ");
   const meta = [
     code,
     term,
@@ -67,10 +70,10 @@ export function CourseHeader({
       className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      {/* Phones: code as the title (its dot carries the course colour), the
-          long title on one truncated line, then the term — three short lines,
-          so the tabs stay near the top. */}
-      <div className="flex items-start gap-[10px] px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2 md:hidden">
+      {/* Phones: code as the title (its dot carries the course colour) on the
+          row with back, search and Canvas; the long title and term share one
+          truncated line under it, so the tabs stay near the top. */}
+      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3 md:hidden">
         <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
@@ -86,13 +89,12 @@ export function CourseHeader({
               </>
             )}
           </h1>
-          {name !== label && (
-            <p aria-hidden className="truncate text-[13px] leading-[18px] text-ink-3">
-              {name}
+          {subtitle !== "" && (
+            <p className="mt-[2px] truncate text-[13px] leading-[18px] text-ink-3">
+              {name !== label && <span aria-hidden>{name}</span>}
+              {name !== label && term !== undefined && <span aria-hidden> · </span>}
+              {term}
             </p>
-          )}
-          {term !== undefined && (
-            <p className="truncate text-[12.5px] leading-[18px] text-ink-3">{term}</p>
           )}
         </div>
         <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
@@ -110,8 +112,10 @@ export function CourseHeader({
       </div>
 
       {/* The page frame's 64px bar; the tabs sit below it. The course colour
-          rides on the code tag, so the title starts at the gutter like every page's. */}
-      <div className="hidden h-16 items-center gap-5 px-6 md:flex">
+          rides on the code tag, so the title starts at the gutter like every page's.
+          Bar and tabs take the tab content's width, so "Open in Canvas" ends
+          on the same right edge as every course tab's content. */}
+      <div className={cn(COURSE_CONTENT, "hidden h-16 items-center gap-5 px-6 md:flex")}>
         <HeaderTitle
           className="flex-1"
           title={name || <span className="text-ink-3">Course</span>}
@@ -141,7 +145,7 @@ export function CourseHeader({
           "scroll for more". Phones run tighter gaps and a bare count on Files,
           so at common widths the next tab's first letters peek past the fade
           instead of the row ending in a gap. */}
-      <div className="group/tabs relative">
+      <div className={cn(COURSE_CONTENT, "group/tabs relative")}>
         <nav
           ref={tabsRef}
           className="flex scroll-px-4 gap-4 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

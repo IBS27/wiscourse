@@ -178,7 +178,8 @@ function SectionSwitcher({
             className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:min-h-8 md:max-w-[min(100%,480px)] md:flex-initial"
           >
             <span className="min-w-0 flex-1 truncate">{current?.title}</span>
-            <span className="tabular shrink-0 text-[12px] font-normal text-ink-3">
+            {/* Phones give the chapter name the room; the count returns from md up. */}
+            <span className="tabular hidden shrink-0 text-[12px] font-normal text-ink-3 md:inline">
               {index + 1} of {sections.length}
             </span>
             <ChevronDown className="size-[14px] shrink-0 text-ink-3" aria-hidden />
@@ -203,7 +204,7 @@ function SectionSwitcher({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="flex shrink-0 gap-2">
+        <span className="flex shrink-0 gap-1 md:gap-2">
           {([-1, 1] as const).map((dir) => {
             const next = sections[index + dir];
             return (
@@ -311,10 +312,10 @@ export function InterpretedOverview({
     <section className="px-4 pt-6 pb-5 md:px-6">
       {essentials.length > 0 && (
         <>
-          <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <h2 className={SECTION_TITLE}>Course resources</h2>
             {/* The count sits with its title; the review link stands alone on the right. */}
-            <span className="text-[12.5px] text-ink-3 tabular">{essentials.length}</span>
+            <span className={SECTION_COUNT}>{essentials.length}</span>
             <span className="ml-auto max-sm:hidden">{review}</span>
           </div>
           <ul className="-mx-4 mb-7 md:-mx-6" aria-label="Course resources">
@@ -332,12 +333,10 @@ export function InterpretedOverview({
       )}
       {cards ? (
         <>
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
             <h2 className={SECTION_TITLE}>{planTitle}</h2>
+            <span className={SECTION_COUNT}>{map.sections.length}</span>
             {essentials.length === 0 && <span className="ml-auto">{review}</span>}
-            <span className={cn(SECTION_COUNT, essentials.length > 0 && "ml-auto")}>
-              {map.sections.length}
-            </span>
           </div>
           <nav aria-label="Course sections" className="grid gap-1 sm:grid-cols-2">
             {map.sections.map((s) => (

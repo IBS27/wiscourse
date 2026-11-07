@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
-import { CountBadge, CourseTag } from "@/components/app/bits";
+import { CourseTag, SectionCount } from "@/components/app/bits";
 import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedStatus, feedTitle, groupFeed } from "@/lib/feed";
 import { FEED_ROW, RAIL_FEED_ROW } from "./feed-row";
@@ -48,11 +48,12 @@ export function FeedRowBody({
           >
             {title}
           </div>
-          <span className="shrink-0 pt-px text-[13px] text-ink-3 tabular">{time}</span>
+          <span className="shrink-0 pt-px text-[13px] text-ink-2 tabular">{time}</span>
         </div>
         {(course !== undefined || status !== undefined) && (
-          <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3">
-            {course !== undefined && <CourseTag className="shrink-0">{course}</CourseTag>}
+          // Meta reads one step under the title (ink-2, 13px), never pale.
+          <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[13px] whitespace-nowrap text-ink-2">
+            {course !== undefined && <CourseTag className="shrink-0 text-[12.5px]">{course}</CourseTag>}
             {course !== undefined && status !== undefined && (
               <span className="text-line-2" aria-hidden>
                 ·
@@ -117,9 +118,9 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
 
   return (
     <aside className="hidden w-[340px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
-      <div className="flex min-h-[44px] items-center gap-2 px-5 pt-3 pb-1">
+      <div className="flex min-h-[44px] items-baseline gap-2 px-5 pt-3 pb-1">
         <span className="text-[13px] font-semibold tracking-[-0.01em]">Recent</span>
-        <CountBadge n={unseen.length} />
+        {unseen.length > 0 && <SectionCount n={unseen.length} />}
         {unseen.length > 0 && (
           <button type="button" onClick={() => void markAll()} className="-mr-2 ml-auto rounded-md px-2 py-[3px] text-[12px] text-ink-3 transition-colors hover:bg-hover hover:text-ink">
             Mark all read

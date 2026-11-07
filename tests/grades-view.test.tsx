@@ -78,8 +78,7 @@ it("shows Canvas's number, the group that is still open and the median column", 
 
 it("has no due column; a dated row carries its date after the name", () => {
   mount();
-  const table = screen.getByRole("table", { name: "Grades" });
-  expect(table.style.getPropertyValue("--median-col")).toBe("");
+  expect(screen.getByRole("columnheader", { name: "Class median" })).toBeTruthy();
   expect(screen.queryByRole("columnheader", { name: "Due" })).toBeNull();
   cleanup();
 

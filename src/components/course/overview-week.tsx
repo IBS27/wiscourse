@@ -82,7 +82,7 @@ export function OverviewWeek({
       <section>
         <SectionHead
           title="Course materials"
-          right={<span className={SECTION_COUNT}>{modules.length}</span>}
+          detail={<span className={SECTION_COUNT}>{modules.length}</span>}
         />
         {modules.map((module) => (
           <OverviewRow

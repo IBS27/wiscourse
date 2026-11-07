@@ -6,6 +6,7 @@ import type { FeedItem } from "../../convex/inbox";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCheck, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
+import { SectionCount } from "@/components/app/bits";
 import { CourseSelect, InboxFilters, UnreadToggle, type TypeCounts } from "@/components/inbox/filters";
 import { InboxRow } from "@/components/inbox/row";
 import { DetailEmpty, DetailLoading, InboxDetail } from "@/components/inbox/detail";
@@ -185,9 +186,9 @@ function InboxPage() {
             ) : (
               groupFeed(items, today, now).map((group) => (
                 <section key={group.label} aria-label={group.label}>
-                  <h2 className="flex items-baseline justify-between pt-5 pr-4 pb-[6px] pl-6 text-[13px] font-semibold tracking-[-0.01em] text-ink md:pr-6 md:pl-8">
+                  <h2 className="flex items-baseline gap-2 pt-5 pr-4 pb-[6px] pl-6 text-[13px] font-semibold tracking-[-0.01em] text-ink md:pr-6 md:pl-8">
                     {group.label}
-                    <span className="tabular text-[12px] font-normal text-ink-3">{group.items.length}</span>
+                    <SectionCount n={group.items.length} />
                   </h2>
                   {group.items.map((f) => (
                     <InboxRow

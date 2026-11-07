@@ -26,6 +26,9 @@ vi.mock("@/lib/seen", () => ({
   FRESH_MS: 1000,
   useMarkSeenOnMount: (kind: string, id?: number) => state.mark(kind, id),
 }));
+// The announcements route takes its reading width from the page header,
+// whose profile menu reads the colour scheme at import.
+vi.mock("@/components/app/profile-menu", () => ({ ProfileMenu: () => null }));
 vi.mock("@/components/course/file-preview", () => ({
   FilePreview: ({ file }: { file: Doc<"files"> }) => (
     <div>Preview {file.displayName}</div>

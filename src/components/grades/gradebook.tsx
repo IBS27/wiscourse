@@ -261,8 +261,9 @@ export function CourseGradebook({
           aria-label="Summary"
           className={cn("px-4 pt-6 pb-2 md:px-6", whatIfOn && "lg:col-start-1 lg:row-start-1")}
         >
-          {/* The number, and the drawing of how it is built, side by side. */}
-          <div className="grid gap-7 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-12">
+          {/* The number, and the drawing of how it is built, side by side; the
+              number sits on the list's middle so no void opens under it. */}
+          <div className="grid gap-7 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:items-center lg:gap-12">
             <div className="min-w-0">
               <h2 className="text-[12.5px] font-medium text-ink-3">
                 {whatIfOn ? "Current → what-if" : "Current grade"}

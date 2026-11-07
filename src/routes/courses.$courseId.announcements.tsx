@@ -6,7 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { AnnouncementRow } from "@/components/course/announcement-row";
 import { SectionHead } from "@/components/course/overview-row";
 import { SECTION_COUNT } from "@/components/course/overview-icons";
-import { COURSE_CONTENT } from "@/components/course/content-width";
+import { READING_FRAME } from "@/components/app/page-header";
 import { courseColorVar, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { useMarkSeenOnMount, useSeen } from "@/lib/seen";
 
@@ -52,9 +52,10 @@ function CourseAnnouncements() {
   };
 
   return (
-    // A list page at the course content width, rules inset to its gutters.
+    // A reading list: the shared reading width (Tasks, Settings), so each
+    // date stays near its excerpt; rules inset to the gutters.
     <div
-      className={`${COURSE_CONTENT} min-w-0 flex-1 pb-8`}
+      className={`${READING_FRAME} w-full min-w-0 flex-1 pb-8`}
       style={courseStyle(courseColorVar(course?.color))}
     >
       {rows === undefined ? null : rows.length === 0 ? (

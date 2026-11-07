@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
@@ -111,13 +112,24 @@ function subtitle(
   count: number,
   lastSyncedAt: number | undefined,
   now: number,
-): string | undefined {
-  const parts = [
-    termName,
-    count > 0 ? `${count} course${count === 1 ? "" : "s"}` : undefined,
-    lastSyncedAt === undefined ? undefined : `synced ${formatSince(lastSyncedAt, now)}`,
-  ].filter((part): part is string => part !== undefined);
-  return parts.length === 0 ? undefined : parts.join(" · ");
+): ReactNode {
+  const parts = [termName, count > 0 ? `${count} course${count === 1 ? "" : "s"}` : undefined].filter(
+    (part): part is string => part !== undefined,
+  );
+  const synced = lastSyncedAt === undefined ? undefined : `synced ${formatSince(lastSyncedAt, now)}`;
+  if (parts.length === 0 && synced === undefined) return undefined;
+  // Phones keep the term and count; the sync time would only truncate there.
+  return (
+    <>
+      {parts.join(" · ")}
+      {synced !== undefined && (
+        <span className="max-md:hidden">
+          {parts.length > 0 ? " · " : ""}
+          {synced}
+        </span>
+      )}
+    </>
+  );
 }
 
 function LedgerSkeleton() {

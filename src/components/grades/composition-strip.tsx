@@ -41,11 +41,11 @@ function segmentsOf(summary: Summary): Segment[] {
 
 /**
  * One compact row per group: the name with its share and how much is graded
- * beneath it, then the score bar (at most 240px), then the % right after it,
- * so each score reads with its label rather than across the page.
+ * beneath it, then the score bar (at most 440px) right after it, then the %
+ * right-aligned on the content's edge, under the table's % column.
  */
 const COLUMNS =
-  "grid-cols-[minmax(0,1fr)_72px_52px] @2xl:grid-cols-[200px_minmax(120px,240px)_64px]";
+  "grid-cols-[minmax(0,1fr)_72px_52px] @2xl:grid-cols-[200px_minmax(120px,440px)_minmax(64px,1fr)]";
 
 export function CompositionStrip({
   summary,
@@ -97,9 +97,8 @@ export function CompositionStrip({
                 aria-label={`${segment.name}: ${segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}`}
                 className="block"
               >
-                {/* Neutral ink like the Grades index and course rail meters, at score
-                    weight, on a stronger track so an empty group still shows one. */}
-                <Meter fraction={score} tone="neutral" className="h-[6px] bg-line-2" />
+                {/* Neutral ink like the Grades index and course rail meters, at score weight. */}
+                <Meter fraction={score} tone="neutral" className="h-[6px]" />
               </span>
               {segment.percent === undefined ? (
                 <span className="text-right text-ink-3" title="not yet graded">

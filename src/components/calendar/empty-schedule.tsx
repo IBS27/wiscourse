@@ -1,5 +1,6 @@
 // What the Week and Day views show below the Due band when nothing in view
-// takes up time: one calm, centred note with the two ways to fill it, in
+// takes up time: one calm note, anchored 48px under the band rather than
+// floating mid-void, with the two ways to fill it as matching buttons, in
 // place of a column of empty hours.
 
 import { CalendarDays, Plus } from "lucide-react";
@@ -17,7 +18,7 @@ export function EmptySchedule({
 }) {
   const classTimes = onAddClassTimes !== undefined;
   return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10 text-center md:px-6">
+    <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 pt-12 pb-10 text-center md:px-6">
       <span className="mb-4 grid size-10 place-items-center rounded-xl border border-line bg-sunken text-ink-3">
         <CalendarDays className="size-[19px]" />
       </span>
@@ -41,7 +42,7 @@ export function EmptySchedule({
         )}
         <Button
           size="sm"
-          variant={classTimes ? "ghost" : "outline"}
+          variant="outline"
           onClick={onNewEvent}
           className="rounded-lg border-line-2 text-[12.5px]"
         >

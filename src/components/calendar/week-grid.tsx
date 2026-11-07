@@ -163,7 +163,7 @@ export function WeekGrid({
 
       {empty ? (
         <EmptySchedule
-          title="Nothing scheduled this week"
+          title="No classes or events this week"
           onAddClassTimes={onAddClassTimes}
           onNewEvent={onNewEvent}
         />

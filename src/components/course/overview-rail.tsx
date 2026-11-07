@@ -12,7 +12,7 @@ import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
-import { CountBadge } from "@/components/app/bits";
+import { SectionCount } from "@/components/app/bits";
 import { FeedRowBody } from "@/components/agenda/new-rail";
 import { RAIL_FEED_ROW } from "@/components/agenda/feed-row";
 import { MeetingsEditor } from "@/components/calendar/meetings-editor";
@@ -73,7 +73,7 @@ export function OverviewRail({
 
       <div className="flex items-center gap-2 px-5 pt-5 pb-2">
         <span className="text-[13px] font-semibold tracking-[-0.005em] text-ink">Recent</span>
-        <CountBadge n={unseen.length} />
+        {unseen.length > 0 && <SectionCount n={unseen.length} />}
         {unseen.length > 0 && (
           <button
             type="button"
