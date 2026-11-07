@@ -57,7 +57,7 @@ export function CourseHeader({
       className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-start gap-[10px] px-4 pt-3 pb-[10px] md:hidden">
+      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[10px] md:hidden">
         <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>

@@ -62,8 +62,7 @@ export function CompositionStrip({
       </h2>
       <ul
         className={cn(
-          "mt-2 grid list-none grid-cols-1 gap-x-10 p-0",
-          segments.length > 1 && "@2xl:grid-cols-2",
+          "mt-1 grid max-w-[640px] list-none grid-cols-1 p-0",
         )}
       >
         {segments.map((segment) => {
@@ -74,12 +73,17 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(150px,1fr)_auto_64px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(150px,1fr)_auto_88px_52px]"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @md:grid-cols-[minmax(130px,1fr)_auto_120px_56px]"
             >
-              <span className="truncate font-medium text-ink" title={segment.name}>
-                {segment.name}
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-ink" title={segment.name}>
+                  {segment.name}
+                </span>
+                <span className="tabular block truncate text-[12.5px] text-ink-3 @md:hidden">
+                  {segment.size} of grade · {graded}
+                </span>
               </span>
-              <span className="tabular text-[12.5px] whitespace-nowrap text-ink-3">
+              <span className="tabular hidden text-[12.5px] whitespace-nowrap text-ink-3 @md:block">
                 {segment.size} of grade · {graded}
               </span>
               <span
