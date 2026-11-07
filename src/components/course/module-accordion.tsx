@@ -5,10 +5,12 @@ import {
   itemCountLabel,
   lockReason,
   moduleProgress,
+  showsItemIcons,
   type ModuleDoc,
   type ModuleWithItems,
 } from "./module-utils";
 import { ModuleRow } from "./module-row";
+import { Meter } from "@/components/grades/bits";
 import type { ModuleRowContext } from "./module-context";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +37,8 @@ export function ModuleAccordion({
   const seed = focusModuleId ?? currentModule(modules, ctx);
   const open = new Set(toggled?.ids ?? (seed === undefined ? [] : [seed]));
   if (focusModuleId !== undefined && toggled?.focus !== focusModuleId) open.add(focusModuleId);
+
+  const showIcon = useMemo(() => showsItemIcons(modules), [modules]);
 
   const toggle = (canvasId: number) => {
     const next = new Set(open);
@@ -95,7 +99,7 @@ export function ModuleAccordion({
               ) : (
                 <div className="pb-2">
                   {module.items.map((item) => (
-                    <ModuleRow key={item.canvasId} item={item} ctx={ctx} />
+                    <ModuleRow key={item.canvasId} item={item} ctx={ctx} showIcon={showIcon} />
                   ))}
                 </div>
               ))}
@@ -108,7 +112,7 @@ export function ModuleAccordion({
 
 /**
  * Untouched modules give their size, finished ones say so, and only a
- * module part-way through gets the 48×4 meter and a percent.
+ * module part-way through gets the meter and a percent.
  */
 function Progress({ viewed, total }: { viewed: number; total: number }) {
   const pct = Math.round((viewed / total) * 100);
@@ -123,9 +127,7 @@ function Progress({ viewed, total }: { viewed: number; total: number }) {
         </span>
       ) : (
         <>
-          <span className="h-[5px] w-[88px] overflow-hidden rounded-full bg-chip" aria-hidden>
-            <span className="block h-full rounded-full bg-c" style={{ width: `${pct}%` }} />
-          </span>
+          <Meter fraction={viewed / total} className="w-[88px]" />
           <span className="w-8 text-right">
             {pct}%<span className="sr-only"> viewed</span>
           </span>

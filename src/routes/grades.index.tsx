@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { BarChart3, Search } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Gradebook } from "../../convex/lib/grades";
 import { PageHeader } from "@/components/app/page-header";
@@ -14,7 +14,6 @@ import {
 } from "@/components/grades/ledger-row";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, useToday, type Course } from "@/lib/hooks";
-import { openSearch } from "@/lib/search-context";
 import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 
@@ -54,16 +53,6 @@ function GradesIndex() {
       <PageHeader
         title="Grades"
         subtitle={subtitle(termName, visible.length, info?.lastSyncedAt, now)}
-        actions={
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={() => openSearch()}
-            className="rounded-md p-1 text-ink-3 transition-colors hover:bg-hover hover:text-ink md:hidden"
-          >
-            <Search className="size-[18px]" />
-          </button>
-        }
       />
 
       {loading || books === undefined ? (

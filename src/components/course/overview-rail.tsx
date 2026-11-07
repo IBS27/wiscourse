@@ -23,7 +23,7 @@ import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { coverageLabel, DASH, formatPercent } from "@/lib/grades-ui";
-import { CoverageBar, Letter } from "@/components/grades/bits";
+import { Letter, Meter } from "@/components/grades/bits";
 import { letterFor, schemeFor, summarize } from "../../../convex/lib/grades";
 import { feedSeenKind, feedStatus, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
@@ -307,7 +307,7 @@ function StandingFact({
           <>
             <span className="tabular">{sub}</span>
             {coverage !== undefined && (
-              <CoverageBar fraction={summary?.coverage ?? 0} className="mt-[6px]" />
+              <Meter fraction={summary?.coverage ?? 0} className="mt-2" />
             )}
           </>
         )

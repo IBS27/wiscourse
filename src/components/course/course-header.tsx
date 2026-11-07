@@ -8,9 +8,10 @@ import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
+import { CourseTag } from "@/components/app/bits";
+import { HeaderTitle } from "@/components/app/page-header";
 import { formatTerm } from "@/lib/terms";
 import { useSyncInfo } from "@/lib/sync-info";
-import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 
@@ -85,28 +86,28 @@ export function CourseHeader({
         </div>
       </div>
 
-      <div className="hidden items-start gap-3 px-6 pt-5 md:flex">
-        <span className="mt-[8px] size-[9px] shrink-0 rounded-full bg-c" aria-hidden />
-        <div className="min-w-0">
-          <h1 className="page-title truncate">
-            {name || <span className="text-ink-3">Course</span>}
-          </h1>
-          <div className="mt-1 flex items-center gap-[7px] text-[12.5px] text-ink-3">
-            {meta.map((part, i) => (
-              <span key={`${i}-${part}`} className="contents">
-                {i > 0 && <span aria-hidden>·</span>}
-                <span className={cn("truncate", i === 0 && code !== undefined && "font-medium text-ink-2")}>
-                  {part}
+      {/* The page frame's 64px bar; the tabs sit below it. The course colour
+          rides on the code tag, so the title starts at the gutter like every page's. */}
+      <div className="hidden h-16 items-center gap-5 px-6 md:flex">
+        <HeaderTitle
+          className="flex-1"
+          title={name || <span className="text-ink-3">Course</span>}
+          subtitle={meta.map((part, i) => (
+            <span key={`${i}-${part}`}>
+              {i > 0 && (
+                <span className="mx-[7px]" aria-hidden>
+                  ·
                 </span>
-              </span>
-            ))}
-          </div>
-        </div>
+              )}
+              {i === 0 && code !== undefined ? <CourseTag>{part}</CourseTag> : part}
+            </span>
+          ))}
+        />
         <a
           href={canvasHref}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
+          className="inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
         >
           <ExternalLink className="size-[14px]" />
           Open in Canvas
@@ -114,7 +115,7 @@ export function CourseHeader({
       </div>
 
       {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
-      <div className="group/tabs relative mt-1 md:mt-4">
+      <div className="group/tabs relative mt-1 md:mt-0">
         <nav
           ref={tabsRef}
           className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

@@ -110,17 +110,23 @@ export function BigGrade({
   );
 }
 
-/** A thin bar for "how much is graded", in the course colour (`--c`). */
-export function CoverageBar({ fraction, className }: { fraction: number; className?: string }) {
+/**
+ * Every bar in the app (grade groups, "graded so far", module progress): a
+ * neutral 6px track with rounded ends, filled in the course colour (`--c`).
+ * Only the fill carries colour, so 0% reads as empty.
+ */
+export function Meter({ fraction, className }: { fraction: number; className?: string }) {
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
   return (
-    <span
-      className={cn("block h-[5px] overflow-hidden rounded-full bg-ink/8", className)}
-      aria-hidden
-    >
-      <span className="block h-full rounded-full bg-c" style={{ width: `${percent}%` }} />
+    <span className={cn("block h-[6px] overflow-hidden rounded-full bg-line", className)} aria-hidden>
+      {percent > 0 && <span className="block h-full rounded-full bg-c" style={{ width: `${percent}%` }} />}
     </span>
   );
+}
+
+/** How much of the grade is graded so far. */
+export function CoverageBar({ fraction, className }: { fraction: number; className?: string }) {
+  return <Meter fraction={fraction} className={className} />;
 }
 
 /** One cell of the summary grid: a quiet label, a value, a quiet line under it. */

@@ -36,8 +36,9 @@ export function FeedRowBody({
 }) {
   return (
     <>
-      <span className="flex w-[6px] shrink-0 justify-center pt-[7px]">
-        {unread && <span className="size-[6px] rounded-full bg-unread" aria-label="Unread" />}
+      {/* A fixed 12px unread column, dot centred; read rows keep it empty. */}
+      <span className="flex w-3 shrink-0 justify-center pt-[6px]">
+        {unread && <span className="size-[6px] rounded-full bg-unread" role="img" aria-label="Unread" />}
       </span>
       <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" aria-hidden />
       <div className="min-w-0 flex-1">

@@ -9,13 +9,18 @@ const UW_NAME = /^([A-Za-z][A-Za-z &]*?)\s?(\d{2,4}[A-Z]?):\s*(.+?)(?:\s*\(([\d\
 
 export type ParsedName = { code: string; title: string; sections?: string; term?: string };
 
+/** Canvas writes a dash as "--"; titles read it as a spaced em dash. */
+function dashed(s: string): string {
+  return s.replace(/\s*--\s*/g, " — ");
+}
+
 export function parseCourseName(name: string): ParsedName | undefined {
   const m = UW_NAME.exec(name.trim());
   if (!m) return undefined;
   const subject = m[1].trim().replace(/\s+and\s+/i, "/").toUpperCase();
   return {
     code: `${subject} ${m[2]}`,
-    title: m[3].replace(/\s*--\s*/g, "—"),
+    title: dashed(m[3]),
     sections: m[4]?.trim(),
     term: m[5],
   };
@@ -33,10 +38,10 @@ export function shortCode(c: { name: string; courseCode: string }): string | und
 
 /** Compact name for chips, rows and pickers: nickname, else "MATH 234". */
 export function courseLabel(c: Named): string {
-  return c.nickname ?? shortCode(c) ?? c.name;
+  return c.nickname ?? shortCode(c) ?? dashed(c.name);
 }
 
 /** Readable title for headers: nickname, else the name without code/section/term. */
 export function courseTitle(c: Named): string {
-  return c.nickname ?? parseCourseName(c.name)?.title ?? c.name;
+  return c.nickname ?? parseCourseName(c.name)?.title ?? dashed(c.name);
 }

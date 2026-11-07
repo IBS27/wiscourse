@@ -5,7 +5,7 @@ import { Check, ChevronRight, CircleCheck, Inbox, ListFilter, Plus } from "lucid
 import type { TodoItem } from "../../convex/todos";
 import { Dot, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
-import { PageHeader } from "@/components/app/page-header";
+import { HEADER_BUTTON, PageHeader } from "@/components/app/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,8 +24,10 @@ export const Route = createFileRoute("/tasks")({
 });
 
 type View = "open" | "undated" | "done";
-/** The page's one centred column: header, filters and list all use it. */
-const COLUMN = "max-w-[880px]";
+/** The page's one column, left-aligned at the gutter: 960px of content for the header, filters and list. */
+const COLUMN = "max-w-[960px]";
+/** The list's rows carry their own gutters, so its box is the column plus both gutters. */
+const LIST_COLUMN = "max-w-[1008px]";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "open", label: "Open" },
@@ -81,7 +83,7 @@ function Tasks() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Header, filters and list share one centred column, so their edges line up. */}
+      {/* Header, filters and list share one left-aligned column, so their edges line up. */}
       <PageHeader
         title="Tasks"
         subtitle={
@@ -105,21 +107,21 @@ function Tasks() {
               type="button"
               onClick={quickAdd.open}
               aria-label="Add a task"
-              className="grid size-8 place-items-center rounded-lg bg-today text-today-fg md:hidden"
+              className={cn(HEADER_BUTTON, "md:hidden")}
             >
-              <Plus className="size-[14px]" />
+              <Plus className="size-[16px]" />
             </button>
           </>
         }
       />
 
-      <div className="border-b border-line">
-        <div className={cn("mx-auto flex w-full items-center gap-2 overflow-x-auto px-4 py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:px-6", COLUMN)}>
+      <div className="px-4 md:px-6">
+        <div className={cn("flex w-full items-center gap-2 overflow-x-auto border-b border-line py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible", COLUMN)}>
           <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
           {courseOptions.length > 0 && (
             <>
               <span className="mx-1 h-4 w-px shrink-0 bg-line-2" aria-hidden />
-              <div className="flex shrink-0 items-center gap-[2px]" role="group" aria-label="Course">
+              <div className="flex shrink-0 items-center gap-[6px] md:flex-wrap" role="group" aria-label="Course">
                 <FilterChip active={course === null} onClick={() => setCourse(null)}>
                   All courses
                 </FilterChip>
@@ -151,7 +153,7 @@ function Tasks() {
         </div>
       </div>
 
-      <div className={cn("mx-auto w-full pb-8", COLUMN)}>
+      <div className={cn("w-full pb-8", LIST_COLUMN)}>
         {filtered === undefined ? null : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-10 py-20 text-center">
             <span className="mb-1 grid size-10 place-items-center rounded-full bg-chip text-ink-3">
@@ -249,8 +251,8 @@ function FilterChip({
       onClick={onClick}
       style={style}
       className={cn(
-        "flex h-7 shrink-0 items-center gap-[6px] rounded-md px-[9px] text-[12.5px] font-medium whitespace-nowrap text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
-        active && "bg-chip text-ink hover:bg-chip",
+        "flex h-7 shrink-0 cursor-pointer items-center gap-[6px] rounded-full border border-line px-[10px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+        active && "border-today bg-today text-today-fg hover:border-today hover:bg-today hover:text-today-fg",
       )}
     >
       {children}

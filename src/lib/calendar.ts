@@ -18,8 +18,6 @@ export const PX_PER_HOUR = 48;
 export const MIN_BLOCK_PX = 40;
 /** The same floor in minutes — what a 40px block covers on the grid. */
 const MIN_BLOCK_MINUTES = (MIN_BLOCK_PX / PX_PER_HOUR) * 60;
-/** Breathing room above the first hour line so its label is not clipped. */
-export const GRID_TOP_PAD = 10;
 /** Where the timeline opens: the start of the working day. */
 export const GRID_OPENS_AT = 8 * 60;
 /** How far above an earlier first block the timeline opens, for context. */
@@ -352,14 +350,15 @@ export function gridBounds(pxPerHour: number): GridBounds {
     endMinute: 24 * 60,
     pxPerHour,
     hours: Array.from({ length: 24 }, (_, hour) => hour),
-    height: GRID_TOP_PAD + 24 * pxPerHour,
+    height: 24 * pxPerHour,
   };
 }
 
 /**
  * The scroll offset the timeline opens at: 8 AM, or an hour above the
  * earliest block in view when that starts sooner, so a morning exam is never
- * scrolled away. Clamped so the top pad stays visible.
+ * scrolled away. The hour's line then sits under the band's bottom border,
+ * so the two read as one rule; its label hangs below it, fully in view.
  */
 export function gridScrollTop(
   firstBlockMinute: number | undefined,
@@ -369,7 +368,7 @@ export function gridScrollTop(
     firstBlockMinute === undefined
       ? GRID_OPENS_AT
       : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
-  return Math.max(0, minuteOffset(Math.max(0, minute), bounds) - GRID_TOP_PAD);
+  return minuteOffset(Math.max(0, minute), bounds);
 }
 
 /** The earliest block start across `models` for `days`, if any. */
@@ -388,7 +387,7 @@ export function firstBlockMinute(
 
 /** Pixels from the top of the grid body for a given minute of the day. */
 export function minuteOffset(minute: number, bounds: GridBounds): number {
-  return GRID_TOP_PAD + ((minute - bounds.startMinute) / 60) * bounds.pxPerHour;
+  return ((minute - bounds.startMinute) / 60) * bounds.pxPerHour;
 }
 
 export function blockGeometry(
@@ -403,7 +402,7 @@ export function blockGeometry(
   // midnight already fits exactly and must not be pulled up.
   const overflow = top + height - bounds.height;
   if (height > drawn && overflow > 0) {
-    return { top: Math.max(GRID_TOP_PAD, top - overflow), height };
+    return { top: Math.max(0, top - overflow), height };
   }
   return { top, height };
 }

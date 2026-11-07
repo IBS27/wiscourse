@@ -26,5 +26,9 @@ export function blockFill(local: boolean): string {
 export const TODAY_TINT =
   "bg-[color-mix(in_srgb,var(--ink)_3.5%,transparent)] dark:bg-[color-mix(in_srgb,white_4%,transparent)]";
 
-/** Hour labels this close to the now pill (in px, centre to centre) are hidden. */
-export const NOW_LABEL_CLEARANCE = 14;
+/**
+ * A gutter hour label: hung just below its line rather than centred on it,
+ * so the hour at the top of the view is never cut in half by the band.
+ */
+export const HOUR_LABEL =
+  "absolute mt-[3px] text-[10.5px] leading-none whitespace-nowrap tabular text-ink-3";

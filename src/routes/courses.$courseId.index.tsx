@@ -102,7 +102,6 @@ function CourseOverview() {
             )}
             <OverviewWeek
               courseId={courseId}
-              canvasId={canvasId}
               modules={modules}
               todos={todos}
               todayKey={today}

@@ -81,7 +81,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
   return (
     // The same centred column as the top bar; the description keeps a reading measure inside it.
-    <div className="mx-auto w-full max-w-[880px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
+    <div className="w-full max-w-[768px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
       <div className="pt-4 pb-4 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
@@ -107,7 +107,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         {/* Status chips wrap among themselves; the primary action ends the row
             at the content's right edge, or takes its own full-width row on a phone. */}
         <div className="mt-[14px] flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-[6px]">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-[6px]">
             {done ? (
               <StatusChip>
                 <Check />
@@ -115,19 +115,18 @@ export function TodoDetail({ item }: { item: TodoItem }) {
                 {item.doneBySubmission ? " · on submission" : ""}
               </StatusChip>
             ) : overdue && item.dueAt !== undefined ? (
+              // One alarm: Canvas's "missing" flag and the lateness read as a single pill.
               <StatusChip alarm>
                 <Clock />
-                Overdue · {formatLate(item.dueAt, now)}
+                {item.submission === "missing" ? "Missing" : "Overdue"} · {formatLate(item.dueAt, now)}
               </StatusChip>
             ) : null}
-            {item.dueAt !== undefined ? (
-              <StatusChip>
-                {!overdue || done ? <Clock /> : null}
-                Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
-              </StatusChip>
-            ) : (
-              <StatusChip>No due date</StatusChip>
-            )}
+            {/* The due date is a fact, not a status: plain muted text. */}
+            <span className="text-[12.5px] whitespace-nowrap text-ink-3 tabular">
+              {item.dueAt !== undefined
+                ? `Due ${formatDayShort(dayKeyOf(item.dueAt))}, ${formatTime(item.dueAt)}`
+                : "No due date"}
+            </span>
             {item.plannedDay !== undefined && (
               <StatusChip>
                 <CalendarDays />
@@ -135,7 +134,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               </StatusChip>
             )}
             {isLocal && !course && <StatusChip>No course</StatusChip>}
-            <SubmissionChip item={item} overdue={overdue && !done} />
+            <SubmissionChip item={item} merged={overdue && !done} />
           </div>
           {!isLocal && item.htmlUrl && (
             <Button
@@ -166,7 +165,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             <button
               type="button"
               onClick={() => void setPlannedDay({ ref, plannedDay: null })}
-              className="h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 md:h-7 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              className="h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 md:h-8 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
             >
               Clear
             </button>
@@ -208,14 +207,14 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Description (Canvas) */}
       {!isLocal && description && (
-        <Block title="Description">
+        <PropertyRow title="Description" prose>
           <div className={PROSE} dangerouslySetInnerHTML={{ __html: sanitize(description) }} />
-        </Block>
+        </PropertyRow>
       )}
 
       {/* Submission (Canvas) */}
       {!isLocal && (
-        <Block title="Submission">
+        <PropertyRow title="Submission" prose>
           <div className="flex items-start gap-[10px]">
             <SubmissionIcon item={item} />
             <div className="min-w-0">
@@ -234,7 +233,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               <SubmissionPanel item={item} />
             </div>
           )}
-        </Block>
+        </PropertyRow>
       )}
 
       {/* Actions */}
@@ -301,39 +300,48 @@ const PROSE = cn(
   "[&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-[6px] [&_th]:border [&_th]:border-line [&_th]:bg-sunken [&_th]:px-2 [&_th]:py-[6px] [&_th]:text-left [&_th]:font-medium [&_th]:text-ink",
 );
 
-function Block({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="border-t border-line py-3 md:py-5">
-      <div className="mb-[10px] flex items-center gap-2">
-        <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
-      </div>
-      {children}
-    </section>
-  );
-}
-
 /**
- * A label column beside its controls — the Linear-style property sheet —
- * so an empty Plan or Notes costs one line, not a section. On a phone the
- * label sits above, so the controls get the full width.
+ * One label style for every section — the Linear-style property sheet: a
+ * label column beside its content on desktop, so an empty Plan or Notes costs
+ * one line, not a section. On a phone the label sits above, so the content
+ * gets the full width; `inline` (Notes) keeps it beside even there.
  */
-function PropertyRow({ title, inline = false, children }: { title: string; inline?: boolean; children: ReactNode }) {
+function PropertyRow({
+  title,
+  inline = false,
+  prose = false,
+  children,
+}: {
+  title: string;
+  inline?: boolean;
+  /** Reading content, not controls: more air, label aligned to the first text line. */
+  prose?: boolean;
+  children: ReactNode;
+}) {
   return (
     <section
       className={cn(
-        "grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4",
-        // A one-line control (Notes) keeps its label beside it even on a phone.
+        "grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[88px_minmax(0,1fr)] md:gap-x-4",
         inline && "grid-cols-[64px_minmax(0,1fr)] gap-x-3",
+        prose && "md:py-5",
       )}
     >
-      <h2 className={cn("text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink md:pt-[5px]", inline && "pt-[5px]")}>{title}</h2>
+      <h2
+        className={cn(
+          "text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink",
+          prose ? "md:pt-[3px]" : "md:pt-[7px]",
+          inline && "pt-[11px]",
+        )}
+      >
+        {title}
+      </h2>
       <div className="min-w-0">{children}</div>
     </section>
   );
 }
 
 const PLAN_BUTTON =
-  "flex h-10 items-center md:h-7 gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
 function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
@@ -401,7 +409,8 @@ function StatusChip({ alarm, children }: { alarm?: boolean; children: ReactNode 
   );
 }
 
-function SubmissionChip({ item, overdue }: { item: TodoItem; overdue: boolean }) {
+/** `merged`: the overdue pill already says "Missing", so this adds nothing. */
+function SubmissionChip({ item, merged }: { item: TodoItem; merged: boolean }) {
   switch (item.submission) {
     case "graded":
       return (
@@ -418,8 +427,7 @@ function SubmissionChip({ item, overdue }: { item: TodoItem; overdue: boolean })
         </StatusChip>
       );
     case "missing":
-      // The overdue chip already carries the alarm; this just adds Canvas's flag.
-      return overdue ? <StatusChip>Marked missing</StatusChip> : <StatusChip alarm>Missing</StatusChip>;
+      return merged ? null : <StatusChip alarm>Missing</StatusChip>;
     default:
       return null;
   }
@@ -482,6 +490,13 @@ function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) =
   );
 }
 
+/**
+ * Input-like surface for Add subtask and Notes: a hairline box at rest that
+ * strengthens on hover and focus, so both read as places to type.
+ */
+const FIELD =
+  "rounded-lg border border-line bg-surface transition-colors outline-none hover:border-line-2 hover:bg-hover focus-within:border-line-2 focus-within:bg-surface focus-within:ring-2 focus-within:ring-line focus:border-line-2 focus:bg-surface focus:ring-2 focus:ring-line";
+
 function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useDraft("todo:subtask", "");
   const submit = (e: FormEvent) => {
@@ -492,14 +507,14 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
     setValue("");
   };
   return (
-    <form onSubmit={submit} className="-mx-2 flex items-center gap-[10px] rounded-md px-2 py-[4px] text-ink-3 transition-colors focus-within:bg-hover hover:bg-hover">
-      <Plus className="size-[15px] shrink-0" />
+    <form onSubmit={submit} className={cn(FIELD, "mt-1 flex h-10 items-center gap-2 px-[10px] text-ink-3 md:h-8")}>
+      <Plus className="size-[14px] shrink-0" />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Add subtask"
         aria-label="Add subtask"
-        className="h-5 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
+        className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
       />
     </form>
   );
@@ -519,7 +534,7 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
       placeholder="Add notes…"
       aria-label="Notes"
       rows={draft === "" ? 1 : Math.max(2, Math.min(10, draft.split("\n").length + 1))}
-      className="-mx-2 block w-[calc(100%+16px)] resize-none rounded-md bg-transparent px-2 py-[4px] text-[13.5px] leading-[20px] text-ink-2 transition-colors outline-none placeholder:text-ink-3 hover:bg-hover focus:bg-hover"
+      className={cn(FIELD, "block w-full resize-none px-[10px] py-[9px] text-[13.5px] leading-[20px] text-ink-2 placeholder:text-ink-3 md:py-[5px]")}
     />
   );
 }

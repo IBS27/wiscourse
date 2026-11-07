@@ -3,8 +3,10 @@ import { useQuery } from "convex/react";
 import { ChevronLeft, SearchX } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { HEADER_BAR } from "@/components/app/page-header";
 import { TodoDetail } from "@/components/todo/todo-detail";
 import { announcementsHref } from "@/lib/course-routes";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/todo/$key")({
   component: TodoPage,
@@ -48,24 +50,30 @@ function TodoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* The bar shares the body's centred column, so their edges line up. */}
-      <div className="flex min-h-12 items-center border-b border-line md:min-h-[64px]">
-        <div className="mx-auto flex w-full max-w-[880px] min-w-0 items-center gap-2 px-4 md:px-6">
-        <Link
-          to="/"
-          className="-ml-2 flex h-8 shrink-0 items-center gap-1 rounded-md pr-[10px] pl-[6px] text-[13px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
-        >
-          <ChevronLeft className="size-4" />
-          Home
-        </Link>
-        {item && (
-          <>
-            <span className="text-line-2 max-md:hidden" aria-hidden>/</span>
-            <span className="truncate text-[13px] text-ink-2 max-md:hidden">{item.title}</span>
-          </>
-        )}
+      {/* The page frame: a 64px bar whose crumb sits on the title line, in
+          the body's left-aligned 720px column. Phones, where this is a
+          sub-page without a title, get a compact 48px back bar. */}
+      <header className={cn(HEADER_BAR, "max-md:h-12")}>
+        <div className="flex h-full w-full max-w-[720px] items-center">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-start md:h-[42px]">
+            <div className="flex h-6 min-w-0 items-center gap-2">
+              <Link
+                to="/"
+                className="-ml-2 flex h-7 shrink-0 items-center gap-1 rounded-md pr-[10px] pl-[6px] text-[13px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              >
+                <ChevronLeft className="size-4" />
+                Home
+              </Link>
+              {item && (
+                <>
+                  <span className="text-line-2 max-md:hidden" aria-hidden>/</span>
+                  <span className="truncate text-[13px] text-ink-3 max-md:hidden">{item.title}</span>
+                </>
+              )}
+            </div>
+          </nav>
         </div>
-      </div>
+      </header>
       <div className="flex-1">
         {missing ? (
           <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">

@@ -308,7 +308,7 @@ it("lists a chapter's groups by date, undated last", () => {
   const items = screen
     .getByRole("list", { name: "Chapter 12: Vectors schedule" })
     .querySelectorAll("li");
-  expect([...items].map((li) => li.querySelector("p:not(.tabular)")?.textContent)).toEqual([
+  expect([...items].map((li) => li.querySelector("h3")?.textContent)).toEqual([
     "Module Quiz 1",
     "Homework 12.1",
     "Review",

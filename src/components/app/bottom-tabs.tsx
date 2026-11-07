@@ -9,22 +9,28 @@ export function BottomTabs() {
         const item = NAV.find((n) => n.to === to);
         if (!item) return null;
         const Icon = item.icon;
-        const badge = to === "/inbox" && counts.inbox > 0;
+        const unread = to === "/inbox" ? counts.inbox : 0;
         return (
           <Link
             key={to}
             to={to}
             activeOptions={{ exact: to === "/" }}
-            className="group flex flex-col items-center gap-[3px] text-[10.5px] font-medium text-ink-3"
+            className="group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3"
             activeProps={{ className: "text-ink" }}
           >
             <span className="relative grid h-7 w-12 place-items-center rounded-full transition-colors group-data-[status=active]:bg-chip">
               <Icon className="size-[19px]" />
-              {badge && (
-                <span className="absolute top-[3px] right-[11px] size-[8px] rounded-full border-[1.5px] border-surface bg-unread" />
+              {unread > 0 && (
+                <span
+                  aria-hidden
+                  className="tabular absolute -top-[3px] left-[calc(50%+5px)] grid h-4 min-w-4 place-items-center rounded-full bg-unread px-1 text-[10.5px] leading-none font-semibold text-surface ring-2 ring-surface"
+                >
+                  {unread > 99 ? "99+" : unread}
+                </span>
               )}
             </span>
             {item.label}
+            {unread > 0 && <span className="sr-only">, {unread} unread</span>}
           </Link>
         );
       })}

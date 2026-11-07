@@ -16,7 +16,7 @@ import { CompositionStrip } from "./composition-strip";
 import { GradebookTable, type TableFooter } from "./gradebook-table";
 import { TargetsRail } from "./targets-rail";
 import { useWhatIf } from "./what-if";
-import { Kbd } from "@/components/app/bits";
+import { CourseTag, Kbd } from "@/components/app/bits";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import {
   dayKeyOf,
@@ -196,31 +196,33 @@ export function CourseGradebook({
           <div className="flex shrink-0 items-center gap-2">{toggle}</div>
         </div>
       ) : (
-        // The course hub's header template: the back chevron takes the hub's
-        // colour-dot slot, so the title sits at the same place and baseline,
-        // with the course code leading the meta line beneath it.
-        <header className="flex items-start gap-3 border-b border-line px-4 pt-[max(16px,env(safe-area-inset-top))] pb-4 md:px-6 md:pt-5">
+        // The page frame: on desktop a 64px bar whose 42px title block puts
+        // the title at the same y and gutter as every page's (the course
+        // colour rides on the code tag; the sidebar is the way back). Phones
+        // keep the hub's template: a back chevron and a larger wrapping title.
+        <header className="flex shrink-0 items-start gap-3 border-b border-line px-4 pt-[max(16px,env(safe-area-inset-top))] pb-4 md:h-16 md:items-center md:gap-5 md:px-6 md:py-0">
           <div className="flex min-w-0 flex-1 items-start">
             <Link
               to="/grades"
               aria-label="All grades"
-              className="-mt-[2px] -ml-[7px] grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              className="-mt-[2px] -ml-[7px] grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:hidden"
             >
               <ChevronLeft className="size-[18px]" />
             </Link>
-            <div className="min-w-0">
-              {/* Like the hub on a phone: a larger title that wraps rather than cut off. */}
-              <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance md:page-title md:line-clamp-1">
+            <div className="min-w-0 md:flex md:h-[42px] md:flex-col">
+              <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance md:page-title md:block md:h-6 md:truncate md:leading-6">
                 {course ? courseTitle(course) : "Course"}
               </h1>
-              <div className="mt-1 flex min-w-0 items-center gap-[7px] text-[12.5px] text-ink-3">
+              <div className="mt-1 truncate text-[12.5px] text-ink-3 md:mt-[2px] md:h-4 md:leading-4">
                 {[code, ...metaParts].map((part, i) =>
                   part === undefined ? null : (
-                    <span key={`${i}-${part}`} className="contents">
-                      {i > (code === undefined ? 1 : 0) && <span aria-hidden>·</span>}
-                      <span className={cn("truncate", i === 0 && "shrink-0 font-medium text-ink-2")}>
-                        {part}
-                      </span>
+                    <span key={`${i}-${part}`}>
+                      {i > (code === undefined ? 1 : 0) && (
+                        <span className="mx-[7px]" aria-hidden>
+                          ·
+                        </span>
+                      )}
+                      {i === 0 ? <CourseTag>{part}</CourseTag> : part}
                     </span>
                   ),
                 )}

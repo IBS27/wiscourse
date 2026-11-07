@@ -8,7 +8,7 @@ import type { TodoItem } from "../../convex/todos";
 import { Button } from "@/components/ui/button";
 import { CountBadge, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
-import { ProfileMenu } from "@/components/app/profile-menu";
+import { HEADER_BUTTON, PageHeader } from "@/components/app/page-header";
 import { SyncStatusLine } from "@/components/app/sync-status";
 import { useSyncInfo } from "@/lib/sync-info";
 import { AgendaItem } from "@/components/agenda/agenda-item";
@@ -46,42 +46,39 @@ function Home() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {/* Top bar */}
-      <header className="flex min-h-[64px] items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
-        <div>
-          <div className="page-title">
+      <PageHeader
+        title={
+          <>
             <span className="md:hidden">{formatDayMedium(today)}</span>
             <span className="hidden md:inline">{formatDayLong(today)}</span>
-          </div>
-          <SyncStatusLine className="mt-[3px]" />
-        </div>
-        <button
-          type="button"
-          onClick={quickAdd.open}
-          className="hidden h-9 w-[320px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 md:flex"
-        >
-          <Plus className="size-[14px]" />
-          Add a task…
-          <Kbd className="ml-auto">N</Kbd>
-        </button>
-        <div className="flex items-center gap-3 md:hidden">
-          <Link
-            to="/ask"
-            aria-label="Ask"
-            className="grid size-9 place-items-center rounded-full border border-line text-ink-2"
-          >
-            <MessageCircle className="size-[15px]" />
-          </Link>
-          <button
-            type="button"
-            onClick={quickAdd.open}
-            aria-label="Add a task"
-            className="grid size-9 place-items-center rounded-full bg-today text-today-fg"
-          >
-            <Plus className="size-[14px]" />
-          </button>
-          <ProfileMenu variant="avatar" />
-        </div>
-      </header>
+          </>
+        }
+        subtitle={<SyncStatusLine />}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              className="hidden h-9 w-[320px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 md:flex"
+            >
+              <Plus className="size-[14px]" />
+              Add a task…
+              <Kbd className="ml-auto">N</Kbd>
+            </button>
+            <Link to="/ask" aria-label="Ask" className={cn(HEADER_BUTTON, "md:hidden")}>
+              <MessageCircle className="size-[16px]" />
+            </Link>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              aria-label="Add a task"
+              className={cn(HEADER_BUTTON, "md:hidden")}
+            >
+              <Plus className="size-[16px]" />
+            </button>
+          </>
+        }
+      />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">

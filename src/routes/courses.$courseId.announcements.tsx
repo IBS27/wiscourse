@@ -50,7 +50,11 @@ function CourseAnnouncements() {
   };
 
   return (
-    <div className="min-w-0 flex-1 pb-8" style={courseStyle(courseColorVar(course?.color))}>
+    // A list page: 960px of content at the 24px gutter, rules inset with it.
+    <div
+      className="w-full max-w-[1008px] min-w-0 flex-1 pb-8"
+      style={courseStyle(courseColorVar(course?.color))}
+    >
       {rows === undefined ? null : rows.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
           <Megaphone className="size-5 text-ink-3" aria-hidden />

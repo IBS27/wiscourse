@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { OVERVIEW_ROW, type RowIcon } from "./overview-icons";
+import { OVERVIEW_ROW, OVERVIEW_ROW_NO_ICON, SECTION_TITLE, type RowIcon } from "./overview-icons";
 import { cn } from "@/lib/utils";
 
 /**
  * The overview's row, in the Home/Tasks anatomy: type icon · title (two
  * lines at most) with the meta line under it. One weight for every row:
- * these lists have no unread state.
+ * these lists have no unread state. A list whose rows would all draw the
+ * same icon passes none, and the hairline moves out to the gutter.
  */
 export function OverviewRow({
   icon: Icon,
@@ -17,7 +18,7 @@ export function OverviewRow({
   onClick,
   className,
 }: {
-  icon: RowIcon;
+  icon?: RowIcon;
   title: ReactNode;
   meta?: ReactNode;
   to?: string;
@@ -27,7 +28,7 @@ export function OverviewRow({
 }) {
   const body = (
     <>
-      <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" />
+      {Icon !== undefined && <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" />}
       <span className="min-w-0 flex-1">
         <span className="line-clamp-2 text-[14px] leading-[1.4] font-medium tracking-[-0.006em] text-ink">
           {title}
@@ -41,7 +42,12 @@ export function OverviewRow({
     </>
   );
   const interactive = to !== undefined || href !== undefined;
-  const cls = cn(OVERVIEW_ROW, interactive && "hover:bg-hover focus-visible:bg-hover", className);
+  const cls = cn(
+    OVERVIEW_ROW,
+    Icon === undefined && OVERVIEW_ROW_NO_ICON,
+    interactive && "hover:bg-hover focus-visible:bg-hover",
+    className,
+  );
 
   if (to !== undefined) {
     return (
@@ -61,9 +67,9 @@ export function OverviewRow({
 }
 
 /**
- * The heading above each overview block, in the Home section style:
- * sentence case, 13px semibold, quiet detail beside it, extras at the right.
- * `muted` is the smaller sub-heading inside a block.
+ * The heading above each overview block: sentence case, the body's loudest
+ * label, quiet detail beside it, extras at the right. `muted` is the
+ * smaller sub-heading inside a block.
  */
 export function SectionHead({
   title,
@@ -89,7 +95,7 @@ export function SectionHead({
           "min-w-0 truncate",
           muted
             ? "text-[12.5px] font-medium text-ink-2"
-            : "text-[13px] font-semibold tracking-[-0.005em] text-ink",
+            : SECTION_TITLE,
           red && "text-red",
         )}
       >

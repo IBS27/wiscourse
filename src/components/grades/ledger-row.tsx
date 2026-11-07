@@ -15,12 +15,17 @@ export const LEDGER_COLUMNS =
 
 const GUTTER = "px-4 md:px-6";
 
+/** Hairline under each row, inset to the content gutters like every other table. */
+const RULE =
+  "relative after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6";
+
 export function GradesLedgerHeader() {
   return (
     <div
       className={cn(
-        "hidden h-9 items-center gap-x-8 border-b border-line text-xs font-medium text-ink-3 md:grid",
+        "hidden h-9 items-center gap-x-8 text-xs font-medium text-ink-3 md:grid",
         GUTTER,
+        RULE,
         LEDGER_COLUMNS,
       )}
     >
@@ -69,8 +74,9 @@ export function GradesLedgerRow({
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-b border-line py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:gap-x-8 md:py-[10px]",
+        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:gap-x-8 md:py-[10px]",
         GUTTER,
+        RULE,
         LEDGER_COLUMNS,
       )}
     >
@@ -168,8 +174,9 @@ export function GradesPastRow({ course, color }: { course: Course; color: string
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "flex items-center gap-4 border-b border-line py-[10px] text-ink-2 no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:h-11 md:py-0",
+        "flex items-center gap-4 py-[10px] text-ink-2 no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:h-11 md:py-0",
         GUTTER,
+        RULE,
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">

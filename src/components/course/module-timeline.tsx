@@ -6,6 +6,7 @@ import {
   lockReason,
   moduleProgress,
   moduleTopic,
+  showsItemIcons,
   type ModuleDoc,
   type ModuleWithItems,
 } from "./module-utils";
@@ -33,6 +34,7 @@ export function ModuleTimeline({
   const groups = groupModulesByWeek(modules, courseStartKey);
   const byId = new Map<number, ModuleDoc>(modules.map((m) => [m.canvasId, m]));
   const thisWeek = startOfMondayWeek(todayKey);
+  const showIcon = showsItemIcons(modules);
 
   return (
     <div className="pb-6">
@@ -89,6 +91,7 @@ export function ModuleTimeline({
                   byId={byId}
                   groupLabel={group.label}
                   current={current}
+                  showIcon={showIcon}
                 />
               ))}
             </div>
@@ -105,6 +108,7 @@ function ModuleBlock({
   byId,
   groupLabel,
   current,
+  showIcon,
 }: {
   module: ModuleWithItems;
   ctx: ModuleRowContext;
@@ -112,6 +116,7 @@ function ModuleBlock({
   groupLabel: string;
   /** Inside the current week, whose `bg-sunken` matches `bg-hover` in light mode. */
   current: boolean;
+  showIcon: boolean;
 }) {
   const topic = moduleTopic(module.name);
   const title = topic === "" ? module.name : topic;
@@ -140,6 +145,7 @@ function ModuleBlock({
           item={item}
           ctx={ctx}
           dense
+          showIcon={showIcon}
           className={current ? "hover:bg-surface" : undefined}
         />
       ))}

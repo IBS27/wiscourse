@@ -18,12 +18,14 @@ import { api } from "../../convex/_generated/api";
 import { Composer } from "@/components/ask/composer";
 import { AskMobileNav } from "@/components/ask/mobile-nav";
 import { CourseTag } from "@/components/app/bits";
+import { HEADER_BAR, HeaderTitle } from "@/components/app/page-header";
 import { isDone } from "@/lib/agenda";
 import { errorMessage } from "@/lib/ask";
 import { DAY_MS } from "@/lib/dates";
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { courseLabel, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { displayTimeZone } from "@/lib/time-zone";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ask/")({
   component: NewChat,
@@ -91,6 +93,9 @@ function NewChat() {
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-line px-2 md:hidden">
         <AskMobileNav />
         <span className="flex-1 text-center text-[15px] font-semibold tracking-[-0.015em]">Ask</span>
+      </header>
+      <header className={cn(HEADER_BAR, "hidden items-center md:flex")}>
+        <HeaderTitle title="Ask" subtitle="Answers from your synced Canvas courses" />
       </header>
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 md:px-6">
         <div className="flex w-full max-w-[640px] flex-1 flex-col pt-8 md:justify-center md:pt-0 md:pb-[8vh]">

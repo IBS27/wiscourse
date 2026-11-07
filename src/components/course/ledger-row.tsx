@@ -13,7 +13,7 @@ import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /** Course · next due · new; the new column is exactly as wide as its slots. */
-export const LEDGER_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]";
+export const LEDGER_COLS = "md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-x-6";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =
@@ -28,8 +28,12 @@ const NEW_SLOTS = [
 ] as const;
 type SlotKey = (typeof NEW_SLOTS)[number]["key"];
 
-/** One slot, right-aligned so a column of numbers lines up under its label: 88px names it in full, 56px abbreviates. */
-const SLOT = "w-14 text-right xl:w-[88px]";
+/**
+ * One slot, right-aligned so a column of numbers ends exactly where its
+ * label does: 96px names it in full (the widest label fits without spilling
+ * past the right edge), 56px abbreviates. Header and cells share the class.
+ */
+const SLOT = "w-14 shrink-0 text-right whitespace-nowrap tabular xl:w-24";
 
 export function LedgerRow({
   course,
@@ -62,7 +66,7 @@ export function LedgerRow({
       to={courseHref(course.canvasId)}
       style={courseStyle(color)}
       className={cn(
-        "group relative grid grid-cols-1 gap-y-[6px] px-4 py-3 text-inherit no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:min-h-[62px] md:items-center md:gap-x-8 md:gap-y-0 md:px-6 md:py-[10px]",
+        "group relative grid grid-cols-1 gap-y-[6px] px-4 py-3 text-inherit no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:min-h-[62px] md:items-center md:gap-y-0 md:px-6 md:py-[10px]",
         LEDGER_COLS,
         RULE,
       )}
@@ -121,7 +125,7 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
         {NEW_SLOTS.map((slot) => (
           <span
             key={slot.key}
-            className={cn(SLOT, "tabular", counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink-3")}
+            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink/35")}
             aria-hidden
           >
             {counts[slot.key] > 0 ? counts[slot.key] : "—"}

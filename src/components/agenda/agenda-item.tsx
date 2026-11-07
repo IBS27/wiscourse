@@ -140,11 +140,12 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
   if (overdue && item.dueAt !== undefined) {
     return (
       // One small red mark per row; the words stay neutral so a column of
-      // overdue rows doesn't shout over the titles.
-      <span className="inline-flex shrink-0 items-center gap-[5px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 tabular">
-        <Clock className="size-[13px] text-red" aria-hidden />
+      // overdue rows doesn't shout over the titles. The icon trails the text
+      // so it sits on the right edge and lines up down the column.
+      <span className="inline-flex shrink-0 items-center gap-[6px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 tabular">
         <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
         <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
+        <Clock className="size-[13px] text-red" aria-hidden />
       </span>
     );
   }

@@ -18,12 +18,15 @@ export function ModuleRow({
   item,
   ctx,
   dense = false,
+  showIcon = true,
   className,
 }: {
   item: ModuleItemDoc;
   ctx: ModuleRowContext;
   /** The timeline's tighter gutter, without the row rule. */
   dense?: boolean;
+  /** Off when every row in the list would draw the same icon. */
+  showIcon?: boolean;
   className?: string;
 }) {
   const id = `item-${item.canvasId}`;
@@ -63,14 +66,17 @@ export function ModuleRow({
         gutter,
         // Hairline above each row, inset to the title column.
         !dense &&
-          "before:absolute before:top-0 before:right-4 before:left-[calc(var(--pl)+25px)] before:h-px before:bg-line md:before:right-6",
+          "before:absolute before:top-0 before:right-4 before:h-px before:bg-line md:before:right-6",
+        !dense && (showIcon ? "before:left-[calc(var(--pl)+25px)]" : "before:left-(--pl)"),
         className,
       )}
       style={style}
     >
-      {createElement(itemIcon(item, ctx.files), {
-        className: "size-[15px] shrink-0 text-ink-3",
-      })}
+      {showIcon &&
+        createElement(itemIcon(item), {
+          className: "size-[15px] shrink-0 text-ink-3",
+          "aria-hidden": true,
+        })}
       {/* One weight for every item: the module's progress says what's been viewed. */}
       <span className="line-clamp-2 min-w-0 md:truncate">{item.title}</span>
       {target.kind === "external" && (

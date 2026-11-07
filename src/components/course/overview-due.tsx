@@ -4,18 +4,18 @@
  * next seven days — anything further out belongs on Tasks, not here.
  */
 
-import { CalendarCheck, CircleHelp, Clock, MessageSquare, ClipboardList } from "lucide-react";
-import type { RowIcon } from "./overview-icons";
+import { CalendarCheck, Clock, ListTodo } from "lucide-react";
+import { iconsDiffer, ROW_ICON, type RowIcon } from "./overview-icons";
 import { OverviewRow, SectionHead } from "./overview-row";
 import type { TodoItem } from "../../../convex/todos";
 import { isOverdue } from "@/lib/agenda";
 import { DAY_MS, dayKeyOf, formatDayShort, formatTime, formatWeekday } from "@/lib/dates";
 
-const ICON: Record<string, RowIcon> = {
-  assignment: ClipboardList,
-  quiz: CircleHelp,
-  discussion: MessageSquare,
-  local: ClipboardList,
+const ICON: Record<TodoItem["kind"], RowIcon> = {
+  assignment: ROW_ICON.Assignment,
+  quiz: ROW_ICON.Quiz,
+  discussion: ROW_ICON.Discussion,
+  local: ListTodo,
 };
 
 export function OverviewDue({
@@ -40,6 +40,8 @@ export function OverviewDue({
     (t) => t.dueAt !== undefined && t.dueAt >= now && t.dueAt < now + 7 * DAY_MS,
   );
   const items = [...overdue, ...soon].sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0));
+  // All assignments, say: the icon would repeat on every row and say nothing.
+  const showIcons = iconsDiffer(items.map((item) => ICON[item.kind]));
 
   const detail =
     overdue.length === 0 && soon.length === 0 ? undefined : (
@@ -62,7 +64,7 @@ export function OverviewDue({
         items.map((item) => (
           <OverviewRow
             key={item.key}
-            icon={ICON[item.kind] ?? ClipboardList}
+            icon={showIcons ? ICON[item.kind] : undefined}
             title={item.title}
             to={`/todo/${item.key}`}
             meta={dueMeta(item, now)}

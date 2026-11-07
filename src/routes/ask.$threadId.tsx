@@ -231,9 +231,11 @@ function ThreadHeader({ thread }: { thread: AskThread | undefined }) {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-[10px] border-b border-line px-2 md:h-16 md:pr-4 md:pl-6">
+    // The page frame: 64px, the title on the title line and the course on
+    // the subtitle line, as on every page.
+    <header className="flex h-16 shrink-0 items-center gap-[10px] border-b border-line px-2 md:pr-4 md:pl-6">
       <AskMobileNav activeId={thread?.threadId} />
-      <div className="flex min-w-0 flex-1 items-center gap-[10px]">
+      <div className="flex h-[42px] min-w-0 flex-1 flex-col">
         {editing ? (
           <input
             autoFocus
@@ -246,16 +248,18 @@ function ThreadHeader({ thread }: { thread: AskThread | undefined }) {
             }}
             maxLength={80}
             aria-label="Chat name"
-            className="h-8 min-w-0 flex-1 rounded-md border border-line-2 bg-surface px-2 text-[15px] font-semibold tracking-[-0.015em] outline-none"
+            className="-ml-2 h-6 min-w-0 rounded-md border border-line-2 bg-surface px-2 text-[15px] font-semibold tracking-[-0.015em] outline-none"
           />
         ) : (
-          <h1 className="truncate page-title">{thread?.title ?? ""}</h1>
+          <h1 className="page-title h-6 truncate leading-6">{thread?.title ?? ""}</h1>
         )}
-        {course && !editing && (
-          <span className="hidden shrink-0 text-[12.5px] sm:inline-flex" style={courseStyle(color(course.canvasId))}>
-            <CourseTag>{courseLabel(course)}</CourseTag>
-          </span>
-        )}
+        <div className="mt-[2px] h-4 min-w-0 truncate text-[12.5px] leading-4 text-ink-3">
+          {course && (
+            <span style={courseStyle(color(course.canvasId))}>
+              <CourseTag>{courseLabel(course)}</CourseTag>
+            </span>
+          )}
+        </div>
       </div>
       {thread && (
         <ThreadMenu

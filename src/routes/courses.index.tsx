@@ -1,13 +1,12 @@
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, Search } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { LEDGER_COLS, LedgerRow, NewCountsHead } from "@/components/course/ledger-row";
 import { LedgerPastTerms } from "@/components/course/ledger-past";
 import { LedgerFold } from "@/components/course/ledger-fold";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, type Course } from "@/lib/hooks";
-import { openSearch } from "@/lib/search-context";
 import { useSyncInfo } from "@/lib/sync-info";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +38,6 @@ function CoursesIndex() {
       <PageHeader
         title="Courses"
         subtitle={subtitle(termName, visible, info?.lastSyncedAt, now)}
-        actions={
-          // Desktop has ⌘K in the sidebar; on mobile this is the only way in.
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={() => openSearch()}
-            className="text-ink-3 md:hidden"
-          >
-            <Search className="size-[18px]" />
-          </button>
-        }
       />
 
       {loading ? (
@@ -71,7 +59,7 @@ function CoursesIndex() {
           {visible.length > 0 && (
             <div
               className={cn(
-                "hidden items-end gap-x-8 border-b border-line px-6 pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
+                "mx-6 hidden items-end border-b border-line pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
                 LEDGER_COLS,
               )}
             >

@@ -226,21 +226,27 @@ function AssignmentRow({
           className={cn(
             "truncate no-underline hover:underline hover:underline-offset-4",
             // New grades carry weight, not a dot; seen ones settle to ink-2.
-            result.dropped ? "text-ink-3" : unseen ? "font-medium text-ink" : "text-ink-2",
+            unseen && !result.dropped ? "font-medium text-ink" : "text-ink-2",
           )}
         >
           {row.name}
         </Link>
-        {state !== undefined && (
-          <span
-            className={cn(
-              "shrink-0 text-[12px] font-medium",
-              state.tone === "red" ? "text-red" : "text-ink-3",
-            )}
-          >
-            {state.label}
-          </span>
-        )}
+        {state !== undefined &&
+          (result.dropped ? (
+            // A dropped score is decided, not wrong: a quiet pill, never a strike.
+            <span className="inline-flex h-[18px] shrink-0 items-center rounded-full bg-chip px-[7px] text-[12px] text-ink-3">
+              {state.label}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "shrink-0 text-[12px] font-medium",
+                state.tone === "red" ? "text-red" : "text-ink-3",
+              )}
+            >
+              {state.label}
+            </span>
+          ))}
         {edited && (
           <>
             <span className="size-[5px] shrink-0 rounded-full bg-ink-2" aria-hidden />

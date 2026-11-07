@@ -1,5 +1,6 @@
 import type { Summary } from "../../../convex/lib/grades";
 import { formatPercent, formatPoints, usesWeights } from "@/lib/grades-ui";
+import { Meter } from "./bits";
 import { cn } from "@/lib/utils";
 
 interface Segment {
@@ -89,10 +90,9 @@ export function CompositionStrip({
               <span
                 role="img"
                 aria-label={`${segment.name}: ${segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}`}
-                className="relative block h-1.5 overflow-hidden rounded-full"
-                style={{ background: "color-mix(in oklab, var(--c) 20%, var(--surface))" }}
+                className="block"
               >
-                <span className="absolute inset-y-0 left-0 rounded-full bg-c" style={{ width: `${score * 100}%` }} />
+                <Meter fraction={score} />
               </span>
               {segment.percent === undefined ? (
                 <span className="text-right text-ink-3" title="not yet graded">

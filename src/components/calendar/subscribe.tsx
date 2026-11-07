@@ -8,7 +8,6 @@ import { Check, Clock, Copy, Globe, Info, RefreshCw } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Mark, type MarkKind } from "./marks";
 import { formatSince } from "@/lib/dates";
 import {
   browserTimeZone,
@@ -20,11 +19,11 @@ import { cn } from "@/lib/utils";
 
 type Include = { meetings: boolean; due: boolean; planned: boolean; events: boolean };
 
-const INCLUDE_ROWS: { id: keyof Include; label: string; mark: MarkKind }[] = [
-  { id: "meetings", label: "Class meetings", mark: "meeting" },
-  { id: "due", label: "Due dates", mark: "due" },
-  { id: "planned", label: "Planned todos", mark: "planned" },
-  { id: "events", label: "Events", mark: "event" },
+const INCLUDE_ROWS: { id: keyof Include; label: string; detail: string }[] = [
+  { id: "meetings", label: "Class meetings", detail: "Lectures, discussions and labs from your class times" },
+  { id: "due", label: "Due dates", detail: "Assignments, quizzes and discussions at their due time" },
+  { id: "planned", label: "Planned todos", detail: "All-day items on the days you planned work" },
+  { id: "events", label: "Events", detail: "Canvas calendar events and the ones you add" },
 ];
 
 export function SubscribeDialog({
@@ -129,9 +128,11 @@ export function SubscribeSections() {
       <div className="border-b border-line px-4 md:px-5 py-[14px]">
         <div className="eyebrow mb-[10px]">Include</div>
         {INCLUDE_ROWS.map((row) => (
-          <div key={row.id} className="flex items-center gap-[9px] py-[7px] text-[13px] text-ink-2">
-            <Mark kind={row.mark} legend />
-            {row.label}
+          <div key={row.id} className="flex items-center gap-4 py-[7px]">
+            <span className="min-w-0">
+              <span className="block text-[13px] text-ink">{row.label}</span>
+              <span className="block text-[12px] leading-[1.45] text-ink-3">{row.detail}</span>
+            </span>
             <Switch
               on={include[row.id]}
               label={row.label}

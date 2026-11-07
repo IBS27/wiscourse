@@ -141,7 +141,7 @@ function InboxPage() {
                   onClick={() => void markAll()}
                   aria-label="Mark all read"
                   title="Mark all read"
-                  className="inline-flex h-8 cursor-pointer items-center gap-[6px] rounded-md px-2 text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none lg:ml-1"
+                  className="inline-flex h-8 cursor-pointer items-center gap-[6px] rounded-md px-2 text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none max-sm:size-9 max-sm:justify-center max-sm:rounded-full max-sm:border max-sm:border-line max-sm:px-0 lg:ml-1"
                 >
                   <CheckCheck className="size-[15px]" aria-hidden />
                   <span className="hidden sm:inline">Mark all read</span>

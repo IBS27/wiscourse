@@ -25,12 +25,11 @@ import {
   layoutBlocks,
   minuteOf,
   minuteOffset,
-  GRID_TOP_PAD,
   type CalendarEvent,
   type GridBounds,
 } from "@/lib/calendar";
 import { AllDayLine, DoneLine, DueLine, PlanLine } from "./bands";
-import { blockFill, BLOCK_SUBTITLE, NOW_LABEL_CLEARANCE, TODAY_TINT } from "./block-styles";
+import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL, TODAY_TINT } from "./block-styles";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
 import { courseStyle, useCourses } from "@/lib/hooks";
@@ -48,11 +47,14 @@ const columns = (compact: boolean): CSSProperties => ({
 const ROW = "shrink-0 overflow-hidden";
 const NO_SCROLLBAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
-const hourLines = (pxPerHour: number): CSSProperties => ({
+// Each hour's line is the last pixel of the hour before it, so the line at
+// the top of the view tucks under the band's border and midnight's under the
+// footer's: one rule at each edge, never two.
+const hourLines = (pxPerHour: number, height: number): CSSProperties => ({
   backgroundImage: `repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px ${pxPerHour}px)`,
-  backgroundPosition: `0 ${GRID_TOP_PAD}px`,
-  // Midnight closes the day with the same hairline.
-  boxShadow: "inset 0 -1px var(--line)",
+  backgroundPosition: "0 -1px",
+  backgroundSize: `100% ${height - 1}px`,
+  backgroundRepeat: "no-repeat",
 });
 
 /** A day's band shows this many rows before folding the rest into "+N more". */
@@ -172,23 +174,18 @@ export function WeekGrid({
         className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
         style={grid}
       >
-        <div
-          className="relative text-[10.5px] tabular text-ink-3"
-          style={{ height: bounds.height }}
-        >
-          {bounds.hours.map((hour) =>
-            // An hour level with the now pill would crowd it from across the line.
-            showNow &&
-            Math.abs(minuteOffset(hour * 60, bounds) - nowTop) < NOW_LABEL_CLEARANCE ? null : (
-              <span
-                key={hour}
-                className="absolute right-2 -translate-y-1/2"
-                style={{ top: minuteOffset(hour * 60, bounds) }}
-              >
-                {hourLabel(hour)}
-              </span>
-            ),
-          )}
+        {/* Nothing else lives in the gutter (the now pill sits in today's
+            column), so every hour keeps its label. */}
+        <div className="relative" style={{ height: bounds.height }}>
+          {bounds.hours.map((hour) => (
+            <span
+              key={hour}
+              className={cn(HOUR_LABEL, "right-2")}
+              style={{ top: minuteOffset(hour * 60, bounds) }}
+            >
+              {hourLabel(hour)}
+            </span>
+          ))}
         </div>
 
         {days.map((day) => {
@@ -199,7 +196,7 @@ export function WeekGrid({
             <div
               key={day}
               className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
-              style={{ ...hourLines(bounds.pxPerHour), height: bounds.height }}
+              style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
             >
               {blocks.map((block) => (
                 <Block

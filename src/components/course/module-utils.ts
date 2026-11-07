@@ -1,16 +1,9 @@
 import { teachingRange } from "@/lib/course-structure";
-import {
-  ExternalLink,
-  File as FileIcon,
-  FileText,
-  ListChecks,
-  MessagesSquare,
-  ClipboardList,
-  type LucideIcon,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import type { TodoItem } from "../../../convex/todos";
-import { extensionOf, fileIcon } from "./file-kinds";
+import { extensionOf } from "./file-kinds";
+import { iconsDiffer, ROW_ICON } from "./overview-icons";
 import { isDone, isOverdue } from "@/lib/agenda";
 import {
   DAY_MS,
@@ -340,21 +333,14 @@ export function lockReason(
 
 // ── icons ───────────────────────────────────────────────────────────────────
 
-const TYPE_ICON: Partial<Record<ModuleItemDoc["type"], LucideIcon>> = {
-  Page: FileText,
-  Assignment: ClipboardList,
-  Quiz: ListChecks,
-  Discussion: MessagesSquare,
-  ExternalUrl: ExternalLink,
-  ExternalTool: ExternalLink,
-};
+/** The item's type icon, from the one map every course list draws with. */
+export function itemIcon(item: ModuleItemDoc): LucideIcon {
+  return ROW_ICON[item.type];
+}
 
-/** Type icon; files narrow further by content type. */
-export function itemIcon(item: ModuleItemDoc, files?: Map<number, FileDoc>): LucideIcon {
-  if (item.type === "File") {
-    const file =
-      item.contentCanvasId === undefined ? undefined : files?.get(item.contentCanvasId);
-    return file === undefined ? FileIcon : fileIcon(file.contentType, file.filename);
-  }
-  return TYPE_ICON[item.type] ?? FileIcon;
+/** Whether a modules list needs its icon column: only when the types differ. */
+export function showsItemIcons(modules: ModuleWithItems[]): boolean {
+  return iconsDiffer(
+    modules.flatMap((m) => m.items.filter((i) => i.type !== "SubHeader").map(itemIcon)),
+  );
 }

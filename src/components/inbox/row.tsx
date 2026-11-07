@@ -6,6 +6,7 @@ import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { CourseTag } from "@/components/app/bits";
 import { FEED_ICON } from "./format";
+import { WordTruncate } from "./word-truncate";
 
 /** Unread gutter, icon, title, then "MATH 234 · Graded 10/10 · 2h". Unread rows carry a dot and a heavier title. */
 export function InboxRow({
@@ -29,9 +30,9 @@ export function InboxRow({
       search={(prev) => ({ ...prev, item: item.key })}
       aria-current={selected ? "true" : undefined}
       className={cn(
-        "group relative isolate flex cursor-pointer items-start py-[11px] pr-4 pl-[10px] text-inherit no-underline focus-visible:outline-none md:pr-6 md:pl-[18px]",
+        "group relative isolate flex cursor-pointer items-start py-[11px] pr-4 pl-4 text-inherit no-underline focus-visible:outline-none md:pr-6 md:pl-6",
         // Hairline between rows, from the title column to the content edge.
-        "after:absolute after:right-4 after:bottom-0 after:left-[51px] after:h-px after:bg-line md:after:right-6 md:after:left-[59px]",
+        "after:absolute after:right-4 after:bottom-0 after:left-[65px] after:h-px after:bg-line md:after:right-6 md:after:left-[73px]",
         // Hover, focus and selection fill an inset rounded plate, 8px in from the list edges.
         "before:absolute before:inset-x-1 before:inset-y-[2px] before:-z-10 before:rounded-[6px] before:transition-colors md:before:inset-x-2",
         "focus-visible:before:bg-hover",
@@ -42,8 +43,8 @@ export function InboxRow({
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >
-      {/* Unread lives in one fixed gutter, left of the icon, on every feed list. */}
-      <span className="mr-2 flex w-[6px] shrink-0 justify-center pt-[7px]">
+      {/* Unread lives in one fixed 12px column, left of the icon, on every feed list. */}
+      <span className="mr-[10px] flex w-3 shrink-0 justify-center pt-[7px]">
         {!item.seen && <span className="size-[6px] rounded-full bg-unread" role="img" aria-label="Unread" />}
       </span>
       <Icon className="mt-[3px] mr-3 size-[15px] shrink-0 text-ink-3" aria-hidden />
@@ -61,7 +62,7 @@ export function InboxRow({
           {subtitle !== undefined && (
             <>
               <span aria-hidden>·</span>
-              <span className="min-w-0 truncate">{subtitle}</span>
+              <WordTruncate text={subtitle} />
             </>
           )}
           <span className="tabular ml-auto shrink-0 pl-2">{formatAgo(item.at, now)}</span>

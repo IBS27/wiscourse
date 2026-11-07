@@ -86,17 +86,17 @@ describe("grid bounds", () => {
     expect(GRID_BOUNDS.startMinute).toBe(0);
     expect(GRID_BOUNDS.endMinute).toBe(24 * 60);
     expect(GRID_BOUNDS.hours).toHaveLength(24);
-    expect(GRID_BOUNDS.height).toBe(10 + 24 * 48);
+    expect(GRID_BOUNDS.height).toBe(24 * 48);
   });
 
   it("draws a compact grid for a week with nothing timed", () => {
     expect(EMPTY_PX_PER_HOUR).toBe(28);
-    expect(EMPTY_GRID_BOUNDS.height).toBe(10 + 24 * EMPTY_PX_PER_HOUR);
+    expect(EMPTY_GRID_BOUNDS.height).toBe(24 * EMPTY_PX_PER_HOUR);
     expect(gridScrollTop(undefined, EMPTY_GRID_BOUNDS)).toBe(8 * EMPTY_PX_PER_HOUR);
   });
 
   it("caps the empty grid's window at 8 AM to midnight, so it opens at 8 AM", () => {
-    expect(EMPTY_GRID_MAX_VIEW).toBe(10 + 16 * EMPTY_PX_PER_HOUR);
+    expect(EMPTY_GRID_MAX_VIEW).toBe(16 * EMPTY_PX_PER_HOUR);
     expect(EMPTY_GRID_BOUNDS.height - EMPTY_GRID_MAX_VIEW).toBe(
       gridScrollTop(undefined, EMPTY_GRID_BOUNDS),
     );
@@ -118,7 +118,7 @@ describe("grid bounds", () => {
 
   it("keeps a block that runs to midnight at its start time", () => {
     expect(blockGeometry({ startMinute: 14 * 60, endMinute: 24 * 60 }, GRID_BOUNDS)).toEqual({
-      top: 10 + 14 * 48,
+      top: 14 * 48,
       height: 480,
     });
   });
@@ -134,7 +134,7 @@ describe("grid bounds", () => {
     expect(tiny.height).toBe(40);
     const lecture = blockGeometry({ startMinute: 11 * 60, endMinute: 12 * 60 + 15 }, GRID_BOUNDS);
     expect(lecture.height).toBe(60);
-    expect(lecture.top).toBe(10 + 11 * 48);
+    expect(lecture.top).toBe(11 * 48);
   });
 });
 

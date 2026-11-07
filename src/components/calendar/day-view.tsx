@@ -18,7 +18,7 @@ import {
   PX_PER_HOUR,
 } from "@/lib/calendar";
 import { AllDayLine, DueLine, PlanLine } from "./bands";
-import { blockFill, BLOCK_SUBTITLE, NOW_LABEL_CLEARANCE } from "./block-styles";
+import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL } from "./block-styles";
 import { NowLine } from "./week-grid";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatDayLong, formatWeekday } from "@/lib/dates";
@@ -127,16 +127,14 @@ export function DayTimeline({
   return (
     <div className="relative pr-3" style={{ height: bounds.height + 8 }}>
       {bounds.hours.map((hour) => (
+        // The line is the hour's top edge minus one pixel, as on the week
+        // grid, so the hour at the top of the view tucks under the border above.
         <div
           key={hour}
           className="absolute right-0 left-[52px] border-t border-line"
-          style={{ top: minuteOffset(hour * 60, bounds) }}
+          style={{ top: minuteOffset(hour * 60, bounds) - 1 }}
         >
-          {!(showNow && Math.abs(minuteOffset(hour * 60, bounds) - nowTop) < NOW_LABEL_CLEARANCE) && (
-            <span className="absolute -top-[7px] -left-[52px] w-11 text-right text-[10.5px] tabular text-ink-3">
-              {hourLabel(hour)}
-            </span>
-          )}
+          <span className={cn(HOUR_LABEL, "-left-[52px] w-11 text-right")}>{hourLabel(hour)}</span>
         </div>
       ))}
 
