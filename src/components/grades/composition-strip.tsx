@@ -67,27 +67,28 @@ export function CompositionStrip({
         )}
       >
         {segments.map((segment) => {
-          const fill = Math.max(0, Math.min(1, segment.fill));
-          const graded = `${Math.round(fill * 100)}% graded`;
+          // The bar is the score, so it always agrees with the number beside it;
+          // how much is graded so far is said in words.
+          const graded = `${Math.round(Math.max(0, Math.min(1, segment.fill)) * 100)}% graded`;
+          const score = segment.percent === undefined ? 0 : Math.max(0, Math.min(1, segment.percent / 100));
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_72px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(0,1fr)_auto_96px_52px]"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_64px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(0,1fr)_auto_88px_52px]"
             >
               <span className="truncate font-medium text-ink" title={segment.name}>
                 {segment.name}
               </span>
               <span className="tabular text-[12.5px] whitespace-nowrap text-ink-3">
-                {segment.size} of grade
+                {segment.size} of grade · {graded}
               </span>
               <span
                 role="img"
-                aria-label={`${segment.name}: ${graded}`}
-                title={graded}
+                aria-label={`${segment.name}: ${segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}`}
                 className="relative block h-1.5 overflow-hidden rounded-full"
                 style={{ background: "color-mix(in oklab, var(--c) 20%, var(--surface))" }}
               >
-                <span className="absolute inset-y-0 left-0 rounded-full bg-c" style={{ width: `${fill * 100}%` }} />
+                <span className="absolute inset-y-0 left-0 rounded-full bg-c" style={{ width: `${score * 100}%` }} />
               </span>
               {segment.percent === undefined ? (
                 <span className="text-right text-ink-3" title="not yet graded">

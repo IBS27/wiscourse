@@ -7,6 +7,7 @@ import type { TodoItem } from "../../../convex/todos";
 import { Pill, CourseTag } from "@/components/app/bits";
 import { refOf } from "@/lib/todo-ref";
 import {
+  formatDueCompact,
   formatDueRelative,
   formatLate,
   formatLateShort,
@@ -47,8 +48,16 @@ export function AgendaItem({
   if (done && item.doneAt !== undefined) {
     meta.push(<span key="done">Done {formatTime(item.doneAt)}</span>);
   } else if (item.dueAt !== undefined) {
-    const label = compact && overdue ? formatLate(item.dueAt, now) : `Due ${formatDueRelative(item.dueAt, todayKey)}`;
-    meta.push(<span key="due" className={cn(compact && overdue && "text-red")}>{label}</span>);
+    if (compact && overdue) {
+      meta.push(<span key="due" className="text-red">{formatLate(item.dueAt, now)}</span>);
+    } else {
+      meta.push(
+        <span key="due">
+          <span className="sm:hidden">Due {formatDueCompact(item.dueAt, todayKey)}</span>
+          <span className="max-sm:hidden">Due {formatDueRelative(item.dueAt, todayKey)}</span>
+        </span>,
+      );
+    }
   }
   if (!done && item.plannedDay !== undefined) {
     meta.push(<span key="plan">Planned {formatPlannedRelative(item.plannedDay < todayKey ? todayKey : item.plannedDay, todayKey)}</span>);
