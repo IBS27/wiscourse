@@ -74,7 +74,7 @@ export function GradesLedgerRow({
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:gap-x-8 md:py-[10px]",
+        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
         GUTTER,
         RULE,
         LEDGER_COLUMNS,

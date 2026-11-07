@@ -134,7 +134,7 @@ export function DueLine({
   roomy?: boolean;
   compact?: boolean;
 }) {
-  const { color } = useCourses();
+  const { color, label } = useCourses();
   const done = isDoneOrSubmitted(item);
   const minute = item.dueAt === undefined ? undefined : minuteOf(item.dueAt, zone);
   const tooltip =
@@ -142,8 +142,9 @@ export function DueLine({
   if (!roomy && !compact) {
     // The end-of-day default is left out so the title keeps the room; the
     // tooltip always carries it.
-    const time =
-      minute === undefined || minute === END_OF_DAY ? undefined : `Due ${clockTimeMeridiem(minute)}`;
+    // The small line says when and for which course; the title gets the room.
+    const when = minute === undefined || minute === END_OF_DAY ? undefined : `Due ${clockTimeMeridiem(minute)}`;
+    const time = [when, label(item.courseCanvasId)].filter(Boolean).join(" · ") || undefined;
     return (
       <Line todoKey={item.key} color={color(item.courseCanvasId)} title={tooltip} muted={done}>
         <ChipBody time={time} done={done}>

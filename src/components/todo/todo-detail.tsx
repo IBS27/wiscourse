@@ -201,7 +201,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         </div>
       </PropertyRow>
 
-      <PropertyRow title="Notes" inline>
+      <PropertyRow title="Notes">
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </PropertyRow>
 

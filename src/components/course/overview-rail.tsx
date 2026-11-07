@@ -280,14 +280,9 @@ function StandingFact({
       : (canvasLetter ?? (book ? letterFor(score, schemeFor(book.course)) : undefined));
   const estimated = canvasLetter === undefined && letter !== undefined;
   const coverage = summary === undefined || hidden ? undefined : coverageLabel(summary);
-  const sub = [
-    coverage?.replace(" of grade", " graded"),
-    hub.heaviestGroup === undefined
-      ? undefined
-      : `${hub.heaviestGroup.name} weigh ${hub.heaviestGroup.weight}%`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const heavy =
+    hub.heaviestGroup === undefined ? undefined : `${hub.heaviestGroup.name} weigh ${hub.heaviestGroup.weight}%`;
+  const sub = [coverage, heavy].filter(Boolean).join(" · ");
   if (score === undefined && sub === "") return null;
 
   return (
@@ -305,10 +300,15 @@ function StandingFact({
       sub={
         sub === "" ? undefined : (
           <>
-            <span className="tabular">{sub}</span>
+            {/* The bar measures how much is graded, so its label sits beside it,
+                apart from the grade above. */}
             {coverage !== undefined && (
-              <Meter fraction={summary?.coverage ?? 0} className="mt-2" />
+              <span className="mt-[6px] flex items-center gap-[10px]">
+                <Meter fraction={summary?.coverage ?? 0} className="min-w-0 flex-1" />
+                <span className="tabular shrink-0">{coverage.replace(" of grade", " graded")}</span>
+              </span>
             )}
+            {heavy !== undefined && <span className="mt-1 block">{heavy}</span>}
           </>
         )
       }
