@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { useInboxFeed } from "@/lib/list-queries";
 import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
@@ -6,18 +7,70 @@ import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge, CourseTag } from "@/components/app/bits";
 import { formatAgo } from "@/lib/dates";
-import { feedSeenKind, feedSubtitle, feedTitle, groupFeed } from "@/lib/feed";
+import { feedSeenKind, feedStatus, feedTitle, groupFeed } from "@/lib/feed";
+import { FEED_ROW } from "./feed-row";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 const ICON = { announcement: Megaphone, grade: GraduationCap, assignment: FilePlus2, change: Clock } as const;
 
+/**
+ * Gutter dot · type icon · title (two lines max) with the time on the right,
+ * then course tag and what happened. One layout for every feed glance.
+ */
+export function FeedRowBody({
+  icon: Icon,
+  title,
+  unread,
+  course,
+  status,
+  time,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  title: string;
+  unread: boolean;
+  /** Short course label; omitted inside a course page. */
+  course?: string;
+  status?: string;
+  time: string;
+}) {
+  return (
+    <>
+      <span className="flex w-[6px] shrink-0 justify-center pt-[7px]">
+        {unread && <span className="size-[6px] rounded-full bg-unread" aria-label="Unread" />}
+      </span>
+      <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" aria-hidden />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "line-clamp-2 min-w-0 flex-1 text-[13px] leading-[1.4] tracking-[-0.005em]",
+              unread ? "font-medium text-ink" : "text-ink-2",
+            )}
+          >
+            {title}
+          </div>
+          <span className="shrink-0 pt-px text-[12px] text-ink-3 tabular">{time}</span>
+        </div>
+        {(course !== undefined || status !== undefined) && (
+          <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3">
+            {course !== undefined && <CourseTag className="shrink-0">{course}</CourseTag>}
+            {course !== undefined && status !== undefined && (
+              <span className="text-line-2" aria-hidden>
+                ·
+              </span>
+            )}
+            {status !== undefined && <span className="min-w-0 truncate">{status}</span>}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
   const { label, color } = useCourses();
   const markSeen = useMutation(api.seenState.markSeen);
-  const Icon = ICON[item.type];
-  // The rail is a glance: what happened, not the announcement body.
-  const subtitle = item.type === "announcement" ? "Announcement" : feedSubtitle(item);
 
   return (
     <a
@@ -33,35 +86,17 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
           });
         }
       }}
-      className="group relative flex gap-[10px] py-[10px] pr-4 pl-[10px] text-inherit no-underline transition-colors after:absolute after:bottom-0 after:right-4 after:left-[51px] after:h-px after:bg-line last:after:hidden hover:bg-hover"
+      className={FEED_ROW}
       style={courseStyle(color(item.courseCanvasId))}
     >
-      {/* Unread lives in one fixed gutter, left of the icon, on every feed list. */}
-      <span className="flex w-[6px] shrink-0 justify-center pt-[7px]">
-        {!item.seen && <span className="size-[6px] rounded-full bg-unread" aria-label="Unread" />}
-      </span>
-      <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" aria-hidden />
-      <div className="min-w-0 flex-1">
-        <div
-          className={cn(
-            "truncate text-[13px] leading-[1.4] tracking-[-0.005em]",
-            item.seen ? "text-ink-2" : "font-medium text-ink",
-          )}
-          title={feedTitle(item)}
-        >
-          {feedTitle(item)}
-        </div>
-        <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12px] whitespace-nowrap text-ink-3">
-          <CourseTag className="shrink-0">{label(item.courseCanvasId)}</CourseTag>
-          {subtitle && (
-            <>
-              <span className="text-line-2" aria-hidden>·</span>
-              <span className="min-w-0 truncate">{subtitle}</span>
-            </>
-          )}
-          <span className="ml-auto shrink-0 pl-2 tabular">{formatAgo(item.at, now)}</span>
-        </div>
-      </div>
+      <FeedRowBody
+        icon={ICON[item.type]}
+        title={feedTitle(item)}
+        unread={!item.seen}
+        course={label(item.courseCanvasId)}
+        status={feedStatus(item)}
+        time={formatAgo(item.at, now)}
+      />
     </a>
   );
 }

@@ -66,7 +66,7 @@ export function WeekStrip({
               {shown.map((c) => (
                 <i
                   key={c}
-                  className={cn("block size-[5px] rounded-full", isPast && "opacity-45")}
+                  className={cn("block size-[6px] rounded-full", isPast && "opacity-60")}
                   style={{ background: c }}
                 />
               ))}

@@ -52,6 +52,11 @@ export function feedSubtitle(item: FeedItem, dueAt?: number): string | undefined
   return join([score === undefined ? "Grade posted" : `Graded ${score}`, letter]);
 }
 
+/** What happened, as a glance says it: the announcement body stays out. */
+export function feedStatus(item: FeedItem): string | undefined {
+  return item.type === "announcement" ? "Announcement" : feedSubtitle(item);
+}
+
 function join(parts: (string | undefined)[]): string | undefined {
   const kept = parts.filter((p): p is string => p !== undefined && p !== "");
   return kept.length === 0 ? undefined : kept.join(" · ");
