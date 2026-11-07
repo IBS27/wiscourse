@@ -250,8 +250,8 @@ function Switch({
       onClick={onChange}
       className={cn(
         "relative ml-auto h-4 w-7 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
-        // On: a softened ink track, so it reads as on without outweighing the labels.
-        on ? "bg-ink/60 dark:bg-ink/70" : "bg-line-2",
+        // On: a solid ink track (light on dark in dark mode); off: a quiet line track.
+        on ? "bg-ink" : "bg-line-2",
       )}
     >
       <span

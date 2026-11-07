@@ -178,8 +178,9 @@ function SectionSwitcher({
             className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:min-h-8 md:max-w-[min(100%,480px)] md:flex-initial"
           >
             <span className="min-w-0 flex-1 truncate">{current?.title}</span>
-            {/* Phones give the chapter name the room; the count returns from md up. */}
-            <span className="tabular hidden shrink-0 text-[12px] font-normal text-ink-3 md:inline">
+            {/* Phones give the chapter name the room; the count returns from md up.
+                Same 13px/18px as the name, so the two share a baseline. */}
+            <span className="tabular hidden shrink-0 text-[13px] leading-[18px] font-normal text-ink-3 md:inline">
               {index + 1} of {sections.length}
             </span>
             <ChevronDown className="size-[14px] shrink-0 text-ink-3" aria-hidden />

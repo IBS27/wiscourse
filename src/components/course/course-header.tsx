@@ -72,31 +72,22 @@ export function CourseHeader({
     >
       {/* Phones: code as the title (its dot carries the course colour) on the
           row with back, search and Canvas; the long title and term share one
-          truncated line under it, so the tabs stay near the top. */}
-      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3 md:hidden">
+          truncated line under it, which runs the full width under the icons too. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3 md:hidden">
         <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
-        <div className="min-w-0 flex-1">
-          <h1 className="flex min-w-0 items-center gap-2 text-[20px] leading-6 font-semibold tracking-[-0.02em]">
-            {label === "" ? (
-              <span className="text-ink-3">Course</span>
-            ) : (
-              <>
-                <span className="size-2 shrink-0 rounded-full bg-c" aria-hidden />
-                <span className="truncate">{label}</span>
-                {name !== label && <span className="sr-only">: {name}</span>}
-              </>
-            )}
-          </h1>
-          {subtitle !== "" && (
-            <p className="mt-[2px] truncate text-[13px] leading-[18px] text-ink-3">
-              {name !== label && <span aria-hidden>{name}</span>}
-              {name !== label && term !== undefined && <span aria-hidden> · </span>}
-              {term}
-            </p>
+        <h1 className="flex min-w-0 items-center gap-2 text-[20px] leading-6 font-semibold tracking-[-0.02em]">
+          {label === "" ? (
+            <span className="text-ink-3">Course</span>
+          ) : (
+            <>
+              <span className="size-2 shrink-0 rounded-full bg-c" aria-hidden />
+              <span className="truncate">{label}</span>
+              {name !== label && <span className="sr-only">: {name}</span>}
+            </>
           )}
-        </div>
+        </h1>
         <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
           <button
             type="button"
@@ -109,6 +100,13 @@ export function CourseHeader({
             <ExternalLink className="size-[18px]" />
           </a>
         </div>
+        {subtitle !== "" && (
+          <p className="col-start-2 col-end-4 mt-[2px] truncate text-[13px] leading-[18px] text-ink-3">
+            {name !== label && <span aria-hidden>{name}</span>}
+            {name !== label && term !== undefined && <span aria-hidden> · </span>}
+            {term}
+          </p>
+        )}
       </div>
 
       {/* The page frame's 64px bar; the tabs sit below it. The course colour

@@ -3,7 +3,7 @@ import { useQuery } from "convex/react";
 import { ArrowUpRight, ChevronLeft, SearchX } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { HEADER_BAR, HEADER_BUTTON } from "@/components/app/page-header";
+import { HEADER_BAR } from "@/components/app/page-header";
 import { TodoDetail } from "@/components/todo/todo-detail";
 import { announcementsHref } from "@/lib/course-routes";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ function TodoPage() {
       {/* The page frame: a 64px bar with the breadcrumb centred in it, in
           the body's left-aligned 720px column (the page's title is the
           heading below). Phones get a compact 48px back bar, with Open in
-          Canvas as its round action so the page's own Plan leads the body. */}
+          Canvas as its labelled outline action so the page's own Plan leads the body. */}
       <header className={cn(HEADER_BAR, "max-md:h-12")}>
         <div className="flex h-full w-full max-w-[720px] items-center">
           <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center">
@@ -73,9 +73,10 @@ function TodoPage() {
               target="_blank"
               rel="noreferrer"
               aria-label="Open in Canvas"
-              className={cn(HEADER_BUTTON, "-mr-2 md:hidden")}
+              className="inline-flex h-8 shrink-0 items-center gap-[6px] rounded-lg border border-line px-3 text-[13px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:hidden"
             >
-              <ArrowUpRight className="size-[16px]" />
+              Canvas
+              <ArrowUpRight className="size-[14px] text-ink-3" aria-hidden />
             </a>
           )}
         </div>

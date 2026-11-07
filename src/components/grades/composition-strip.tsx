@@ -41,11 +41,12 @@ function segmentsOf(summary: Summary): Segment[] {
 
 /**
  * One compact row per group: the name with its share and how much is graded
- * beneath it, then the score bar (at most 440px) right after it, then the %
- * right-aligned on the content's edge, under the table's % column.
+ * beneath it, then the score bar filling the space after it, ending 80px
+ * (gap + score column) before the %, which is right-aligned on the content's
+ * edge, under the table's % column.
  */
 const COLUMNS =
-  "grid-cols-[minmax(0,1fr)_72px_52px] @2xl:grid-cols-[200px_minmax(120px,440px)_minmax(64px,1fr)]";
+  "grid-cols-[minmax(0,1fr)_72px_52px] @2xl:grid-cols-[200px_minmax(120px,1fr)_64px]";
 
 export function CompositionStrip({
   summary,
@@ -60,20 +61,17 @@ export function CompositionStrip({
 
   return (
     <section className="@container min-w-0">
-      <h2 className="text-[12.5px] font-medium text-ink-3">
-        How the grade is built
-        {note !== undefined && <span className="font-normal"> · {note}</span>}
-      </h2>
+      <div className="flex items-baseline gap-4">
+        <h2 className="min-w-0 text-[12.5px] font-medium text-ink-3">
+          How the grade is built
+          {note !== undefined && <span className="font-normal"> · {note}</span>}
+        </h2>
+        {/* A column label over the %, so the bar reads as the score, not the share graded. */}
+        <span aria-hidden className="ml-auto hidden shrink-0 text-[12.5px] text-ink-3 @2xl:block">
+          Score
+        </span>
+      </div>
       <ul className="mt-1 grid list-none grid-cols-1 p-0">
-        {/* A column label, so the bar reads as the score, not the share graded. */}
-        <li
-          aria-hidden
-          className={cn("hidden min-w-0 gap-x-4 pt-1 text-[12.5px] text-ink-3 @2xl:grid", COLUMNS)}
-        >
-          <span />
-          <span />
-          <span className="text-right">Score</span>
-        </li>
         {segments.map((segment) => {
           // The bar is the score, so it always agrees with the number beside it;
           // how much is graded so far is said in words.

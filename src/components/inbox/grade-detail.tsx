@@ -160,7 +160,8 @@ function ScoreCard({
   const median = stats?.median;
 
   return (
-    <section aria-label="Score" className="rounded-xl border border-line px-4 py-4">
+    // Hugs its content (score, a 240px meter, a 2×2 stat grid) instead of spanning the pane.
+    <section aria-label="Score" className="w-full max-w-[360px] rounded-xl border border-line px-4 py-4">
       <div className="text-[12.5px] font-medium text-ink-3">Your score</div>
       <div className="tabular mt-[6px] text-[30px] leading-none font-semibold tracking-[-0.025em] text-ink">
         {scored ? (
@@ -191,7 +192,7 @@ function ScoreCard({
       )}
 
       {stats !== undefined && (
-        <dl className="tabular mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4 @md:grid-cols-4">
+        <dl className="tabular mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4">
           {median !== undefined && <Stat label="Class median">{formatPoints(median)}</Stat>}
           <Stat label="Mean">{formatPoints(stats.mean)}</Stat>
           <Stat label="High">{formatPoints(stats.max)}</Stat>
