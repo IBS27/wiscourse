@@ -116,7 +116,7 @@ function ChipBody({
     <>
       <span className="flex items-start gap-[3px]">
         {done && <Mark kind="done" className="h-[17px] w-3" />}
-        <span className="line-clamp-3 min-w-0 flex-1 break-words">{children}</span>
+        <span className="line-clamp-2 min-w-0 flex-1 break-words">{children}</span>
       </span>
       {(time !== undefined || late) && (
         <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[12px] leading-[15px] font-normal tabular text-ink-3">

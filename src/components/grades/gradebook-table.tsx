@@ -255,7 +255,7 @@ function AssignmentRow({
         {due ?? (
           // Never a blank cell: an undated row says so, quietly.
           <span className="hidden md:inline" title="No due date">
-            —<span className="sr-only">No due date</span>
+            <span className="sr-only">No due date</span>
           </span>
         )}
       </div>

@@ -59,7 +59,7 @@ export function FileTreePane({
   return (
     <nav
       aria-label="Folders"
-      className={cn("overflow-y-auto border-r border-line bg-surface px-2 py-[6px] text-[13px]", className)}
+      className={cn("overflow-y-auto border-r border-line bg-surface py-[6px] pr-2 pl-6 text-[13px]", className)}
     >
       <FolderRows
         node={tree.root}

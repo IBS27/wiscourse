@@ -81,7 +81,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
   return (
     // The same centred column as the top bar; the description keeps a reading measure inside it.
-    <div className="w-full max-w-[768px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
+    <div className="w-full max-w-[768px] px-4 pb-10 md:px-6 xl:max-w-[1088px]" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
       <div className="pt-4 pb-4 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
@@ -174,8 +174,11 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Plan and Notes: compact property rows, so the description starts high.
           On a phone, where they stack tall, the assignment text comes first. */}
-      <div className="flex flex-col">
-      <div className="max-md:order-2">
+      {/* Wide screens: the assignment text on the left, Plan and Notes as a
+          properties rail on the right (labels stacked), like Home's and the
+          course page's rails. */}
+      <div className="flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:items-start xl:gap-x-10">
+      <div className="max-md:order-2 xl:col-start-2 xl:row-start-1 xl:[&>section]:grid-cols-1">
       <PropertyRow title="Plan">
         <div className="flex flex-wrap items-center gap-[6px]">
           <QuickPlan label="Today" active={item.plannedDay === today} onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
@@ -226,7 +229,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
       </PropertyRow>
       </div>
 
-      <div className="max-md:order-3">
+      <div className="max-md:order-3 xl:col-start-2 xl:row-start-2 xl:[&>section]:grid-cols-1">
       <PropertyRow title="Notes">
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </PropertyRow>
@@ -234,7 +237,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Description (Canvas) */}
       {!isLocal && description && (
-        <div className="max-md:order-1">
+        <div className="max-md:order-1 xl:col-start-1 xl:row-span-3 xl:row-start-1">
         <PropertyRow title="Description" prose>
           <div className={PROSE} dangerouslySetInnerHTML={{ __html: sanitize(description) }} />
         </PropertyRow>

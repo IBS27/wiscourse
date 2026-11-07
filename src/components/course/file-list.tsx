@@ -83,13 +83,13 @@ export function FileList({
   const subfolders = folder?.children.length ?? 0;
 
   const rowCls = cn(
-    "relative grid min-h-10 w-full items-center gap-x-3 px-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
-    "grid-cols-[minmax(0,1fr)] after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line",
+    "relative grid min-h-10 w-full items-center gap-x-3 pr-6 pl-4 py-[7px] text-left text-[13px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+    "grid-cols-[minmax(0,1fr)] after:absolute after:right-6 after:bottom-0 after:left-10 after:h-px after:bg-line",
   );
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
-      <div className="flex h-11 shrink-0 items-center gap-[6px] border-b border-line px-4 text-[12.5px] whitespace-nowrap text-ink-3">
+      <div className="flex h-11 shrink-0 items-center gap-[6px] border-b border-line pr-6 pl-4 text-[12.5px] whitespace-nowrap text-ink-3">
         <div className="flex min-w-0 items-center gap-[6px] overflow-hidden">
           {searching ? (
             <span className="truncate">

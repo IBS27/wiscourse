@@ -61,7 +61,7 @@ export function CompositionStrip({
         {note !== undefined && <span className="font-normal"> · {note}</span>}
       </h2>
       {/* Fills the content width, so its right edge meets the table's below. */}
-      <ul className="mt-1 grid list-none grid-cols-1 p-0 @2xl:pr-2">
+      <ul className="mt-1 grid list-none grid-cols-1 p-0 @2xl:pr-6">
         {/* Column labels, so the bar reads as the score, not the share graded. */}
         <li
           aria-hidden

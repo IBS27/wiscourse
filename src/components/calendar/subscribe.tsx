@@ -250,7 +250,7 @@ function Switch({
       onClick={onChange}
       className={cn(
         "relative ml-auto h-4 w-7 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
-        on && "bg-ink-2",
+        on && "bg-ink-3",
       )}
     >
       <span
