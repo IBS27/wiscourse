@@ -128,7 +128,7 @@ export function GradesLedgerRow({
           <span className="text-[13px] text-ink-3">—</span>
         ) : (
           <>
-            <div className={cn("truncate text-[13px]", unseen ? "font-medium text-ink" : "text-ink-2")}>
+            <div className={cn("line-clamp-2 text-[13px] leading-[1.35]", unseen ? "font-medium text-ink" : "text-ink-2")}>
               {latest.name}
             </div>
             <div className="tabular mt-[3px] truncate text-[12.5px] text-ink-3">

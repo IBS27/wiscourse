@@ -48,7 +48,7 @@ function useSuggestions(): Suggestion[] {
 
   const open = (items ?? []).filter((i) => !isDone(i) && i.dueAt !== undefined);
   const week = open.filter((i) => i.dueAt! >= now && i.dueAt! < now + 7 * DAY_MS);
-  out.push({ prompt: "What’s due this week?", icon: CalendarClock, note: week.length > 0 ? `${week.length} item${week.length === 1 ? "" : "s"} due` : undefined });
+  out.push({ prompt: "What’s due this week?", icon: CalendarClock, note: week.length > 0 ? `${week.length} item${week.length === 1 ? "" : "s"} due` : "Nothing due yet" });
 
   const announcements = (feed ?? []).filter((f) => f.type === "announcement" && !f.seen);
   if (announcements.length > 0) {
@@ -60,7 +60,8 @@ function useSuggestions(): Suggestion[] {
     .sort((a, b) => (b.pointsPossible ?? 0) - (a.pointsPossible ?? 0))[0];
   if (biggest) out.push({ prompt: `Plan time for ${biggest.title}`, icon: CalendarPlus, course: biggest.courseCanvasId });
 
-  out.push({ prompt: "How are my grades looking?", icon: ChartNoAxesColumn });
+  // Every card carries a second line so the grid's rows share one rhythm.
+  out.push({ prompt: "How are my grades looking?", icon: ChartNoAxesColumn, note: `${visible.length} course${visible.length === 1 ? "" : "s"} this term` });
   if (visible[0]) out.push({ prompt: `Summarize the ${courseLabel(visible[0])} syllabus`, icon: BookOpen, course: visible[0].canvasId });
   return out.slice(0, 4);
 }

@@ -54,6 +54,17 @@ export function AgendaItem({
     if (compact && overdue) {
       meta.push(<span key="due" className="text-red">{formatLate(item.dueAt, now)}</span>);
     } else {
+      // Lateness reads next to the title it belongs to, before the due date
+      // (which may truncate on a phone), not at the far edge of the row.
+      if (overdue) {
+        meta.push(
+          <span key="late" className="flex items-center gap-1 font-medium text-red">
+            <Clock className="size-[12px]" aria-hidden />
+            <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
+            <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
+          </span>,
+        );
+      }
       meta.push(
         <span key="due">
           <span className="sm:hidden">Due {formatDueCompact(item.dueAt, todayKey)}</span>
@@ -112,7 +123,7 @@ export function AgendaItem({
         >
           {item.title}
         </div>
-        <div className={cn("mt-[3px] flex min-w-0 items-center gap-x-[6px] overflow-hidden text-[12.5px] whitespace-nowrap text-ink-3", done && "opacity-75")}>
+        <div className={cn("mt-[3px] flex min-w-0 items-center gap-x-[6px] overflow-hidden text-[13px] whitespace-nowrap text-ink-3", done && "opacity-75")}>
           {meta.map((m, i) => (
             <span key={i} className={cn("flex items-center gap-[6px]", i === meta.length - 1 ? "min-w-0" : "shrink-0")}>
               {i > 0 && <span className="text-line-2" aria-hidden>·</span>}
@@ -124,14 +135,14 @@ export function AgendaItem({
 
       {!compact && (
         <div className="mt-px flex shrink-0 items-center gap-2">
-          <StatusPill item={item} done={done} overdue={overdue} now={now} />
+          <StatusPill item={item} done={done} overdue={overdue} />
         </div>
       )}
     </div>
   );
 }
 
-function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolean; overdue: boolean; now: number }) {
+function StatusPill({ item, done, overdue }: { item: TodoItem; done: boolean; overdue: boolean }) {
   if (done) {
     return (
       <Pill tone="outline">
@@ -140,18 +151,9 @@ function StatusPill({ item, done, overdue, now }: { item: TodoItem; done: boolea
       </Pill>
     );
   }
-  if (overdue && item.dueAt !== undefined) {
-    return (
-      // One small red mark per row; the words stay neutral so a column of
-      // overdue rows doesn't shout over the titles. The icon trails the text
-      // so it sits on the right edge and lines up down the column.
-      <span className="inline-flex shrink-0 items-center gap-[6px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 tabular">
-        <span className="sm:hidden">{formatLateShort(item.dueAt, now)}</span>
-        <span className="max-sm:hidden">{formatLate(item.dueAt, now)}</span>
-        <Clock className="size-[13px] text-red" aria-hidden />
-      </span>
-    );
-  }
+  // Lateness lives on the meta line; nothing at the far edge.
+  if (overdue) return null;
+
   switch (item.submission) {
     case "graded":
       return (

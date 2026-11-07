@@ -407,7 +407,8 @@ export function NowLine({
       )}
       style={{ top }}
     >
-      <span className="shrink-0 rounded-[4px] bg-today px-[4px] py-px text-[10.5px] leading-[13px] font-semibold tabular text-today-fg">
+      {/* Inset from the column edge so the pill never straddles the day divider. */}
+      <span className="ml-1 shrink-0 rounded-[4px] bg-today px-[4px] py-px text-[10.5px] leading-[13px] font-semibold tabular text-today-fg">
         {clockTime(minute)}
       </span>
       <span className="h-[1.5px] flex-1 bg-today" aria-hidden />

@@ -16,7 +16,7 @@ import { CompositionStrip } from "./composition-strip";
 import { GradebookTable, type TableFooter } from "./gradebook-table";
 import { TargetsRail } from "./targets-rail";
 import { useWhatIf } from "./what-if";
-import { CourseTag, Kbd } from "@/components/app/bits";
+import { CourseTag } from "@/components/app/bits";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import {
   dayKeyOf,
@@ -393,7 +393,6 @@ function ModeToggle({
         <FlaskConical className={cn("size-[14px]", !on && "text-ink-3")} />
         {on ? "Done" : "What-if"}
         {!on && edits > 0 && <span className="tabular font-normal text-ink-3">· {edits}</span>}
-        {!on && <Kbd className="ml-[3px] hidden border-transparent bg-chip md:inline">W</Kbd>}
       </button>
     </>
   );
