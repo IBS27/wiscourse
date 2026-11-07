@@ -33,7 +33,9 @@ export function useEdgeFade<T extends HTMLElement>(
       }
       // Past the child into the gap, so the cover's fade never touches it.
       el.parentElement?.style.setProperty("--cover-start", `${start && start + 14}px`);
-      el.parentElement?.style.setProperty("--cover-end", `${end && end + 14}px`);
+      // The trailing edge lets the next tab peek under a short fade, so the
+      // row reads as "more this way" instead of ending at a lone chevron.
+      el.parentElement?.style.setProperty("--cover-end", `${end && Math.min(end + 14, 56)}px`);
     };
     update();
     el.addEventListener("scroll", update, { passive: true });

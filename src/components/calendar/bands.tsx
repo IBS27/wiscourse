@@ -119,10 +119,18 @@ function ChipBody({
         <span className="line-clamp-4 min-w-0 flex-1 break-words">{children}</span>
       </span>
       {(time !== undefined || late) && (
-        <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[11px] leading-[14px] font-normal tabular text-ink-3">
+        <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[12px] leading-[15px] font-normal tabular text-ink-3">
           {late && <Clock className="mt-px size-3 shrink-0 text-red" aria-label="Past due" />}
-          {/* Wraps at the "·" rather than cutting the course code. */}
-          {time !== undefined && <span className="min-w-0 break-words">{time}</span>}
+          {/* Time and course each get their own unbroken line. */}
+          {time !== undefined && (
+            <span className="min-w-0">
+              {time.split(" · ").map((part) => (
+                <span key={part} className="block truncate whitespace-nowrap">
+                  {part}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
       )}
     </>

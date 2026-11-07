@@ -71,7 +71,7 @@ export function AnnouncementRow({
           </span>
           <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
           {!open && (
-            <span className="mt-[5px] line-clamp-1 max-w-[720px] text-[13px] leading-[1.5] text-ink-3">
+            <span className="mt-[5px] line-clamp-2 text-[13px] leading-[1.5] text-ink-3">
               {preview(announcement.message)}
             </span>
           )}

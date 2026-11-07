@@ -254,7 +254,7 @@ function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-[9px] border-b border-line px-4 py-[11px] text-[13px] font-semibold"
+        className="flex h-8 w-full items-center gap-[9px] border-b border-line px-4 text-[13px] font-semibold"
       >
         <Megaphone className="size-[14px]" />
         New
