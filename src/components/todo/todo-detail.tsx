@@ -99,11 +99,30 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             </>
           )}
         </div>
-        {isLocal ? (
-          <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
-        ) : (
-          <h1 className="mt-2 text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-ink text-pretty">{item.title}</h1>
-        )}
+        {/* The same completion circle as the agenda row, beside the title. */}
+        <div className="mt-2 flex items-start gap-3">
+          <button
+            type="button"
+            aria-label={done ? "Mark not done" : "Mark done"}
+            aria-pressed={done}
+            onClick={() => void setDone({ ref, done: !done })}
+            className={cn(
+              "mt-[3px] grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+              done ? "border-ink-3 bg-ink-3" : "border-ink-3/70 hover:border-ink-2 hover:bg-chip",
+            )}
+          >
+            <Check className={cn("size-[13px] stroke-[2.4] text-today-fg", !done && "opacity-0")} />
+          </button>
+          <div className="min-w-0 flex-1">
+            {isLocal ? (
+              <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
+            ) : (
+              <h1 className={cn("text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-pretty", done ? "text-ink-3" : "text-ink")}>
+                {item.title}
+              </h1>
+            )}
+          </div>
+        </div>
         {/* Status chips wrap among themselves; the primary action ends the row
             at the content's right edge, or takes its own full-width row on a phone. */}
         <div className="mt-[14px] flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
