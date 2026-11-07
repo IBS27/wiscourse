@@ -1,5 +1,6 @@
 import type { TodoItem } from "../../../convex/todos";
 import { OverviewRow, SectionHead } from "./overview-row";
+import { SECTION_COUNT } from "./overview-icons";
 import { itemIcon, itemTarget, showsItemIcons, type ModuleWithItems } from "./module-utils";
 import { moduleHref } from "@/lib/course-routes";
 import { currentCourseSections } from "@/lib/course-structure";
@@ -79,7 +80,10 @@ export function OverviewWeek({
         </section>
       )}
       <section>
-        <SectionHead title="Course materials" />
+        <SectionHead
+          title="Course materials"
+          right={<span className={SECTION_COUNT}>{modules.length}</span>}
+        />
         {modules.map((module) => (
           <OverviewRow
             key={module.canvasId}

@@ -65,7 +65,7 @@ export function ModuleAccordion({
               aria-expanded={expanded}
               onClick={() => toggle(module.canvasId)}
               className={cn(
-                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[14px] font-semibold tracking-[-0.01em] transition-colors outline-none md:px-6",
+                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[13px] font-semibold tracking-[-0.005em] transition-colors outline-none md:px-6",
                 locked ? "cursor-default text-ink-3" : "text-ink hover:bg-hover focus-visible:bg-hover",
               )}
             >
@@ -111,28 +111,25 @@ export function ModuleAccordion({
 }
 
 /**
- * Untouched modules give their size, finished ones say so, and only a
- * module part-way through gets the meter and a percent.
+ * Every module header reads the same: a small neutral meter and
+ * "N of M viewed" in fixed columns, so the meters line up down the list
+ * whether a module is open or not. A finished module says "Done".
  */
 function Progress({ viewed, total }: { viewed: number; total: number }) {
-  const pct = Math.round((viewed / total) * 100);
+  const done = viewed === total;
   return (
     <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
-      {viewed === 0 ? (
-        `${total} item${total === 1 ? "" : "s"}`
-      ) : viewed === total ? (
-        <span className="flex items-center gap-1">
-          <Check className="size-[13px]" aria-hidden />
-          Done
-        </span>
-      ) : (
-        <>
-          <Meter fraction={viewed / total} className="w-[88px]" tone="neutral" />
-          <span className="w-8 text-right">
-            {pct}%<span className="sr-only"> viewed</span>
-          </span>
-        </>
-      )}
+      <Meter fraction={viewed / total} className="hidden w-[64px] sm:block" tone="neutral" />
+      <span className="flex min-w-[96px] items-center justify-end gap-1 whitespace-nowrap">
+        {done ? (
+          <>
+            <Check className="size-[13px]" aria-hidden />
+            Done
+          </>
+        ) : (
+          `${viewed} of ${total} viewed`
+        )}
+      </span>
     </span>
   );
 }

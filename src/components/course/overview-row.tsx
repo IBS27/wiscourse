@@ -113,7 +113,7 @@ export function SectionHead({
   );
   const base = cn(
     "flex items-baseline gap-2 px-4 md:px-6",
-    muted ? "pt-3 pb-1" : "pt-6 pb-2",
+    muted ? "pt-3 pb-1" : "pt-5 pb-2 md:pt-6",
     className,
   );
   return to === undefined ? (

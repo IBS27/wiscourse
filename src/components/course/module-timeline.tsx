@@ -11,6 +11,7 @@ import {
   type ModuleWithItems,
 } from "./module-utils";
 import { ModuleRow } from "./module-row";
+import { Meter } from "@/components/grades/bits";
 import type { ModuleRowContext } from "./module-context";
 import { startOfMondayWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,12 @@ export function ModuleTimeline({
               {total > 0 && !ctx.seenLoading && (
                 <span className="tabular md:mt-[6px] md:block">
                   <span className="md:hidden"> · </span>
-                  {viewed} of {total} viewed
+                  <Meter
+                    fraction={viewed / total}
+                    tone="neutral"
+                    className="mb-[5px] hidden w-[88px] md:block"
+                  />
+                  {viewed === total ? "Done" : `${viewed} of ${total} viewed`}
                 </span>
               )}
             </div>

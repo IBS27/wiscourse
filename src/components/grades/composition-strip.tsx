@@ -39,9 +39,9 @@ function segmentsOf(summary: Summary): Segment[] {
 }
 
 /**
- * One compact row per group: its name, its share of the grade, a small bar
- * of how much of it is graded, and its score. Every row reads on its own, so
- * there is no legend to map back to.
+ * One compact row per group, in fixed columns so each reads straight across:
+ * name (160) · share and how much is graded (220) · score bar (160) · % (64).
+ * On a narrow container the share line drops under the name.
  */
 export function CompositionStrip({
   summary,
@@ -70,17 +70,17 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @md:grid-cols-[minmax(130px,1fr)_auto_160px_56px]"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @2xl:grid-cols-[160px_220px_160px_64px]"
             >
               <span className="min-w-0">
                 <span className="block truncate font-medium text-ink" title={segment.name}>
                   {segment.name}
                 </span>
-                <span className="tabular block truncate text-[12.5px] text-ink-3 @md:hidden">
+                <span className="tabular block truncate text-[12.5px] text-ink-3 @2xl:hidden">
                   {segment.size} of grade · {graded}
                 </span>
               </span>
-              <span className="tabular hidden text-[12.5px] whitespace-nowrap text-ink-3 @md:block">
+              <span className="tabular hidden truncate text-[12.5px] whitespace-nowrap text-ink-3 @2xl:block">
                 {segment.size} of grade · {graded}
               </span>
               <span

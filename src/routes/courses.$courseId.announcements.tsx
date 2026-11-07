@@ -5,6 +5,7 @@ import { Megaphone } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { AnnouncementRow } from "@/components/course/announcement-row";
 import { SectionHead } from "@/components/course/overview-row";
+import { SECTION_COUNT } from "@/components/course/overview-icons";
 import { courseColorVar, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { useMarkSeenOnMount, useSeen } from "@/lib/seen";
 
@@ -65,9 +66,8 @@ function CourseAnnouncements() {
         <>
           <SectionHead
             title="Announcements"
-            detail={unreadCount > 0 ? `${unreadCount} unread` : undefined}
-            right={<span className="tabular">{rows.length}</span>}
-            className="pt-5"
+            detail={unreadCount > 0 && unreadCount < rows.length ? `${unreadCount} unread` : undefined}
+            right={<span className={SECTION_COUNT}>{rows.length}</span>}
           />
           {rows.map((announcement) => (
             <AnnouncementRow

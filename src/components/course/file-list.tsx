@@ -162,6 +162,9 @@ export function FileList({
               {section.rows.map(({ file, path }) => {
                 const selected = file.canvasId === selectedFileId;
                 const unread = isNew(file);
+                // "Recently added" already says it; the pill marks new files
+                // only where they sit among older ones.
+                const pill = unread && section.label !== "Recently added";
                 return (
                   <button
                     key={file.canvasId}
@@ -184,15 +187,16 @@ export function FileList({
                       >
                         {file.displayName}
                       </span>
+                      {unread && !pill && <span className="sr-only">(new)</span>}
                       {/* What the tab's "12 new" counts, visible on each file. */}
-                      {unread && (
+                      {pill && (
                         <span className="shrink-0 rounded-full bg-chip px-[7px] py-px text-[11.5px] font-medium text-ink-2">
                           New
                         </span>
                       )}
-                      {/* Where it lives, on the same line: only for rows out of their folder. */}
+                      {/* Where it lives, in a fixed right column: only for rows out of their folder. */}
                       {path !== undefined && path !== "" && !compact && (
-                        <span className="max-w-[40%] shrink-0 truncate text-[12.5px] text-ink-3" title={path}>
+                        <span className="w-[160px] shrink-0 truncate text-right text-[12.5px] text-ink-3" title={path}>
                           {path}
                         </span>
                       )}

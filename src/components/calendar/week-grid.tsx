@@ -58,7 +58,7 @@ const hourLines = (pxPerHour: number, height: number): CSSProperties => ({
 });
 
 /** A day's band shows this many rows before folding the rest into "+N more". */
-const BAND_ROWS = 3;
+const BAND_ROWS = 2;
 
 export function WeekGrid({
   days,
@@ -100,7 +100,7 @@ export function WeekGrid({
   useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
 
   const dueLine = (item: TodoItem) => (
-    <DueLine key={item.key} item={item} zone={zone} compact={compact} />
+    <DueLine key={item.key} item={item} zone={zone} now={now} compact={compact} />
   );
   // Open items lead; finished ones fold into one "✓ N done" line until the
   // bands are expanded.
@@ -131,7 +131,7 @@ export function WeekGrid({
   const fold = !compact && !expanded;
   const expandable =
     dueDone.some((done) => done.length > 0) ||
-    (!compact && [...due, ...planned].some((rows) => rows.length > BAND_ROWS + 1));
+    (!compact && [...due, ...planned].some((rows) => rows.length > BAND_ROWS));
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -287,8 +287,7 @@ function Band({
       </div>
       {days.map((day, i) => {
         const all = rows[i];
-        // Fold only what would take more than one extra row to show.
-        const folded = fold && all.length > BAND_ROWS + 1;
+        const folded = fold && all.length > BAND_ROWS;
         const shown = folded ? all.slice(0, BAND_ROWS) : all;
         return (
           <div

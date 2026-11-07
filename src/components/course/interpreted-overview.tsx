@@ -1,6 +1,6 @@
 import { createElement, useState } from "react";
 import { ArrowUpRight, Check, ChevronDown, ChevronRight } from "lucide-react";
-import { iconsDiffer, ROW_ICON, SECTION_TITLE, type RowIcon } from "./overview-icons";
+import { iconsDiffer, ROW_ICON, SECTION_COUNT, SECTION_TITLE, type RowIcon } from "./overview-icons";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -131,6 +131,13 @@ function nowLabel(date: string, today: string): string {
   if (date === today) return "Today";
   return daysBetween(today, date) < 7 ? "This week" : "Up next";
 }
+
+/**
+ * An item under a chapter group: indented under the group title, its kind
+ * icon, ink text at regular weight, and a hover wash like every other row.
+ */
+const CHAPTER_ITEM =
+  "group -mx-2 flex items-start gap-[9px] rounded-md px-2 py-[5px] text-[13.5px] leading-[1.45] text-ink no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover";
 
 const STEP =
   "grid size-8 shrink-0 place-items-center rounded-lg border border-line text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 disabled:pointer-events-none disabled:opacity-40";
@@ -280,10 +287,9 @@ export function InterpretedOverview({
     const r = byId.get(e.resourceId);
     return r ? [{ label: e.label, href: r.href }] : [];
   });
-  // The resource list always draws its kind icon, as Modules rows do; the
-  // chapter lists keep theirs only when the icons tell rows apart.
+  // Resource and chapter lists always draw their kind icon, as Modules rows
+  // do; the section's material keeps it only when the icons tell rows apart.
   const entryLinks = entries.map((e) => resolve(e.resourceIds));
-  const entryIcons = iconsDiffer(entryLinks.flat().map((r) => resourceIcon(r.href)));
   const rowIcons = iconsDiffer(rows.map((r) => resourceIcon(r.href)));
   const planTitle = chapterLayout
     ? "Chapters"
@@ -304,9 +310,10 @@ export function InterpretedOverview({
     <section className="px-4 pt-6 pb-5 md:px-6">
       {essentials.length > 0 && (
         <>
-          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
+          <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className={SECTION_TITLE}>Course resources</h2>
-            {review}
+            <span className="ml-auto">{review}</span>
+            <span className={SECTION_COUNT}>{essentials.length}</span>
           </div>
           <ul className="-mx-4 mb-7 md:-mx-6" aria-label="Course resources">
             {essentials.map((e, i) => (
@@ -323,9 +330,12 @@ export function InterpretedOverview({
       )}
       {cards ? (
         <>
-          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className={SECTION_TITLE}>{planTitle}</h2>
-            {essentials.length === 0 && review}
+            {essentials.length === 0 && <span className="ml-auto">{review}</span>}
+            <span className={cn(SECTION_COUNT, essentials.length > 0 && "ml-auto")}>
+              {map.sections.length}
+            </span>
           </div>
           <nav aria-label="Course sections" className="grid gap-1 sm:grid-cols-2">
             {map.sections.map((s) => (
@@ -389,18 +399,18 @@ export function InterpretedOverview({
                     {e.title}
                   </h3>
                   {links.length > 0 && (
-                    <ul className="mt-2 space-y-[5px]">
+                    <ul className="mt-[6px] pl-4">
                       {links.map((r) => (
                         <li key={r.href}>
-                          <Link
-                            to={r.href}
-                            className="inline-flex max-w-full items-start gap-[9px] text-[13.5px] leading-[1.45] text-ink-2 transition-colors hover:text-ink hover:underline hover:decoration-line-2 hover:underline-offset-4"
-                          >
-                            {entryIcons &&
-                              createElement(resourceIcon(r.href), {
-                                className: "mt-[3px] size-[14px] shrink-0 text-ink-3",
-                              })}
-                            <span className="min-w-0">{r.title}</span>
+                          <Link to={r.href} className={CHAPTER_ITEM}>
+                            {createElement(resourceIcon(r.href), {
+                              className: "mt-[2px] size-[14px] shrink-0 text-ink-3",
+                            })}
+                            <span className="min-w-0 flex-1">{r.title}</span>
+                            <ChevronRight
+                              className="mt-[2px] size-[14px] shrink-0 text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                              aria-hidden
+                            />
                           </Link>
                         </li>
                       ))}

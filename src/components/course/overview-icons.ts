@@ -48,10 +48,13 @@ export function iconsDiffer(icons: readonly RowIcon[]): boolean {
 }
 
 /**
- * A section label on the course overview ("Due", "Course resources",
- * "Chapters"): the loudest heading in the body, above the group titles.
+ * A list's section label ("Due", "Course resources", "Chapters"): Home's
+ * section heading — 13px semibold ink, quiet meta beside it, count right.
  */
-export const SECTION_TITLE = "text-[15px] leading-[22px] font-semibold tracking-[-0.01em] text-ink";
+export const SECTION_TITLE = "text-[13px] leading-[20px] font-semibold tracking-[-0.005em] text-ink";
+
+/** The count at a section heading's right edge, as Home draws it. */
+export const SECTION_COUNT = "tabular text-[12px] font-medium text-ink-3";
 
 /**
  * Row chrome for every overview list: the Home row's gutters and rhythm,
