@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { ChevronRight, Search } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { CountBadge, Dot, Kbd } from "./bits";
@@ -10,7 +10,14 @@ import { openSearch } from "@/lib/search-context";
 import { cn } from "@/lib/utils";
 import type { Course } from "@/lib/hooks";
 
+const NAV_ACTIVE =
+  "bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] font-semibold text-ink hover:bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] dark:bg-hover dark:hover:bg-hover";
+// The same look keyed off the link's data-status, so it always beats the base colour.
+const NAV_ACTIVE_DATA =
+  "data-[status=active]:bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] data-[status=active]:font-semibold data-[status=active]:text-ink dark:data-[status=active]:bg-hover";
+
 export function Sidebar() {
+  const underHome = useRouterState({ select: (st) => st.location.pathname.startsWith("/todo") });
   const { visible, other, termName } = useCourses();
   const counts = useNavCounts();
 
@@ -39,10 +46,12 @@ export function Sidebar() {
               key={to}
               to={to}
               activeOptions={{ exact: "exact" in rest && rest.exact }}
-              className="flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
-              activeProps={{
-                className: "bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] font-semibold text-ink hover:bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] dark:bg-hover dark:hover:bg-hover",
-              }}
+              className={cn(
+                "flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink",
+                NAV_ACTIVE_DATA,
+                // A to-do opens from Home's agenda, so Home stays selected while it's open.
+                to === "/" && underHome && NAV_ACTIVE,
+              )}
             >
               <Icon className="size-4" />
               {label}

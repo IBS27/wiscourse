@@ -45,7 +45,7 @@ export function WeekStrip({
             type="button"
             onClick={() => onSelect(isSelected ? null : day)}
             className={cn(
-              "rounded-[10px] px-1 py-[3px] text-center transition-colors hover:bg-hover md:py-[5px]",
+              "rounded-[10px] px-1 py-px text-center transition-colors hover:bg-hover md:py-[5px]",
               isSelected && "bg-hover shadow-[inset_0_0_0_1px_var(--line-2)]",
             )}
           >

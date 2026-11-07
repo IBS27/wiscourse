@@ -23,10 +23,10 @@ export function BottomTabs() {
             to={to}
             activeOptions={{ exact: to === "/" }}
             className={cn(
-              "group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3",
+              // Active styling keys off the link's data-status, so it always beats the base colour.
+              "group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3 data-[status=active]:font-semibold data-[status=active]:text-ink",
               underHome && to === "/" && "font-semibold text-ink",
             )}
-            activeProps={{ className: "font-semibold text-ink" }}
           >
             <span
               className={cn(
