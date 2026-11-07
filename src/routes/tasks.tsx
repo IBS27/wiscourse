@@ -247,7 +247,7 @@ function FilterChip({
       style={style}
       className={cn(
         "flex h-7 shrink-0 cursor-pointer items-center gap-[6px] rounded-full border border-line px-[10px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
-        active && "border-today bg-today text-today-fg hover:border-today hover:bg-today hover:text-today-fg",
+        active && "border-[color-mix(in_oklab,var(--ink)_15%,transparent)] bg-chip font-medium text-ink hover:bg-chip",
       )}
     >
       {children}

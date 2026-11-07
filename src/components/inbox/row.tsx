@@ -49,13 +49,17 @@ export function InboxRow({
       </span>
       <Icon className="mt-[3px] mr-3 size-[15px] shrink-0 text-ink-3" aria-hidden />
       <span className="min-w-0 flex-1">
-        <span
-          className={cn(
-            "line-clamp-2 text-[14px] leading-[1.4] tracking-[-0.005em]",
-            item.seen ? "font-normal text-ink" : "font-semibold text-ink",
-          )}
-        >
-          {feedTitle(item)}
+        {/* Time on the title line, right-aligned — the same place as every feed list. */}
+        <span className="flex items-start gap-3">
+          <span
+            className={cn(
+              "line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.4] tracking-[-0.005em]",
+              item.seen ? "font-normal text-ink" : "font-semibold text-ink",
+            )}
+          >
+            {feedTitle(item)}
+          </span>
+          <span className="tabular shrink-0 pt-px text-[12.5px] text-ink-3">{formatAgo(item.at, now)}</span>
         </span>
         <span className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] text-ink-3">
           <CourseTag className="shrink-0">{label(item.courseCanvasId) ?? "Course"}</CourseTag>
@@ -65,7 +69,6 @@ export function InboxRow({
               <WordTruncate text={subtitle} />
             </>
           )}
-          <span className="tabular ml-auto shrink-0 pl-2">{formatAgo(item.at, now)}</span>
         </span>
       </span>
     </Link>

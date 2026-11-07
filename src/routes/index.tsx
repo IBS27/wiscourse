@@ -123,6 +123,10 @@ function Home() {
                   now={now}
                   expanded={expanded.has(b.id)}
                   onExpand={() => setExpanded((prev) => new Set(prev).add(b.id))}
+                  // Something due earlier today already sits in Overdue.
+                  slippedToday={buckets!.some(
+                    (x) => x.id === "overdue" && x.items.some((it) => it.dueAt !== undefined && dayKeyOf(it.dueAt) === today),
+                  )}
                 />
               ))
             )}
@@ -157,12 +161,14 @@ function BucketSection({
   now,
   expanded,
   onExpand,
+  slippedToday,
 }: {
   bucket: Bucket;
   todayKey: string;
   now: number;
   expanded: boolean;
   onExpand: () => void;
+  slippedToday: boolean;
 }) {
   if (bucket.items.length === 0 && bucket.id !== "today") return null;
   const limit = PREVIEW[bucket.id];
@@ -177,7 +183,7 @@ function BucketSection({
       todayKey={todayKey}
       now={now}
       red={bucket.id === "overdue"}
-      empty={bucket.id === "today" ? "Nothing due or planned today." : undefined}
+      empty={bucket.id === "today" ? (slippedToday ? "Nothing else due or planned today." : "Nothing due or planned today.") : undefined}
       footer={
         hidden > 0 ? (
           <button
