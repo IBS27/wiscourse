@@ -168,14 +168,9 @@ export function CanvasButton({ href, children }: { href: string; children: React
 
 export function MarkUnreadButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
-    <Action
-      aria-label="Mark unread"
-      title="Mark unread"
-      className="ml-auto w-8 px-0 has-[>svg]:px-0"
-      onClick={onClick}
-      disabled={disabled}
-    >
-      <Mail className="size-[15px] text-ink-2" aria-hidden />
+    <Action title="Mark unread" className="ml-auto max-sm:w-8 max-sm:px-0" onClick={onClick} disabled={disabled}>
+      <Mail className="size-[14px] text-ink-3" aria-hidden />
+      <span className="max-sm:sr-only">Mark unread</span>
     </Action>
   );
 }
