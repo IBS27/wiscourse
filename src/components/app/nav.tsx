@@ -14,7 +14,9 @@ import { useNow, useToday } from "@/lib/hooks";
 export const NAV = [
   { to: "/", label: "Home", icon: Home, exact: true },
   { to: "/inbox", label: "Inbox", icon: Inbox },
-  { to: "/courses", label: "Courses", icon: BookOpen },
+  // Exact in the sidebar: on a course page the course's own row is the one
+  // active item, not "Courses" as well.
+  { to: "/courses", label: "Courses", icon: BookOpen, exact: true },
   { to: "/tasks", label: "Tasks", icon: ListChecks },
   { to: "/grades", label: "Grades", icon: BarChart3 },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },

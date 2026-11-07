@@ -1,8 +1,11 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { MOBILE_TABS, NAV, useNavCounts } from "./nav";
+import { cn } from "@/lib/utils";
 
 export function BottomTabs() {
   const counts = useNavCounts();
+  // A to-do opens from Home's agenda, so Home stays lit while it's open.
+  const underHome = useRouterState({ select: (st) => st.location.pathname.startsWith("/todo") });
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-line bg-surface px-1 pt-[6px] pb-[max(16px,env(safe-area-inset-bottom))] md:hidden">
       {MOBILE_TABS.map((to) => {
@@ -15,10 +18,18 @@ export function BottomTabs() {
             key={to}
             to={to}
             activeOptions={{ exact: to === "/" }}
-            className="group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3"
+            className={cn(
+              "group flex flex-col items-center gap-[3px] text-[11.5px] leading-4 font-medium text-ink-3",
+              underHome && to === "/" && "text-ink",
+            )}
             activeProps={{ className: "text-ink" }}
           >
-            <span className="relative grid h-7 w-12 place-items-center rounded-full transition-colors group-data-[status=active]:bg-chip">
+            <span
+              className={cn(
+                "relative grid h-7 w-12 place-items-center rounded-full transition-colors group-data-[status=active]:bg-chip",
+                underHome && to === "/" && "bg-chip",
+              )}
+            >
               <Icon className="size-[19px]" />
               {unread > 0 && (
                 <span

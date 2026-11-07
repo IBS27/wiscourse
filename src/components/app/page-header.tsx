@@ -15,7 +15,7 @@ export const HEADER_BAR = "h-16 shrink-0 border-b border-line px-4 md:px-6";
 
 /** Round 36px header button; the search button and the avatar share its size. */
 export const HEADER_BUTTON =
-  "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-line text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
 export function PageHeader({
   title,
