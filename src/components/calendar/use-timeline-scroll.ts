@@ -46,8 +46,7 @@ export function useTimelineScroll(ref: RefObject<HTMLElement | null>, top: numbe
 
 /**
  * Snaps after clamping, so even a clamped offset lands on an hour line. A
- * pixel of slack keeps a fractional hour height (the empty week's) from
- * rounding the whole view down an hour.
+ * pixel of slack keeps rounding from dropping the view a whole hour.
  */
 function scrollTo(el: HTMLElement | null, top: number, step: number) {
   if (el === null) return;

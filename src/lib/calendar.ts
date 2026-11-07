@@ -327,21 +327,14 @@ export interface GridBounds {
 export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
 
 /**
- * An hour's height when the grid has nothing timed to show: the empty hours
- * take less room, so the bands above (and the call to add class times) lead.
+ * An hour's height when the week has nothing timed: a little shorter than a
+ * full hour, so the empty hours read as a calm grid rather than a void. A
+ * whole pixel, so every hour line draws at the same weight.
  */
-export const EMPTY_PX_PER_HOUR = 28;
+export const EMPTY_PX_PER_HOUR = 42;
 
 /** The midnight-to-midnight grid for a week with nothing timed. */
 export const EMPTY_GRID_BOUNDS: GridBounds = gridBounds(EMPTY_PX_PER_HOUR);
-
-/**
- * The tallest the empty grid's window grows: 8 AM to midnight, so it still
- * opens at 8 AM (the hours before stay a scroll away) and never pads the
- * view with blank space past the end of the day.
- */
-export const EMPTY_GRID_MAX_VIEW =
-  EMPTY_GRID_BOUNDS.height - gridScrollTop(undefined, EMPTY_GRID_BOUNDS);
 
 /** The midnight-to-midnight grid at `pxPerHour`. */
 export function gridBounds(pxPerHour: number): GridBounds {
@@ -368,6 +361,16 @@ export function gridScrollTop(
     firstBlockMinute === undefined
       ? GRID_OPENS_AT
       : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
+  return minuteOffset(Math.max(0, minute), bounds);
+}
+
+/**
+ * Where a week with nothing timed opens: an hour above now when today is in
+ * view (so the now line sits near the top), otherwise at 8 AM.
+ */
+export function emptyGridScrollTop(nowMinute: number | undefined, bounds: GridBounds): number {
+  const minute =
+    nowMinute === undefined ? GRID_OPENS_AT : Math.floor(nowMinute / 60) * 60 - BLOCK_LEAD;
   return minuteOffset(Math.max(0, minute), bounds);
 }
 

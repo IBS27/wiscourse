@@ -8,6 +8,7 @@ import { FileColumn } from "@/components/course/file-column";
 import { FileList } from "@/components/course/file-list";
 import { FilePreview } from "@/components/course/file-preview";
 import { FileTreePane } from "@/components/course/file-tree-pane";
+import { COURSE_FILES_LIST } from "@/components/course/content-width";
 import {
   buildTree,
   fileAddedAt,
@@ -38,7 +39,7 @@ export const Route = createFileRoute("/courses/$courseId/files")({
 });
 
 /** While a file is open the list narrows to names and the preview takes
- *  the rest; with nothing open the list has the full width. */
+ *  the rest; with nothing open the list runs to the course content width. */
 const COMPACT_LIST = "w-[280px] shrink-0 xl:w-[320px]";
 const PREVIEW = "min-w-0 flex-1 border-l border-line";
 
@@ -149,7 +150,10 @@ function CourseFiles() {
         compact={previewFile !== undefined}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}
-        className={cn("min-h-0", previewFile === undefined ? "min-w-0 flex-1" : COMPACT_LIST)}
+        className={cn(
+          "min-h-0",
+          previewFile === undefined ? cn("min-w-0 flex-1", COURSE_FILES_LIST) : COMPACT_LIST,
+        )}
       />
       {previewFile !== undefined && (
         <FilePreview

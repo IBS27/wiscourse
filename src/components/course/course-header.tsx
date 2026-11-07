@@ -6,7 +6,14 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
-import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
+import {
+  courseColorVar,
+  courseLabel,
+  courseStyle,
+  courseTitle,
+  shortCode,
+  type Course,
+} from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
 import { CourseTag } from "@/components/app/bits";
 import { HeaderTitle } from "@/components/app/page-header";
@@ -43,6 +50,8 @@ export function CourseHeader({
   }, [pathname, badges, tabsRef]);
 
   const name = course === undefined ? "" : courseTitle(course);
+  // A phone leads with the short code; the full title is one quiet line under it.
+  const label = course === undefined ? "" : courseLabel(course);
   const code = course === undefined ? undefined : shortCode(course);
   const term = formatTerm(course?.term);
   const meta = [
@@ -58,23 +67,33 @@ export function CourseHeader({
       className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[10px] md:hidden">
+      {/* Phones: code as the title (its dot carries the course colour), the
+          long title on one truncated line, then the term — three short lines,
+          so the tabs stay near the top. */}
+      <div className="flex items-start gap-[10px] px-4 pt-[max(12px,env(safe-area-inset-top))] pb-2 md:hidden">
         <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
-        <div className="min-w-0">
-          <h1 className="line-clamp-3 text-[20px] leading-[25px] font-semibold tracking-[-0.022em] text-balance">
-            {name || <span className="text-ink-3">Course</span>}
-          </h1>
-          <div className="mt-1 flex min-w-0 items-center text-[12.5px] text-ink-3">
-            {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
-            {code !== undefined && term !== undefined && (
-              <span className="mx-[6px]" aria-hidden>
-                ·
-              </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="flex min-w-0 items-center gap-2 text-[20px] leading-6 font-semibold tracking-[-0.02em]">
+            {label === "" ? (
+              <span className="text-ink-3">Course</span>
+            ) : (
+              <>
+                <span className="size-2 shrink-0 rounded-full bg-c" aria-hidden />
+                <span className="truncate">{label}</span>
+                {name !== label && <span className="sr-only">: {name}</span>}
+              </>
             )}
-            {term !== undefined && <span className="min-w-0 truncate">{term}</span>}
-          </div>
+          </h1>
+          {name !== label && (
+            <p aria-hidden className="truncate text-[13px] leading-[18px] text-ink-3">
+              {name}
+            </p>
+          )}
+          {term !== undefined && (
+            <p className="truncate text-[12.5px] leading-[18px] text-ink-3">{term}</p>
+          )}
         </div>
         <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
           <button
@@ -119,7 +138,7 @@ export function CourseHeader({
       </div>
 
       {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
-      <div className="group/tabs relative mt-1 md:mt-0">
+      <div className="group/tabs relative">
         <nav
           ref={tabsRef}
           className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -145,7 +164,8 @@ export function CourseHeader({
           aria-hidden
           className="pointer-events-none absolute top-0 bottom-[2px] left-0 w-[max(var(--cover-start,0px),16px)] bg-linear-to-r from-surface from-[calc(100%-12px)] to-transparent opacity-0 transition-[opacity,width] group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
         />
-        {/* The chevron says "more" either way, and a tap brings the rest in. */}
+        {/* "More this way": a 24px fade at the very edge, so a clipped tab's
+            visible letters stay full strength. A tap brings the rest in. */}
         <button
           type="button"
           tabIndex={-1}
@@ -153,7 +173,7 @@ export function CourseHeader({
           onClick={() =>
             tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
           }
-          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface from-15% to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
         >
           <ChevronRight className="size-[14px]" />
         </button>

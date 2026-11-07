@@ -61,7 +61,7 @@ export function DayView({
       <AllDayLine key={`all:${event._id}`} event={event} onOpen={onOpenEvent} roomy />
     )),
     ...(model?.due ?? []).map((item) => (
-      <DueLine key={item.key} item={item} zone={zone} roomy />
+      <DueLine key={item.key} item={item} zone={zone} now={now} roomy />
     )),
     ...(model?.planned ?? []).map((item) => (
       <PlanLine key={`plan:${item.key}`} item={item} roomy />

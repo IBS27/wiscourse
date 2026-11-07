@@ -107,7 +107,7 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
   const groups = groupFeed((feed ?? []).slice(0, RAIL_LIMIT), todayKey, now);
 
   return (
-    <aside className="hidden w-[360px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
+    <aside className="hidden w-[340px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
       <div className="flex min-h-[44px] items-center gap-2 px-4 pt-3 pb-1">
         <span className="text-[13px] font-semibold tracking-[-0.01em]">Recent</span>
         <CountBadge n={unseen.length} />

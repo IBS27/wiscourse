@@ -65,7 +65,7 @@ export function OverviewRail({
   };
 
   return (
-    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[340px] lg:border-t-0 lg:border-l">
+    <aside className="flex shrink-0 flex-col border-t border-line bg-surface lg:w-[340px] lg:border-t-0 lg:border-l">
       <StandingFact courseId={courseId} canvasId={canvasId} hub={hub} />
       <InstructorFact course={course} />
       {facts?.officeHours !== undefined && <Fact label="Office hours" value={facts.officeHours} />}
@@ -160,7 +160,7 @@ function Fact({
         )}
       </div>
       {value}
-      {sub !== undefined && <div className="mt-[2px] text-[12px] text-ink-3">{sub}</div>}
+      {sub !== undefined && <div className="mt-[2px] text-[12px] text-ink-2">{sub}</div>}
     </>
   );
   return to === undefined ? (

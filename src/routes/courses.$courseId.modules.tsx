@@ -7,8 +7,10 @@ import { ModuleAccordion } from "@/components/course/module-accordion";
 import { ModuleTimeline } from "@/components/course/module-timeline";
 import { useModuleRowContext } from "@/components/course/module-context";
 import { shouldUseTimeline, type ModuleWithItems } from "@/components/course/module-utils";
+import { COURSE_CONTENT } from "@/components/course/content-width";
 import { dayKeyOf } from "@/lib/dates";
 import { courseColorVar, courseStyle, useCourses, useToday } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/courses/$courseId/modules")({
   component: CourseModules,
@@ -33,8 +35,10 @@ function CourseModules() {
   const startKey = course?.startAt === undefined ? undefined : dayKeyOf(course.startAt);
 
   return (
-    // A list page: full width to the main area's gutters, rules inset with it.
-    <div className="w-full flex-1" style={courseStyle(courseColorVar(course?.color))}>
+    // A list page at the course content width, rules inset to its gutters.
+    // The top pad lands the first module title where other tabs' first
+    // section label sits, 24px under the tabs (20px on a phone).
+    <div className={cn(COURSE_CONTENT, "flex-1 pt-[6px] md:pt-[10px]")} style={courseStyle(courseColorVar(course?.color))}>
       {/* The course row decides the week numbers, and so decides whether the
           timeline is worth showing at all. */}
       {modules === undefined || coursesLoading || ctx.seenLoading ? (

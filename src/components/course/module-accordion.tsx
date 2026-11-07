@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronRight, Clock, Inbox } from "lucide-react";
+import { ChevronRight, Clock, Inbox } from "lucide-react";
 import {
   contentItems,
   itemCountLabel,
@@ -10,7 +10,6 @@ import {
   type ModuleWithItems,
 } from "./module-utils";
 import { ModuleRow } from "./module-row";
-import { Meter } from "@/components/grades/bits";
 import type { ModuleRowContext } from "./module-context";
 import { cn } from "@/lib/utils";
 
@@ -76,12 +75,14 @@ export function ModuleAccordion({
                   locked && "invisible",
                 )}
               />
-              <span className="line-clamp-2 min-w-0 md:truncate">{module.name}</span>
-              {/* "0 of 6 viewed" before the seen rows land is a claim, not a
-                  blank. Say nothing until it settles. */}
-              {!locked && total > 0 && !ctx.seenLoading && (
-                <Progress viewed={viewed} total={total} />
-              )}
+              <span className="flex min-w-0 items-baseline gap-[6px]">
+                <span className="line-clamp-2 min-w-0 md:truncate">{module.name}</span>
+                {/* "0 of 6 viewed" before the seen rows land is a claim, not a
+                    blank. Say nothing until it settles. */}
+                {!locked && total > 0 && !ctx.seenLoading && (
+                  <Progress viewed={viewed} total={total} />
+                )}
+              </span>
               {locked && (
                 <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-3 text-[12px] font-normal text-ink-3">
                   <Clock className="size-[13px]" />
@@ -111,26 +112,15 @@ export function ModuleAccordion({
 }
 
 /**
- * Every module header reads the same: a small neutral meter and
- * "N of M viewed" in fixed columns, so the meters line up down the list
- * whether a module is open or not. A finished module says "Done".
+ * Every module header reads the same: the count right after the title, in
+ * quiet text ("Textbook · 0 of 6 viewed"), so it never strays to the far
+ * edge or turns into a second kind of header once something is viewed.
  */
 function Progress({ viewed, total }: { viewed: number; total: number }) {
-  const done = viewed === total;
   return (
-    <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
-      {/* An empty track for "0 viewed" is noise; the count says it. */}
-      {viewed > 0 && <Meter fraction={viewed / total} className="hidden w-[64px] sm:block" tone="neutral" />}
-      <span className="flex min-w-[96px] items-center justify-end gap-1 whitespace-nowrap">
-        {done ? (
-          <>
-            <Check className="size-[13px]" aria-hidden />
-            Done
-          </>
-        ) : (
-          `${viewed} of ${total} viewed`
-        )}
-      </span>
+    <span className="tabular shrink-0 text-[13px] font-normal tracking-normal whitespace-nowrap text-ink-3">
+      <span aria-hidden>· </span>
+      {viewed === total ? `All ${total} viewed` : `${viewed} of ${total} viewed`}
     </span>
   );
 }

@@ -30,10 +30,11 @@ type SlotKey = (typeof NEW_SLOTS)[number]["key"];
 
 /**
  * One slot, right-aligned so a column of numbers ends exactly where its
- * label does: 96px names it in full (the widest label fits without spilling
- * past the right edge), 56px abbreviates. Header and cells share the class.
+ * label does: 88px names it in full, 56px abbreviates. Flex-end, so a label
+ * a hair wider than its slot spills left, never past the right edge. Header
+ * and cells share the class.
  */
-const SLOT = "w-14 shrink-0 text-right whitespace-nowrap tabular xl:w-24";
+const SLOT = "flex w-14 shrink-0 justify-end whitespace-nowrap tabular xl:w-[88px]";
 
 export function LedgerRow({
   course,
@@ -108,8 +109,9 @@ export function LedgerRow({
 
 /**
  * Fixed slots on desktop, one per kind, numbers only: the header names each
- * slot, so a column reads like a table, and a zero is a quiet dash. Phones
- * have no header, so they get the same counts as words.
+ * slot, so a column reads like a table, and a zero is left blank so the
+ * counts that exist stand out. Phones have no header, so they get the same
+ * counts as words.
  */
 function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
   const present = NEW_SLOTS.filter((slot) => counts[slot.key] > 0);
@@ -123,12 +125,8 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
       <span className="hidden justify-end text-[13px] md:flex" title={label}>
         <span className="sr-only">{label}</span>
         {NEW_SLOTS.map((slot) => (
-          <span
-            key={slot.key}
-            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink/35")}
-            aria-hidden
-          >
-            {counts[slot.key] > 0 ? counts[slot.key] : "—"}
+          <span key={slot.key} className={cn(SLOT, "font-medium text-ink-2")} aria-hidden>
+            {counts[slot.key] > 0 ? counts[slot.key] : ""}
           </span>
         ))}
       </span>

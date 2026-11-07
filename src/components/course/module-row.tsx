@@ -13,6 +13,9 @@ import {
 } from "./module-utils";
 import { cn } from "@/lib/utils";
 
+/** One Canvas indent level, in px. */
+const INDENT = 16;
+
 /** One module item: type icon · title · meta. */
 export function ModuleRow({
   item,
@@ -31,8 +34,17 @@ export function ModuleRow({
 }) {
   const id = `item-${item.canvasId}`;
   // `--pl` is the icon column: under the module title in the accordion,
-  // tighter in the timeline. Indents step in from there.
-  const style = { paddingLeft: `calc(var(--pl) + ${item.indent * 22}px)` } as CSSProperties;
+  // tighter in the timeline. Indents step in from there, each level with a
+  // guide down its parent's icon column so the step reads as nesting.
+  const style = { paddingLeft: `calc(var(--pl) + ${item.indent * INDENT}px)` } as CSSProperties;
+  const guides = Array.from({ length: item.indent }, (_, level) => (
+    <span
+      key={level}
+      aria-hidden
+      className="pointer-events-none absolute inset-y-0 w-px bg-line"
+      style={{ left: `calc(var(--pl) + ${level * INDENT + 7}px)` }}
+    />
+  ));
   const gutter = dense
     ? "[--pl:30px] pr-4"
     : "[--pl:40px] pr-4 md:[--pl:48px] md:pr-6";
@@ -42,12 +54,13 @@ export function ModuleRow({
       <div
         id={id}
         className={cn(
-          "scroll-mt-24 pt-4 pb-[6px] text-[12.5px] font-medium text-ink-2",
+          "relative scroll-mt-24 pt-4 pb-[6px] text-[12.5px] font-medium text-ink-2",
           gutter,
           className,
         )}
         style={style}
       >
+        {guides}
         {item.title}
       </div>
     );
@@ -72,6 +85,7 @@ export function ModuleRow({
       )}
       style={style}
     >
+      {guides}
       {showIcon &&
         createElement(itemIcon(item), {
           className: "size-[15px] shrink-0 text-ink-3",

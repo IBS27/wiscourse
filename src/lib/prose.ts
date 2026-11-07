@@ -25,6 +25,19 @@ export const PROSE = [
   "[&_hr]:my-5 [&_hr]:border-line",
 ].join(" ");
 
+/**
+ * Embedded images (screenshots, diagrams) sit in a quiet frame, capped at
+ * 480px, instead of a stark column-wide rectangle, and a touch dimmer in dark
+ * mode. Canvas equation images are text, so they stay inline and unframed.
+ * Applied to Canvas HTML (reader and to-do description), not the assistant's
+ * answers. Literal classes, so Tailwind can scan them.
+ */
+export const IMAGE_FRAME = [
+  "[&_img:not([src*=equation])]:my-3 [&_img:not([src*=equation])]:h-auto [&_img:not([src*=equation])]:max-w-[min(100%,480px)]",
+  "[&_img:not([src*=equation])]:rounded-lg [&_img:not([src*=equation])]:border [&_img:not([src*=equation])]:border-line",
+  "[&_img:not([src*=equation])]:bg-surface [&_img:not([src*=equation])]:p-1 dark:[&_img:not([src*=equation])]:brightness-90",
+].join(" ");
+
 // Dotted underline stays inside wiscourse; solid plus a ↗ leaves it.
 const LINK = "text-c underline decoration-c/45 underline-offset-[3px] hover:decoration-c";
 export const INTERNAL_LINK = `${LINK} decoration-dotted`;

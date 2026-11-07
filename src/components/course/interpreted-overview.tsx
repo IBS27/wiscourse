@@ -144,8 +144,8 @@ const STEP =
 
 /**
  * The plan's header row: its label, then which chapter (or week) is open —
- * the full title in a menu trigger, never cut short — and the pager at the
- * right. On a phone the picker takes its own line under label and pager.
+ * the full title in a menu trigger, never cut short — and the pager right
+ * beside it. On a phone the picker takes its own line under label and pager.
  */
 function SectionSwitcher({
   title,
@@ -202,7 +202,7 @@ function SectionSwitcher({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="order-2 ml-auto flex shrink-0 gap-2 md:order-3">
+        <span className="order-2 ml-auto flex shrink-0 gap-2 md:order-3 md:ml-0">
           {([-1, 1] as const).map((dir) => {
             const next = sections[index + dir];
             return (

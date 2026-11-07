@@ -162,7 +162,7 @@ it("renders the week as bands over a time grid", () => {
   expect(screen.getByText("Plan")).toBeDefined();
   // Due times are chips in the band (title, then "time · course"), never blocks.
   expect(screen.getByText("Problem Set 3")).toBeDefined();
-  expect(screen.getByText(/^5:00 PM/)).toBeDefined();
+  expect(screen.getByText("Problem Set 3").parentElement?.parentElement?.textContent).toMatch(/5 PM·ECON 101/);
   expect(screen.getByText("Email prof re: office hours")).toBeDefined();
   // Two lecture occurrences this week (Tue and Thu), each with its location.
   expect(screen.getAllByText("MATH 340")).toHaveLength(2);

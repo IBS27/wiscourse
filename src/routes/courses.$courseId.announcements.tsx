@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { AnnouncementRow } from "@/components/course/announcement-row";
 import { SectionHead } from "@/components/course/overview-row";
 import { SECTION_COUNT } from "@/components/course/overview-icons";
+import { COURSE_CONTENT } from "@/components/course/content-width";
 import { courseColorVar, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { useMarkSeenOnMount, useSeen } from "@/lib/seen";
 
@@ -51,9 +52,9 @@ function CourseAnnouncements() {
   };
 
   return (
-    // A list page: full width to the main area's gutters, rules inset with it.
+    // A list page at the course content width, rules inset to its gutters.
     <div
-      className="w-full min-w-0 flex-1 pb-8"
+      className={`${COURSE_CONTENT} min-w-0 flex-1 pb-8`}
       style={courseStyle(courseColorVar(course?.color))}
     >
       {rows === undefined ? null : rows.length === 0 ? (

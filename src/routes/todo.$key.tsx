@@ -68,7 +68,8 @@ function TodoPage() {
           </nav>
         </div>
       </header>
-      <div className="flex-1">
+      {/* A flex column, so the detail's xl rail runs the full height. */}
+      <div className="flex flex-1 flex-col">
         {missing ? (
           <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
             <SearchX className="size-5 text-ink-3" />

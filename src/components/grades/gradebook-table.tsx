@@ -24,10 +24,12 @@ import { cn } from "@/lib/utils";
 /**
  * Assignment · Due · Score · % · Class median. Below `md` the median and the
  * due column fold away and score/percent stack on the right. On desktop the
- * due and median columns collapse to zero width when no row has a value.
+ * due and median columns collapse to zero width when no row in the whole
+ * table has a value, so every group keeps the same columns. Due is sized to
+ * its longest date ("Thu, Nov 12") and Score to a what-if field plus "/100".
  */
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,112px)_136px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,104px)_128px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
 const MOBILE_1 = "col-start-1 row-start-1 md:col-auto md:row-auto";
 const MOBILE_2 = "col-start-1 row-start-2 md:col-auto md:row-auto";
 const MOBILE_3 = "col-start-2 row-start-1 md:col-auto md:row-auto";

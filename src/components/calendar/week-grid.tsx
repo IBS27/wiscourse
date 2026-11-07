@@ -2,10 +2,9 @@
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening at 8 AM or
 // an hour before the week's first block, whichever is earlier. A week with
-// nothing timed draws shorter hours, and its window grows no taller than
-// 8 AM to midnight.
+// nothing timed draws shorter hours and opens an hour above now.
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "../../../convex/todos";
@@ -16,7 +15,7 @@ import {
   blockTimeLabel,
   clockTime,
   EMPTY_GRID_BOUNDS,
-  gridBounds,
+  emptyGridScrollTop,
   firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
@@ -85,19 +84,21 @@ export function WeekGrid({
 }) {
   const first = firstBlockMinute(days, models);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // A week with nothing timed draws 8 AM–midnight to fit the space it has
-  // (never shorter than EMPTY_GRID_BOUNDS' hours), so it neither scrolls
-  // nor leaves a blank band above the footer.
+  // A week with nothing timed draws shorter hours and opens an hour above
+  // now, so the empty grid reads as the rest of today, not a void.
   const empty = first === undefined;
-  const viewHeight = useViewHeight(scrollRef);
-  const bounds = empty
-    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, Math.floor(viewHeight / EMPTY_VIEW_HOURS)))
-    : GRID_BOUNDS;
+  const bounds = empty ? EMPTY_GRID_BOUNDS : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
   const [expanded, setExpanded] = useState(false);
-  useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
+  useTimelineScroll(
+    scrollRef,
+    empty
+      ? emptyGridScrollTop(showNow ? nowMinute : undefined, bounds)
+      : gridScrollTop(first, bounds),
+    bounds.pxPerHour,
+  );
 
   const dueLine = (item: TodoItem) => (
     <DueLine key={item.key} item={item} zone={zone} now={now} compact={compact} />
@@ -293,7 +294,7 @@ function Band({
           <div
             key={day}
             className={cn(
-              "flex min-h-8 min-w-0 border-l border-line p-1",
+              "flex min-h-8 min-w-0 border-l border-line px-[3px] py-1",
               compact ? "flex-wrap content-start justify-center" : "flex-col gap-[3px]",
               day === todayKey && TODAY_TINT,
             )}
@@ -414,22 +415,4 @@ export function NowLine({
       <span className="h-[1.5px] flex-1 bg-today" aria-hidden />
     </div>
   );
-}
-
-/** 8 AM to midnight: what an empty week's grid shows without scrolling. */
-const EMPTY_VIEW_HOURS = 16;
-
-/** The element's current height, kept up to date as the window resizes. */
-function useViewHeight(ref: RefObject<HTMLElement | null>): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setHeight(el.clientHeight);
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-  return height;
 }

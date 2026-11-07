@@ -51,55 +51,59 @@ function GradesIndex() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <PageHeader
+        contentClassName="max-w-[1080px]"
         title="Grades"
         subtitle={subtitle(termName, visible.length, info?.lastSyncedAt, now)}
       />
 
-      {loading || books === undefined ? (
-        <LedgerSkeleton />
-      ) : courses.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-          <BarChart3 className="size-5 text-ink-3" aria-hidden />
-          <p className="text-[13.5px] font-medium">No courses yet</p>
-          <p className="text-[12.5px] text-ink-3">
-            Connect Canvas in{" "}
-            <Link to="/settings" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
-              Settings
-            </Link>
-            , then run a sync.
-          </p>
-        </div>
-      ) : (
-        <>
-          {visible.length > 0 && <GradesLedgerHeader />}
-          {rows(visible)}
-          {visible.length === 0 && (
-            <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
-              No courses in the current term.
+      {/* Capped and left on the gutter, so values sit near their names on wide screens. */}
+      <div className="w-full md:max-w-[1128px]">
+        {loading || books === undefined ? (
+          <LedgerSkeleton />
+        ) : courses.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
+            <BarChart3 className="size-5 text-ink-3" aria-hidden />
+            <p className="text-[13.5px] font-medium">No courses yet</p>
+            <p className="text-[12.5px] text-ink-3">
+              Connect Canvas in{" "}
+              <Link to="/settings" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
+                Settings
+              </Link>
+              , then run a sync.
             </p>
-          )}
-          {other.length > 0 && (
-            <LedgerFold
-              label="Other"
-              count={other.length}
-              hint="Orientation, advising and student-org courses"
-            >
-              {rows(other)}
-            </LedgerFold>
-          )}
-          <LedgerPastTerms
-            courses={past}
-            color={color}
-            renderRow={(course) => (
-              <GradesPastRow
-                key={course.canvasId}
-                course={course}
-                color={color(course.canvasId)}
-              />
+          </div>
+        ) : (
+          <>
+            {visible.length > 0 && <GradesLedgerHeader />}
+            {rows(visible)}
+            {visible.length === 0 && (
+              <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
+                No courses in the current term.
+              </p>
             )}
-          />
-        </>
-      )}
+            {other.length > 0 && (
+              <LedgerFold
+                label="Other"
+                count={other.length}
+                hint="Orientation, advising and student-org courses"
+              >
+                {rows(other)}
+              </LedgerFold>
+            )}
+            <LedgerPastTerms
+              courses={past}
+              color={color}
+              renderRow={(course) => (
+                <GradesPastRow
+                  key={course.canvasId}
+                  course={course}
+                  color={color(course.canvasId)}
+                />
+              )}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

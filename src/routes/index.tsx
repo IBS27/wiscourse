@@ -2,7 +2,7 @@ import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useState, type ReactNode } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
-import { ChevronDown, ChevronRight, Megaphone, MessageCircle, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Megaphone, Plus } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { TodoItem } from "../../convex/todos";
 import { Button } from "@/components/ui/button";
@@ -65,9 +65,6 @@ function Home() {
               Add a task…
               <Kbd className="ml-auto">N</Kbd>
             </button>
-            <Link to="/ask" aria-label="Ask" className={cn(HEADER_BUTTON, "md:hidden")}>
-              <MessageCircle className="size-[16px]" />
-            </Link>
             <button
               type="button"
               onClick={quickAdd.open}

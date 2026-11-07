@@ -1,7 +1,7 @@
 import { useDraft } from "@/lib/drafts";
 import { useState, type FormEvent, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { PageHeader } from "@/components/app/page-header";
+import { PageHeader, READING_FRAME, READING_WIDTH } from "@/components/app/page-header";
 import { setTheme, useTheme, type Theme } from "@/lib/theme";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -50,13 +50,13 @@ function Settings() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Header and body share one left-aligned 720px column, so their edges line up. */}
+      {/* Header and body share one left-aligned reading column, so their edges line up. */}
       <PageHeader
         title="Settings"
         subtitle="Appearance, calendar feed and your Canvas connection"
-        contentClassName="max-w-[720px]"
+        contentClassName={READING_WIDTH}
       />
-      <div className="flex w-full max-w-[768px] flex-col gap-8 px-4 pt-6 pb-16 md:gap-10 md:px-6 md:pt-8">
+      <div className={cn(READING_FRAME, "flex w-full flex-col gap-8 px-4 pt-6 pb-16 md:gap-10 md:px-6 md:pt-8")}>
         <SettingsSection title="Appearance" description="How wiscourse looks in this browser.">
           <Card>
             <Row label="Theme" description="System follows your device's light or dark setting.">

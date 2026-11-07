@@ -36,58 +36,62 @@ function CoursesIndex() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <PageHeader
+        contentClassName="max-w-[1080px]"
         title="Courses"
         subtitle={subtitle(termName, visible, info?.lastSyncedAt, now)}
       />
 
-      {loading ? (
-        <LedgerSkeleton />
-      ) : courses.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
-          <BookOpen className="size-5 text-ink-3" aria-hidden />
-          <p className="text-[13px] text-ink-2">No courses yet.</p>
-          <p className="text-[12.5px] text-ink-3">
-            Connect Canvas in{" "}
-            <Link to="/settings" className="font-medium text-ink underline underline-offset-4">
-              Settings
-            </Link>
-            , then run a sync.
-          </p>
-        </div>
-      ) : (
-        <>
-          {visible.length > 0 && (
-            <div
-              className={cn(
-                "mx-6 hidden items-end border-b border-line pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
-                LEDGER_COLS,
-              )}
-            >
-              <span>Course</span>
-              <span>Next due</span>
-              <NewCountsHead />
-            </div>
-          )}
-          {rows(visible)}
-          {visible.length === 0 && (
-            <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
-              {other.length > 0
-                ? "No courses in the current term."
-                : "Every course this term is hidden. Unhide one in Settings."}
+      {/* Capped and left on the gutter, so values sit near their names on wide screens. */}
+      <div className="w-full md:max-w-[1128px]">
+        {loading ? (
+          <LedgerSkeleton />
+        ) : courses.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+            <BookOpen className="size-5 text-ink-3" aria-hidden />
+            <p className="text-[13px] text-ink-2">No courses yet.</p>
+            <p className="text-[12.5px] text-ink-3">
+              Connect Canvas in{" "}
+              <Link to="/settings" className="font-medium text-ink underline underline-offset-4">
+                Settings
+              </Link>
+              , then run a sync.
             </p>
-          )}
-          {other.length > 0 && (
-            <LedgerFold
-              label="Other"
-              count={other.length}
-              hint="Orientation, advising and student-org courses"
-            >
-              {rows(other)}
-            </LedgerFold>
-          )}
-          <LedgerPastTerms courses={past} color={color} />
-        </>
-      )}
+          </div>
+        ) : (
+          <>
+            {visible.length > 0 && (
+              <div
+                className={cn(
+                  "mx-6 hidden items-end border-b border-line pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
+                  LEDGER_COLS,
+                )}
+              >
+                <span>Course</span>
+                <span>Next due</span>
+                <NewCountsHead />
+              </div>
+            )}
+            {rows(visible)}
+            {visible.length === 0 && (
+              <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
+                {other.length > 0
+                  ? "No courses in the current term."
+                  : "Every course this term is hidden. Unhide one in Settings."}
+              </p>
+            )}
+            {other.length > 0 && (
+              <LedgerFold
+                label="Other"
+                count={other.length}
+                hint="Orientation, advising and student-org courses"
+              >
+                {rows(other)}
+              </LedgerFold>
+            )}
+            <LedgerPastTerms courses={past} color={color} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

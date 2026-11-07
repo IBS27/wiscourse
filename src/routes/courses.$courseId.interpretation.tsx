@@ -58,8 +58,8 @@ function CourseInterpretation() {
     }
   };
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-5 md:p-8">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 pt-5 pb-8 md:px-6 md:pt-6">
+      <div className="max-w-3xl space-y-6">
         <div>
           <h1 className="text-xl font-semibold">Review course interpretation</h1>
           <p className="mt-2 text-sm text-ink-3">
