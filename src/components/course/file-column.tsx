@@ -195,7 +195,7 @@ function FileRow({
         <FileTypeIcon contentType={file.contentType} filename={file.filename} />
       )}
       <span className="min-w-0 flex-1">
-        <span className={cn("block truncate", unread ? "font-medium text-ink" : "text-ink-2")}>
+        <span className="block truncate text-ink">
           {file.displayName}
           {unread && <span className="sr-only"> (new)</span>}
         </span>

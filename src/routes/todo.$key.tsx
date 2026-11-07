@@ -48,9 +48,9 @@ function TodoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* The bar's inner row shares the detail column, so "Home" sits over the title. */}
+      {/* Like every page's header, the bar starts at the main area's content edge. */}
       <div className="flex min-h-12 items-center border-b border-line md:min-h-[64px]">
-        <div className="mx-auto flex w-full max-w-[760px] min-w-0 items-center gap-2 px-4 md:px-6">
+        <div className="flex w-full min-w-0 items-center gap-2 px-4 md:px-6">
         <Link
           to="/"
           className="-ml-2 flex h-8 shrink-0 items-center gap-1 rounded-md pr-[10px] pl-[6px] text-[13px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"

@@ -180,7 +180,7 @@ export function FileList({
                         <span
                           className={cn(
                             compact ? "line-clamp-2 leading-[1.4]" : "block truncate",
-                            unread ? "font-medium text-ink" : selected ? "text-ink" : "text-ink-2",
+                            "text-ink",
                           )}
                         >
                           {file.displayName}

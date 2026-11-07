@@ -19,8 +19,12 @@ export function blockFill(local: boolean): string {
   return local ? LOCAL_BLOCK_FILL : BLOCK_FILL;
 }
 
-/** A light wash on today's column, in both themes. */
-export const TODAY_TINT = "bg-[color-mix(in_srgb,var(--ink)_3.5%,transparent)]";
+/**
+ * The faintest wash on today's column — the circled date in the header does
+ * the marking. Kept under 2.5% ink so it never reads as a disabled column.
+ */
+export const TODAY_TINT =
+  "bg-[color-mix(in_srgb,var(--ink)_1.5%,transparent)] dark:bg-[color-mix(in_srgb,var(--ink)_2.5%,transparent)]";
 
 /** Hour labels this close to now (in minutes) yield to the now label. */
 export const NOW_LABEL_CLEARANCE = 24;

@@ -1,9 +1,9 @@
 import { useEffect, useRef } from "react";
 
 /**
- * Fades whichever edge of a sideways-scrolling row still has content past
- * it, so a clipped tab or chip reads as "scroll for more". Pair the ref
- * with `EDGE_FADE`; the hook only flips the two data attributes.
+ * Marks whichever edge of a sideways-scrolling row still has content past
+ * it (`data-fade-start` / `data-fade-end`), so the caller can fade that edge
+ * and a clipped tab reads as "scroll for more".
  */
 export function useEdgeFade<T extends HTMLElement>() {
   const ref = useRef<T>(null);
@@ -30,25 +30,16 @@ export function useEdgeFade<T extends HTMLElement>() {
 }
 
 /**
- * Masks whichever edge `useEdgeFade` marks as overflowing. The leading
- * mask matches the row's own padding (16px, 24px from md) and is fully
- * clear for all but its last 8px, so the item before a revealed one never
- * shows as a sliver; the trailing edge fades over 24px.
+ * Brings `child` fully into the row with the least scroll: past the leading
+ * edge it lands on the row's padding, so it lines up with the page gutter;
+ * past the trailing edge it stops just clear of the `trail` (the fade and
+ * its chevron). Only the row scrolls, never the page.
  */
-export const EDGE_FADE =
-  "[--fade-l:0px] [--fade-r:0px] data-[fade-start=true]:[--fade-l:16px] md:data-[fade-start=true]:[--fade-l:24px] data-[fade-end=true]:[--fade-r:24px] [mask-image:linear-gradient(to_right,transparent,transparent_max(0px,calc(var(--fade-l)_-_8px)),#000_var(--fade-l),#000_calc(100%_-_var(--fade-r)),transparent)]";
-
-/**
- * Brings `child` fully into the row, landing on the row's leading padding
- * so it lines up with the page gutter and the item before it stays under
- * the clear part of the mask. Only the row scrolls, never the page.
- */
-export function revealInRow(row: HTMLElement, child: HTMLElement) {
+export function revealInRow(row: HTMLElement, child: HTMLElement, trail = 32) {
   if (row.scrollWidth <= row.clientWidth) return;
   const lead = parseFloat(getComputedStyle(row).paddingLeft) || 16;
   const rowBox = row.getBoundingClientRect();
   const box = child.getBoundingClientRect();
-  // Under a faded edge counts as hidden.
-  if (box.left >= rowBox.left + lead && box.right <= rowBox.right - 24) return;
-  row.scrollLeft += box.left - rowBox.left - lead;
+  if (box.left < rowBox.left + lead) row.scrollLeft += box.left - rowBox.left - lead;
+  else if (box.right > rowBox.right - trail) row.scrollLeft += box.right - (rowBox.right - trail);
 }

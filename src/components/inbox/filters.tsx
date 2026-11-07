@@ -3,14 +3,15 @@ import { courseLabel, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import type { InboxSearch, InboxType } from "./search";
 
-export type TypeCounts = Record<InboxType | "all", number>;
+export type TypeCounts = Record<InboxType, number>;
 
-const TABS: { key: InboxType | undefined; label: string; count: keyof TypeCounts }[] = [
-  { key: undefined, label: "All", count: "all" },
-  { key: "announcement", label: "Announcements", count: "announcement" },
-  { key: "grade", label: "Grades", count: "grade" },
-  { key: "change", label: "Changes", count: "change" },
-  { key: "assignment", label: "New", count: "assignment" },
+// "All" carries no count: its number is the header's "N unread".
+const TABS: { key: InboxType | undefined; label: string }[] = [
+  { key: undefined, label: "All" },
+  { key: "announcement", label: "Announcements" },
+  { key: "grade", label: "Grades" },
+  { key: "change", label: "Changes" },
+  { key: "assignment", label: "Assignments" },
 ];
 
 type FilterProps = {
@@ -18,18 +19,18 @@ type FilterProps = {
   onChange: (patch: Partial<InboxSearch>) => void;
 };
 
-/** Type tabs over the list. The scope controls ride along below lg, where the page header has no room. */
+/** Type tabs over the list, each with its unread count. The scope controls ride along below lg, where the page header has no room. */
 export function InboxFilters({ search, counts, onChange }: FilterProps & { counts: TypeCounts }) {
   return (
     <div className="border-b border-line px-4 py-2 md:px-6">
       <div
         role="group"
         aria-label="Type"
-        className="-mx-1 flex items-center gap-[2px] overflow-x-auto py-px pr-6 pl-1 [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-1 flex items-center gap-[2px] overflow-x-auto py-px pr-4 pl-1 [mask-image:linear-gradient(to_right,black_calc(100%-16px),transparent)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {TABS.map((tab) => {
           const on = search.type === tab.key;
-          const n = counts[tab.count];
+          const n = tab.key === undefined ? undefined : counts[tab.key];
           return (
             <button
               key={tab.label}
@@ -37,15 +38,18 @@ export function InboxFilters({ search, counts, onChange }: FilterProps & { count
               aria-pressed={on}
               onClick={() => onChange({ type: tab.key })}
               className={cn(
-                "inline-flex h-7 shrink-0 cursor-pointer items-center gap-[6px] rounded-md px-[9px] text-[12.5px] font-medium whitespace-nowrap transition-colors",
+                "inline-flex h-7 shrink-0 cursor-pointer items-center gap-[5px] rounded-md px-2 text-[12.5px] font-medium whitespace-nowrap transition-colors",
                 "focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
                 on ? "bg-chip text-ink" : "text-ink-3 hover:bg-hover hover:text-ink",
               )}
             >
               {tab.label}
-              <span className={cn("tabular text-[11.5px] font-normal", on ? "text-ink-2" : "text-ink-3", n === 0 && "opacity-60")}>
-                {n}
-              </span>
+              {n !== undefined && (
+                <span className={cn("tabular text-[11.5px] font-normal", on ? "text-ink-2" : "text-ink-3")}>
+                  {n === 0 ? "—" : n}
+                  <span className="sr-only"> unread</span>
+                </span>
+              )}
             </button>
           );
         })}

@@ -50,7 +50,7 @@ function Settings() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader title="Settings" contentClassName="max-w-[720px]" />
+      <PageHeader title="Settings" />
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-4 pt-6 pb-16 md:gap-10 md:px-6 md:pt-8">
         <SettingsSection title="Appearance" description="How wiscourse looks in this browser.">
           <Card>

@@ -71,10 +71,6 @@ export function OverviewWeek({
                         ? typeLabel(item.type)
                         : `Due ${formatDueRelative(due, todayKey)}`
                     }
-                    unread={
-                      !seen.has(item.canvasId) &&
-                      item.completionRequirement?.completed !== true
-                    }
                     to={
                       target.kind === "internal"
                         ? target.to +

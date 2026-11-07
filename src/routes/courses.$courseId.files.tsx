@@ -67,7 +67,7 @@ function CourseFiles() {
   const folderId = search.folder ?? selectedFile?.folderCanvasId ?? tree.root?.folder.canvasId;
   const folder = folderId === undefined ? undefined : tree.byId.get(folderId);
 
-  /** Posted recently and never opened: the title goes medium and counts as new. */
+  /** Posted recently and never opened: counts toward the "new" badge. */
   const isNew = (file: FileDoc) =>
     fileAddedAt(file) >= now - FRESH_MS && !seen.has(file.canvasId);
   const newCount = tree.files.filter(isNew).length;

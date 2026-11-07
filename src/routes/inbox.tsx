@@ -2,6 +2,7 @@ import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { useCallback, useEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { FeedItem } from "../../convex/inbox";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CheckCheck, Inbox } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
@@ -35,8 +36,7 @@ function InboxPage() {
   const all = useMemo(() => feed ?? [], [feed]);
   const unreadTotal = all.filter((f) => !f.seen).length;
 
-  // Everything the course scope and unread toggle allow; the type tabs count
-  // against this, so a tab always says what clicking it shows.
+  // Everything the course scope and unread toggle allow.
   const scoped = useMemo(
     () =>
       all.filter(
@@ -46,16 +46,18 @@ function InboxPage() {
       ),
     [all, search.course, search.unread],
   );
-  const counts = useMemo<TypeCounts>(
-    () => ({
-      all: scoped.length,
-      announcement: scoped.filter((f) => f.type === "announcement").length,
-      grade: scoped.filter((f) => f.type === "grade").length,
-      change: scoped.filter((f) => f.type === "change").length,
-      assignment: scoped.filter((f) => f.type === "assignment").length,
-    }),
-    [scoped],
-  );
+  // Tabs count unread, the same number the header and sidebar show, so every
+  // count on screen means one thing.
+  const counts = useMemo<TypeCounts>(() => {
+    const unread = scoped.filter((f) => !f.seen);
+    const of = (type: FeedItem["type"]) => unread.filter((f) => f.type === type).length;
+    return {
+      announcement: of("announcement"),
+      grade: of("grade"),
+      change: of("change"),
+      assignment: of("assignment"),
+    };
+  }, [scoped]);
   const items =
     search.type === undefined ? scoped : scoped.filter((f) => f.type === search.type);
 
@@ -154,7 +156,7 @@ function InboxPage() {
         <section
           aria-label="Inbox items"
           className={cn(
-            "flex min-w-0 flex-1 flex-col border-line lg:w-[420px] lg:flex-none lg:overflow-y-auto lg:border-r xl:w-[500px] 2xl:w-[560px]",
+            "flex min-w-0 flex-1 flex-col border-line lg:w-[420px] lg:flex-none lg:overflow-y-auto lg:border-r xl:w-[512px] 2xl:w-[560px]",
             search.item !== undefined && "hidden lg:flex",
           )}
         >

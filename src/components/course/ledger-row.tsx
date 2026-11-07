@@ -4,7 +4,6 @@ import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import type { TodoItem } from "../../../convex/todos";
 import { Clock } from "lucide-react";
-import { ROW_ICON } from "./overview-icons";
 import { CourseTag } from "@/components/app/bits";
 import { courseHref } from "@/lib/course-routes";
 import { formatDayShort, formatTime, formatWeekday, dayKeyOf } from "@/lib/dates";
@@ -15,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 /** Course · next due · new, ~42/38/20; the new column never narrows past its slots. */
 export const LEDGER_COLS =
-  "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,42fr)_minmax(0,38fr)_minmax(176px,20fr)]";
+  "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,42fr)_minmax(0,38fr)_minmax(264px,20fr)]";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =
@@ -23,15 +22,15 @@ const RULE =
 
 /** The fixed slots of the New column, in the order the header draws them. */
 const NEW_SLOTS = [
-  { key: "announcement", label: "Announcements", icon: ROW_ICON.announcement },
-  { key: "file", label: "Files", icon: ROW_ICON.File },
-  { key: "grade", label: "Grades", icon: ROW_ICON.grade },
-  { key: "assignment", label: "Assignments", icon: ROW_ICON.Assignment },
+  { key: "announcement", label: "Announcements", short: "Ann." },
+  { key: "file", label: "Files", short: "Files" },
+  { key: "grade", label: "Grades", short: "Grades" },
+  { key: "assignment", label: "Assignments", short: "Due" },
 ] as const;
 type SlotKey = (typeof NEW_SLOTS)[number]["key"];
 
-/** One slot: 44px, centred, so a column of numbers lines up under its icon. */
-const SLOT = "w-11 text-center";
+/** One slot: 56px, right-aligned, so a column of numbers lines up under its label. */
+const SLOT = "w-14 text-right";
 
 export function LedgerRow({
   course,
@@ -106,23 +105,27 @@ export function LedgerRow({
 
 /**
  * Fixed slots on desktop, one per kind, numbers only: the header names each
- * slot, so a column reads like a table. Phones have no header, so they get
- * the same counts as words.
+ * slot, so a column reads like a table, and a zero is a quiet dash. Phones
+ * have no header, so they get the same counts as words.
  */
 function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
   const present = NEW_SLOTS.filter((slot) => counts[slot.key] > 0);
-  if (present.length === 0) {
-    return <span className="hidden text-[12.5px] text-ink-3 md:block md:text-right">Up to date</span>;
-  }
-  const label = present.map((slot) => plural(counts[slot.key], slot.label)).join(" · ");
+  const label =
+    present.length === 0
+      ? "Nothing new"
+      : present.map((slot) => plural(counts[slot.key], slot.label)).join(" · ");
   return (
     <>
-      <span className="text-[12.5px] text-ink-3 md:hidden">{label}</span>
+      {present.length > 0 && <span className="text-[12.5px] text-ink-3 md:hidden">{label}</span>}
       <span className="hidden justify-end text-[13px] md:flex" title={label}>
         <span className="sr-only">{label}</span>
         {NEW_SLOTS.map((slot) => (
-          <span key={slot.key} className={cn(SLOT, "tabular font-medium text-ink-2")} aria-hidden>
-            {counts[slot.key] > 0 ? counts[slot.key] : ""}
+          <span
+            key={slot.key}
+            className={cn(SLOT, "tabular", counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink-3")}
+            aria-hidden
+          >
+            {counts[slot.key] > 0 ? counts[slot.key] : "—"}
           </span>
         ))}
       </span>
@@ -130,14 +133,14 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
   );
 }
 
-/** The header cell over `NewCounts`: "New", then each slot's icon, named. */
+/** The header cell over `NewCounts`: "New" heads the column, each slot's short name sits over its numbers. */
 export function NewCountsHead() {
   return (
     <span className="flex items-center justify-end">
-      <span className="mr-1">New</span>
-      {NEW_SLOTS.map(({ key, label, icon: Icon }) => (
-        <span key={key} className={cn(SLOT, "flex justify-center")} title={label}>
-          <Icon className="size-[14px]" aria-hidden />
+      <span className="mr-auto pr-2">New</span>
+      {NEW_SLOTS.map(({ key, label, short }) => (
+        <span key={key} className={cn(SLOT, "font-normal")} title={label}>
+          <span aria-hidden>{short}</span>
           <span className="sr-only">{label}</span>
         </span>
       ))}

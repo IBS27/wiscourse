@@ -1,62 +1,34 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { RowIcon } from "./overview-icons";
-import { UnreadDot } from "./unread-dot";
 import { cn } from "@/lib/utils";
 
 /**
- * The overview's row: type icon · title · meta. `line` rows sit in the main
- * column (meta drops under the title on phones) and carry unread with title
- * weight alone. `rail` rows are the side column's feed: unread is a dot in a
- * fixed gutter left of the icon, as on Home, with a title of up to two
- * lines and its meta line underneath.
+ * The overview's row: type icon · title · meta. The meta drops under the
+ * title on phones. One weight for every row: these lists have no unread state.
  */
 export function OverviewRow({
   icon: Icon,
   title,
   meta,
-  unread,
   to,
   href,
   onClick,
-  variant = "line",
   className,
 }: {
   icon: RowIcon;
   title: ReactNode;
   meta?: ReactNode;
-  /** Undefined when the caller does not track it: the title stays plain ink. */
-  unread?: boolean;
   to?: string;
   href?: string;
   onClick?: () => void;
-  variant?: "line" | "rail";
   className?: string;
 }) {
-  const rail = variant === "rail";
-  const weight =
-    unread === undefined ? undefined : unread ? "font-medium text-ink" : "text-ink-2";
-  const body = rail ? (
-    <>
-      <span className="flex h-[18px] w-[6px] shrink-0 items-center">
-        {unread === true && <UnreadDot />}
-        {unread === true && <span className="sr-only">Unread</span>}
-      </span>
-      <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3" />
-      <span className="min-w-0 flex-1">
-        <span className={cn("line-clamp-2 leading-[18px] tracking-[-0.005em]", weight)}>
-          {title}
-        </span>
-        {meta !== undefined && (
-          <span className="tabular mt-[3px] block truncate text-[12px] text-ink-3">{meta}</span>
-        )}
-      </span>
-    </>
-  ) : (
+  const body = (
     <>
       <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3 md:mt-0" />
       <span className="flex min-w-0 flex-1 flex-col gap-[2px] md:flex-row md:items-center md:gap-4">
-        <span className={cn("min-w-0 md:truncate", weight)}>{title}</span>
+        <span className="min-w-0 md:truncate">{title}</span>
         {meta !== undefined && (
           <span className="tabular flex shrink-0 items-center gap-2 text-[12px] whitespace-nowrap text-ink-3 md:ml-auto">
             {meta}
@@ -68,9 +40,7 @@ export function OverviewRow({
   const interactive = to !== undefined || href !== undefined;
   const cls = cn(
     "relative flex w-full gap-[10px] text-left text-[13px] text-ink no-underline transition-colors outline-none",
-    rail
-      ? "items-start py-[10px] pr-5 pl-[14px] after:absolute after:right-5 after:bottom-0 after:left-[54px] after:h-px after:bg-line last:after:hidden"
-      : "items-start py-[9px] pr-4 pl-4 after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line md:items-center md:pr-6 md:pl-6 md:after:right-6 md:after:left-12",
+    "items-start py-[9px] pr-4 pl-4 after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line md:items-center md:pr-6 md:pl-6 md:after:right-6 md:after:left-12",
     interactive && "hover:bg-hover focus-visible:bg-hover",
     className,
   );

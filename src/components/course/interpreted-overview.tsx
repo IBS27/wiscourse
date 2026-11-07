@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ChevronRight, FileText, ArrowUpRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -12,7 +12,12 @@ import {
   sectionResources,
   type MapResource,
 } from "@/lib/interpreted-course";
-import { EDGE_FADE, revealInRow, useEdgeFade } from "./edge-fade";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { ModuleWithItems } from "./module-utils";
 import { cn } from "@/lib/utils";
 
@@ -52,6 +57,91 @@ function PageReader({
   );
 }
 
+type Section = CourseMap["sections"][number];
+type Entry = NonNullable<Section["entries"]>[number];
+
+/** A chapter's groups in calendar order; undated ones go last, in their own order. */
+function byDate(entries: Entry[]): Entry[] {
+  return entries
+    .map((e, i) => ({ e, i }))
+    .sort((a, b) => {
+      if (a.e.date && b.e.date && a.e.date !== b.e.date) return a.e.date < b.e.date ? -1 : 1;
+      if (!a.e.date !== !b.e.date) return a.e.date ? -1 : 1;
+      return a.i - b.i;
+    })
+    .map(({ e }) => e);
+}
+
+const STEP =
+  "grid size-8 shrink-0 place-items-center rounded-lg border border-line text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 disabled:pointer-events-none disabled:opacity-40";
+
+/**
+ * Which chapter (or week) is open: the full title in a menu trigger, never
+ * cut short, with a step back and forward beside it.
+ */
+function SectionSwitcher({
+  label,
+  sections,
+  active,
+  onSelect,
+}: {
+  label: string;
+  sections: Section[];
+  active: string;
+  onSelect: (id: string) => void;
+}) {
+  const index = sections.findIndex((s) => s.id === active);
+  const current = sections[index];
+  return (
+    <nav aria-label={label} className="flex items-start gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger className="flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:max-w-max md:flex-initial">
+          <span className="min-w-0 flex-1">{current?.title}</span>
+          <span className="tabular shrink-0 text-[12px] font-normal text-ink-3">
+            {index + 1} of {sections.length}
+          </span>
+          <ChevronDown className="size-[14px] shrink-0 text-ink-3" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="max-h-[min(440px,var(--radix-dropdown-menu-content-available-height))] w-max max-w-[min(440px,calc(100vw-32px))] min-w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
+        >
+          {sections.map((s) => (
+            <DropdownMenuItem
+              key={s.id}
+              onSelect={() => onSelect(s.id)}
+              aria-current={s.id === active ? "true" : undefined}
+              className={cn(
+                "h-auto min-h-8 py-[6px] leading-[18px] whitespace-normal",
+                s.id === active && "font-medium",
+              )}
+            >
+              <span className="min-w-0 flex-1">{s.title}</span>
+              <Check className={cn(s.id !== active && "invisible")} aria-hidden />
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {([-1, 1] as const).map((dir) => {
+        const next = sections[index + dir];
+        return (
+          <button
+            key={dir}
+            type="button"
+            aria-label={dir < 0 ? "Previous section" : "Next section"}
+            title={next?.title}
+            disabled={next === undefined}
+            onClick={() => next && onSelect(next.id)}
+            className={STEP}
+          >
+            <ChevronRight className={cn("size-4", dir < 0 && "rotate-180")} aria-hidden />
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function InterpretedOverview({
   map,
   resources,
@@ -67,7 +157,6 @@ export function InterpretedOverview({
 }) {
   const [selection, setSelection] = useState<string>();
   const [page, setPage] = useState<string>();
-  const navRef = useEdgeFade<HTMLElement>();
   const active =
     map.sections.find((s) => s.id === selection) ??
     map.sections.find((s) => s.id === defaultSection(map, today))!;
@@ -76,12 +165,11 @@ export function InterpretedOverview({
     sectionResources(ids, resources, modules, courseId);
   const rows = resolve(active.resourceIds);
 
-  // The sections are a sideways chip strip; bring the open one into view. Only the strip scrolls, never the page.
-  useEffect(() => {
-    const nav = navRef.current;
-    const chip = nav?.querySelector<HTMLElement>('[aria-pressed="true"]');
-    if (nav && chip) revealInRow(nav, chip);
-  }, [active.id, navRef]);
+  const select = (id: string) => {
+    setSelection(id);
+    setPage(undefined);
+  };
+  const entries = byDate(active.entries ?? []);
   const chapterLayout = map.sections.some((s) =>
     /^chapter\s+\d/i.test(s.title),
   );
@@ -148,68 +236,33 @@ export function InterpretedOverview({
           })}
         </ul>
       )}
-      <div className={cn("group/strip flex min-w-0 items-center gap-2", cards && "block")}>
-        <nav
-          ref={navRef}
-          aria-label={chapterLayout ? "Chapter navigation" : "Course sections"}
-          className={
-            cards
-              ? "grid gap-1 sm:grid-cols-2"
-              : cn(
-                  "-mx-4 flex min-w-0 flex-1 scroll-px-4 gap-2 overflow-x-auto px-4 py-px [scrollbar-width:none] md:mr-0 md:-ml-6 md:scroll-px-6 md:pr-0 md:pl-6 [&::-webkit-scrollbar]:hidden",
-                  EDGE_FADE,
-                )
-          }
-        >
+      {cards ? (
+        <nav aria-label="Course sections" className="grid gap-1 sm:grid-cols-2">
           {map.sections.map((s) => (
             <button
               key={s.id}
               type="button"
               aria-pressed={s.id === active.id}
-              onClick={() => {
-                setSelection(s.id);
-                setPage(undefined);
-              }}
-              title={s.title}
+              onClick={() => select(s.id)}
               className={cn(
-                "shrink-0 rounded-full border px-3 py-[5px] text-left text-[12.5px] leading-[18px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-line-2",
-                cards ? "max-w-none rounded-md" : "max-w-[200px]",
+                "rounded-md border px-3 py-[5px] text-left text-[12.5px] leading-[18px] transition-colors outline-none focus-visible:ring-2 focus-visible:ring-line-2",
                 s.id === active.id
                   ? "border-line-2 bg-chip font-medium text-ink"
                   : "border-line text-ink-2 hover:bg-hover hover:text-ink",
               )}
             >
-              <span className="block truncate">{s.title}</span>
+              {s.title}
             </button>
           ))}
         </nav>
-        {!cards && (
-          // A mouse has no sideways scroll; these only show while the strip overflows.
-          <div className="hidden shrink-0 items-center gap-[2px] md:group-has-[[data-fade-end=true]]/strip:flex md:group-has-[[data-fade-start=true]]/strip:flex">
-            {([-1, 1] as const).map((dir) => (
-              <button
-                key={dir}
-                type="button"
-                aria-label={dir < 0 ? "Earlier sections" : "Later sections"}
-                onClick={() =>
-                  navRef.current?.scrollBy({
-                    left: dir * navRef.current.clientWidth * 0.7,
-                    behavior: "smooth",
-                  })
-                }
-                className={cn(
-                  "grid size-7 place-items-center rounded-md text-ink-3 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2",
-                  dir < 0
-                    ? "opacity-40 group-has-[[data-fade-start=true]]/strip:opacity-100"
-                    : "opacity-40 group-has-[[data-fade-end=true]]/strip:opacity-100",
-                )}
-              >
-                <ChevronRight className={cn("size-4", dir < 0 && "rotate-180")} aria-hidden />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      ) : (
+        <SectionSwitcher
+          label={chapterLayout ? "Chapter navigation" : "Course sections"}
+          sections={map.sections}
+          active={active.id}
+          onSelect={select}
+        />
+      )}
       <div className="mt-4 min-w-0" aria-label="Selected course section">
         {active.teachingDates && !active.entries?.length && (
           <p className="tabular text-[12.5px] text-ink-3">
@@ -218,9 +271,9 @@ export function InterpretedOverview({
               ` – ${formatDay(active.teachingDates.end)}`}
           </p>
         )}
-        {!!active.entries?.length && (
+        {entries.length > 0 && (
           <ol aria-label={`${active.title} schedule`}>
-            {active.entries.map((e, i) => {
+            {entries.map((e, i) => {
               const links = resolve(e.resourceIds);
               return (
                 <li key={i} className="border-b border-line py-3 first:pt-1 last:border-b-0">

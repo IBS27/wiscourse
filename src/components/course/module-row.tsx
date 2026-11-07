@@ -13,7 +13,7 @@ import {
 } from "./module-utils";
 import { cn } from "@/lib/utils";
 
-/** One module item: unread gutter · type icon · title · meta. */
+/** One module item: type icon · title · meta. */
 export function ModuleRow({
   item,
   ctx,
@@ -51,7 +51,6 @@ export function ModuleRow({
   }
 
   const target = itemTarget(item, ctx.courseId);
-  const unread = !ctx.isSeen(item);
 
   return (
     <ItemLink
@@ -71,15 +70,8 @@ export function ModuleRow({
       {createElement(itemIcon(item, ctx.files), {
         className: "size-[14px] shrink-0 text-ink-3",
       })}
-      <span
-        className={cn(
-          "line-clamp-2 min-w-0 md:truncate",
-          unread ? "font-medium" : "text-ink-2",
-        )}
-      >
-        {item.title}
-        {unread && <span className="sr-only"> (unread)</span>}
-      </span>
+      {/* One weight for every item: the module's progress says what's been viewed. */}
+      <span className="line-clamp-2 min-w-0 md:truncate">{item.title}</span>
       {target.kind === "external" && (
         <ArrowUpRight className="-ml-[4px] size-3 shrink-0 text-ink-3" />
       )}

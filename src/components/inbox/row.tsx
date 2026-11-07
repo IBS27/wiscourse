@@ -33,7 +33,8 @@ export function InboxRow({
         // Hairline between rows, from the title column to the content edge.
         "after:absolute after:right-4 after:bottom-0 after:left-[51px] after:h-px after:bg-line md:after:right-6 md:after:left-[59px]",
         "focus-visible:bg-hover focus-visible:outline-none",
-        selected ? "bg-[color-mix(in_oklab,var(--ink)_6%,transparent)]" : "hover:bg-hover",
+        // Selected sits a clear step above hover in both themes; its own hairline drops so the band reads as one block.
+        selected ? "bg-[color-mix(in_oklab,var(--ink)_8%,transparent)] after:hidden" : "hover:bg-hover",
       )}
       style={courseStyle(color(item.courseCanvasId))}
     >

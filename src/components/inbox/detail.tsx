@@ -4,10 +4,20 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { Kbd } from "@/components/app/bits";
-import { Button } from "@/components/ui/button";
 import { CanvasHtml } from "@/components/reader/canvas-html";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
-import { BackToInbox, ByLine, CanvasButton, DetailShell, Fact, Facts, MarkUnreadButton, READING } from "./detail-shell";
+import {
+  Action,
+  BackToInbox,
+  ByLine,
+  CanvasButton,
+  DESCRIPTION,
+  DetailShell,
+  Fact,
+  Facts,
+  MarkUnreadButton,
+  READING,
+} from "./detail-shell";
 import { formatChange, pointsLabel, shortDateTime } from "./format";
 import { GradeDetail } from "./grade-detail";
 import { feedTitle } from "@/lib/feed";
@@ -72,10 +82,10 @@ function AnnouncementDetail({ item, onMarkUnread }: { item: FeedItem; onMarkUnre
       by={<ByLine name={announcement?.authorName} when={shortDateTime(item.at)} />}
       actions={
         <>
-          <CanvasButton href={announcement?.htmlUrl ?? item.htmlUrl}>Open in Canvas</CanvasButton>
-          <Button asChild size="sm" variant="outline">
+          <Action primary asChild>
             <Link to={announcementsHref(item.courseCanvasId)}>All announcements</Link>
-          </Button>
+          </Action>
+          <CanvasButton href={announcement?.htmlUrl ?? item.htmlUrl}>Open in Canvas</CanvasButton>
           <MarkUnreadButton onClick={onMarkUnread} disabled={!item.seen} />
         </>
       }
@@ -109,9 +119,9 @@ function ChangeDetail({ item, onMarkUnread }: { item: FeedItem; onMarkUnread: ()
       by={<ByLine when={`Changed ${shortDateTime(item.at)}`} />}
       actions={
         <>
-          <Button asChild size="sm">
+          <Action primary asChild>
             <Link to={todoHref("assignment", item.canvasId)}>Open assignment</Link>
-          </Button>
+          </Action>
           <CanvasButton href={item.htmlUrl}>Open in Canvas</CanvasButton>
           <MarkUnreadButton onClick={onMarkUnread} disabled={!item.seen} />
         </>
@@ -155,9 +165,9 @@ function NewAssignmentDetail({
       by={<ByLine when={`Added ${shortDateTime(item.at)}`} />}
       actions={
         <>
-          <Button asChild size="sm">
+          <Action primary asChild>
             <Link to={todoHref("assignment", item.canvasId)}>Open assignment</Link>
-          </Button>
+          </Action>
           <CanvasButton href={item.htmlUrl}>Open in Canvas</CanvasButton>
           <MarkUnreadButton onClick={onMarkUnread} disabled={!item.seen} />
         </>
@@ -169,7 +179,7 @@ function NewAssignmentDetail({
       </Facts>
       {description !== undefined && description !== null && (
         <div className="mt-6">
-          <CanvasHtml html={description} courseId={item.courseCanvasId} />
+          <CanvasHtml html={description} courseId={item.courseCanvasId} className={DESCRIPTION} />
         </div>
       )}
     </DetailShell>

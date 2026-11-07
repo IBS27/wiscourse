@@ -15,7 +15,8 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
-import { CourseTag, Kbd, Pill } from "@/components/app/bits";
+import { CourseTag, Kbd } from "@/components/app/bits";
+import { Button } from "@/components/ui/button";
 import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
 import {
@@ -104,33 +105,45 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         )}
         <div className="mt-[14px] flex flex-wrap items-center gap-[6px]">
           {done ? (
-            <Pill>
+            <StatusChip>
               <Check />
               Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
               {item.doneBySubmission ? " · on submission" : ""}
-            </Pill>
+            </StatusChip>
           ) : overdue && item.dueAt !== undefined ? (
-            <Pill tone="red">
+            <StatusChip alarm>
               <Clock />
               Overdue · {formatLate(item.dueAt, now)}
-            </Pill>
+            </StatusChip>
           ) : null}
           {item.dueAt !== undefined ? (
-            <Pill tone="outline" className="text-ink-2">
+            <StatusChip>
               {!overdue || done ? <Clock /> : null}
               Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
-            </Pill>
+            </StatusChip>
           ) : (
-            <Pill tone="outline">No due date</Pill>
+            <StatusChip>No due date</StatusChip>
           )}
           {item.plannedDay !== undefined && (
-            <Pill tone="outline" className="text-ink-2">
+            <StatusChip>
               <CalendarDays />
               Planned {formatPlannedRelative(item.plannedDay, today)}
-            </Pill>
+            </StatusChip>
           )}
-          {isLocal && !course && <Pill tone="outline">No course</Pill>}
+          {isLocal && !course && <StatusChip>No course</StatusChip>}
           <SubmissionChip item={item} overdue={overdue && !done} />
+          {!isLocal && item.htmlUrl && (
+            // The page's primary action: right of the chips on desktop, on
+            // its own line under them on a phone.
+            <div className="max-md:mt-2 max-md:basis-full md:ml-auto">
+              <Button asChild size="sm" className="h-8 rounded-lg px-3 text-[13px]">
+                <a href={item.htmlUrl} target="_blank" rel="noreferrer">
+                  Open in Canvas
+                  <ArrowUpRight className="size-[14px]" />
+                </a>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -197,22 +210,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
       {/* Submission (Canvas) */}
       {!isLocal && (
-        <Block
-          title="Submission"
-          hint={
-            item.htmlUrl ? (
-              <a
-                href={item.htmlUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-1 rounded text-[12.5px] text-ink-3 transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
-              >
-                Open in Canvas
-                <ArrowUpRight className="size-[13px]" />
-              </a>
-            ) : undefined
-          }
-        >
+        <Block title="Submission">
           <div className="flex items-start gap-[10px]">
             <SubmissionIcon item={item} />
             <div className="min-w-0">
@@ -298,12 +296,11 @@ const PROSE = cn(
   "[&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-[6px] [&_th]:border [&_th]:border-line [&_th]:bg-sunken [&_th]:px-2 [&_th]:py-[6px] [&_th]:text-left [&_th]:font-medium [&_th]:text-ink",
 );
 
-function Block({ title, hint, children }: { title: string; hint?: ReactNode; children: ReactNode }) {
+function Block({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="border-t border-line py-4 md:py-5">
       <div className="mb-[10px] flex items-center gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
-        {hint && <div className="ml-auto flex items-center max-md:[&>kbd]:hidden">{hint}</div>}
       </div>
       {children}
     </section>
@@ -375,25 +372,42 @@ function PlanDate({ value, onChange }: { value: string | undefined; onChange: (d
   );
 }
 
+/**
+ * One status chip style for the header row: 24px, a hairline edge, ink-2
+ * text. Only the alarm (overdue, or missing standing in for it) is tinted.
+ */
+function StatusChip({ alarm, children }: { alarm?: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 shrink-0 items-center gap-[5px] rounded-full border px-[9px] text-[12px] font-medium whitespace-nowrap [&_svg]:size-[12px]",
+        alarm ? "border-red/25 bg-red-bg text-red" : "border-line-2 text-ink-2",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
 function SubmissionChip({ item, overdue }: { item: TodoItem; overdue: boolean }) {
   switch (item.submission) {
     case "graded":
       return (
-        <Pill>
+        <StatusChip>
           <Check />
           Graded{item.score !== undefined && item.pointsPossible !== undefined ? ` ${item.score}/${item.pointsPossible}` : ""}
-        </Pill>
+        </StatusChip>
       );
     case "submitted":
       return (
-        <Pill>
+        <StatusChip>
           <Check />
           Submitted
-        </Pill>
+        </StatusChip>
       );
     case "missing":
-      // The overdue pill already carries the alarm; this just adds Canvas's flag.
-      return overdue ? <Pill tone="outline">Marked missing</Pill> : <Pill tone="red">Missing</Pill>;
+      // The overdue chip already carries the alarm; this just adds Canvas's flag.
+      return overdue ? <StatusChip>Marked missing</StatusChip> : <StatusChip alarm>Missing</StatusChip>;
     default:
       return null;
   }

@@ -1,10 +1,10 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronLeft, ExternalLink, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
-import { EDGE_FADE, revealInRow, useEdgeFade } from "./edge-fade";
+import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
@@ -54,7 +54,7 @@ export function CourseHeader({
 
   return (
     <header
-      className="border-b border-line"
+      className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
       <div className="flex items-center gap-[10px] px-4 pt-2 pb-[10px] md:hidden">
@@ -86,9 +86,9 @@ export function CourseHeader({
       </div>
 
       <div className="hidden items-start gap-3 px-6 pt-5 md:flex">
-        <span className="mt-[9px] size-[10px] shrink-0 rounded-full bg-c" aria-hidden />
+        <span className="mt-[8px] size-[9px] shrink-0 rounded-full bg-c" aria-hidden />
         <div className="min-w-0">
-          <h1 className="truncate text-[22px] leading-[1.2] font-semibold tracking-[-0.02em]">
+          <h1 className="truncate text-[20px] leading-[1.25] font-semibold tracking-[-0.02em]">
             {name || <span className="text-ink-3">Course</span>}
           </h1>
           <div className="mt-1 flex items-center gap-[7px] text-[12.5px] text-ink-3">
@@ -113,27 +113,48 @@ export function CourseHeader({
         </a>
       </div>
 
-      <nav
-        ref={tabsRef}
-        className={cn(
-          "mt-1 flex scroll-px-4 gap-5 overflow-x-auto px-4 md:mt-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-          EDGE_FADE,
-        )}
-      >
-        <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
-        <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
-        <Tab
-          to="/courses/$courseId/files"
-          courseId={courseId}
-          label="Files"
-          badge={
-            hub !== undefined && hub !== null && hub.newFiles > 0 && <TabCount n={hub.newFiles} />
-          }
+      {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
+      <div className="group/tabs relative mt-1 md:mt-4">
+        <nav
+          ref={tabsRef}
+          className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
+          <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
+          <Tab
+            to="/courses/$courseId/files"
+            courseId={courseId}
+            label="Files"
+            badge={
+              hub !== undefined && hub !== null && hub.newFiles > 0 && <TabCount n={hub.newFiles} />
+            }
+          />
+          <Tab to="/courses/$courseId/announcements" courseId={courseId} label="Announcements" />
+          <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
+          <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
+        </nav>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-linear-to-r from-surface to-transparent opacity-0 transition-opacity group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
         />
-        <Tab to="/courses/$courseId/announcements" courseId={courseId} label="Announcements" />
-        <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
-        <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
-      </nav>
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-6 bg-linear-to-l from-surface to-transparent opacity-0 transition-opacity group-has-[[data-fade-end=true]]/tabs:opacity-100"
+        />
+        {/* The fade alone can land on the gap between two tabs; the chevron
+            says "more" either way, and a tap brings the rest in. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden
+          onClick={() =>
+            tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
+          }
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-8 items-center justify-end bg-linear-to-l from-surface from-60% to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:hidden"
+        >
+          <ChevronRight className="size-[14px]" />
+        </button>
+      </div>
     </header>
   );
 }

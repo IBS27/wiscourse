@@ -55,6 +55,13 @@ export function AnnouncementRow({
         aria-expanded={open}
         className="group relative block w-full px-4 py-[14px] text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6"
       >
+        {/* Unread: a dot in the left gutter, beside a medium title. */}
+        {unread && (
+          <span
+            className="absolute top-[21px] left-[6px] size-[6px] rounded-full bg-unread md:left-[10px]"
+            aria-hidden
+          />
+        )}
         <div className="flex items-baseline gap-4">
           <div
             className={cn(

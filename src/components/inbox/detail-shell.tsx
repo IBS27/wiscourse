@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ExternalLink, Mail } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, Mail } from "lucide-react";
 import type { FeedItem } from "../../../convex/inbox";
 import { Button } from "@/components/ui/button";
 import { courseStyle, useCourses } from "@/lib/hooks";
@@ -8,8 +8,12 @@ import { cn } from "@/lib/utils";
 import { CourseTag } from "@/components/app/bits";
 import { FEED_ICON } from "./format";
 
-/** Reading column shared by the detail pane and its loading state. */
-export const READING = "mx-auto w-full max-w-[720px] px-4 pt-4 pb-12 md:px-8 md:pt-7";
+/** Reading column shared by the detail pane and its loading state: a 640px document. */
+export const READING = "mx-auto w-full max-w-[672px] px-4 pt-4 pb-12 md:max-w-[704px] md:px-8 md:pt-7";
+
+/** Canvas-authored descriptions: the to-do detail's reading type, quieter than an announcement body. */
+export const DESCRIPTION =
+  "text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere] [&_p]:my-3 [&_strong]:text-ink [&_b]:text-ink [&_h1]:text-ink [&_h2]:text-ink [&_h3]:text-ink [&_h4]:text-ink";
 
 /** Mobile-only way back to the list; on lg the list sits beside the pane. */
 export function BackToInbox() {
@@ -45,7 +49,7 @@ export function DetailShell({
   const { label, color } = useCourses();
   const Icon = FEED_ICON[item.type];
   return (
-    <article className={READING} style={courseStyle(color(item.courseCanvasId))}>
+    <article className={cn(READING, "@container")} style={courseStyle(color(item.courseCanvasId))}>
       <BackToInbox />
 
       <div className="mb-[10px] flex items-center gap-2 text-[12.5px] text-ink-3">
@@ -62,7 +66,7 @@ export function DetailShell({
         <div className="mt-[10px] flex items-center gap-2 text-[12.5px] text-ink-3">{by}</div>
       )}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-line pb-5 [&_[data-slot=button]]:text-[13px]">
+      <div className="mt-5 flex flex-wrap items-center gap-2 border-b border-line pb-5">
         {actions}
       </div>
 
@@ -124,33 +128,54 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
 }
 
 export function BlockLabel({ children }: { children: ReactNode }) {
-  return <h2 className="mt-7 mb-3 text-[13px] font-semibold tracking-[-0.01em] text-ink">{children}</h2>;
+  return <h2 className="mt-7 mb-3 text-[13px] font-semibold tracking-[-0.01em] text-ink first:mt-0">{children}</h2>;
 }
 
+const OUTLINE =
+  "border-line-2 bg-surface text-ink shadow-none hover:bg-hover hover:text-ink dark:border-line-2 dark:bg-surface dark:hover:bg-hover";
+
+/** The pane's actions: one solid primary, every other action the same outline at the same height. */
+export function Action({
+  primary = false,
+  className,
+  ...props
+}: Omit<ComponentProps<typeof Button>, "variant" | "size"> & { primary?: boolean }) {
+  return (
+    <Button
+      size="sm"
+      variant={primary ? "default" : "outline"}
+      className={cn(
+        "h-8 text-[13px] focus-visible:ring-2 focus-visible:ring-line-2",
+        !primary && OUTLINE,
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/** Leaves wiscourse, so it carries the app's ↗ for external links. */
 export function CanvasButton({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <Button asChild size="sm" variant="outline">
+    <Action asChild>
       <a href={href} target="_blank" rel="noreferrer">
-        <ExternalLink />
         {children}
+        <ArrowUpRight className="size-[14px] text-ink-3" aria-hidden />
       </a>
-    </Button>
+    </Action>
   );
 }
 
 export function MarkUnreadButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
-    <Button
-      size="sm"
-      variant="ghost"
+    <Action
       aria-label="Mark unread"
       title="Mark unread"
-      className="text-ink-3 hover:text-ink sm:ml-auto"
+      className="ml-auto w-8 px-0 has-[>svg]:px-0"
       onClick={onClick}
       disabled={disabled}
     >
-      <Mail />
-      <span className="hidden sm:inline">Mark unread</span>
-    </Button>
+      <Mail className="size-[15px] text-ink-2" aria-hidden />
+    </Action>
   );
 }

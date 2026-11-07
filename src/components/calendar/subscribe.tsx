@@ -130,7 +130,7 @@ export function SubscribeSections() {
         <div className="eyebrow mb-[10px]">Include</div>
         {INCLUDE_ROWS.map((row) => (
           <div key={row.id} className="flex items-center gap-[9px] py-[7px] text-[13px] text-ink-2">
-            <Mark kind={row.mark} className="[--c:var(--ink-3)]" />
+            <Mark kind={row.mark} legend />
             {row.label}
             <Switch
               on={include[row.id]}
@@ -248,14 +248,14 @@ function Switch({
       aria-label={label}
       onClick={onChange}
       className={cn(
-        "relative ml-auto h-4 w-7 shrink-0 rounded-full bg-line-2 transition-colors",
-        on && "bg-today",
+        "relative ml-auto h-[18px] w-8 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
+        on && "bg-ink-2",
       )}
     >
       <span
         className={cn(
-          "absolute top-[2px] left-[2px] block size-3 rounded-full bg-surface transition-all",
-          on && "left-[14px]",
+          "absolute top-[2px] left-[2px] block size-[14px] rounded-full bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.12)] transition-transform",
+          on && "translate-x-[14px]",
         )}
       />
     </button>

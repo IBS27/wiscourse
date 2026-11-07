@@ -315,6 +315,8 @@ function freeLane(laneEnds: number[], minute: number): number {
 export interface GridBounds {
   startMinute: number;
   endMinute: number;
+  /** Pixels per hour: full height, or compact for a week with no blocks. */
+  pxPerHour: number;
   /** Whole hours the gutter labels. */
   hours: number[];
   height: number;
@@ -324,24 +326,39 @@ export interface GridBounds {
  * The whole day, midnight to midnight. The grid scrolls inside its view, and
  * `gridScrollTop` decides where it opens.
  */
-export const GRID_BOUNDS: GridBounds = {
-  startMinute: 0,
-  endMinute: 24 * 60,
-  hours: Array.from({ length: 24 }, (_, hour) => hour),
-  height: GRID_TOP_PAD + 24 * PX_PER_HOUR,
-};
+export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
+
+/**
+ * An hour's height when the grid has nothing timed to show: the empty hours
+ * take less room, so the bands above (and the call to add class times) lead.
+ */
+export const EMPTY_PX_PER_HOUR = 32;
+
+/** The midnight-to-midnight grid at `pxPerHour`. */
+export function gridBounds(pxPerHour: number): GridBounds {
+  return {
+    startMinute: 0,
+    endMinute: 24 * 60,
+    pxPerHour,
+    hours: Array.from({ length: 24 }, (_, hour) => hour),
+    height: GRID_TOP_PAD + 24 * pxPerHour,
+  };
+}
 
 /**
  * The scroll offset the timeline opens at: 8 AM, or an hour above the
  * earliest block in view when that starts sooner, so a morning exam is never
  * scrolled away. Clamped so the top pad stays visible.
  */
-export function gridScrollTop(firstBlockMinute: number | undefined): number {
+export function gridScrollTop(
+  firstBlockMinute: number | undefined,
+  bounds: GridBounds = GRID_BOUNDS,
+): number {
   const minute =
     firstBlockMinute === undefined
       ? GRID_OPENS_AT
       : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
-  return Math.max(0, minuteOffset(Math.max(0, minute), GRID_BOUNDS) - GRID_TOP_PAD);
+  return Math.max(0, minuteOffset(Math.max(0, minute), bounds) - GRID_TOP_PAD);
 }
 
 /** The earliest block start across `models` for `days`, if any. */
@@ -360,14 +377,14 @@ export function firstBlockMinute(
 
 /** Pixels from the top of the grid body for a given minute of the day. */
 export function minuteOffset(minute: number, bounds: GridBounds): number {
-  return GRID_TOP_PAD + ((minute - bounds.startMinute) / 60) * PX_PER_HOUR;
+  return GRID_TOP_PAD + ((minute - bounds.startMinute) / 60) * bounds.pxPerHour;
 }
 
 export function blockGeometry(
   block: { startMinute: number; endMinute: number },
   bounds: GridBounds,
 ): { top: number; height: number } {
-  const drawn = ((block.endMinute - block.startMinute) / 60) * PX_PER_HOUR;
+  const drawn = ((block.endMinute - block.startMinute) / 60) * bounds.pxPerHour;
   const height = Math.max(MIN_BLOCK_PX, drawn);
   const top = minuteOffset(block.startMinute, bounds);
   // A short block near the bottom edge is nudged up so its 40px minimum

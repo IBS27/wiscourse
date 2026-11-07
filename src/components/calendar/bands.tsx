@@ -18,9 +18,9 @@ import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 /**
- * The shared band row: mark, then the title. In the week's narrow columns
- * the title wraps up to three lines rather than chopping to a few letters; the
- * phone's Day band has the width for one line and a right-aligned time.
+ * The shared band row: mark, then the title, on one line. In the week's
+ * narrow columns the time leads the title; the Day band has the width for a
+ * right-aligned time instead. The tooltip always carries the full title.
  */
 function Line({
   color,
@@ -51,7 +51,7 @@ function Line({
       ? "size-[22px] items-center justify-center"
       : roomy
         ? "h-[28px] w-full items-center gap-[6px] px-[6px] text-[12.5px] whitespace-nowrap"
-        : "w-full items-start py-[3px] pr-1 pl-[3px] text-[12px] leading-[16px]",
+        : "h-[22px] w-full shrink-0 items-center pr-1 pl-[3px] text-[12px] whitespace-nowrap",
     className,
   );
   const label = compact ? title : undefined;
@@ -83,19 +83,9 @@ function Line({
   );
 }
 
-/** The title's text: up to three lines in the week grid, one in the Day band. */
-function Title({ roomy, done, children }: { roomy?: boolean; done?: boolean; children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "min-w-0 flex-1",
-        roomy ? "truncate" : "line-clamp-3",
-        done && "text-ink-3",
-      )}
-    >
-      {children}
-    </span>
-  );
+/** The title's text, one truncated line. */
+function Title({ done, children }: { done?: boolean; children: ReactNode }) {
+  return <span className={cn("min-w-0 flex-1 truncate", done && "text-ink-3")}>{children}</span>;
 }
 
 /** 11:59 PM — Canvas's default deadline, which the Due band already implies. */
@@ -128,9 +118,9 @@ export function DueLine({
       compact={compact}
       className={cn(done && "text-ink-3")}
     >
-      <Mark kind={done ? "done" : "due"} className={cn(!roomy && !compact && "mt-px")} />
+      <Mark kind={done ? "done" : "due"} />
       {!compact && (
-        <Title roomy={roomy} done={done}>
+        <Title done={done}>
           {lead && (
             <>
               <span className="font-normal tabular text-ink-3">{denseTime(minute)}</span>{" "}
@@ -166,8 +156,8 @@ export function PlanLine({
       roomy={roomy}
       compact={compact}
     >
-      <Mark kind="planned" className={cn(!roomy && !compact && "mt-px")} />
-      {!compact && <Title roomy={roomy}>{item.title}</Title>}
+      <Mark kind="planned" />
+      {!compact && <Title>{item.title}</Title>}
     </Line>
   );
 }
@@ -194,8 +184,38 @@ export function AllDayLine({
       compact={compact}
       className="font-medium text-ink-2"
     >
-      <Mark kind="event" className={cn(!roomy && !compact && "mt-px")} />
-      {!compact && <Title roomy={roomy}>{event.title}</Title>}
+      <Mark kind="event" />
+      {!compact && <Title>{event.title}</Title>}
     </Line>
+  );
+}
+
+/**
+ * A day's finished items, folded into one muted line ("✓ 3 done"); on the
+ * phone's narrow columns just the check and the count. Opens the full list.
+ */
+export function DoneLine({
+  count,
+  compact,
+  onClick,
+}: {
+  count: number;
+  compact?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${count} done`}
+      aria-label={`Show ${count} done`}
+      className={cn(
+        "flex h-[22px] shrink-0 items-center gap-[5px] rounded-[5px] text-left text-ink-3 tabular transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+        compact ? "gap-px px-[3px] text-[11px]" : "w-full pr-1 pl-[3px] text-[12px]",
+      )}
+    >
+      <Mark kind="done" />
+      {compact ? count : `${count} done`}
+    </button>
   );
 }

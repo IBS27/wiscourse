@@ -1,22 +1,39 @@
 import { useDraft } from "@/lib/drafts";
-import { ArrowRight, CheckCheck, ChevronRight, Megaphone, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCheck,
+  ChevronRight,
+  Clock,
+  FilePlus2,
+  GraduationCap,
+  Megaphone,
+  Plus,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
-import { ROW_ICON } from "./overview-icons";
-import { OverviewRow } from "./overview-row";
 import { CountBadge } from "@/components/app/bits";
+import { FeedRowBody } from "@/components/agenda/new-rail";
+import { FEED_ROW } from "@/components/agenda/feed-row";
 import { MeetingsEditor } from "@/components/calendar/meetings-editor";
 import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { formatPercent } from "@/lib/grades-ui";
-import { feedSeenKind, feedSubtitle, feedTitle } from "@/lib/feed";
+import { feedSeenKind, feedStatus, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
+
+/** The Home rail's icons, so a feed row reads the same in both places. */
+const FEED_ICON = {
+  announcement: Megaphone,
+  grade: GraduationCap,
+  assignment: FilePlus2,
+  change: Clock,
+} as const satisfies Record<FeedItem["type"], unknown>;
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 type CourseHub = NonNullable<FunctionReturnType<typeof api.courses.hub>>;
@@ -97,13 +114,8 @@ export function OverviewRail({
       ) : (
         <div className="pb-3">
           {items.slice(0, 8).map((item) => (
-            <OverviewRow
+            <Link
               key={item.key}
-              variant="rail"
-              icon={item.type === "assignment" ? ROW_ICON.Assignment : ROW_ICON[item.type]}
-              title={feedTitle(item)}
-              unread={!item.seen}
-              meta={[railSubtitle(item), formatAgo(item.at, now)].filter(Boolean).join(" · ")}
               to={
                 item.type === "announcement"
                   ? announcementsHref(courseId, item.canvasId)
@@ -117,7 +129,16 @@ export function OverviewRail({
                   seenVersion: item.seenVersion,
                 });
               }}
-            />
+              className={FEED_ROW}
+            >
+              <FeedRowBody
+                icon={FEED_ICON[item.type]}
+                title={feedTitle(item)}
+                unread={!item.seen}
+                status={feedStatus(item)}
+                time={formatAgo(item.at, now)}
+              />
+            </Link>
           ))}
         </div>
       )}
@@ -239,11 +260,6 @@ function InstructorFact({ course }: { course: Course | undefined }) {
       }
     />
   );
-}
-
-/** What happened, as Home's rail says it: the announcement body stays out of a glance. */
-function railSubtitle(item: FeedItem): string | undefined {
-  return item.type === "announcement" ? "Announcement" : feedSubtitle(item);
 }
 
 /** "91.2% · A" over "4 of 12 graded · Projects weigh 50%". */

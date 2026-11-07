@@ -5,7 +5,9 @@ import {
   clockTimeMeridiem,
   denseTime,
   eventCourseId,
+  EMPTY_PX_PER_HOUR,
   GRID_BOUNDS,
+  gridBounds,
   firstBlockMinute,
   gridScrollTop,
   hourLabel,
@@ -84,6 +86,12 @@ describe("grid bounds", () => {
     expect(GRID_BOUNDS.endMinute).toBe(24 * 60);
     expect(GRID_BOUNDS.hours).toHaveLength(24);
     expect(GRID_BOUNDS.height).toBe(10 + 24 * 48);
+  });
+
+  it("draws a compact grid for a week with nothing timed", () => {
+    const empty = gridBounds(EMPTY_PX_PER_HOUR);
+    expect(empty.height).toBe(10 + 24 * EMPTY_PX_PER_HOUR);
+    expect(gridScrollTop(undefined, empty)).toBe(8 * EMPTY_PX_PER_HOUR);
   });
 
   it("opens at 8 AM when today is not in view", () => {
