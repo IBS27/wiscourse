@@ -63,7 +63,7 @@ export function CourseHeader({
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0">
-          <h1 className="line-clamp-3 text-[24px] leading-[1.25] font-semibold tracking-[-0.022em] text-balance">
+          <h1 className="line-clamp-3 text-[20px] leading-[25px] font-semibold tracking-[-0.022em] text-balance">
             {name || <span className="text-ink-3">Course</span>}
           </h1>
           <div className="mt-1 flex min-w-0 items-center text-[12.5px] text-ink-3">

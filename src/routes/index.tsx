@@ -225,7 +225,7 @@ function Section({
         {action ?? <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{count ?? items.length}</span>}
       </div>
       {items.length === 0 ? (
-        <div className="mx-4 rounded-lg border border-dashed border-line-2 px-4 py-3 text-[12.5px] text-ink-3 md:mx-6">{empty}</div>
+        <div className="px-4 py-2 text-[13px] text-ink-3 md:px-6">{empty}</div>
       ) : (
         items.map((item, i) => (
           <AgendaItem key={item.key} item={item} first={i === 0} todayKey={todayKey} now={now} />

@@ -127,7 +127,7 @@ function Progress({ viewed, total }: { viewed: number; total: number }) {
         </span>
       ) : (
         <>
-          <Meter fraction={viewed / total} className="w-[88px]" />
+          <Meter fraction={viewed / total} className="w-[88px]" tone="neutral" />
           <span className="w-8 text-right">
             {pct}%<span className="sr-only"> viewed</span>
           </span>

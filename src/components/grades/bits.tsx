@@ -115,18 +115,32 @@ export function BigGrade({
  * neutral 6px track with rounded ends, filled in the course colour (`--c`).
  * Only the fill carries colour, so 0% reads as empty.
  */
-export function Meter({ fraction, className }: { fraction: number; className?: string }) {
+export function Meter({
+  fraction,
+  className,
+  tone = "course",
+}: {
+  fraction: number;
+  className?: string;
+  /** Course colour measures a score; neutral ink measures how much is graded. */
+  tone?: "course" | "neutral";
+}) {
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
   return (
     <span className={cn("block h-[6px] overflow-hidden rounded-full bg-line", className)} aria-hidden>
-      {percent > 0 && <span className="block h-full rounded-full bg-c" style={{ width: `${percent}%` }} />}
+      {percent > 0 && (
+        <span
+          className={cn("block h-full rounded-full", tone === "course" ? "bg-c" : "bg-ink-3")}
+          style={{ width: `${percent}%` }}
+        />
+      )}
     </span>
   );
 }
 
 /** How much of the grade is graded so far. */
 export function CoverageBar({ fraction, className }: { fraction: number; className?: string }) {
-  return <Meter fraction={fraction} className={className} />;
+  return <Meter fraction={fraction} className={className} tone="neutral" />;
 }
 
 /** One cell of the summary grid: a quiet label, a value, a quiet line under it. */

@@ -304,7 +304,7 @@ function StandingFact({
                 apart from the grade above. */}
             {coverage !== undefined && (
               <span className="mt-[6px] flex items-center gap-[10px]">
-                <Meter fraction={summary?.coverage ?? 0} className="min-w-0 flex-1" />
+                <Meter fraction={summary?.coverage ?? 0} className="min-w-0 flex-1" tone="neutral" />
                 <span className="tabular shrink-0">{coverage.replace(" of grade", " graded")}</span>
               </span>
             )}

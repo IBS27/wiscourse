@@ -109,13 +109,14 @@ function ChipBody({
 }) {
   return (
     <>
-      {time !== undefined && (
-        <span className="block text-[12px] leading-[15px] font-normal tabular text-ink-3">{time}</span>
-      )}
+      {/* Title first; when and for which course is the quiet line under it. */}
       <span className="flex items-start gap-[3px]">
         {done && <Mark kind="done" className="h-4 w-3" />}
         <span className="line-clamp-3 min-w-0 flex-1 break-words">{children}</span>
       </span>
+      {time !== undefined && (
+        <span className="mt-px block text-[11.5px] leading-[15px] font-normal tabular text-ink-3">{time}</span>
+      )}
     </>
   );
 }
