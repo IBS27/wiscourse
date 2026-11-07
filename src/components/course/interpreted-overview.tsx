@@ -302,7 +302,7 @@ export function InterpretedOverview({
       params={{ courseId }}
       className="shrink-0 text-[12px] text-ink-3 transition-colors hover:text-ink"
     >
-      Review AI grouping
+      Review grouping
       {map.conflicts.length > 0 && ` · ${map.conflicts.length} flagged`}
     </Link>
   );
@@ -312,8 +312,9 @@ export function InterpretedOverview({
         <>
           <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className={SECTION_TITLE}>Course resources</h2>
+            {/* The count sits with its title; the review link stands alone on the right. */}
+            <span className="text-[12.5px] text-ink-3 tabular">{essentials.length}</span>
             <span className="ml-auto max-sm:hidden">{review}</span>
-            <span className={SECTION_COUNT}>{essentials.length}</span>
           </div>
           <ul className="-mx-4 mb-7 md:-mx-6" aria-label="Course resources">
             {essentials.map((e, i) => (

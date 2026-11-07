@@ -116,12 +116,13 @@ function ChipBody({
     <>
       <span className="flex items-start gap-[3px]">
         {done && <Mark kind="done" className="h-[17px] w-3" />}
-        <span className="line-clamp-3 min-w-0 flex-1 break-words">{children}</span>
+        <span className="line-clamp-4 min-w-0 flex-1 break-words">{children}</span>
       </span>
       {(time !== undefined || late) && (
-        <span className="mt-[2px] flex min-w-0 items-center gap-[4px] text-[11px] leading-[14px] font-normal whitespace-nowrap tabular text-ink-3">
-          {late && <Clock className="size-3 shrink-0 text-red" aria-label="Past due" />}
-          {time !== undefined && <span className="min-w-0 truncate">{time}</span>}
+        <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[11px] leading-[14px] font-normal tabular text-ink-3">
+          {late && <Clock className="mt-px size-3 shrink-0 text-red" aria-label="Past due" />}
+          {/* Wraps at the "·" rather than cutting the course code. */}
+          {time !== undefined && <span className="min-w-0 break-words">{time}</span>}
         </span>
       )}
     </>

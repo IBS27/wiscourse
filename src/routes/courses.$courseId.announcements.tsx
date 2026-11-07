@@ -53,7 +53,7 @@ function CourseAnnouncements() {
   return (
     // A list page: full width to the main area's gutters, rules inset with it.
     <div
-      className="w-full min-w-0 flex-1 pb-8"
+      className="w-full max-w-[900px] min-w-0 flex-1 pb-8"
       style={courseStyle(courseColorVar(course?.color))}
     >
       {rows === undefined ? null : rows.length === 0 ? (

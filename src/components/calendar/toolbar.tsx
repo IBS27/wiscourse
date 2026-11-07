@@ -58,7 +58,7 @@ export function CalendarToolbar({
           onClick={() => onView(v.id)}
           className={cn(
             "h-[26px] flex-1 rounded-md px-3 text-[12.5px] font-medium text-ink-3 transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
-            view === v.id && "bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,.08)] dark:bg-hover",
+            view === v.id && "bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,.08)] dark:bg-raised dark:shadow-[inset_0_0_0_1px_var(--line-2)]",
           )}
         >
           {v.label}

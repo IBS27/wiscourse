@@ -24,7 +24,7 @@ export function WeekStrip({
   const byDay = itemsByDay(items, days, todayKey, now);
 
   return (
-    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-[6px] md:px-5 md:py-2", compact && "gap-1 px-3 pt-[2px]")}>
+    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-1 md:px-5 md:py-2", compact && "gap-1 px-3 pt-[2px]")}>
       {days.map((day) => {
         const isToday = day === todayKey;
         const isPast = day < todayKey;
@@ -45,7 +45,7 @@ export function WeekStrip({
             type="button"
             onClick={() => onSelect(isSelected ? null : day)}
             className={cn(
-              "rounded-[10px] px-1 py-1 text-center transition-colors hover:bg-hover md:py-[5px]",
+              "rounded-[10px] px-1 py-[3px] text-center transition-colors hover:bg-hover md:py-[5px]",
               isSelected && "bg-hover shadow-[inset_0_0_0_1px_var(--line-2)]",
             )}
           >

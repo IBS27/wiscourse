@@ -62,6 +62,15 @@ export function CompositionStrip({
       </h2>
       {/* Fills the content width, so its right edge meets the table's below. */}
       <ul className="mt-1 grid list-none grid-cols-1 p-0">
+        {/* Column labels, so the bar reads as the score, not the share graded. */}
+        <li
+          aria-hidden
+          className="hidden min-w-0 grid-cols-[160px_220px_160px_64px] gap-x-4 pt-1 text-[11.5px] text-ink-3 @2xl:grid"
+        >
+          <span />
+          <span>Weight · graded so far</span>
+          <span className="col-span-2">Score</span>
+        </li>
         {segments.map((segment) => {
           // The bar is the score, so it always agrees with the number beside it;
           // how much is graded so far is said in words.
