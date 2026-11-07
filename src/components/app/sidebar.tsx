@@ -41,7 +41,7 @@ export function Sidebar() {
               activeOptions={{ exact: "exact" in rest && rest.exact }}
               className="flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
               activeProps={{
-                className: "bg-surface text-ink shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface dark:bg-hover dark:shadow-none dark:hover:bg-hover",
+                className: "bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] font-semibold text-ink hover:bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] dark:bg-hover dark:hover:bg-hover",
               }}
             >
               <Icon className="size-4" />
@@ -84,7 +84,7 @@ function CourseLink({ course: c }: { course: Course }) {
       title={courseTitle(c)}
       className="flex h-[30px] items-center gap-[9px] rounded-lg px-2 text-[13px] text-ink-2 transition-colors hover:bg-hover"
       activeProps={{
-        className: "bg-surface text-ink! shadow-[inset_0_0_0_1px_var(--line)] hover:bg-surface dark:bg-hover dark:shadow-none dark:hover:bg-hover",
+        className: "bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] font-semibold text-ink! hover:bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] dark:bg-hover dark:hover:bg-hover",
       }}
       style={courseStyle(courseColorVar(c.color))}
     >

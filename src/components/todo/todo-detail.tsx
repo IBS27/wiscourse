@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
-import { CourseTag, Kbd } from "@/components/app/bits";
+import { CourseTag } from "@/components/app/bits";
 import { Button } from "@/components/ui/button";
 import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
@@ -142,7 +142,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
               size="sm"
               // Primary on desktop; on a phone it's a secondary outline so the
               // page's own Plan controls aren't outranked.
-              className="h-10 w-full shrink-0 rounded-lg border border-line bg-surface px-3 text-[14px] text-ink hover:bg-hover md:-mt-1 md:h-8 md:w-auto md:border-transparent md:bg-primary md:text-[13px] md:text-primary-foreground md:hover:bg-primary/90"
+              className="h-10 w-full shrink-0 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-ink-2 hover:border-line-2 hover:bg-hover hover:text-ink md:-mt-1 md:h-8 md:w-auto md:text-[12.5px]"
             >
               <a href={item.htmlUrl} target="_blank" rel="noreferrer">
                 Open in Canvas
@@ -250,7 +250,6 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         >
           <Check className="size-[14px]" />
           {done ? "Mark not done" : "Mark done"}
-          <Kbd className={cn("max-md:hidden", !done && "border-today-fg/25 bg-transparent text-today-fg/75")}>D</Kbd>
         </button>
         {!done && (
           <button
@@ -374,7 +373,6 @@ function PlanDate({ value, onChange }: { value: string | undefined; onChange: (d
     >
       <CalendarDays className="size-[14px] text-ink-3 group-focus-within:invisible" />
       <span className="group-focus-within:invisible">{value !== undefined ? formatDayLong(value) : "Pick a date"}</span>
-      <Kbd className="ml-auto group-focus-within:invisible max-md:hidden">P</Kbd>
       <input
         id="plan-date"
         type="date"
