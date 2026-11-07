@@ -51,7 +51,7 @@ function CourseOverview() {
 
   return (
     <div
-      className="flex min-h-0 flex-1 flex-col lg:flex-row"
+      className="flex flex-1 flex-col lg:flex-row"
       style={courseStyle(courseColorVar(course?.color))}
     >
       <div className="min-w-0 flex-1 pb-6">

@@ -62,8 +62,8 @@ export function AnnouncementRow({
         <span className="min-w-0">
           <span
             className={cn(
-              "block text-[14.5px] leading-[1.4] tracking-[-0.01em]",
-              unread ? "font-medium text-ink" : "text-ink-2",
+              "block text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
+              unread ? "font-semibold" : "font-normal",
             )}
           >
             {announcement.title}
@@ -71,12 +71,7 @@ export function AnnouncementRow({
           </span>
           <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
           {!open && (
-            <span
-              className={cn(
-                "mt-[6px] line-clamp-2 max-w-[700px] text-[13px] leading-[1.55]",
-                unread ? "text-ink-2" : "text-ink-3",
-              )}
-            >
+            <span className="mt-[5px] line-clamp-1 max-w-[720px] text-[13px] leading-[1.5] text-ink-3">
               {preview(announcement.message)}
             </span>
           )}
@@ -139,8 +134,8 @@ function detectLinks(html: string | undefined, courseId: number): { to: string; 
   return out;
 }
 
-/** Plain text of the body, cut at a word boundary well past two lines; CSS clamps the rest. */
-function preview(html: string | undefined, max = 180): string {
+/** Plain text of the body, cut at a word boundary past one line; CSS clamps the rest. */
+function preview(html: string | undefined, max = 240): string {
   if (html === undefined) return "";
   const text = new DOMParser()
     .parseFromString(html, "text/html")

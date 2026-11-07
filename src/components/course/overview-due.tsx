@@ -4,11 +4,10 @@
  * next seven days — anything further out belongs on Tasks, not here.
  */
 
-import { CalendarCheck, CircleHelp, MessageSquare, ClipboardList } from "lucide-react";
+import { CalendarCheck, CircleHelp, Clock, MessageSquare, ClipboardList } from "lucide-react";
 import type { RowIcon } from "./overview-icons";
 import { OverviewRow, SectionHead } from "./overview-row";
 import type { TodoItem } from "../../../convex/todos";
-import { Pill } from "@/components/app/bits";
 import { isOverdue } from "@/lib/agenda";
 import { DAY_MS, dayKeyOf, formatDayShort, formatTime, formatWeekday } from "@/lib/dates";
 
@@ -77,7 +76,13 @@ export function OverviewDue({
 function dueMeta(item: TodoItem, now: number) {
   if (item.dueAt === undefined) return item.plannedDay === undefined ? "No due date" : undefined;
   if (isOverdue(item, now)) {
-    return <Pill tone="red">Overdue · was {formatWeekday(dayKeyOf(item.dueAt))}</Pill>;
+    // One small red mark; the words stay neutral, as on Home.
+    return (
+      <>
+        <Clock className="size-[13px] shrink-0 text-red" aria-hidden />
+        <span className="text-ink-2">Overdue · was {formatWeekday(dayKeyOf(item.dueAt))}</span>
+      </>
+    );
   }
   const parts = [
     `${formatDayShort(dayKeyOf(item.dueAt))} · ${formatTime(item.dueAt)}`,

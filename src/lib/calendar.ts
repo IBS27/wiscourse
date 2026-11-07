@@ -332,17 +332,18 @@ export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
  * An hour's height when the grid has nothing timed to show: the empty hours
  * take less room, so the bands above (and the call to add class times) lead.
  */
-export const EMPTY_PX_PER_HOUR = 32;
+export const EMPTY_PX_PER_HOUR = 28;
+
+/** The midnight-to-midnight grid for a week with nothing timed. */
+export const EMPTY_GRID_BOUNDS: GridBounds = gridBounds(EMPTY_PX_PER_HOUR);
 
 /**
- * The empty grid's hour height for a `viewHeight`px window: the shortest
- * that still lets it scroll to open at 8 AM, so 8 AM to midnight fills the
- * view (never shorter than EMPTY_PX_PER_HOUR).
+ * The tallest the empty grid's window grows: 8 AM to midnight, so it still
+ * opens at 8 AM (the hours before stay a scroll away) and never pads the
+ * view with blank space past the end of the day.
  */
-export function emptyPxPerHour(viewHeight: number): number {
-  const hoursShown = 24 - GRID_OPENS_AT / 60;
-  return Math.max(EMPTY_PX_PER_HOUR, Math.ceil((viewHeight - GRID_TOP_PAD) / hoursShown));
-}
+export const EMPTY_GRID_MAX_VIEW =
+  EMPTY_GRID_BOUNDS.height - gridScrollTop(undefined, EMPTY_GRID_BOUNDS);
 
 /** The midnight-to-midnight grid at `pxPerHour`. */
 export function gridBounds(pxPerHour: number): GridBounds {

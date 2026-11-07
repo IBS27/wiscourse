@@ -33,3 +33,10 @@ export const ROW_ICON = {
   change: Clock,
   locked: Clock,
 } satisfies Record<string, RowIcon>;
+
+/**
+ * Row chrome for every overview list: the Home row's gutters and rhythm,
+ * hairlines inset to the title column, none under the last row.
+ */
+export const OVERVIEW_ROW =
+  "group relative flex w-full items-start gap-3 py-[9px] pr-4 pl-4 text-left text-ink no-underline transition-colors outline-none after:absolute after:right-4 after:bottom-0 after:left-[43px] after:h-px after:bg-line last:after:hidden md:pr-6 md:pl-6 md:after:right-6 md:after:left-[51px]";

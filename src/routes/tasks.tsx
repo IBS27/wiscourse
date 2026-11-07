@@ -5,7 +5,7 @@ import { Check, ChevronRight, CircleCheck, Inbox, ListFilter, Plus } from "lucid
 import type { TodoItem } from "../../convex/todos";
 import { Dot, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
-import { ProfileMenu } from "@/components/app/profile-menu";
+import { PageHeader } from "@/components/app/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,9 @@ export const Route = createFileRoute("/tasks")({
 });
 
 type View = "open" | "undated" | "done";
+/** The page's one centred column: header, filters and list all use it. */
+const COLUMN = "max-w-[880px]";
+
 const VIEWS: { id: View; label: string }[] = [
   { id: "open", label: "Open" },
   { id: "undated", label: "Undated" },
@@ -78,33 +81,40 @@ function Tasks() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex min-h-[64px] items-center justify-between gap-4 border-b border-line px-4 py-3 md:px-6">
-        <div>
-          <div className="page-title">Tasks</div>
-          <div className="mt-[3px] h-4 text-[12.5px] text-ink-3 tabular">
-            {scoped ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done` : ""}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={quickAdd.open}
-          className="hidden h-9 w-[320px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 md:flex"
-        >
-          <Plus className="size-[14px]" />
-          Add a task…
-          <Kbd className="ml-auto">N</Kbd>
-        </button>
-        <div className="flex items-center gap-3 md:hidden">
-          <button type="button" onClick={quickAdd.open} aria-label="Add a task" className="grid size-8 place-items-center rounded-lg bg-today text-today-fg">
-            <Plus className="size-[14px]" />
-          </button>
-          <ProfileMenu variant="avatar" />
-        </div>
-      </header>
+      {/* Header, filters and list share one centred column, so their edges line up. */}
+      <PageHeader
+        title="Tasks"
+        subtitle={
+          scoped
+            ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done`
+            : "\u00a0" // holds the line while loading, so the title does not jump
+        }
+        contentClassName={COLUMN}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              className="hidden h-9 w-[300px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:flex"
+            >
+              <Plus className="size-[14px]" />
+              Add a task…
+              <Kbd className="ml-auto">N</Kbd>
+            </button>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              aria-label="Add a task"
+              className="grid size-8 place-items-center rounded-lg bg-today text-today-fg md:hidden"
+            >
+              <Plus className="size-[14px]" />
+            </button>
+          </>
+        }
+      />
 
-      {/* Filters and sections share one readable column, left-aligned at the gutter. */}
       <div className="border-b border-line">
-        <div className="flex items-center gap-2 overflow-x-auto px-4 py-[10px] [scrollbar-width:none] md:max-w-[1008px] md:flex-wrap md:overflow-visible md:px-6">
+        <div className={cn("mx-auto flex w-full items-center gap-2 overflow-x-auto px-4 py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:px-6", COLUMN)}>
           <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
           {courseOptions.length > 0 && (
             <>
@@ -141,7 +151,7 @@ function Tasks() {
         </div>
       </div>
 
-      <div className="pb-8 md:max-w-[1008px]">
+      <div className={cn("mx-auto w-full pb-8", COLUMN)}>
         {filtered === undefined ? null : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-10 py-20 text-center">
             <span className="mb-1 grid size-10 place-items-center rounded-full bg-chip text-ink-3">

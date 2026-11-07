@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { RowIcon } from "./overview-icons";
+import { OVERVIEW_ROW, type RowIcon } from "./overview-icons";
 import { cn } from "@/lib/utils";
 
 /**
- * The overview's row: type icon · title · meta. The meta drops under the
- * title on phones. One weight for every row: these lists have no unread state.
+ * The overview's row, in the Home/Tasks anatomy: type icon · title (two
+ * lines at most) with the meta line under it. One weight for every row:
+ * these lists have no unread state.
  */
 export function OverviewRow({
   icon: Icon,
@@ -26,11 +27,13 @@ export function OverviewRow({
 }) {
   const body = (
     <>
-      <Icon className="mt-[2px] size-[14px] shrink-0 text-ink-3 md:mt-0" />
-      <span className="flex min-w-0 flex-1 flex-col gap-[2px] md:flex-row md:items-center md:gap-4">
-        <span className="min-w-0 md:truncate">{title}</span>
+      <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" />
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-[14px] leading-[1.4] font-medium tracking-[-0.006em] text-ink">
+          {title}
+        </span>
         {meta !== undefined && (
-          <span className="tabular flex shrink-0 items-center gap-2 text-[12px] whitespace-nowrap text-ink-3 md:ml-auto">
+          <span className="tabular mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3">
             {meta}
           </span>
         )}
@@ -38,12 +41,7 @@ export function OverviewRow({
     </>
   );
   const interactive = to !== undefined || href !== undefined;
-  const cls = cn(
-    "relative flex w-full gap-[10px] text-left text-[13px] text-ink no-underline transition-colors outline-none",
-    "items-start py-[9px] pr-4 pl-4 after:absolute after:right-4 after:bottom-0 after:left-10 after:h-px after:bg-line md:items-center md:pr-6 md:pl-6 md:after:right-6 md:after:left-12",
-    interactive && "hover:bg-hover focus-visible:bg-hover",
-    className,
-  );
+  const cls = cn(OVERVIEW_ROW, interactive && "hover:bg-hover focus-visible:bg-hover", className);
 
   if (to !== undefined) {
     return (

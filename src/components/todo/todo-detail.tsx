@@ -80,8 +80,8 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   }, [ref, done, setDone]);
 
   return (
-    // Left-aligned at the header's gutter; 720px of content (768 incl. padding).
-    <div className="w-full max-w-[688px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
+    // The same centred column as the top bar; the description keeps a reading measure inside it.
+    <div className="mx-auto w-full max-w-[880px] px-4 pb-10 md:px-6" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
       <div className="pt-4 pb-4 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
@@ -104,46 +104,50 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         ) : (
           <h1 className="mt-2 text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-ink text-pretty">{item.title}</h1>
         )}
-        <div className="mt-[14px] flex flex-wrap items-center gap-[6px]">
-          {done ? (
-            <StatusChip>
-              <Check />
-              Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
-              {item.doneBySubmission ? " · on submission" : ""}
-            </StatusChip>
-          ) : overdue && item.dueAt !== undefined ? (
-            <StatusChip alarm>
-              <Clock />
-              Overdue · {formatLate(item.dueAt, now)}
-            </StatusChip>
-          ) : null}
-          {item.dueAt !== undefined ? (
-            <StatusChip>
-              {!overdue || done ? <Clock /> : null}
-              Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
-            </StatusChip>
-          ) : (
-            <StatusChip>No due date</StatusChip>
-          )}
-          {item.plannedDay !== undefined && (
-            <StatusChip>
-              <CalendarDays />
-              Planned {formatPlannedRelative(item.plannedDay, today)}
-            </StatusChip>
-          )}
-          {isLocal && !course && <StatusChip>No course</StatusChip>}
-          <SubmissionChip item={item} overdue={overdue && !done} />
+        {/* Status chips wrap among themselves; the primary action ends the row
+            at the content's right edge, or takes its own full-width row on a phone. */}
+        <div className="mt-[14px] flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-[6px]">
+            {done ? (
+              <StatusChip>
+                <Check />
+                Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
+                {item.doneBySubmission ? " · on submission" : ""}
+              </StatusChip>
+            ) : overdue && item.dueAt !== undefined ? (
+              <StatusChip alarm>
+                <Clock />
+                Overdue · {formatLate(item.dueAt, now)}
+              </StatusChip>
+            ) : null}
+            {item.dueAt !== undefined ? (
+              <StatusChip>
+                {!overdue || done ? <Clock /> : null}
+                Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
+              </StatusChip>
+            ) : (
+              <StatusChip>No due date</StatusChip>
+            )}
+            {item.plannedDay !== undefined && (
+              <StatusChip>
+                <CalendarDays />
+                Planned {formatPlannedRelative(item.plannedDay, today)}
+              </StatusChip>
+            )}
+            {isLocal && !course && <StatusChip>No course</StatusChip>}
+            <SubmissionChip item={item} overdue={overdue && !done} />
+          </div>
           {!isLocal && item.htmlUrl && (
-            // The page's primary action: flows after the chips and sits at
-            // the content's right edge, the same edge the description ends at.
-            <div className="ml-auto">
-              <Button asChild size="sm" className="h-8 rounded-lg px-3 text-[13px]">
-                <a href={item.htmlUrl} target="_blank" rel="noreferrer">
-                  Open in Canvas
-                  <ArrowUpRight className="size-[14px]" />
-                </a>
-              </Button>
-            </div>
+            <Button
+              asChild
+              size="sm"
+              className="h-11 w-full shrink-0 rounded-lg px-3 text-[14px] md:-mt-1 md:h-8 md:w-auto md:text-[13px]"
+            >
+              <a href={item.htmlUrl} target="_blank" rel="noreferrer">
+                Open in Canvas
+                <ArrowUpRight className="size-[14px]" />
+              </a>
+            </Button>
           )}
         </div>
       </div>
@@ -162,7 +166,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             <button
               type="button"
               onClick={() => void setPlannedDay({ ref, plannedDay: null })}
-              className="h-7 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              className="h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 md:h-7 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
             >
               Clear
             </button>
@@ -279,7 +283,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
 
 /** Reading typography for Canvas-authored HTML. */
 const PROSE = cn(
-  "text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
+  "max-w-[68ch] text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
   "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
   "[&_p]:my-3 [&_strong]:font-semibold [&_strong]:text-ink [&_b]:font-semibold [&_b]:text-ink",
   "[&_h1]:mt-6 [&_h1]:mb-2 [&_h1]:text-[16px] [&_h1]:font-semibold [&_h1]:tracking-[-0.01em] [&_h1]:text-ink",
@@ -310,19 +314,20 @@ function Block({ title, children }: { title: string; children: ReactNode }) {
 
 /**
  * A label column beside its controls — the Linear-style property sheet —
- * so an empty Plan or Notes costs one line, not a section.
+ * so an empty Plan or Notes costs one line, not a section. On a phone the
+ * label sits above, so the controls get the full width.
  */
 function PropertyRow({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="grid grid-cols-[52px_minmax(0,1fr)] items-start gap-x-3 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4">
-      <h2 className="pt-[5px] text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink">{title}</h2>
+    <section className="grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[72px_minmax(0,1fr)] md:gap-x-4">
+      <h2 className="text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink md:pt-[5px]">{title}</h2>
       <div className="min-w-0">{children}</div>
     </section>
   );
 }
 
 const PLAN_BUTTON =
-  "flex h-7 items-center gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+  "flex h-10 items-center md:h-7 gap-[6px] rounded-lg border px-[10px] text-[12.5px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
 
 function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (

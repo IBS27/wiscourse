@@ -1,6 +1,6 @@
 import { createElement, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Check, Clock } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Clock } from "lucide-react";
 import { Pill } from "@/components/app/bits";
 import type { ModuleRowContext } from "./module-context";
 import {
@@ -58,24 +58,33 @@ export function ModuleRow({
       target={target}
       onOpen={() => ctx.open(item)}
       className={cn(
-        "relative flex min-h-10 scroll-mt-24 items-center gap-[10px] py-[9px] text-[13px] text-ink transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
+        "group/row relative flex min-h-11 scroll-mt-24 items-center gap-[10px] py-[10px] text-[14px] leading-[1.4] tracking-[-0.006em] text-ink transition-colors outline-none",
+        target.kind !== "none" && "hover:bg-hover focus-visible:bg-hover",
         gutter,
         // Hairline above each row, inset to the title column.
         !dense &&
-          "before:absolute before:top-0 before:right-4 before:left-[calc(var(--pl)+24px)] before:h-px before:bg-line md:before:right-6",
+          "before:absolute before:top-0 before:right-4 before:left-[calc(var(--pl)+25px)] before:h-px before:bg-line md:before:right-6",
         className,
       )}
       style={style}
     >
       {createElement(itemIcon(item, ctx.files), {
-        className: "size-[14px] shrink-0 text-ink-3",
+        className: "size-[15px] shrink-0 text-ink-3",
       })}
       {/* One weight for every item: the module's progress says what's been viewed. */}
       <span className="line-clamp-2 min-w-0 md:truncate">{item.title}</span>
       {target.kind === "external" && (
         <ArrowUpRight className="-ml-[4px] size-3 shrink-0 text-ink-3" />
       )}
-      <StatusMeta status={itemStatus(item, ctx.status)} />
+      <span className="ml-auto flex shrink-0 items-center gap-2 pl-3">
+        <StatusMeta status={itemStatus(item, ctx.status)} />
+        {target.kind === "internal" && (
+          <ChevronRight
+            className="-mr-[2px] size-[15px] text-ink-3 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/row:opacity-100"
+            aria-hidden
+          />
+        )}
+      </span>
     </ItemLink>
   );
 }
@@ -135,7 +144,7 @@ export function ItemLink({
 function StatusMeta({ status }: { status: ItemStatus }) {
   if (status.kind === "none") return null;
   return (
-    <span className="tabular ml-auto shrink-0 pl-3 text-[12px] whitespace-nowrap text-ink-3">
+    <span className="tabular text-[12.5px] whitespace-nowrap text-ink-3">
       {status.kind === "overdue" ? (
         <span className="flex items-center gap-[5px] text-ink-2">
           <Clock className="size-3 text-red" aria-hidden />

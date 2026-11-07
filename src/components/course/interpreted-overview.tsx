@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { ArrowUpRight, Check, ChevronDown, ChevronRight, FileText } from "lucide-react";
+import { createElement, useState } from "react";
+import { ArrowUpRight, Check, ChevronDown, ChevronRight, ExternalLink, type LucideIcon } from "lucide-react";
+import { ROW_ICON } from "./overview-icons";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -59,6 +60,25 @@ function PageReader({
 
 type Section = CourseMap["sections"][number];
 type Entry = NonNullable<Section["entries"]>[number];
+
+/** Resource rows: the overview's row rhythm, hairlines inset to the title. */
+const RES_ITEM =
+  "relative after:absolute after:right-4 after:bottom-0 after:left-[43px] after:h-px after:bg-line last:after:hidden md:after:right-6 md:after:left-[51px]";
+const RES_ROW =
+  "group flex items-start gap-3 px-4 py-[10px] text-[14px] leading-[1.4] tracking-[-0.006em] text-ink no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6";
+const RES_ICON = "mt-[2px] size-[15px] shrink-0 text-ink-3";
+const RES_CHEVRON = `${RES_ICON} opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 group-aria-pressed:opacity-100`;
+
+/** The kind a resource's link points at, drawn with the overview's row icons. */
+function resourceIcon(href: string): LucideIcon {
+  if (/^https?:\/\//i.test(href)) return ExternalLink;
+  const todo = /^\/todo\/(assignment|quiz|discussion):/.exec(href)?.[1];
+  if (todo === "quiz") return ROW_ICON.Quiz;
+  if (todo === "discussion") return ROW_ICON.Discussion;
+  if (todo === "assignment") return ROW_ICON.Assignment;
+  if (/\/files(\?|\/|$)/.test(href)) return ROW_ICON.File;
+  return ROW_ICON.Page;
+}
 
 /** A chapter's groups in calendar order; undated ones go last, in their own order. */
 function byDate(entries: Entry[]): Entry[] {
@@ -266,7 +286,7 @@ export function InterpretedOverview({
   );
   return (
     <section className="px-4 pt-6 pb-5 md:px-6">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink">
           {essentials.length > 0 ? "Course resources" : planTitle}
         </h2>
@@ -274,19 +294,13 @@ export function InterpretedOverview({
       </div>
       {essentials.length > 0 && (
         <>
-          <ul
-            className="mb-6 overflow-hidden rounded-[10px] border border-line"
-            aria-label="Course resources"
-          >
+          <ul className="-mx-4 mb-6 md:-mx-6" aria-label="Course resources">
             {essentials.map((e, i) => (
-              <li key={i} className="border-b border-line last:border-b-0">
-                <Link
-                  to={e.href}
-                  className="flex items-start gap-[10px] px-3 py-[9px] text-[13px] leading-[18px] text-ink transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
-                >
-                  <FileText className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
+              <li key={i} className={RES_ITEM}>
+                <Link to={e.href} className={RES_ROW}>
+                  {createElement(resourceIcon(e.href), { className: RES_ICON })}
                   <span className="min-w-0 flex-1">{e.label}</span>
-                  <ChevronRight className="mt-[2px] size-[14px] shrink-0 text-ink-3" aria-hidden />
+                  <ChevronRight className={RES_CHEVRON} aria-hidden />
                 </Link>
               </li>
             ))}
@@ -334,101 +348,98 @@ export function InterpretedOverview({
           <ol aria-label={`${active.title} schedule`}>
             {entries.map((e, i) => {
               const links = resolve(e.resourceIds);
-              const past = !!e.date && e.date < today;
               const marker = e === nextEntry && e.date ? nowLabel(e.date, today) : undefined;
               return (
                 <li
                   key={i}
                   aria-current={marker === "Today" ? "date" : undefined}
-                  className="relative grid gap-x-4 py-3 after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:bg-line last:after:hidden first:pt-1 md:grid-cols-[104px_minmax(0,1fr)] md:after:left-[120px]"
+                  className="relative py-4 after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:bg-line last:after:hidden first:pt-1"
                 >
-                  <p className="tabular flex items-center gap-2 text-[12.5px] leading-[1.4] text-ink-3 md:flex-col md:items-start md:gap-[5px] md:pt-[2px]">
-                    {e.date ? formatDay(e.date) : <span className="hidden md:inline" aria-hidden />}
-                    {marker && (
-                      <span className="rounded-full bg-chip px-[7px] py-px text-[12px] leading-[17px] font-medium text-ink-2">
-                        {marker}
-                      </span>
-                    )}
-                  </p>
-                  <div className="min-w-0">
-                    <p
-                      className={cn(
-                        "mt-[2px] text-[15px] leading-[1.35] font-semibold tracking-[-0.01em] md:mt-0",
-                        past ? "text-ink-2" : "text-ink",
+                  {(e.date || marker) && (
+                    <p className="tabular mb-[3px] flex items-center gap-2 text-[12.5px] leading-[18px] text-ink-3">
+                      {e.date && formatDay(e.date)}
+                      {marker && (
+                        <span className="rounded-full bg-chip px-[7px] text-[12px] leading-[18px] font-medium text-ink-2">
+                          {marker}
+                        </span>
                       )}
-                    >
-                      {e.title}
                     </p>
-                    {links.length > 0 && (
-                      <ul className="mt-[6px] space-y-[3px]">
-                        {links.map((r) => (
-                          <li key={r.href}>
-                            <Link
-                              to={r.href}
-                              className="inline-flex max-w-full items-start gap-[8px] text-[13px] leading-[1.45] text-ink-2 transition-colors hover:text-ink hover:underline"
-                            >
-                              <FileText className="mt-[3px] size-3 shrink-0 text-ink-3" aria-hidden />
-                              <span className="min-w-0">{r.title}</span>
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
+                  )}
+                  <p className="text-[15px] leading-[1.35] font-semibold tracking-[-0.01em] text-ink">
+                    {e.title}
+                  </p>
+                  {links.length > 0 && (
+                    <ul className="mt-2 space-y-[5px]">
+                      {links.map((r) => (
+                        <li key={r.href}>
+                          <Link
+                            to={r.href}
+                            className="inline-flex max-w-full items-start gap-[9px] text-[13.5px] leading-[1.45] text-ink-2 transition-colors hover:text-ink hover:underline hover:decoration-line-2 hover:underline-offset-4"
+                          >
+                            {createElement(resourceIcon(r.href), {
+                              className: "mt-[3px] size-[14px] shrink-0 text-ink-3",
+                            })}
+                            <span className="min-w-0">{r.title}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ol>
         )}
         {rows.length > 0 && (
-          <ul
-            className={cn(
-              "max-h-80 overflow-y-auto border-t border-line",
-              (!!active.entries?.length || active.teachingDates !== undefined) && "mt-3",
-            )}
-          >
-            {rows.map((r) => (
-              <li key={r.href}>
-                {r.id.startsWith("page:") ? (
-                  <button
-                    type="button"
-                    className={cn(
-                      "group flex w-full items-start gap-[10px] border-b border-line px-2 py-[9px] text-left text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover",
-                      page === r.id && "bg-hover font-medium",
+          <>
+            <h3
+              className={cn(
+                "mb-1 text-[13px] font-semibold tracking-[-0.005em] text-ink",
+                (!!active.entries?.length || active.teachingDates !== undefined) && "mt-6",
+              )}
+            >
+              Material
+            </h3>
+            <ul className="-mx-4 md:-mx-6">
+              {rows.map((r) => {
+                const external = /^https?:\/\//i.test(r.href);
+                const body = (
+                  <>
+                    {createElement(resourceIcon(r.href), { className: RES_ICON })}
+                    <span className="min-w-0 flex-1">{r.title}</span>
+                    {external ? (
+                      <ArrowUpRight className={RES_ICON} aria-hidden />
+                    ) : (
+                      <ChevronRight className={RES_CHEVRON} aria-hidden />
                     )}
-                    onClick={() => setPage(r.id)}
-                    aria-pressed={page === r.id}
-                    aria-label={`Read ${r.title}`}
-                  >
-                    <FileText
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1">{r.title}</span>
-                    <ChevronRight
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3 group-hover:text-ink-2"
-                      aria-hidden
-                    />
-                  </button>
-                ) : (
-                  <Link
-                    to={r.href}
-                    className="flex items-start gap-[10px] border-b border-line px-2 py-[9px] text-[13px] leading-[18px] transition-colors outline-none hover:bg-hover focus-visible:bg-hover"
-                  >
-                    <FileText
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                    <span className="min-w-0 flex-1">{r.title}</span>
-                    <ArrowUpRight
-                      className="mt-0.5 size-3.5 shrink-0 text-ink-3"
-                      aria-hidden
-                    />
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
+                  </>
+                );
+                return (
+                  <li key={r.href} className={RES_ITEM}>
+                    {r.id.startsWith("page:") ? (
+                      <button
+                        type="button"
+                        className={cn(RES_ROW, "w-full text-left", page === r.id && "bg-hover font-medium")}
+                        onClick={() => setPage(r.id)}
+                        aria-pressed={page === r.id}
+                        aria-label={`Read ${r.title}`}
+                      >
+                        {body}
+                      </button>
+                    ) : external ? (
+                      <a href={r.href} target="_blank" rel="noreferrer" className={RES_ROW}>
+                        {body}
+                      </a>
+                    ) : (
+                      <Link to={r.href} className={RES_ROW}>
+                        {body}
+                      </Link>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
         {shownPage && (
           <PageReader

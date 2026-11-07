@@ -5,10 +5,10 @@ import {
   clockTimeMeridiem,
   denseTime,
   eventCourseId,
+  EMPTY_GRID_BOUNDS,
+  EMPTY_GRID_MAX_VIEW,
   EMPTY_PX_PER_HOUR,
-  emptyPxPerHour,
   GRID_BOUNDS,
-  gridBounds,
   firstBlockMinute,
   gridScrollTop,
   hourLabel,
@@ -90,17 +90,16 @@ describe("grid bounds", () => {
   });
 
   it("draws a compact grid for a week with nothing timed", () => {
-    const empty = gridBounds(EMPTY_PX_PER_HOUR);
-    expect(empty.height).toBe(10 + 24 * EMPTY_PX_PER_HOUR);
-    expect(gridScrollTop(undefined, empty)).toBe(8 * EMPTY_PX_PER_HOUR);
+    expect(EMPTY_PX_PER_HOUR).toBe(28);
+    expect(EMPTY_GRID_BOUNDS.height).toBe(10 + 24 * EMPTY_PX_PER_HOUR);
+    expect(gridScrollTop(undefined, EMPTY_GRID_BOUNDS)).toBe(8 * EMPTY_PX_PER_HOUR);
   });
 
-  it("sizes an empty grid so it can open at 8 AM in any window", () => {
-    expect(emptyPxPerHour(0)).toBe(EMPTY_PX_PER_HOUR);
-    for (const view of [480, 640, 700, 900]) {
-      const bounds = gridBounds(emptyPxPerHour(view));
-      expect(bounds.height - view).toBeGreaterThanOrEqual(gridScrollTop(undefined, bounds));
-    }
+  it("caps the empty grid's window at 8 AM to midnight, so it opens at 8 AM", () => {
+    expect(EMPTY_GRID_MAX_VIEW).toBe(10 + 16 * EMPTY_PX_PER_HOUR);
+    expect(EMPTY_GRID_BOUNDS.height - EMPTY_GRID_MAX_VIEW).toBe(
+      gridScrollTop(undefined, EMPTY_GRID_BOUNDS),
+    );
   });
 
   it("opens at 8 AM when today is not in view", () => {

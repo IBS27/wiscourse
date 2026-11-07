@@ -9,7 +9,7 @@ import {
   Megaphone,
   Plus,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -22,7 +22,9 @@ import { MeetingsEditor } from "@/components/calendar/meetings-editor";
 import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
-import { formatPercent } from "@/lib/grades-ui";
+import { coverageLabel, DASH, formatPercent } from "@/lib/grades-ui";
+import { CoverageBar, Letter } from "@/components/grades/bits";
+import { letterFor, schemeFor, summarize } from "../../../convex/lib/grades";
 import { feedSeenKind, feedStatus, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
@@ -59,7 +61,6 @@ export function OverviewRail({
   const markManySeen = useMutation(api.seenState.markManySeen);
   const items = (feed ?? []).filter((f) => f.courseCanvasId === canvasId);
   const unseen = items.filter((f) => !f.seen);
-  const standing = standingLines(hub);
 
   // One write for the whole column: a busy course can hold a dozen unseen
   // items, and each mutation is a round trip.
@@ -75,19 +76,8 @@ export function OverviewRail({
   };
 
   return (
-    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[300px] lg:border-t-0 lg:border-l">
-      {standing !== undefined && (
-        <Fact
-          label="Standing"
-          to={`/courses/${courseId}/grades`}
-          value={
-            <span className="tabular text-[17px] font-semibold tracking-[-0.01em] text-ink">
-              {standing.value}
-            </span>
-          }
-          sub={standing.sub}
-        />
-      )}
+    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[340px] lg:border-t-0 lg:border-l">
+      <StandingFact courseId={courseId} canvasId={canvasId} hub={hub} />
       <InstructorFact course={course} />
       {facts?.officeHours !== undefined && <Fact label="Office hours" value={facts.officeHours} />}
       <ClassTimesFact canvasId={canvasId} />
@@ -262,24 +252,66 @@ function InstructorFact({ course }: { course: Course | undefined }) {
   );
 }
 
-/** "91.2% · A" over "4 of 12 graded · Projects weigh 50%". */
-function standingLines(
-  hub: CourseHub | null | undefined,
-): { value: string; sub?: string } | undefined {
-  if (hub === null || hub === undefined) return undefined;
-  // The Grades tab's formatter, so both screens round the same number alike.
-  const score = hub.currentScore === undefined ? undefined : formatPercent(hub.currentScore);
-  const value = [score, hub.currentGrade].filter(Boolean).join(" · ");
+/**
+ * The Grades screen's numbers in small: percent and letter chip, then a
+ * slim "graded so far" bar. Reads the same gradebook the Grades tab does,
+ * so the two can never disagree; the hub's numbers stand in until it lands.
+ */
+function StandingFact({
+  courseId,
+  canvasId,
+  hub,
+}: {
+  courseId: string;
+  canvasId: number;
+  hub: CourseHub | null | undefined;
+}) {
+  const book = useQuery(api.grades.course, { courseCanvasId: canvasId });
+  const summary = useMemo(() => (book ? summarize(book) : undefined), [book]);
+  if (hub === null || hub === undefined) return null;
+
+  const hidden = book ? book.course.hideFinalGrades === true : false;
+  const score = book ? book.course.currentScore : hub.currentScore;
+  const canvasLetter = book ? book.course.currentGrade : hub.currentGrade;
+  // Canvas's letter when it sends one; else the Grades screen's estimate.
+  const letter =
+    hidden || score === undefined
+      ? undefined
+      : (canvasLetter ?? (book ? letterFor(score, schemeFor(book.course)) : undefined));
+  const estimated = canvasLetter === undefined && letter !== undefined;
+  const coverage = summary === undefined || hidden ? undefined : coverageLabel(summary);
   const sub = [
-    hub.assignmentCount > 0
-      ? `${hub.gradedCount} of ${hub.assignmentCount} graded`
-      : undefined,
+    coverage?.replace(" of grade", " graded"),
     hub.heaviestGroup === undefined
       ? undefined
       : `${hub.heaviestGroup.name} weigh ${hub.heaviestGroup.weight}%`,
   ]
     .filter(Boolean)
     .join(" · ");
-  if (value === "") return sub === "" ? undefined : { value: sub };
-  return { value, sub: sub === "" ? undefined : sub };
+  if (score === undefined && sub === "") return null;
+
+  return (
+    <Fact
+      label="Standing"
+      to={`/courses/${courseId}/grades`}
+      value={
+        <span className="flex items-center gap-[10px]">
+          <span className="tabular text-[17px] font-semibold tracking-[-0.01em] text-ink">
+            {hidden ? "Hidden" : score === undefined ? DASH : formatPercent(score)}
+          </span>
+          {letter !== undefined && <Letter letter={letter} estimated={estimated} />}
+        </span>
+      }
+      sub={
+        sub === "" ? undefined : (
+          <>
+            {coverage !== undefined && (
+              <CoverageBar fraction={summary?.coverage ?? 0} className="mt-[6px] mb-[7px]" />
+            )}
+            <span className="tabular">{sub}</span>
+          </>
+        )
+      }
+    />
+  );
 }

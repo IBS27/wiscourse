@@ -26,5 +26,5 @@ export function blockFill(local: boolean): string {
 export const TODAY_TINT =
   "bg-[color-mix(in_srgb,var(--ink)_3.5%,transparent)] dark:bg-[color-mix(in_srgb,white_4%,transparent)]";
 
-/** Hour labels this close to now (in minutes) yield to the now label. */
-export const NOW_LABEL_CLEARANCE = 24;
+/** Hour labels this close to the now pill (in px, centre to centre) are hidden. */
+export const NOW_LABEL_CLEARANCE = 14;

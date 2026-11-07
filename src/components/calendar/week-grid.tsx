@@ -2,30 +2,23 @@
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening at 8 AM or
 // an hour before the week's first block, whichever is earlier. A week with
-// nothing timed draws shorter hours, sized so 8 AM to midnight fills the view.
+// nothing timed draws shorter hours, and its window grows no taller than
+// 8 AM to midnight.
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-  type RefObject,
-} from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "../../../convex/todos";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
-  emptyPxPerHour,
   blockLabel,
   blockTimeLabel,
   clockTime,
+  EMPTY_GRID_BOUNDS,
+  EMPTY_GRID_MAX_VIEW,
   firstBlockMinute,
   GRID_BOUNDS,
-  gridBounds,
   gridScrollTop,
   hourLabel,
   isDoneOrSubmitted,
@@ -58,6 +51,8 @@ const NO_SCROLLBAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const hourLines = (pxPerHour: number): CSSProperties => ({
   backgroundImage: `repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px ${pxPerHour}px)`,
   backgroundPosition: `0 ${GRID_TOP_PAD}px`,
+  // Midnight closes the day with the same hairline.
+  boxShadow: "inset 0 -1px var(--line)",
 });
 
 /** A day's band shows this many rows before folding the rest into "+N more". */
@@ -88,9 +83,9 @@ export function WeekGrid({
 }) {
   const first = firstBlockMinute(days, models);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const viewHeight = useHeight(scrollRef);
   // A week with nothing timed draws its empty hours shorter.
-  const bounds = first === undefined ? gridBounds(emptyPxPerHour(viewHeight)) : GRID_BOUNDS;
+  const empty = first === undefined;
+  const bounds = empty ? EMPTY_GRID_BOUNDS : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
@@ -170,15 +165,16 @@ export function WeekGrid({
       <div
         ref={scrollRef}
         className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
-        style={grid}
+        style={empty ? { ...grid, maxHeight: EMPTY_GRID_MAX_VIEW } : grid}
       >
         <div
           className="relative text-[10.5px] tabular text-ink-3"
           style={{ height: bounds.height }}
         >
           {bounds.hours.map((hour) =>
-            // The now label takes the place of an hour it would collide with.
-            showNow && Math.abs(nowMinute - hour * 60) < NOW_LABEL_CLEARANCE ? null : (
+            // An hour level with the now pill would crowd it from across the line.
+            showNow &&
+            Math.abs(minuteOffset(hour * 60, bounds) - nowTop) < NOW_LABEL_CLEARANCE ? null : (
               <span
                 key={hour}
                 className="absolute right-2 -translate-y-1/2"
@@ -188,7 +184,6 @@ export function WeekGrid({
               </span>
             ),
           )}
-          {showNow && <NowLabel top={nowTop} minute={nowMinute} className="right-[4px]" />}
         </div>
 
         {days.map((day) => {
@@ -210,7 +205,7 @@ export function WeekGrid({
                   onOpen={onOpenBlock}
                 />
               ))}
-              {isToday && showNow && <NowLine top={nowTop} inset />}
+              {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
             </div>
           );
         })}
@@ -298,7 +293,7 @@ function Band({
             key={day}
             className={cn(
               "flex min-h-8 min-w-0 border-l border-line p-1",
-              compact ? "flex-wrap content-start justify-center" : "flex-col gap-px",
+              compact ? "flex-wrap content-start justify-center" : "flex-col gap-[3px]",
               day === todayKey && TODAY_TINT,
             )}
           >
@@ -307,7 +302,7 @@ function Band({
               <button
                 type="button"
                 onClick={onExpand}
-                className="h-[22px] shrink-0 rounded-[5px] pl-[22px] text-left text-[12px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
+                className="h-[22px] shrink-0 rounded-[5px] pl-[9px] text-left text-[12px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
               >
                 +{all.length - shown.length} more
               </button>
@@ -392,56 +387,9 @@ function Block({
 
 /**
  * The current time: a 2px ink rule across the day (red is kept for overdue),
- * with an ink dot at its start. The dot is centred on the start, or sits
- * just inside it (`inset`) where the column clips its overflow.
+ * led by a small ink pill with the time, sitting on the line at its start.
  */
 export function NowLine({
-  top,
-  inset,
-  className,
-}: {
-  top: number;
-  inset?: boolean;
-  className?: string;
-}) {
-  return (
-    <div
-      className={cn("pointer-events-none absolute right-0 left-0 z-[2] -translate-y-1/2", className)}
-      style={{ top }}
-      aria-hidden
-    >
-      <span
-        className={cn(
-          "absolute top-1/2 block size-2 -translate-y-1/2 rounded-full bg-ink",
-          inset ? "left-0" : "-left-[4px]",
-        )}
-      />
-      <span className="block h-[2px] bg-ink" />
-    </div>
-  );
-}
-
-/** The element's client height, tracked as it resizes (0 until measured). */
-function useHeight(ref: RefObject<HTMLElement | null>): number {
-  const [height, setHeight] = useState(0);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (el === null) return;
-    setHeight(el.clientHeight);
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-  return height;
-}
-
-/**
- * "4:30" in the hour gutter, level with the now-line. It shows only while it
- * is wholly inside the scrolled view, so it is never drawn half-clipped
- * against the grid's edge.
- */
-export function NowLabel({
   top,
   minute,
   className,
@@ -450,34 +398,18 @@ export function NowLabel({
   minute: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [whole, setWhole] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (el === null || typeof IntersectionObserver === "undefined") {
-      setWhole(true);
-      return;
-    }
-    // The implicit root clips by every scrolling ancestor, so this measures
-    // the label against the grid's visible window.
-    const observer = new IntersectionObserver(
-      ([entry]) => setWhole(entry.intersectionRatio >= 0.99),
-      { threshold: [0, 0.99, 1] },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
   return (
-    <span
-      ref={ref}
+    <div
       className={cn(
-        "pointer-events-none absolute z-[2] -translate-y-1/2 rounded-[4px] bg-today px-[4px] py-px text-[10px] leading-[13px] font-semibold tabular text-today-fg",
-        !whole && "invisible",
+        "pointer-events-none absolute right-0 left-0 z-[2] flex -translate-y-1/2 items-center",
         className,
       )}
       style={{ top }}
     >
-      {clockTime(minute)}
-    </span>
+      <span className="shrink-0 rounded-[4px] bg-today px-[4px] py-px text-[10.5px] leading-[13px] font-semibold tabular text-today-fg">
+        {clockTime(minute)}
+      </span>
+      <span className="h-[2px] flex-1 bg-today" aria-hidden />
+    </div>
   );
 }

@@ -160,9 +160,9 @@ it("renders the week as bands over a time grid", () => {
   expect(screen.queryByText("13")).toBeNull();
   expect(screen.getByText("Due")).toBeDefined();
   expect(screen.getByText("Plan")).toBeDefined();
-  // Due times are one-liners in the band, never blocks.
+  // Due times are chips in the band (time above the title), never blocks.
   expect(screen.getByText("Problem Set 3")).toBeDefined();
-  expect(screen.getByText("5:00p")).toBeDefined();
+  expect(screen.getByText("5:00 PM")).toBeDefined();
   expect(screen.getByText("Email prof re: office hours")).toBeDefined();
   // Two lecture occurrences this week (Tue and Thu), each with its location.
   expect(screen.getAllByText("MATH 340")).toHaveLength(2);
