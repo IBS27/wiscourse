@@ -34,7 +34,7 @@ export function BottomTabs() {
               {unread > 0 && (
                 <span
                   aria-hidden
-                  className="tabular absolute -top-[3px] left-[calc(50%+5px)] grid h-4 min-w-4 place-items-center rounded-full bg-chip px-1 text-[10.5px] leading-none font-semibold text-ink-2 ring-2 ring-surface"
+                  className="tabular absolute -top-[5px] left-[calc(50%+8px)] grid h-4 min-w-4 place-items-center rounded-full bg-chip px-1 text-[10.5px] leading-none font-semibold text-ink-2 ring-2 ring-surface"
                 >
                   {unread > 99 ? "99+" : unread}
                 </span>

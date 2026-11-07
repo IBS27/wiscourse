@@ -410,7 +410,7 @@ export function NowLine({
       <span className="shrink-0 rounded-[4px] bg-today px-[4px] py-px text-[10.5px] leading-[13px] font-semibold tabular text-today-fg">
         {clockTime(minute)}
       </span>
-      <span className="h-[2px] flex-1 bg-today" aria-hidden />
+      <span className="h-[1.5px] flex-1 bg-today" aria-hidden />
     </div>
   );
 }

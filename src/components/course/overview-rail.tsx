@@ -80,7 +80,7 @@ export function OverviewRail({
             onClick={markAll}
             className="-mr-2 ml-auto rounded-md px-2 py-[3px] text-[12px] text-ink-3 transition-colors hover:bg-hover hover:text-ink"
           >
-            Mark read
+            Mark all read
           </button>
         )}
       </div>
