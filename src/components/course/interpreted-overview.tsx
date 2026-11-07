@@ -312,7 +312,7 @@ export function InterpretedOverview({
         <>
           <div className="mb-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <h2 className={SECTION_TITLE}>Course resources</h2>
-            <span className="ml-auto">{review}</span>
+            <span className="ml-auto max-sm:hidden">{review}</span>
             <span className={SECTION_COUNT}>{essentials.length}</span>
           </div>
           <ul className="-mx-4 mb-7 md:-mx-6" aria-label="Course resources">

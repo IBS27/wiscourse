@@ -291,7 +291,7 @@ function StandingFact({
       to={`/courses/${courseId}/grades`}
       value={
         <span className="flex items-center gap-[10px]">
-          <span className="tabular text-[17px] font-semibold tracking-[-0.01em] text-ink">
+          <span className="tabular text-[24px] leading-[1.15] font-semibold tracking-[-0.02em] text-ink">
             {hidden ? "Hidden" : score === undefined ? DASH : formatPercent(score)}
           </span>
           {letter !== undefined && <Letter letter={letter} estimated={estimated} />}

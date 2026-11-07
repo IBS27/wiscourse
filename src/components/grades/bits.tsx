@@ -127,7 +127,8 @@ export function Meter({
 }) {
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
   return (
-    <span className={cn("block h-[6px] overflow-hidden rounded-full bg-line", className)} aria-hidden>
+    // Coverage is a thin neutral meter; a score is a thicker bar in the course colour.
+    <span className={cn("block overflow-hidden rounded-full bg-line", tone === "course" ? "h-[6px]" : "h-1", className)} aria-hidden>
       {percent > 0 && (
         <span
           className={cn("block h-full rounded-full", tone === "course" ? "bg-c" : "bg-ink-3")}
