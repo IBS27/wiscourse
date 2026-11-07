@@ -5,7 +5,7 @@
 // nothing timed draws shorter hours, and its window grows no taller than
 // 8 AM to midnight.
 
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "../../../convex/todos";
@@ -16,7 +16,7 @@ import {
   blockTimeLabel,
   clockTime,
   EMPTY_GRID_BOUNDS,
-  EMPTY_GRID_MAX_VIEW,
+  gridBounds,
   firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
@@ -83,9 +83,14 @@ export function WeekGrid({
 }) {
   const first = firstBlockMinute(days, models);
   const scrollRef = useRef<HTMLDivElement>(null);
-  // A week with nothing timed draws its empty hours shorter.
+  // A week with nothing timed draws 8 AM–midnight to fit the space it has
+  // (never shorter than EMPTY_GRID_BOUNDS' hours), so it neither scrolls
+  // nor leaves a blank band above the footer.
   const empty = first === undefined;
-  const bounds = empty ? EMPTY_GRID_BOUNDS : GRID_BOUNDS;
+  const viewHeight = useViewHeight(scrollRef);
+  const bounds = empty
+    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, viewHeight / EMPTY_VIEW_HOURS))
+    : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
@@ -165,7 +170,7 @@ export function WeekGrid({
       <div
         ref={scrollRef}
         className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
-        style={empty ? { ...grid, maxHeight: EMPTY_GRID_MAX_VIEW } : grid}
+        style={grid}
       >
         <div
           className="relative text-[10.5px] tabular text-ink-3"
@@ -412,4 +417,22 @@ export function NowLine({
       <span className="h-[2px] flex-1 bg-today" aria-hidden />
     </div>
   );
+}
+
+/** 8 AM to midnight: what an empty week's grid shows without scrolling. */
+const EMPTY_VIEW_HOURS = 16;
+
+/** The element's current height, kept up to date as the window resizes. */
+function useViewHeight(ref: RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setHeight(el.clientHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
 }
