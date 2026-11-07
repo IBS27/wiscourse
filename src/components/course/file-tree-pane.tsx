@@ -162,7 +162,7 @@ function FolderRows({
             <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
           )}
           <span className="truncate">{node.folder.name}</span>
-          <span className="tabular ml-auto shrink-0 pl-2 text-[11.5px] font-normal text-ink-3">
+          <span className="tabular ml-auto shrink-0 pl-2 text-[12px] font-normal text-ink-3">
             {node.totalFiles}
           </span>
         </button>
@@ -190,7 +190,7 @@ function FolderRows({
             </span>
             <Images className="-ml-[6px] size-[14px] shrink-0" aria-hidden />
             <span className="truncate">Course images</span>
-            <span className="tabular ml-auto shrink-0 pl-2 text-[11.5px]">
+            <span className="tabular ml-auto shrink-0 pl-2 text-[12px]">
               {assets.length} folder{assets.length === 1 ? "" : "s"}
             </span>
           </button>

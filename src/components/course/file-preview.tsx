@@ -123,7 +123,7 @@ export function FilePreview({
             {locked && <Lock className="size-[13px] shrink-0 text-ink-3" aria-hidden />}
             <div className="truncate text-[13px] font-medium">{name.displayName}</div>
           </div>
-          <div className="mt-px truncate text-[11.5px] text-ink-3">
+          <div className="mt-px truncate text-[12px] text-ink-3">
             {metadata.size !== undefined && formatBytes(metadata.size)}
             {addedAt !== undefined && ` · ${formatMonthDayYear(addedAt)}`}
           </div>

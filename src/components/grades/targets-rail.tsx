@@ -157,7 +157,7 @@ export function TargetsRail({
             <div key={edit.canvasId} className="flex items-start gap-3 py-[3px] text-[13px]">
               <span className="min-w-0 flex-1">
                 <span className="block truncate">{edit.row?.name ?? "Assignment"}</span>
-                <span className="block text-[11.5px] text-ink-3">
+                <span className="block text-[12px] text-ink-3">
                   was {edit.row === undefined ? "—" : scoreParts(edit.row, edit.row.score).value}
                 </span>
               </span>

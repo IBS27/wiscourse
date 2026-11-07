@@ -167,7 +167,7 @@ export function MonthGrid({
                       key={line.key}
                       style={courseStyle(line.color)}
                       className={cn(
-                        "flex h-5 shrink-0 items-center gap-[5px] overflow-hidden rounded-[5px] px-px text-[11.5px] font-medium whitespace-nowrap",
+                        "flex h-5 shrink-0 items-center gap-[5px] overflow-hidden rounded-[5px] px-px text-[12px] font-medium whitespace-nowrap",
                         line.mark === "none" && "text-ink-3",
                         day < todayKey && "text-ink-3",
                       )}

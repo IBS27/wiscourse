@@ -165,7 +165,7 @@ function OpRow({ row }: { row: Row }) {
           {row.title}
         </div>
         {(meta.length > 0 || row.was) && (
-          <div className="mt-px flex flex-wrap items-center gap-x-[6px] text-[11.5px] text-ink-3">
+          <div className="mt-px flex flex-wrap items-center gap-x-[6px] text-[12px] text-ink-3">
             {meta.map((m, i) => (
               <span key={i} className="flex items-center gap-[6px]">
                 {i > 0 && <span className="opacity-55">·</span>}

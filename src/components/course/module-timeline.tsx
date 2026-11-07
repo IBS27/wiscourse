@@ -169,7 +169,7 @@ function LockedRow({
       <span className="truncate">
         {title} · {detail}
       </span>
-      <span className="tabular ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">
+      <span className="tabular ml-auto shrink-0 text-[12px] whitespace-nowrap text-ink-3">
         {meta}
       </span>
     </div>

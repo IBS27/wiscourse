@@ -57,7 +57,7 @@ export function Sidebar() {
         <>
           <div className="flex items-center justify-between px-2 pt-6 pb-[6px] text-[12px] font-medium text-ink-3">
             <span>Courses</span>
-            {termName && <span className="text-[11.5px] font-normal">{termName}</span>}
+            {termName && <span className="text-[12px] font-normal">{termName}</span>}
           </div>
           <div className="flex flex-col">
             {visible.map((c) => (
@@ -111,7 +111,7 @@ function OtherCourses({ courses }: { courses: Course[] }) {
           aria-hidden
         />
         <span>Other</span>
-        <span className="ml-auto text-[11.5px] font-normal tabular">
+        <span className="ml-auto text-[12px] font-normal tabular">
           {courses.length}
         </span>
       </button>

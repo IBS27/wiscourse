@@ -228,7 +228,7 @@ function AssignmentRow({
         {state !== undefined && (
           <span
             className={cn(
-              "shrink-0 text-[11.5px] font-medium",
+              "shrink-0 text-[12px] font-medium",
               state.tone === "red" ? "text-red" : "text-ink-3",
             )}
           >
@@ -340,7 +340,7 @@ function WhatIfCell({ result, whatIf }: { result: RowResult; whatIf: WhatIf }) {
           placeholder={result.counted ? "try a score" : original.value}
           onChange={(event) => commit(event.target.value)}
           className={cn(
-            "tabular h-7 w-[84px] shrink-0 rounded-md border bg-surface px-2 transition-colors text-right text-[13px] font-medium text-ink outline-none placeholder:text-[11.5px] placeholder:font-normal placeholder:text-ink-3 focus:ring-[3px] disabled:border-line disabled:bg-transparent disabled:opacity-60",
+            "tabular h-7 w-[84px] shrink-0 rounded-md border bg-surface px-2 transition-colors text-right text-[13px] font-medium text-ink outline-none placeholder:text-[12px] placeholder:font-normal placeholder:text-ink-3 focus:ring-[3px] disabled:border-line disabled:bg-transparent disabled:opacity-60",
             invalid
               ? "border-red text-red focus:border-red focus:ring-red/20"
               : "border-line-2 focus:border-ink focus:ring-ink/10",

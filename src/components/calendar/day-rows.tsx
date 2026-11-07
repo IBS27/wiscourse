@@ -80,7 +80,7 @@ export function DayRow({
           <span
             className={cn(
               "mt-[2px] block truncate text-ink-3",
-              list ? "text-xs" : "text-[11.5px]",
+              list ? "text-xs" : "text-[12px]",
             )}
           >
             {meta}

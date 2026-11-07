@@ -196,7 +196,7 @@ function Thread({ threadId, thread }: { threadId: string; thread: AskThread | un
           autoFocus
           className="shadow-[0_1px_2px_rgba(16,17,20,0.04),0_4px_16px_-6px_rgba(16,17,20,0.08)]"
         />
-        <p className={cn("pt-2 text-center text-[11.5px]", error ? "text-red" : "text-ink-3")} role="status">
+        <p className={cn("pt-2 text-center text-[12px]", error ? "text-red" : "text-ink-3")} role="status">
           {error ?? "Reads your Canvas courses. Changes only your wiscourse tasks, plans and calendar."}
         </p>
       </div>

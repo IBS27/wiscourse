@@ -50,7 +50,7 @@ export function WeekStrip({
             )}
           >
             <div className="flex items-center justify-center gap-[6px] max-sm:flex-col max-sm:gap-[2px]">
-              <span className={cn("text-[11.5px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
+              <span className={cn("text-[12px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
                 {compact ? dow[0] : dow}
               </span>
               <span

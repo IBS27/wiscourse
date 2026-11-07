@@ -186,7 +186,7 @@ function NavButton({
 /** "← → week · T today · D W M view · N new event · Times in …". */
 export function HintBar({ unit, zone }: { unit: string; zone: string }) {
   return (
-    <div className="mt-auto hidden h-10 shrink-0 items-center gap-5 border-t border-line px-6 text-[11.5px] text-ink-3 md:flex">
+    <div className="mt-auto hidden h-10 shrink-0 items-center gap-5 border-t border-line px-6 text-[12px] text-ink-3 md:flex">
       <Hint keys={["←", "→"]}>{unit}</Hint>
       <Hint keys={["T"]}>today</Hint>
       <Hint keys={["D", "W", "M"]}>view</Hint>

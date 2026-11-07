@@ -27,7 +27,7 @@ function RootLayout() {
       <DraftRoute path={pathname}>
         <div className="flex min-h-dvh">
           <Sidebar />
-          <main className={cn("flex min-h-dvh min-w-0 flex-1 flex-col md:h-dvh md:overflow-y-auto md:pb-0", inAsk ? "h-dvh" : "pb-[72px]")}>
+          <main className={cn("flex min-h-dvh min-w-0 flex-1 flex-col md:h-dvh md:overflow-y-auto md:pb-0", inAsk ? "h-dvh" : "pb-[calc(96px+env(safe-area-inset-bottom))]")}>
             <Outlet />
           </main>
         </div>

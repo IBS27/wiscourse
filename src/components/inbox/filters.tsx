@@ -45,7 +45,7 @@ export function InboxFilters({ search, counts, onChange }: FilterProps & { count
             >
               {tab.label}
               {n !== undefined && (
-                <span className={cn("tabular text-[11.5px] font-normal", on ? "text-ink-2" : "text-ink-3")}>
+                <span className={cn("tabular text-[12px] font-normal", on ? "text-ink-2" : "text-ink-3")}>
                   {n === 0 ? "—" : n}
                   <span className="sr-only"> unread</span>
                 </span>

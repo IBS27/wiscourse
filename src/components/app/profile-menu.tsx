@@ -76,7 +76,7 @@ export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "av
       <DropdownMenuContent side={variant === "sidebar" ? "top" : "bottom"} align={variant === "sidebar" ? "start" : "end"}>
         <div className="px-2 pt-[6px] pb-[7px]">
           <div className="font-medium text-ink">{name}</div>
-          {email && <div className="mt-px text-[11.5px] text-ink-3">{email}</div>}
+          {email && <div className="mt-px text-[12px] text-ink-3">{email}</div>}
         </div>
         <DropdownMenuSeparator />
         {info?.connected && (attention || daysLeft !== undefined) && (

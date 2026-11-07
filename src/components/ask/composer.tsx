@@ -99,7 +99,7 @@ export function Composer({
       <div className="flex items-center gap-[6px] pt-1 pr-2 pb-2 pl-[10px]">
         <CourseChip value={courseCanvasId} onChange={onCourseChange} />
         {draft.length > MAX_PROMPT_CHARS - 400 && (
-          <span className={cn("text-[11.5px] tabular text-ink-3", tooLong && "text-red")}>
+          <span className={cn("text-[12px] tabular text-ink-3", tooLong && "text-red")}>
             {draft.length.toLocaleString()} / {MAX_PROMPT_CHARS.toLocaleString()}
           </span>
         )}

@@ -27,7 +27,7 @@ export function Letter({
       className={cn(
         "inline-flex shrink-0 items-center justify-center bg-chip leading-none font-semibold whitespace-nowrap",
         size === "sm"
-          ? "h-[20px] min-w-[26px] rounded-[5px] px-[5px] text-[11.5px]"
+          ? "h-[20px] min-w-[26px] rounded-[5px] px-[5px] text-[12px]"
           : "h-[28px] min-w-[34px] rounded-[7px] px-[7px] text-[15px]",
         estimated ? "font-medium text-ink-3" : "text-ink-2",
       )}

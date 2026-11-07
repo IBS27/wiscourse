@@ -270,7 +270,7 @@ function Band({
 }) {
   return (
     <div className={cn("grid border-b border-line", ROW)} style={columns}>
-      <div className="flex flex-col items-end gap-1 pt-[6px] pr-2 text-[11.5px] font-medium text-ink-3">
+      <div className="flex flex-col items-end gap-1 pt-[6px] pr-2 text-[12px] font-medium text-ink-3">
         {label}
         {collapse !== undefined && (
           <button
@@ -304,7 +304,7 @@ function Band({
               <button
                 type="button"
                 onClick={onExpand}
-                className="h-[22px] shrink-0 rounded-[5px] pl-[22px] text-left text-[11.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
+                className="h-[22px] shrink-0 rounded-[5px] pl-[22px] text-left text-[12px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
               >
                 +{all.length - shown.length} more
               </button>
@@ -363,7 +363,7 @@ function Block({
       onClick={() => onOpen(block)}
       aria-label={`${blockLabel(block)}, ${blockTimeLabel(block)}`}
       className={cn(
-        "absolute overflow-hidden rounded-md px-2 pt-1 text-left text-[11.5px] leading-[1.3] whitespace-nowrap",
+        "absolute overflow-hidden rounded-md px-2 pt-1 text-left text-[12px] leading-[1.3] whitespace-nowrap",
         blockFill(block.local),
         past && "opacity-50",
       )}

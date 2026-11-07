@@ -300,7 +300,7 @@ function MenuChoices<T extends string>({
 }) {
   return (
     <>
-      <div className="px-2 pt-[6px] pb-1 text-[11.5px] font-medium text-ink-3" aria-hidden>
+      <div className="px-2 pt-[6px] pb-1 text-[12px] font-medium text-ink-3" aria-hidden>
         {label}
       </div>
       <DropdownMenuRadioGroup

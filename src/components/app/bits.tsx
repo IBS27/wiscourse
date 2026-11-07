@@ -22,7 +22,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-full px-[9px] text-[11.5px] font-medium whitespace-nowrap [&_svg]:size-[12px]",
+        "inline-flex h-[22px] shrink-0 items-center gap-[5px] rounded-full px-[9px] text-[12px] font-medium whitespace-nowrap [&_svg]:size-[12px]",
         tone === "default" && "bg-chip text-ink-2",
         tone === "red" && "bg-red-bg text-red",
         tone === "outline" && "text-ink-3 shadow-[inset_0_0_0_1px_var(--line-2)]",

@@ -166,7 +166,7 @@ export function DayTimeline({
               {block.title}
             </div>
             {height >= PX_PER_HOUR * 0.75 && (
-              <div className={cn("truncate text-[11.5px] tabular", BLOCK_SUBTITLE)}>
+              <div className={cn("truncate text-[12px] tabular", BLOCK_SUBTITLE)}>
                 {[blockTimeLabel(block), block.subtitle]
                   .filter((s) => s !== undefined)
                   .join(" · ")}
@@ -235,7 +235,7 @@ export function CalendarWeekStrip({
           >
             <div
               className={cn(
-                "text-[11.5px] font-medium",
+                "text-[12px] font-medium",
                 isToday || selected === day ? "text-ink" : "text-ink-3",
               )}
             >
