@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { BarChart3, ChevronLeft, ExternalLink, FlaskConical, RotateCcw } from "lucide-react";
+import { BarChart3, ChevronLeft, ArrowUpRight, FlaskConical, RotateCcw } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import {
   latestPosted,
@@ -237,8 +237,8 @@ export function CourseGradebook({
               rel="noreferrer"
               className="hidden h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
             >
-              <ExternalLink className="size-[14px]" />
               Open in Canvas
+              <ArrowUpRight className="size-[14px] text-ink-3" />
             </a>
           </div>
         </header>

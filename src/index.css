@@ -66,7 +66,7 @@
   /* Unread marker: neutral, so it never competes with a course dot. Used only
      in the left gutter of feed lists (Home "New", Inbox); elsewhere read state
      is carried by title weight. */
-  --unread: var(--ink);
+  --unread: var(--ink-3);
 }
 
 .dark {

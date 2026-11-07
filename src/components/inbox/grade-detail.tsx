@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
-import { CoverageBar } from "@/components/grades/bits";
+import { Meter } from "@/components/grades/bits";
 import { CanvasHtml } from "@/components/reader/canvas-html";
 import { todoHref } from "@/lib/course-routes";
 import { formatLate, formatMonthDay } from "@/lib/dates";
@@ -176,7 +176,7 @@ function ScoreCard({
 
       {fraction !== undefined && (
         <div className="relative mt-4">
-          <CoverageBar fraction={fraction} className="h-[6px]" />
+          <Meter fraction={fraction} />
           {median !== undefined && points !== undefined && points > 0 && (
             <span
               aria-hidden

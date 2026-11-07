@@ -64,12 +64,6 @@ function TodoPage() {
                 <ChevronLeft className="size-4" />
                 Home
               </Link>
-              {item && (
-                <>
-                  <span className="text-line-2 max-md:hidden" aria-hidden>/</span>
-                  <span className="truncate text-[13px] text-ink-3 max-md:hidden">{item.title}</span>
-                </>
-              )}
             </div>
           </nav>
         </div>

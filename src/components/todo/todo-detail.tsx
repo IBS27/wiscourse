@@ -367,7 +367,7 @@ function PlanDate({ value, onChange }: { value: string | undefined; onChange: (d
     <label
       className={cn(
         PLAN_BUTTON,
-        "group relative cursor-pointer md:min-w-[148px] focus-within:ring-2 focus-within:ring-line-2",
+        "group relative cursor-pointer md:min-w-[124px] focus-within:ring-2 focus-within:ring-line-2",
         value !== undefined ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
       )}
     >

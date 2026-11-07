@@ -65,7 +65,7 @@ export function ModuleAccordion({
               aria-expanded={expanded}
               onClick={() => toggle(module.canvasId)}
               className={cn(
-                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[13px] font-semibold tracking-[-0.005em] transition-colors outline-none md:px-6",
+                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[14px] font-semibold tracking-[-0.005em] transition-colors outline-none md:px-6",
                 locked ? "cursor-default text-ink-3" : "text-ink hover:bg-hover focus-visible:bg-hover",
               )}
             >
@@ -119,7 +119,8 @@ function Progress({ viewed, total }: { viewed: number; total: number }) {
   const done = viewed === total;
   return (
     <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
-      <Meter fraction={viewed / total} className="hidden w-[64px] sm:block" tone="neutral" />
+      {/* An empty track for "0 viewed" is noise; the count says it. */}
+      {viewed > 0 && <Meter fraction={viewed / total} className="hidden w-[64px] sm:block" tone="neutral" />}
       <span className="flex min-w-[96px] items-center justify-end gap-1 whitespace-nowrap">
         {done ? (
           <>

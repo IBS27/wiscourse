@@ -1,8 +1,7 @@
-import type { ComponentType } from "react";
 import { useInboxFeed } from "@/lib/list-queries";
 import { useMutation } from "convex/react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Clock, FilePlus2, GraduationCap, Megaphone } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge, CourseTag } from "@/components/app/bits";
@@ -12,21 +11,19 @@ import { FEED_ROW } from "./feed-row";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-const ICON = { announcement: Megaphone, grade: GraduationCap, assignment: FilePlus2, change: Clock } as const;
 
 /**
- * Gutter dot · type icon · title (two lines max) with the time on the right,
- * then course tag and what happened. One layout for every feed glance.
+ * Gutter dot · title (two lines max) with the time on the right, then course
+ * tag and what happened. The narrow rails skip the type icon: the status line
+ * ("Graded 10/10", "Announcement") already says what kind of item it is.
  */
 export function FeedRowBody({
-  icon: Icon,
   title,
   unread,
   course,
   status,
   time,
 }: {
-  icon: ComponentType<{ className?: string }>;
   title: string;
   unread: boolean;
   /** Short course label; omitted inside a course page. */
@@ -40,7 +37,6 @@ export function FeedRowBody({
       <span className="flex w-3 shrink-0 justify-center pt-[6px]">
         {unread && <span className="size-[6px] rounded-full bg-unread" role="img" aria-label="Unread" />}
       </span>
-      <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" aria-hidden />
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-3">
           <div
@@ -92,7 +88,6 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
       style={courseStyle(color(item.courseCanvasId))}
     >
       <FeedRowBody
-        icon={ICON[item.type]}
         title={feedTitle(item)}
         unread={!item.seen}
         course={label(item.courseCanvasId)}
@@ -114,7 +109,7 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
   return (
     <aside className="hidden w-[360px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
       <div className="flex min-h-[44px] items-center gap-2 px-4 pt-3 pb-1">
-        <span className="text-[13px] font-semibold tracking-[-0.01em]">New</span>
+        <span className="text-[13px] font-semibold tracking-[-0.01em]">Recent</span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
           <button type="button" onClick={() => void markAll()} className="ml-auto text-[12px] text-ink-3 transition-colors hover:text-ink">

@@ -249,8 +249,9 @@ function FilterChip({
       onClick={onClick}
       style={style}
       className={cn(
-        "flex h-7 shrink-0 cursor-pointer items-center gap-[6px] rounded-full border border-line px-[10px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
-        active && "border-[color-mix(in_oklab,var(--ink)_15%,transparent)] bg-chip font-medium text-ink hover:bg-chip",
+        // Same shape as the segmented control beside it: 28px, radius 6, grey fill when selected.
+        "flex h-7 shrink-0 cursor-pointer items-center gap-[6px] rounded-md px-[10px] text-[12.5px] font-medium whitespace-nowrap text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+        active && "bg-chip text-ink hover:bg-chip",
       )}
     >
       {children}

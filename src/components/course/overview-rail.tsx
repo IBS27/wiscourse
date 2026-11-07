@@ -3,9 +3,6 @@ import {
   ArrowRight,
   CheckCheck,
   ChevronRight,
-  Clock,
-  FilePlus2,
-  GraduationCap,
   Megaphone,
   Plus,
 } from "lucide-react";
@@ -28,14 +25,6 @@ import { letterFor, schemeFor, summarize } from "../../../convex/lib/grades";
 import { feedSeenKind, feedStatus, feedTitle } from "@/lib/feed";
 import type { Course } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-
-/** The Home rail's icons, so a feed row reads the same in both places. */
-const FEED_ICON = {
-  announcement: Megaphone,
-  grade: GraduationCap,
-  assignment: FilePlus2,
-  change: Clock,
-} as const satisfies Record<FeedItem["type"], unknown>;
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 type CourseHub = NonNullable<FunctionReturnType<typeof api.courses.hub>>;
@@ -83,7 +72,7 @@ export function OverviewRail({
       <ClassTimesFact canvasId={canvasId} />
 
       <div className="flex items-center gap-2 px-5 pt-5 pb-2">
-        <span className="text-[13px] font-semibold tracking-[-0.005em] text-ink">New</span>
+        <span className="text-[13px] font-semibold tracking-[-0.005em] text-ink">Recent</span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
           <button
@@ -122,7 +111,6 @@ export function OverviewRail({
               className={FEED_ROW}
             >
               <FeedRowBody
-                icon={FEED_ICON[item.type]}
                 title={feedTitle(item)}
                 unread={!item.seen}
                 status={feedStatus(item)}

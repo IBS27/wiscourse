@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, ExternalLink, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowUpRight, ExternalLink, Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
@@ -113,8 +113,8 @@ export function CourseHeader({
           rel="noreferrer"
           className="inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
         >
-          <ExternalLink className="size-[14px]" />
           Open in Canvas
+          <ArrowUpRight className="size-[14px] text-ink-3" />
         </a>
       </div>
 
