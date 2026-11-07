@@ -31,4 +31,4 @@ export const TODAY_TINT =
  * so the hour at the top of the view is never cut in half by the band.
  */
 export const HOUR_LABEL =
-  "absolute mt-[3px] text-[10.5px] leading-none whitespace-nowrap tabular text-ink-3";
+  "absolute mt-[3px] text-[11.5px] leading-none whitespace-nowrap tabular text-ink-3";

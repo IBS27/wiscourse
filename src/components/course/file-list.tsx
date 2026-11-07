@@ -179,25 +179,22 @@ export function FileList({
                       ) : (
                         <FileTypeIcon contentType={file.contentType} filename={file.filename} />
                       )}
-                      <span
-                        className={cn(
-                          compact ? "line-clamp-2 leading-[1.4]" : "truncate",
-                          "min-w-0 flex-1 text-ink",
+                      <span className="min-w-0 flex-1">
+                        <span className={cn(compact ? "line-clamp-2 leading-[1.4]" : "block truncate", "text-ink")}>
+                          {file.displayName}
+                        </span>
+                        {/* Where it lives, right under the name: only for rows out of their folder. */}
+                        {path !== undefined && path !== "" && !compact && (
+                          <span className="block truncate text-[12.5px] text-ink-3" title={path}>
+                            {path}
+                          </span>
                         )}
-                      >
-                        {file.displayName}
                       </span>
                       {unread && !pill && <span className="sr-only">(new)</span>}
                       {/* What the tab's "12 new" counts, visible on each file. */}
                       {pill && (
                         <span className="shrink-0 rounded-full bg-chip px-[7px] py-px text-[11.5px] font-medium text-ink-2">
                           New
-                        </span>
-                      )}
-                      {/* Where it lives, in a fixed right column: only for rows out of their folder. */}
-                      {path !== undefined && path !== "" && !compact && (
-                        <span className="w-[160px] shrink-0 truncate text-right text-[12.5px] text-ink-3" title={path}>
-                          {path}
                         </span>
                       )}
                     </span>

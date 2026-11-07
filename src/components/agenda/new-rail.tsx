@@ -48,7 +48,7 @@ export function FeedRowBody({
           >
             {title}
           </div>
-          <span className="shrink-0 pt-px text-[12px] text-ink-3 tabular">{time}</span>
+          <span className="shrink-0 pt-px text-[13px] text-ink-3 tabular">{time}</span>
         </div>
         {(course !== undefined || status !== undefined) && (
           <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3">

@@ -153,7 +153,7 @@ export function CourseHeader({
           onClick={() =>
             tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
           }
-          className="invisible absolute top-0 right-0 bottom-[2px] flex w-[max(var(--cover-end,0px),32px)] items-center justify-end bg-linear-to-l from-surface from-[calc(100%-12px)] to-transparent pr-[6px] text-ink-3 transition-[width] group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none md:w-6 md:from-0% md:[&>svg]:hidden"
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
         >
           <ChevronRight className="size-[14px]" />
         </button>

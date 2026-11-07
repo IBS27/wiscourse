@@ -99,7 +99,7 @@ function NewChat() {
         <HeaderTitle title="Ask" subtitle="Answers from your synced Canvas courses" />
       </header>
       <div className="flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 md:px-6">
-        <div className="flex w-full max-w-[640px] flex-1 flex-col pt-8 md:justify-center md:pt-0 md:pb-[8vh]">
+        <div className="flex w-full max-w-[640px] flex-1 flex-col pt-8 md:pt-[14vh]">
           <div className="flex flex-col items-start md:items-center md:text-center">
             <span className="mb-4 grid size-10 place-items-center rounded-xl border border-line bg-sunken text-ink-2">
               <MessageCircle className="size-[19px]" />
