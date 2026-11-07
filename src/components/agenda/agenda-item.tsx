@@ -24,12 +24,15 @@ export function AgendaItem({
   todayKey,
   now,
   compact = false,
+  hideCourse = false,
 }: {
   item: TodoItem;
   first?: boolean;
   todayKey: string;
   now: number;
   compact?: boolean;
+  /** Inside a course page the course tag would only repeat the page. */
+  hideCourse?: boolean;
 }) {
   const { label, color } = useCourses();
   const setDone = useMutation(api.todos.setDone);
@@ -39,7 +42,7 @@ export function AgendaItem({
   const subDone = item.subtasks.filter((s) => s.done).length;
 
   const meta: ReactNode[] = [];
-  if (code) {
+  if (code && !hideCourse) {
     meta.push(
       <CourseTag key="code">{code}</CourseTag>,
     );

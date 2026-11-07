@@ -50,9 +50,9 @@ function CourseAnnouncements() {
   };
 
   return (
-    // A list page: 960px of content at the 24px gutter, rules inset with it.
+    // A list page: full width to the main area's gutters, rules inset with it.
     <div
-      className="w-full max-w-[1008px] min-w-0 flex-1 pb-8"
+      className="w-full min-w-0 flex-1 pb-8"
       style={courseStyle(courseColorVar(course?.color))}
     >
       {rows === undefined ? null : rows.length === 0 ? (

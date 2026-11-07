@@ -183,8 +183,13 @@ export function FileList({
                         )}
                       >
                         {file.displayName}
-                        {unread && <span className="sr-only"> (new)</span>}
                       </span>
+                      {/* What the tab's "12 new" counts, visible on each file. */}
+                      {unread && (
+                        <span className="shrink-0 rounded-full bg-chip px-[7px] py-px text-[11.5px] font-medium text-ink-2">
+                          New
+                        </span>
+                      )}
                       {/* Where it lives, on the same line: only for rows out of their folder. */}
                       {path !== undefined && path !== "" && !compact && (
                         <span className="max-w-[40%] shrink-0 truncate text-[12.5px] text-ink-3" title={path}>

@@ -280,8 +280,8 @@ export function InterpretedOverview({
     const r = byId.get(e.resourceId);
     return r ? [{ label: e.label, href: r.href }] : [];
   });
-  // Each list keeps its icon column only when the icons tell rows apart.
-  const essentialIcons = iconsDiffer(essentials.map((e) => resourceIcon(e.href)));
+  // The resource list always draws its kind icon, as Modules rows do; the
+  // chapter lists keep theirs only when the icons tell rows apart.
   const entryLinks = entries.map((e) => resolve(e.resourceIds));
   const entryIcons = iconsDiffer(entryLinks.flat().map((r) => resourceIcon(r.href)));
   const rowIcons = iconsDiffer(rows.map((r) => resourceIcon(r.href)));
@@ -310,9 +310,9 @@ export function InterpretedOverview({
           </div>
           <ul className="-mx-4 mb-7 md:-mx-6" aria-label="Course resources">
             {essentials.map((e, i) => (
-              <li key={i} className={cn(RES_ITEM, !essentialIcons && RES_ITEM_NO_ICON)}>
+              <li key={i} className={RES_ITEM}>
                 <Link to={e.href} className={RES_ROW}>
-                  {essentialIcons && createElement(resourceIcon(e.href), { className: RES_ICON })}
+                  {createElement(resourceIcon(e.href), { className: RES_ICON })}
                   <span className="min-w-0 flex-1">{e.label}</span>
                   <ChevronRight className={RES_CHEVRON} aria-hidden />
                 </Link>

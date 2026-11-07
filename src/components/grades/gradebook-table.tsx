@@ -203,10 +203,6 @@ function AssignmentRow({
   const due = dueLabel(row);
   const percent = rowPercent(row, result.effectiveScore);
   const edited = whatIf !== undefined && whatIf.edits.has(row.canvasId);
-  const unseen =
-    row.postedAt !== undefined &&
-    row.score !== undefined &&
-    !seen.has(row.canvasId, String(row.postedAt));
 
   return (
     <div
@@ -223,11 +219,8 @@ function AssignmentRow({
           onClick={() => {
             if (row.postedAt !== undefined) seen.mark(row.canvasId, String(row.postedAt));
           }}
-          className={cn(
-            "truncate no-underline hover:underline hover:underline-offset-4",
-            // New grades carry weight, not a dot; seen ones settle to ink-2.
-            unseen && !result.dropped ? "font-medium text-ink" : "text-ink-2",
-          )}
+          // A grade table has no unread state: every row is one regular weight.
+          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4"
         >
           {row.name}
         </Link>
@@ -259,14 +252,19 @@ function AssignmentRow({
         role="cell"
         className={cn(MOBILE_2, "truncate pl-[14px] text-xs text-ink-3 md:pl-0 md:text-[12.5px]")}
       >
-        {due}
+        {due ?? (
+          // Never a blank cell: an undated row says so, quietly.
+          <span className="hidden md:inline" title="No due date">
+            —<span className="sr-only">No due date</span>
+          </span>
+        )}
       </div>
 
       <div
         role="cell"
         className={cn(
           MOBILE_3,
-          "tabular flex flex-col items-end justify-center gap-[1px] text-right font-medium whitespace-nowrap",
+          "tabular flex flex-col items-end justify-center gap-[1px] text-right whitespace-nowrap",
         )}
       >
         {whatIf === undefined ? (

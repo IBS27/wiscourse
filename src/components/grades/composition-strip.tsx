@@ -1,7 +1,6 @@
 import type { Summary } from "../../../convex/lib/grades";
 import { formatPercent, formatPoints, usesWeights } from "@/lib/grades-ui";
 import { Meter } from "./bits";
-import { cn } from "@/lib/utils";
 
 interface Segment {
   key: number;
@@ -61,11 +60,8 @@ export function CompositionStrip({
         How the grade is built
         {note !== undefined && <span className="font-normal"> · {note}</span>}
       </h2>
-      <ul
-        className={cn(
-          "mt-1 grid max-w-[640px] list-none grid-cols-1 p-0",
-        )}
-      >
+      {/* Fills the content width, so its right edge meets the table's below. */}
+      <ul className="mt-1 grid list-none grid-cols-1 p-0">
         {segments.map((segment) => {
           // The bar is the score, so it always agrees with the number beside it;
           // how much is graded so far is said in words.
@@ -74,7 +70,7 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @md:grid-cols-[minmax(130px,1fr)_auto_120px_56px]"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @md:grid-cols-[minmax(130px,1fr)_auto_160px_56px]"
             >
               <span className="min-w-0">
                 <span className="block truncate font-medium text-ink" title={segment.name}>

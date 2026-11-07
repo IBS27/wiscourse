@@ -55,7 +55,7 @@ function CourseOverview() {
       style={courseStyle(courseColorVar(course?.color))}
     >
       <div className="min-w-0 flex-1 pb-6">
-        <OverviewDue todos={todos} canvasId={canvasId} now={now} />
+        <OverviewDue todos={todos} canvasId={canvasId} now={now} todayKey={today} />
         {interpreted ? (
           <InterpretedOverview
             key={courseId}

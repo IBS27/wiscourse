@@ -52,7 +52,7 @@ function useSuggestions(): Suggestion[] {
 
   const announcements = (feed ?? []).filter((f) => f.type === "announcement" && !f.seen);
   if (announcements.length > 0) {
-    out.push({ prompt: "Catch me up on new announcements", icon: Megaphone, note: `${announcements.length} unread` });
+    out.push({ prompt: "Catch up on announcements", icon: Megaphone, note: `${announcements.length} unread` });
   }
 
   const biggest = open
@@ -134,12 +134,14 @@ function NewChat() {
                     type="button"
                     disabled={busy}
                     onClick={() => void start(s.prompt, s.course ?? course).catch(() => undefined)}
-                    className="group flex items-start gap-3 rounded-[10px] border border-line bg-surface px-3 py-[11px] text-left transition-colors hover:border-line-2 hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none disabled:opacity-60"
+                    title={s.prompt}
+                    // One height for every card, content from the top, so the grid reads as a set.
+                    className="group flex min-h-[72px] items-start gap-3 rounded-[10px] border border-line bg-surface px-3 py-[11px] text-left transition-colors hover:border-line-2 hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none disabled:opacity-60"
                     style={courseStyle(color(s.course))}
                   >
                     <s.icon className="mt-px size-4 shrink-0 text-ink-3 transition-colors group-hover:text-ink-2" />
                     <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
-                      <span className="line-clamp-2 text-[13.5px] leading-[1.35] font-medium text-ink">{s.prompt}</span>
+                      <span className="truncate text-[13.5px] leading-[1.35] font-medium text-ink">{s.prompt}</span>
                       {(code !== undefined || s.note) && (
                         <span className="flex min-w-0 items-center gap-2 text-[12px] text-ink-3">
                           {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}

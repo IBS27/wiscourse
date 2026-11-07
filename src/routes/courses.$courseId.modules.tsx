@@ -33,8 +33,8 @@ function CourseModules() {
   const startKey = course?.startAt === undefined ? undefined : dayKeyOf(course.startAt);
 
   return (
-    // A list page: 960px of content at the 24px gutter, rules inset with it.
-    <div className="w-full max-w-[1008px] flex-1" style={courseStyle(courseColorVar(course?.color))}>
+    // A list page: full width to the main area's gutters, rules inset with it.
+    <div className="w-full flex-1" style={courseStyle(courseColorVar(course?.color))}>
       {/* The course row decides the week numbers, and so decides whether the
           timeline is worth showing at all. */}
       {modules === undefined || coursesLoading || ctx.seenLoading ? (

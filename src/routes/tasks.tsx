@@ -24,10 +24,6 @@ export const Route = createFileRoute("/tasks")({
 });
 
 type View = "open" | "undated" | "done";
-/** The page's one column, left-aligned at the gutter: 960px of content for the header, filters and list. */
-const COLUMN = "max-w-[960px]";
-/** The list's rows carry their own gutters, so its box is the column plus both gutters. */
-const LIST_COLUMN = "max-w-[1008px]";
 
 const VIEWS: { id: View; label: string }[] = [
   { id: "open", label: "Open" },
@@ -83,7 +79,7 @@ function Tasks() {
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Header, filters and list share one left-aligned column, so their edges line up. */}
+      {/* Header, filters and list all run to the main area's gutters, so their edges line up. */}
       <PageHeader
         title="Tasks"
         subtitle={
@@ -91,7 +87,6 @@ function Tasks() {
             ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done`
             : "\u00a0" // holds the line while loading, so the title does not jump
         }
-        contentClassName={COLUMN}
         actions={
           <>
             <button
@@ -116,7 +111,7 @@ function Tasks() {
       />
 
       <div className="px-4 md:px-6">
-        <div className={cn("flex w-full items-center gap-2 overflow-x-auto border-b border-line py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible", COLUMN)}>
+        <div className="flex w-full items-center gap-2 overflow-x-auto border-b border-line py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible">
           <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
           {courseOptions.length > 0 && (
             <>
@@ -153,7 +148,7 @@ function Tasks() {
         </div>
       </div>
 
-      <div className={cn("w-full pb-8", LIST_COLUMN)}>
+      <div className="w-full pb-8">
         {filtered === undefined ? null : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-10 py-20 text-center">
             <span className="mb-1 grid size-10 place-items-center rounded-full bg-chip text-ink-3">

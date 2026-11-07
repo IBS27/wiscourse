@@ -63,13 +63,17 @@ export function CourseHeader({
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0">
-          <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance">
+          <h1 className="line-clamp-3 text-[24px] leading-[1.25] font-semibold tracking-[-0.022em] text-balance">
             {name || <span className="text-ink-3">Course</span>}
           </h1>
-          <div className="mt-1 truncate text-[12.5px] text-ink-3">
-            {code !== undefined && <span className="font-medium text-ink-2">{code}</span>}
-            {code !== undefined && term !== undefined && " · "}
-            {term}
+          <div className="mt-1 flex min-w-0 items-center text-[12.5px] text-ink-3">
+            {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+            {code !== undefined && term !== undefined && (
+              <span className="mx-[6px]" aria-hidden>
+                ·
+              </span>
+            )}
+            {term !== undefined && <span className="min-w-0 truncate">{term}</span>}
           </div>
         </div>
         <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
