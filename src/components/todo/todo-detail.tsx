@@ -172,7 +172,10 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         </div>
       </div>
 
-      {/* Plan and Notes: compact property rows, so the description starts high. */}
+      {/* Plan and Notes: compact property rows, so the description starts high.
+          On a phone, where they stack tall, the assignment text comes first. */}
+      <div className="flex flex-col">
+      <div className="max-md:order-2">
       <PropertyRow title="Plan">
         <div className="flex flex-wrap items-center gap-[6px]">
           <QuickPlan label="Today" active={item.plannedDay === today} onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
@@ -221,17 +224,23 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           <AddSubtask onAdd={(title) => void addSubtask({ ref, title })} />
         </div>
       </PropertyRow>
+      </div>
 
+      <div className="max-md:order-3">
       <PropertyRow title="Notes">
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
       </PropertyRow>
+      </div>
 
       {/* Description (Canvas) */}
       {!isLocal && description && (
+        <div className="max-md:order-1">
         <PropertyRow title="Description" prose>
           <div className={PROSE} dangerouslySetInnerHTML={{ __html: sanitize(description) }} />
         </PropertyRow>
+        </div>
       )}
+      </div>
 
       {/* Submission (Canvas) */}
       {!isLocal && (

@@ -23,7 +23,9 @@ export const NAV = [
   { to: "/ask", label: "Ask", icon: MessageCircle },
 ] as const;
 
-export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar", "/grades", "/tasks"] as const;
+export const MOBILE_TABS = ["/", "/inbox", "/courses", "/calendar"] as const;
+/** Behind the phone's fifth "More" tab. */
+export const MOBILE_MORE = ["/grades", "/tasks", "/ask"] as const;
 
 /** Badge counts for the nav: open items due/overdue today, unseen feed items. */
 export function useNavCounts(): { home: number; inbox: number } {
