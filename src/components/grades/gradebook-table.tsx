@@ -139,7 +139,7 @@ function GroupSection({
         role="row"
         className={cn(
           ROW,
-          "rounded-lg bg-sunken py-[9px] text-[13px] font-semibold md:h-10 md:py-0",
+          "rounded-lg bg-sunken py-[9px] dark:bg-hover text-[13px] font-semibold md:h-10 md:py-0",
           first ? "mt-3" : "mt-6",
         )}
       >

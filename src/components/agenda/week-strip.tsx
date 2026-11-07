@@ -24,7 +24,7 @@ export function WeekStrip({
   const byDay = itemsByDay(items, days, todayKey, now);
 
   return (
-    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-[6px] md:px-5 md:py-[10px]", compact && "gap-1 px-3 pt-[2px]")}>
+    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-[6px] md:px-5 md:py-2", compact && "gap-1 px-3 pt-[2px]")}>
       {days.map((day) => {
         const isToday = day === todayKey;
         const isPast = day < todayKey;
@@ -45,24 +45,26 @@ export function WeekStrip({
             type="button"
             onClick={() => onSelect(isSelected ? null : day)}
             className={cn(
-              "rounded-[10px] px-1 pt-1 pb-[5px] text-center transition-colors hover:bg-hover md:pt-[6px] md:pb-[7px]",
+              "rounded-[10px] px-1 py-1 text-center transition-colors hover:bg-hover md:py-[5px]",
               isSelected && "bg-hover shadow-[inset_0_0_0_1px_var(--line-2)]",
             )}
           >
-            <div className={cn("text-[11px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
-              {compact ? dow[0] : dow}
+            <div className="flex items-center justify-center gap-[6px] max-sm:flex-col max-sm:gap-[2px]">
+              <span className={cn("text-[11.5px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
+                {compact ? dow[0] : dow}
+              </span>
+              <span
+                className={cn(
+                  "grid size-6 place-items-center rounded-full text-[13.5px] font-semibold tracking-[-0.02em] tabular",
+                  compact && "size-[26px]",
+                  isPast && "font-medium text-ink-3",
+                  isToday && "bg-today text-today-fg",
+                )}
+              >
+                {Number(day.slice(-2))}
+              </span>
             </div>
-            <div
-              className={cn(
-                "mx-auto mt-[3px] grid size-7 place-items-center rounded-full text-[14px] font-semibold tracking-[-0.02em] tabular",
-                compact && "size-[26px]",
-                isPast && "font-medium text-ink-3",
-                isToday && "bg-today text-today-fg",
-              )}
-            >
-              {Number(day.slice(-2))}
-            </div>
-            <div className="mt-[3px] flex h-[7px] items-center justify-center gap-[3px] md:mt-[5px] md:h-[11px]">
+            <div className="mt-[3px] flex h-[6px] items-center justify-center gap-[3px]">
               {shown.map((c) => (
                 <i
                   key={c}

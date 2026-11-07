@@ -89,7 +89,7 @@ export function AgendaItem({
         aria-label={done ? "Mark not done" : "Mark done"}
         onClick={() => void setDone({ ref: refOf(item), done: !done })}
         className={cn(
-          "mt-[2px] grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px] border-line-2 transition-colors group-hover:border-ink-3 hover:bg-chip",
+          "mt-[2px] grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px] border-ink-3/70 transition-colors group-hover:border-ink-2 hover:bg-chip",
           done && "border-ink-3 bg-ink-3",
         )}
       >

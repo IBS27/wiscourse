@@ -25,7 +25,9 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const LATER_PREVIEW = 3;
+// Long buckets show a few rows and fold the rest, so an overdue backlog never
+// pushes today's work below the fold.
+const PREVIEW: Partial<Record<Bucket["id"], number>> = { overdue: 3, later: 3 };
 
 function Home() {
   const today = useToday();
@@ -34,7 +36,7 @@ function Home() {
   const info = useSyncInfo();
   const quickAdd = useQuickAdd();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [showLater, setShowLater] = useState(false);
+  const [expanded, setExpanded] = useState<Set<Bucket["id"]>>(new Set());
 
   const buckets = items ? buildAgenda(items, { todayKey: today, now }) : undefined;
   const dayItems =
@@ -122,8 +124,8 @@ function Home() {
                   bucket={b}
                   todayKey={today}
                   now={now}
-                  showLater={showLater}
-                  onShowLater={() => setShowLater(true)}
+                  expanded={expanded.has(b.id)}
+                  onExpand={() => setExpanded((prev) => new Set(prev).add(b.id))}
                 />
               ))
             )}
@@ -156,18 +158,18 @@ function BucketSection({
   bucket,
   todayKey,
   now,
-  showLater,
-  onShowLater,
+  expanded,
+  onExpand,
 }: {
   bucket: Bucket;
   todayKey: string;
   now: number;
-  showLater: boolean;
-  onShowLater: () => void;
+  expanded: boolean;
+  onExpand: () => void;
 }) {
   if (bucket.items.length === 0 && bucket.id !== "today") return null;
-  const isLater = bucket.id === "later";
-  const visible = isLater && !showLater ? bucket.items.slice(0, LATER_PREVIEW) : bucket.items;
+  const limit = PREVIEW[bucket.id];
+  const visible = limit !== undefined && !expanded ? bucket.items.slice(0, limit) : bucket.items;
   const hidden = bucket.items.length - visible.length;
   return (
     <Section
@@ -183,7 +185,7 @@ function BucketSection({
         hidden > 0 ? (
           <button
             type="button"
-            onClick={onShowLater}
+            onClick={onExpand}
             className="flex items-center gap-[6px] px-4 py-[11px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:px-6"
           >
             Show {hidden} more

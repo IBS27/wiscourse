@@ -44,9 +44,10 @@ export function FeedRowBody({
         <div className="flex items-start gap-3">
           <div
             className={cn(
-              "line-clamp-2 min-w-0 flex-1 text-[13px] leading-[1.4] tracking-[-0.005em]",
+              "min-w-0 flex-1 truncate text-[13px] leading-[1.4] tracking-[-0.005em]",
               unread ? "font-medium text-ink" : "text-ink-2",
             )}
+            title={title}
           >
             {title}
           </div>

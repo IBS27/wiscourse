@@ -74,7 +74,7 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_64px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(0,1fr)_auto_88px_52px]"
+              className="grid min-w-0 grid-cols-[minmax(150px,1fr)_auto_64px_48px] items-center gap-x-3 py-[7px] text-[13px] @md:grid-cols-[minmax(150px,1fr)_auto_88px_52px]"
             >
               <span className="truncate font-medium text-ink" title={segment.name}>
                 {segment.name}

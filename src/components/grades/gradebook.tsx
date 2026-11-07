@@ -205,7 +205,7 @@ export function CourseGradebook({
               >
                 <ChevronLeft className="size-[18px]" />
               </Link>
-              <span className="truncate text-[20px] leading-[1.25] font-semibold tracking-[-0.02em]">
+              <span className="page-title truncate">
                 {course ? courseTitle(course) : "Course"}
               </span>
               {code !== undefined && (

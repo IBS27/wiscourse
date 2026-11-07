@@ -88,7 +88,7 @@ export function CourseHeader({
       <div className="hidden items-start gap-3 px-6 pt-5 md:flex">
         <span className="mt-[8px] size-[9px] shrink-0 rounded-full bg-c" aria-hidden />
         <div className="min-w-0">
-          <h1 className="truncate text-[20px] leading-[1.25] font-semibold tracking-[-0.02em]">
+          <h1 className="page-title truncate">
             {name || <span className="text-ink-3">Course</span>}
           </h1>
           <div className="mt-1 flex items-center gap-[7px] text-[12.5px] text-ink-3">
