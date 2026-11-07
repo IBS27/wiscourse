@@ -225,13 +225,13 @@ function Section({
 }) {
   return (
     <section>
-      <div className="flex items-baseline gap-2 px-4 pt-3 pb-2 md:px-6 md:pt-6">
+      <div className="flex items-baseline gap-2 px-4 pt-[14px] pb-[6px] md:px-6 md:pt-6 md:pb-2">
         <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
         {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
         {action ?? <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{count ?? items.length}</span>}
       </div>
       {items.length === 0 ? (
-        <div className="px-4 py-2 text-[13px] text-ink-3 md:px-6">{empty}</div>
+        <div className="px-4 py-1 text-[13px] text-ink-3 md:px-6 md:py-2">{empty}</div>
       ) : (
         items.map((item, i) => (
           <AgendaItem key={item.key} item={item} first={i === 0} todayKey={todayKey} now={now} />
