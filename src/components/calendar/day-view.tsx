@@ -1,8 +1,9 @@
 // The Day view — the phone's default, and the third desktop view. The week
 // strip from Home sits on top, the Due band above the fold, then the
-// timeline. Swipe the strip for the next week, the body for the next day.
+// timeline (or, for a day with nothing timed, a short note in its place).
+// Swipe the strip for the next week, the body for the next day.
 
-import { useRef, type TouchEvent } from "react";
+import { useRef, type ReactNode, type TouchEvent } from "react";
 import type { DayModel, CalendarEvent, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
@@ -18,6 +19,7 @@ import {
   PX_PER_HOUR,
 } from "@/lib/calendar";
 import { AllDayLine, DueLine, PlanLine } from "./bands";
+import { EmptySchedule } from "./empty-schedule";
 import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL } from "./block-styles";
 import { NowLine } from "./week-grid";
 import { useTimelineScroll } from "./use-timeline-scroll";
@@ -32,9 +34,12 @@ export function DayView({
   todayKey,
   now,
   zone,
+  loading = false,
   onSelectDay,
   onShiftWeek,
   onShiftDay,
+  onAddClassTimes,
+  onNewEvent,
   onOpenBlock,
   onOpenEvent,
 }: {
@@ -45,17 +50,21 @@ export function DayView({
   todayKey: string;
   now: number;
   zone: string;
+  /** Still fetching: keep the timeline rather than flash the empty note. */
+  loading?: boolean;
   onSelectDay: (day: string) => void;
   onShiftWeek: (delta: number) => void;
   onShiftDay: (delta: number) => void;
+  /** Set when no class times exist yet. */
+  onAddClassTimes?: () => void;
+  onNewEvent: () => void;
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
   const model = models.get(day);
   const bodySwipe = useSwipe((delta) => onShiftDay(delta));
   const stripSwipe = useSwipe((delta) => onShiftWeek(delta));
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useTimelineScroll(scrollRef, gridScrollTop(firstBlockMinute([day], models)), PX_PER_HOUR);
+  const empty = !loading && (model?.blocks.length ?? 0) === 0;
   const band = [
     ...(model?.allDay ?? []).map((event) => (
       <AllDayLine key={`all:${event._id}`} event={event} onOpen={onOpenEvent} roomy />
@@ -86,18 +95,47 @@ export function DayView({
             {band}
           </div>
         )}
-        {/* The strip and the Due band stay put; the hours scroll under them. */}
-        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
-          <DayTimeline
-            model={model}
-            todayKey={todayKey}
-            day={day}
-            now={now}
-            zone={zone}
-            onOpenBlock={onOpenBlock}
+        {empty ? (
+          <EmptySchedule
+            title={day === todayKey ? "Nothing scheduled today" : "Nothing scheduled this day"}
+            onAddClassTimes={onAddClassTimes}
+            onNewEvent={onNewEvent}
           />
-        </div>
+        ) : (
+          <DayScroll day={day} models={models}>
+            <DayTimeline
+              model={model}
+              todayKey={todayKey}
+              day={day}
+              now={now}
+              zone={zone}
+              onOpenBlock={onOpenBlock}
+            />
+          </DayScroll>
+        )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The strip and the Due band stay put; the hours scroll under them. Its own
+ * component so the scroll position is set up afresh each time it mounts.
+ */
+function DayScroll({
+  day,
+  models,
+  children,
+}: {
+  day: string;
+  models: Map<string, DayModel>;
+  children: ReactNode;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useTimelineScroll(scrollRef, gridScrollTop(firstBlockMinute([day], models)), PX_PER_HOUR);
+  return (
+    <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+      {children}
     </div>
   );
 }

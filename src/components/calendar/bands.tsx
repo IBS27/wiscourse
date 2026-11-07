@@ -98,8 +98,8 @@ const CHIP = cn(
   "dark:bg-[color-mix(in_srgb,var(--c)_13%,var(--surface))] dark:hover:bg-[color-mix(in_srgb,var(--c)_19%,var(--surface))]",
 );
 
-/** Past due: the theme red, lifted a step in dark so it reads on the wash. */
-const LATE = "text-red dark:text-[color-mix(in_srgb,var(--red)_80%,white)]";
+/** Past due: the theme red, a brighter red in dark so it reads on the wash. */
+const LATE = "text-red dark:text-[#ff7b7b]";
 
 /** "11 AM" on the hour, else "11:30 AM": short enough that the course code fits a chip. */
 function shortClock(minute: number): string {

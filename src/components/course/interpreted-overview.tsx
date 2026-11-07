@@ -140,12 +140,13 @@ const CHAPTER_ITEM =
   "group -mx-2 flex items-start gap-[9px] rounded-md px-2 py-[5px] text-[13.5px] leading-[1.45] text-ink no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover";
 
 const STEP =
-  "grid size-8 shrink-0 place-items-center rounded-lg border border-line text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 disabled:pointer-events-none disabled:opacity-40";
+  "grid size-9 shrink-0 place-items-center rounded-lg border border-line text-ink-2 transition-colors outline-none hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 disabled:pointer-events-none disabled:opacity-40 md:size-8";
 
 /**
  * The plan's header row: its label, then which chapter (or week) is open —
  * the full title in a menu trigger, never cut short — and the pager right
- * beside it. On a phone the picker takes its own line under label and pager.
+ * beside it. On a phone the label takes its own line, and the picker fills
+ * the line under it with the pager at its end.
  */
 function SectionSwitcher({
   title,
@@ -168,15 +169,15 @@ function SectionSwitcher({
   const current = sections[index];
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <h2 className={cn(SECTION_TITLE, "order-1 shrink-0")}>{title}</h2>
+      <h2 className={cn(SECTION_TITLE, "shrink-0 basis-full md:basis-auto")}>{title}</h2>
       <nav aria-label={label} className="contents">
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={`${current?.title ?? ""}, ${index + 1} of ${sections.length}. Jump to ${noun}`}
             title={`Jump to ${noun}`}
-            className="order-3 flex min-h-8 min-w-0 basis-full items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:order-2 md:max-w-[min(100%,480px)] md:basis-auto"
+            className="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-line bg-surface py-[6px] pr-[10px] pl-3 text-left text-[13px] leading-[18px] font-medium text-ink transition-colors outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover md:min-h-8 md:max-w-[min(100%,480px)] md:flex-initial"
           >
-            <span className="min-w-0 flex-1">{current?.title}</span>
+            <span className="min-w-0 flex-1 truncate">{current?.title}</span>
             <span className="tabular shrink-0 text-[12px] font-normal text-ink-3">
               {index + 1} of {sections.length}
             </span>
@@ -202,7 +203,7 @@ function SectionSwitcher({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <span className="order-2 ml-auto flex shrink-0 gap-2 md:order-3 md:ml-0">
+        <span className="flex shrink-0 gap-2">
           {([-1, 1] as const).map((dir) => {
             const next = sections[index + dir];
             return (

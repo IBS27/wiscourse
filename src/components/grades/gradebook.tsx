@@ -17,6 +17,7 @@ import { GradebookTable, type TableFooter } from "./gradebook-table";
 import { TargetsRail } from "./targets-rail";
 import { useWhatIf } from "./what-if";
 import { CourseTag } from "@/components/app/bits";
+import { COURSE_CONTENT } from "@/components/course/content-width";
 import { canvasCourseUrl } from "@/lib/course-routes";
 import {
   dayKeyOf,
@@ -191,7 +192,7 @@ export function CourseGradebook({
       style={courseStyle(color(courseCanvasId))}
     >
       {embedded ? (
-        <div className="flex items-center justify-between gap-4 px-4 pt-4 md:px-6">
+        <div className={cn(COURSE_CONTENT, "flex items-center justify-between gap-4 px-4 pt-4 md:px-6")}>
           <div className="min-w-0 truncate text-[12.5px] text-ink-3">{metaLine}</div>
           <div className="flex shrink-0 items-center gap-2">{toggle}</div>
         </div>
@@ -200,52 +201,57 @@ export function CourseGradebook({
         // the title at the same y and gutter as every page's (the course
         // colour rides on the code tag; the sidebar is the way back). Phones
         // keep the hub's template: a back chevron and a larger wrapping title.
-        <header className="flex shrink-0 items-start gap-3 border-b border-line px-4 pt-[max(16px,env(safe-area-inset-top))] pb-4 md:h-16 md:items-center md:gap-5 md:px-6 md:py-0">
-          <div className="flex min-w-0 flex-1 items-start">
-            <Link
-              to="/grades"
-              aria-label="All grades"
-              className="-mt-[2px] -ml-[7px] grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:hidden"
-            >
-              <ChevronLeft className="size-[18px]" />
-            </Link>
-            <div className="min-w-0 md:flex md:h-[42px] md:flex-col">
-              <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance md:page-title md:block md:h-6 md:truncate md:leading-6">
-                {course ? courseTitle(course) : "Course"}
-              </h1>
-              <div className="mt-1 truncate text-[12.5px] text-ink-3 md:mt-[2px] md:h-4 md:leading-4">
-                {[code, ...metaParts].map((part, i) =>
-                  part === undefined ? null : (
-                    <span key={`${i}-${part}`}>
-                      {i > (code === undefined ? 1 : 0) && (
-                        <span className="mx-[7px]" aria-hidden>
-                          ·
-                        </span>
-                      )}
-                      {i === 0 ? <CourseTag>{part}</CourseTag> : part}
-                    </span>
-                  ),
-                )}
+        <header className="shrink-0 border-b border-line px-4 pt-[max(16px,env(safe-area-inset-top))] pb-4 md:h-16 md:px-6 md:py-0">
+          {/* The same 1080px as the body below, left on the gutter. */}
+          <div className="flex w-full max-w-[1080px] items-start gap-3 md:h-full md:items-center md:gap-5">
+            <div className="flex min-w-0 flex-1 items-start">
+              <Link
+                to="/grades"
+                aria-label="All grades"
+                className="-mt-[2px] -ml-[7px] grid size-7 shrink-0 place-items-center rounded-md text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:hidden"
+              >
+                <ChevronLeft className="size-[18px]" />
+              </Link>
+              <div className="min-w-0 md:flex md:h-[42px] md:flex-col">
+                <h1 className="line-clamp-3 text-[22px] leading-[1.2] font-semibold tracking-[-0.022em] text-balance md:page-title md:block md:h-6 md:truncate md:leading-6">
+                  {course ? courseTitle(course) : "Course"}
+                </h1>
+                <div className="mt-1 truncate text-[12.5px] text-ink-3 md:mt-[2px] md:h-4 md:leading-4">
+                  {[code, ...metaParts].map((part, i) =>
+                    part === undefined ? null : (
+                      <span key={`${i}-${part}`}>
+                        {i > (code === undefined ? 1 : 0) && (
+                          <span className="mx-[7px]" aria-hidden>
+                            ·
+                          </span>
+                        )}
+                        {i === 0 ? <CourseTag>{part}</CourseTag> : part}
+                      </span>
+                    ),
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {toggle}
-            <a
-              href={canvasCourseUrl(courseCanvasId, sync?.instance)}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
-            >
-              Open in Canvas
-              <ArrowUpRight className="size-[14px] text-ink-3" />
-            </a>
+            <div className="flex shrink-0 items-center gap-2">
+              {toggle}
+              <a
+                href={canvasCourseUrl(courseCanvasId, sync?.instance)}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:inline-flex"
+              >
+                Open in Canvas
+                <ArrowUpRight className="size-[14px] text-ink-3" />
+              </a>
+            </div>
           </div>
         </header>
       )}
 
       <div
         className={cn(
+          // Capped at the 1080px every page shares (plus gutters), left-aligned.
+          COURSE_CONTENT,
           "min-w-0 flex-1",
           whatIfOn &&
             "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:grid-rows-[auto_1fr] lg:items-start",

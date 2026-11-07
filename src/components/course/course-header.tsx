@@ -137,11 +137,14 @@ export function CourseHeader({
         </a>
       </div>
 
-      {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
+      {/* A tab past either edge fades into the surface, so the row reads as
+          "scroll for more". Phones run tighter gaps and a bare count on Files,
+          so at common widths the next tab's first letters peek past the fade
+          instead of the row ending in a gap. */}
       <div className="group/tabs relative">
         <nav
           ref={tabsRef}
-          className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex scroll-px-4 gap-4 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
           <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
@@ -221,7 +224,9 @@ function Tab({
 function TabCount({ n }: { n: number }) {
   return (
     <span className="tabular rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
-      {n} new
+      {n}
+      {/* "new" from md up; on a phone the pill alone carries it, as the tab bar's counts do. */}
+      <span className="sr-only md:not-sr-only"> new</span>
     </span>
   );
 }

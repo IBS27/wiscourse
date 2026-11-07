@@ -313,7 +313,7 @@ function freeLane(laneEnds: number[], minute: number): number {
 export interface GridBounds {
   startMinute: number;
   endMinute: number;
-  /** Pixels per hour: full height, or compact for a week with no blocks. */
+  /** Pixels per hour. */
   pxPerHour: number;
   /** Whole hours the gutter labels. */
   hours: number[];
@@ -325,16 +325,6 @@ export interface GridBounds {
  * `gridScrollTop` decides where it opens.
  */
 export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
-
-/**
- * An hour's height when the week has nothing timed: a little shorter than a
- * full hour, so the empty hours read as a calm grid rather than a void. A
- * whole pixel, so every hour line draws at the same weight.
- */
-export const EMPTY_PX_PER_HOUR = 42;
-
-/** The midnight-to-midnight grid for a week with nothing timed. */
-export const EMPTY_GRID_BOUNDS: GridBounds = gridBounds(EMPTY_PX_PER_HOUR);
 
 /** The midnight-to-midnight grid at `pxPerHour`. */
 export function gridBounds(pxPerHour: number): GridBounds {
@@ -361,16 +351,6 @@ export function gridScrollTop(
     firstBlockMinute === undefined
       ? GRID_OPENS_AT
       : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
-  return minuteOffset(Math.max(0, minute), bounds);
-}
-
-/**
- * Where a week with nothing timed opens: an hour above now when today is in
- * view (so the now line sits near the top), otherwise at 8 AM.
- */
-export function emptyGridScrollTop(nowMinute: number | undefined, bounds: GridBounds): number {
-  const minute =
-    nowMinute === undefined ? GRID_OPENS_AT : Math.floor(nowMinute / 60) * 60 - BLOCK_LEAD;
   return minuteOffset(Math.max(0, minute), bounds);
 }
 

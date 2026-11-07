@@ -2,7 +2,7 @@
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening at 8 AM or
 // an hour before the week's first block, whichever is earlier. A week with
-// nothing timed draws shorter hours and opens an hour above now.
+// nothing timed shows a short note under the bands instead of empty hours.
 
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
@@ -14,8 +14,6 @@ import {
   blockLabel,
   blockTimeLabel,
   clockTime,
-  EMPTY_GRID_BOUNDS,
-  emptyGridScrollTop,
   firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
@@ -28,6 +26,7 @@ import {
   type GridBounds,
 } from "@/lib/calendar";
 import { AllDayLine, DoneLine, DueLine, PlanLine } from "./bands";
+import { EmptySchedule } from "./empty-schedule";
 import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL, TODAY_TINT } from "./block-styles";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
@@ -66,7 +65,9 @@ export function WeekGrid({
   now,
   zone,
   compact = false,
+  loading = false,
   onAddClassTimes,
+  onNewEvent,
   onOpenBlock,
   onOpenEvent,
 }: {
@@ -77,28 +78,18 @@ export function WeekGrid({
   zone: string;
   /** Phone layout: band items shrink to their marks. */
   compact?: boolean;
+  /** Still fetching: keep the grid rather than flash the empty note. */
+  loading?: boolean;
   /** Set when no class times exist yet: the grid nudges for them. */
   onAddClassTimes?: () => void;
+  onNewEvent: () => void;
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
   const first = firstBlockMinute(days, models);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // A week with nothing timed draws shorter hours and opens an hour above
-  // now, so the empty grid reads as the rest of today, not a void.
-  const empty = first === undefined;
-  const bounds = empty ? EMPTY_GRID_BOUNDS : GRID_BOUNDS;
-  const nowMinute = minuteOf(now, zone);
-  const nowTop = minuteOffset(nowMinute, bounds);
-  const showNow = days.includes(todayKey);
+  // Nothing in the week takes up time: a note, not fourteen empty hours.
+  const empty = !loading && first === undefined;
   const [expanded, setExpanded] = useState(false);
-  useTimelineScroll(
-    scrollRef,
-    empty
-      ? emptyGridScrollTop(showNow ? nowMinute : undefined, bounds)
-      : gridScrollTop(first, bounds),
-    bounds.pxPerHour,
-  );
 
   const dueLine = (item: TodoItem) => (
     <DueLine key={item.key} item={item} zone={zone} now={now} compact={compact} />
@@ -136,7 +127,7 @@ export function WeekGrid({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {onAddClassTimes !== undefined && <ClassTimesStrip onOpen={onAddClassTimes} />}
+      {onAddClassTimes !== undefined && !empty && <ClassTimesStrip onOpen={onAddClassTimes} />}
 
       <div className={cn("grid border-b border-line", ROW)} style={grid}>
         <div />
@@ -170,49 +161,102 @@ export function WeekGrid({
         />
       )}
 
-      <div
-        ref={scrollRef}
-        className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
-        style={grid}
-      >
-        {/* Nothing else lives in the gutter (the now pill sits in today's
-            column), so every hour keeps its label. */}
-        <div className="relative" style={{ height: bounds.height }}>
-          {bounds.hours.map((hour) => (
-            <span
-              key={hour}
-              className={cn(HOUR_LABEL, "right-2")}
-              style={{ top: minuteOffset(hour * 60, bounds) }}
-            >
-              {hourLabel(hour)}
-            </span>
-          ))}
-        </div>
+      {empty ? (
+        <EmptySchedule
+          title="Nothing scheduled this week"
+          onAddClassTimes={onAddClassTimes}
+          onNewEvent={onNewEvent}
+        />
+      ) : (
+        <WeekTimeline
+          days={days}
+          models={models}
+          todayKey={todayKey}
+          now={now}
+          zone={zone}
+          first={first}
+          columns={grid}
+          onOpenBlock={onOpenBlock}
+        />
+      )}
+    </div>
+  );
+}
 
-        {days.map((day) => {
-          const isToday = day === todayKey;
-          const isPast = day < todayKey;
-          const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
-          return (
-            <div
-              key={day}
-              className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
-              style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
-            >
-              {blocks.map((block) => (
-                <Block
-                  key={block.id}
-                  block={block}
-                  bounds={bounds}
-                  past={isPast}
-                  onOpen={onOpenBlock}
-                />
-              ))}
-              {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
-            </div>
-          );
-        })}
+/**
+ * The scrolling hours. Its own component so the scroll position is set up
+ * afresh each time it mounts (after the empty note, say).
+ */
+function WeekTimeline({
+  days,
+  models,
+  todayKey,
+  now,
+  zone,
+  first,
+  columns,
+  onOpenBlock,
+}: {
+  days: string[];
+  models: Map<string, DayModel>;
+  todayKey: string;
+  now: number;
+  zone: string;
+  /** The week's earliest block start, if any. */
+  first: number | undefined;
+  columns: CSSProperties;
+  onOpenBlock: (block: TimeBlock) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bounds = GRID_BOUNDS;
+  const nowMinute = minuteOf(now, zone);
+  const nowTop = minuteOffset(nowMinute, bounds);
+  const showNow = days.includes(todayKey);
+  useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
+
+  return (
+    <div
+      ref={scrollRef}
+      className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
+      style={columns}
+    >
+      {/* Nothing else lives in the gutter (the now pill sits in today's
+          column), so every hour keeps its label. */}
+      <div className="relative" style={{ height: bounds.height }}>
+        {bounds.hours.map((hour) => (
+          <span
+            key={hour}
+            className={cn(HOUR_LABEL, "right-2")}
+            style={{ top: minuteOffset(hour * 60, bounds) }}
+          >
+            {hourLabel(hour)}
+          </span>
+        ))}
       </div>
+
+      {days.map((day) => {
+        const isToday = day === todayKey;
+        const isPast = day < todayKey;
+        const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
+        return (
+          <div
+            key={day}
+            className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
+            style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
+          >
+            {blocks.map((block) => (
+              <Block
+                key={block.id}
+                block={block}
+                bounds={bounds}
+                past={isPast}
+                onOpen={onOpenBlock}
+              />
+            ))}
+            {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
+          </div>
+        );
+      })}
     </div>
   );
 }

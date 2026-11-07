@@ -94,7 +94,7 @@ function Home() {
 
           <MobileNew todayKey={today} now={now} />
 
-          <div className="pt-[6px] pb-[26px]">
+          <div className="pt-0 pb-[26px] md:pt-[6px]">
             {items === undefined ? (
               <AgendaSkeleton />
             ) : dayItems ? (
@@ -222,7 +222,7 @@ function Section({
 }) {
   return (
     <section>
-      <div className="flex items-baseline gap-2 px-4 pt-[14px] pb-[6px] md:px-6 md:pt-6 md:pb-2">
+      <div className="flex items-baseline gap-2 px-4 pt-3 pb-[6px] md:px-6 md:pt-6 md:pb-2">
         <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
         {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
         {action ?? <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{count ?? items.length}</span>}

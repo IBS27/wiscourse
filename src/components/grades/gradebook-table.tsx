@@ -22,16 +22,15 @@ import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /**
- * Assignment · Due · Score · % · Class median. Below `md` the median and the
- * due column fold away and score/percent stack on the right. On desktop the
- * due and median columns collapse to zero width when no row in the whole
- * table has a value, so every group keeps the same columns. Due is sized to
- * its longest date ("Thu, Nov 12") and Score to a what-if field plus "/100".
+ * Assignment · Score · % · Class median. A row's due date rides after its
+ * name, so no column is ever blank. Below `md` the median column folds away
+ * and score/percent stack on the right. On desktop the median column
+ * collapses to zero width when no row in the whole table has one, so every
+ * group keeps the same columns. Score fits a what-if field plus "/100".
  */
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,104px)_128px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_128px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
 const MOBILE_1 = "col-start-1 row-start-1 md:col-auto md:row-auto";
-const MOBILE_2 = "col-start-1 row-start-2 md:col-auto md:row-auto";
 const MOBILE_3 = "col-start-2 row-start-1 md:col-auto md:row-auto";
 const MOBILE_4 = "col-start-2 row-start-2 md:col-auto md:row-auto";
 
@@ -59,11 +58,7 @@ export function GradebookTable({
 }) {
   // Canvas only sends medians for some courses; an all-empty column is noise.
   const hasMedian = summary.groups.some((g) => g.rows.some((r) => r.row.median !== undefined));
-  const hasDue = summary.groups.some((g) => g.rows.some((r) => dueLabel(r.row) !== undefined));
-  const columns = {
-    ...(hasDue ? {} : { "--due-col": "0px" }),
-    ...(hasMedian ? {} : { "--median-col": "0px" }),
-  } as CSSProperties;
+  const columns = (hasMedian ? {} : { "--median-col": "0px" }) as CSSProperties;
   return (
     <div role="table" aria-label="Grades" style={columns}>
       <div
@@ -74,7 +69,6 @@ export function GradebookTable({
         )}
       >
         <span role="columnheader">Assignment</span>
-        <span role="columnheader">{hasDue ? "Due" : ""}</span>
         <span role="columnheader" className="text-right">
           Score
         </span>
@@ -108,7 +102,6 @@ export function GradebookTable({
             {footer.label}
             <span className="ml-2 text-[12.5px] font-normal text-ink-3">{footer.sub}</span>
           </div>
-          <span role="cell" className="hidden md:block" />
           <span role="cell" className="hidden md:block" />
           <span
             role="cell"
@@ -164,7 +157,6 @@ function GroupSection({
             </span>
           )}
         </div>
-        <span role="cell" className="hidden md:block" />
         <div
           role="cell"
           className={cn(
@@ -226,6 +218,9 @@ function AssignmentRow({
         >
           {row.name}
         </Link>
+        {due !== undefined && (
+          <span className="shrink-0 pl-1 text-[12.5px] whitespace-nowrap text-ink-3">{due}</span>
+        )}
         {state !== undefined &&
           (result.dropped ? (
             // A dropped score is decided, not wrong: a quiet pill, never a strike.
@@ -247,18 +242,6 @@ function AssignmentRow({
             <span className="size-[5px] shrink-0 rounded-full bg-ink-2" aria-hidden />
             <span className="sr-only">edited</span>
           </>
-        )}
-      </div>
-
-      <div
-        role="cell"
-        className={cn(MOBILE_2, "truncate pl-[14px] text-xs text-ink-3 md:pl-0 md:text-[12.5px]")}
-      >
-        {due ?? (
-          // Never a blank cell: an undated row says so, quietly.
-          <span className="hidden md:inline" title="No due date">
-            <span className="sr-only">No due date</span>
-          </span>
         )}
       </div>
 

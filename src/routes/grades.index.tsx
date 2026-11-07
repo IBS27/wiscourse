@@ -14,7 +14,6 @@ import {
 } from "@/components/grades/ledger-row";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, useToday, type Course } from "@/lib/hooks";
-import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 
 export const Route = createFileRoute("/grades/")({
@@ -25,7 +24,6 @@ function GradesIndex() {
   const { loading, courses, visible, other, past, termName, color } = useCourses();
   // One subscription for the whole page; every row reads its book from it.
   const books = useQuery(api.grades.index);
-  const seen = useSeen("grade");
   const info = useSyncInfo();
   const today = useToday();
   const now = useNow();
@@ -43,7 +41,6 @@ function GradesIndex() {
         course={course}
         color={color(course.canvasId)}
         book={byCourse.get(course.canvasId)}
-        seen={seen}
         today={today}
       />
     ));

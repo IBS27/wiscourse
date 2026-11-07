@@ -5,13 +5,13 @@ import { openSearch } from "@/lib/search-context";
 import { cn } from "@/lib/utils";
 
 /**
- * The one page frame. Every top bar is exactly 64px with its rule at y=64,
+ * The one page frame. Every top bar is exactly 64px (56px on phones),
  * and its title block is a fixed 42px (24px title line + 2px + 16px subtitle
- * line) centred in it, so the title's top sits at y=11 on every page whether
+ * line) centred in it, so the title's top sits at the same y on every page whether
  * or not a subtitle is shown. Bars that cannot use PageHeader (calendar,
  * course hub, chats) compose these same pieces.
  */
-export const HEADER_BAR = "h-16 shrink-0 border-b border-line px-4 md:px-6";
+export const HEADER_BAR = "h-14 shrink-0 md:h-16 border-b border-line px-4 md:px-6";
 
 /**
  * The one reading width for single-column pages (Tasks, Settings), left-aligned

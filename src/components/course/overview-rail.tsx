@@ -14,7 +14,7 @@ import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge } from "@/components/app/bits";
 import { FeedRowBody } from "@/components/agenda/new-rail";
-import { FEED_ROW } from "@/components/agenda/feed-row";
+import { RAIL_FEED_ROW } from "@/components/agenda/feed-row";
 import { MeetingsEditor } from "@/components/calendar/meetings-editor";
 import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
@@ -108,7 +108,7 @@ export function OverviewRail({
                   seenVersion: item.seenVersion,
                 });
               }}
-              className={FEED_ROW}
+              className={RAIL_FEED_ROW}
             >
               <FeedRowBody
                 title={feedTitle(item)}

@@ -67,8 +67,13 @@ function CourseAnnouncements() {
         <>
           <SectionHead
             title="Announcements"
-            detail={unreadCount > 0 && unreadCount < rows.length ? `${unreadCount} unread` : undefined}
-            right={<span className={SECTION_COUNT}>{rows.length}</span>}
+            detail={
+              // The count sits right after the label, never alone at the far edge.
+              <>
+                <span className={SECTION_COUNT}>{rows.length}</span>
+                {unreadCount > 0 && unreadCount < rows.length && <> · {unreadCount} unread</>}
+              </>
+            }
           />
           {rows.map((announcement) => (
             <AnnouncementRow

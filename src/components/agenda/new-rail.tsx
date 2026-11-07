@@ -7,7 +7,7 @@ import type { FeedItem } from "../../../convex/inbox";
 import { CountBadge, CourseTag } from "@/components/app/bits";
 import { formatAgo } from "@/lib/dates";
 import { feedSeenKind, feedStatus, feedTitle, groupFeed } from "@/lib/feed";
-import { FEED_ROW } from "./feed-row";
+import { FEED_ROW, RAIL_FEED_ROW } from "./feed-row";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -66,7 +66,16 @@ export function FeedRowBody({
   );
 }
 
-export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
+export function FeedCard({
+  item,
+  now,
+  rail = false,
+}: {
+  item: FeedItem;
+  now: number;
+  /** The 20px desktop-rail inset instead of the 16px phone gutter. */
+  rail?: boolean;
+}) {
   const { label, color } = useCourses();
   const markSeen = useMutation(api.seenState.markSeen);
 
@@ -84,7 +93,7 @@ export function FeedCard({ item, now }: { item: FeedItem; now: number }) {
           });
         }
       }}
-      className={FEED_ROW}
+      className={rail ? RAIL_FEED_ROW : FEED_ROW}
       style={courseStyle(color(item.courseCanvasId))}
     >
       <FeedRowBody
@@ -108,26 +117,26 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
 
   return (
     <aside className="hidden w-[340px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
-      <div className="flex min-h-[44px] items-center gap-2 px-4 pt-3 pb-1">
+      <div className="flex min-h-[44px] items-center gap-2 px-5 pt-3 pb-1">
         <span className="text-[13px] font-semibold tracking-[-0.01em]">Recent</span>
         <CountBadge n={unseen.length} />
         {unseen.length > 0 && (
-          <button type="button" onClick={() => void markAll()} className="ml-auto text-[12px] text-ink-3 transition-colors hover:text-ink">
+          <button type="button" onClick={() => void markAll()} className="-mr-2 ml-auto rounded-md px-2 py-[3px] text-[12px] text-ink-3 transition-colors hover:bg-hover hover:text-ink">
             Mark all read
           </button>
         )}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {feed === undefined ? null : feed.length === 0 ? (
-          <div className="px-6 py-10 text-center text-[12.5px] leading-[1.5] text-ink-3">
+          <div className="px-5 py-10 text-center text-[12.5px] leading-[1.5] text-ink-3">
             Nothing new. Announcements, new assignments and posted grades land here.
           </div>
         ) : (
           groups.map((g) => (
             <div key={g.label}>
-              <div className="px-4 pt-3 pb-1 text-[12px] font-medium text-ink-3">{g.label}</div>
+              <div className="px-5 pt-3 pb-1 text-[12px] font-medium text-ink-3">{g.label}</div>
               {g.items.map((f) => (
-                <FeedCard key={f.key} item={f} now={now} />
+                <FeedCard key={f.key} item={f} now={now} rail />
               ))}
             </div>
           ))
@@ -135,7 +144,7 @@ export function NewRail({ todayKey, now }: { todayKey: string; now: number }) {
       </div>
       <Link
         to="/inbox"
-        className="mt-auto flex items-center gap-[6px] border-t border-line px-4 py-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
+        className="mt-auto flex items-center gap-[6px] border-t border-line px-5 py-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink"
       >
         View all in Inbox
         <ArrowRight className="size-[13px]" aria-hidden />

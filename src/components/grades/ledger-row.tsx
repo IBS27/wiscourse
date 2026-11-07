@@ -6,7 +6,6 @@ import { CourseTag } from "@/components/app/bits";
 import { dayKeyOf, formatPlannedRelative } from "@/lib/dates";
 import { coverageLabel, formatPercent, formatPoints, schemeLabel } from "@/lib/grades-ui";
 import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
-import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /** The grid the header and every row share. */
@@ -41,14 +40,12 @@ export function GradesLedgerRow({
   course,
   color,
   book,
-  seen,
   today,
 }: {
   course: Course;
   color: string;
   /** Undefined while `grades.index` is in flight. */
   book: Gradebook | undefined;
-  seen: Seen;
   today: string;
 }) {
   const summary = useMemo(() => (book === undefined ? undefined : summarize(book)), [book]);
@@ -65,8 +62,6 @@ export function GradesLedgerRow({
 
   const code = shortCode(course);
   const coverage = summary === undefined ? undefined : coverageLabel(summary);
-  const unseen =
-    latest?.postedAt !== undefined && !seen.has(latest.canvasId, String(latest.postedAt));
 
   return (
     <Link
@@ -128,7 +123,8 @@ export function GradesLedgerRow({
           <span className="text-[13px] text-ink-3">—</span>
         ) : (
           <>
-            <div className={cn("line-clamp-2 text-[13px] leading-[1.35]", unseen ? "font-medium text-ink" : "text-ink-2")}>
+            {/* One line, one weight in every row: the ledger reads as a column. */}
+            <div className="truncate text-[13px] leading-[1.35] text-ink" title={latest.name}>
               {latest.name}
             </div>
             <div className="tabular mt-[3px] truncate text-[12.5px] text-ink-3">

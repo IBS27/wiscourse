@@ -42,7 +42,6 @@ export function AnnouncementRow({
   const links = detectLinks(announcement.message, courseId);
 
   const when = announcement.postedAt === undefined ? undefined : formatAgo(announcement.postedAt, now);
-  const meta = [author, when].filter(Boolean).join(" · ");
 
   return (
     <article
@@ -60,16 +59,22 @@ export function AnnouncementRow({
           {unread && <span className="size-[6px] rounded-full bg-unread" />}
         </span>
         <span className="min-w-0">
-          <span
-            className={cn(
-              "block text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
-              unread ? "font-semibold" : "font-normal",
+          {/* Date on the title line at the row's right edge, as on every feed list. */}
+          <span className="flex items-start gap-3">
+            <span
+              className={cn(
+                "min-w-0 flex-1 text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
+                unread ? "font-semibold" : "font-normal",
+              )}
+            >
+              {announcement.title}
+              {unread && <span className="sr-only"> (unread)</span>}
+            </span>
+            {when !== undefined && (
+              <span className="tabular shrink-0 pt-[2px] text-xs text-ink-3">{when}</span>
             )}
-          >
-            {announcement.title}
-            {unread && <span className="sr-only"> (unread)</span>}
           </span>
-          <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
+          <span className="mt-[2px] block truncate text-[12.5px] text-ink-3">{author}</span>
           {!open && (
             <span className="mt-[5px] line-clamp-2 max-w-[72ch] text-[13px] leading-[1.5] text-ink-3">
               {preview(announcement.message)}

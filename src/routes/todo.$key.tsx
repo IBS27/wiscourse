@@ -1,9 +1,9 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChevronLeft, SearchX } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, SearchX } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
-import { HEADER_BAR } from "@/components/app/page-header";
+import { HEADER_BAR, HEADER_BUTTON } from "@/components/app/page-header";
 import { TodoDetail } from "@/components/todo/todo-detail";
 import { announcementsHref } from "@/lib/course-routes";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,8 @@ function TodoPage() {
     <div className="flex flex-1 flex-col">
       {/* The page frame: a 64px bar with the breadcrumb centred in it, in
           the body's left-aligned 720px column (the page's title is the
-          heading below). Phones get a compact 48px back bar. */}
+          heading below). Phones get a compact 48px back bar, with Open in
+          Canvas as its round action so the page's own Plan leads the body. */}
       <header className={cn(HEADER_BAR, "max-md:h-12")}>
         <div className="flex h-full w-full max-w-[720px] items-center">
           <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center">
@@ -66,6 +67,17 @@ function TodoPage() {
               </Link>
             </div>
           </nav>
+          {item && item.kind !== "local" && item.htmlUrl && (
+            <a
+              href={item.htmlUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open in Canvas"
+              className={cn(HEADER_BUTTON, "-mr-2 md:hidden")}
+            >
+              <ArrowUpRight className="size-[16px]" />
+            </a>
+          )}
         </div>
       </header>
       {/* A flex column, so the detail's xl rail runs the full height. */}

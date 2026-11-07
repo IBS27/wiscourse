@@ -12,8 +12,11 @@ import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
-/** Course · next due · new; the new column is exactly as wide as its slots. */
-export const LEDGER_COLS = "md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-x-6";
+/**
+ * Course · next due · new. The course takes what is left once next due has
+ * its 280px and the new column is exactly as wide as its slots.
+ */
+export const LEDGER_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)_auto] md:gap-x-6";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =
@@ -73,7 +76,11 @@ export function LedgerRow({
       )}
     >
       <div className="min-w-0">
-        <div className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink">
+        {/* One line on desktop, so every row is the same height; the full name is the tooltip. */}
+        <div
+          className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink md:truncate"
+          title={courseTitle(course)}
+        >
           {courseTitle(course)}
         </div>
         <CourseMeta code={code} instructor={instructor} />
@@ -84,7 +91,7 @@ export function LedgerRow({
           <span className="text-[12.5px] text-ink-3">Nothing due</span>
         ) : (
           <>
-            <span className="line-clamp-2 text-[13px] text-ink-2">
+            <span className="line-clamp-2 text-[13px] text-ink-2 md:line-clamp-1" title={next.title}>
               <span className="text-ink-3 md:hidden">Next · </span>
               {next.title}
             </span>
@@ -109,8 +116,8 @@ export function LedgerRow({
 
 /**
  * Fixed slots on desktop, one per kind, numbers only: the header names each
- * slot, so a column reads like a table, and a zero is left blank so the
- * counts that exist stand out. Phones have no header, so they get the same
+ * slot, so a column reads like a table; a zero is a faint "0", so every
+ * column stays filled and the counts that exist stand out. Phones have no header, so they get the same
  * counts as words.
  */
 function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
@@ -125,8 +132,12 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
       <span className="hidden justify-end text-[13px] md:flex" title={label}>
         <span className="sr-only">{label}</span>
         {NEW_SLOTS.map((slot) => (
-          <span key={slot.key} className={cn(SLOT, "font-medium text-ink-2")} aria-hidden>
-            {counts[slot.key] > 0 ? counts[slot.key] : ""}
+          <span
+            key={slot.key}
+            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink-3/50")}
+            aria-hidden
+          >
+            {counts[slot.key]}
           </span>
         ))}
       </span>
