@@ -248,15 +248,13 @@ function Switch({
       aria-checked={on}
       aria-label={label}
       onClick={onChange}
-      className={cn(
-        "relative ml-auto h-4 w-7 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none",
-        on && "bg-ink-3",
-      )}
+      className="relative ml-auto h-4 w-7 shrink-0 rounded-full bg-line-2 transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:outline-none"
     >
       <span
         className={cn(
           "absolute top-[2px] left-[2px] block size-3 rounded-full bg-surface shadow-[0_1px_1px_rgb(0_0_0/0.12)] transition-transform",
-          on && "translate-x-3",
+          // On: a light track with a dark knob, so a column of switches never outweighs the labels.
+          on && "translate-x-3 bg-ink",
         )}
       />
     </button>

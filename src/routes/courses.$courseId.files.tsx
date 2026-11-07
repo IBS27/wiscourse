@@ -139,7 +139,7 @@ function CourseFiles() {
         tree={tree}
         selectedFolderId={folderId}
         onSelect={selectFolder}
-        className="w-[240px] shrink-0 xl:w-[264px]"
+        className="w-[264px] shrink-0 xl:w-[288px]"
       />
       <FileList
         tree={tree}
