@@ -4,7 +4,6 @@
 
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Clock } from "lucide-react";
 import type { TodoItem } from "../../../convex/todos";
 import { Mark } from "./marks";
 import {
@@ -20,10 +19,10 @@ import { cn } from "@/lib/utils";
 
 /**
  * The shared band item. In the week's columns it is a small event chip: a
- * course-colour wash with a 2px bar on its left, the time on its own line
- * above a title of up to three lines. The Day band has the width for one
- * line and a right-aligned time instead, and the phone's week shows the
- * mark alone. The tooltip always carries the full title.
+ * course-colour wash with a 2px bar on its left, a title of up to two lines
+ * and one meta line under it. The Day band has the width for one line, with
+ * the same meta right-aligned, and the phone's week shows the mark alone.
+ * The tooltip always carries the full title.
  */
 function Line({
   color,
@@ -89,25 +88,78 @@ function Line({
   );
 }
 
-/** The week's event chip: a ~11% course-colour wash (deeper in dark) and a 2px course bar. */
+/**
+ * The week's event chip: a ~11% course-colour wash and a 2px course bar. Dark
+ * mode's wash sits nearer the surface, so a chip weighs the same in both.
+ */
 const CHIP = cn(
-  "block w-full shrink-0 rounded-[6px] border-l-2 border-c py-[4px] pr-[6px] pl-[7px] text-[13px] leading-[17px]",
+  "block w-full shrink-0 rounded-[6px] border-l-2 border-c py-[3px] pr-[5px] pl-[6px] text-[13px] leading-[16px]",
   "bg-[color-mix(in_srgb,var(--c)_11%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--c)_17%,var(--surface))]",
-  "dark:bg-[color-mix(in_srgb,var(--c)_18%,var(--surface))] dark:hover:bg-[color-mix(in_srgb,var(--c)_25%,var(--surface))]",
+  "dark:bg-[color-mix(in_srgb,var(--c)_13%,var(--surface))] dark:hover:bg-[color-mix(in_srgb,var(--c)_19%,var(--surface))]",
 );
 
+/** Past due: the theme red, a brighter red in dark so it reads on the wash. */
+const LATE = "text-red dark:text-[#ff7b7b]";
+
+/** "11 AM" on the hour, else "11:30 AM": short enough that the course code fits a chip. */
+function shortClock(minute: number): string {
+  const full = clockTimeMeridiem(minute);
+  return minute % 60 === 0 ? full.replace(":00", "") : full;
+}
+
 /**
- * A chip's body: the title (two lines at most), led by a check when the
- * item is done, then one quiet meta line ("11:00 AM · ASTRON 103") that
- * truncates rather than wraps. `late` marks it with a small red clock.
+ * The quiet meta line ("11 AM · ASTRON 103"), the time in red when past due;
+ * a late chip with no time reads "Late · ASTRON 103".
+ * It never wraps: the time stays whole and the course truncates.
+ */
+function ChipMeta({
+  time,
+  course,
+  late,
+  className,
+}: {
+  time?: string;
+  course?: string;
+  late?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-[4px] font-normal whitespace-nowrap tabular text-ink-3",
+        className,
+      )}
+    >
+      {late && time !== undefined && <span className="sr-only">Past due</span>}
+      {/* Without a time (the 11:59 PM default), a late chip still says so. */}
+      {(time ?? (late ? "Late" : undefined)) !== undefined && (
+        <span className={cn("shrink-0", late && LATE)}>{time ?? "Late"}</span>
+      )}
+      {(time !== undefined || late) && course !== undefined && (
+        <span className="shrink-0" aria-hidden>
+          ·
+        </span>
+      )}
+      {course !== undefined && <span className="min-w-0 truncate">{course}</span>}
+    </span>
+  );
+}
+
+/**
+ * A chip's body: the title (three lines at most, so typical titles show in
+ * full), led by a check when the item is done, then one quiet meta line
+ * ("11:00 AM · ASTRON 103") that truncates rather than wraps. `late` turns
+ * the time red.
  */
 function ChipBody({
   time,
+  course,
   done,
   late,
   children,
 }: {
   time?: string;
+  course?: string;
   done?: boolean;
   late?: boolean;
   children: ReactNode;
@@ -115,23 +167,16 @@ function ChipBody({
   return (
     <>
       <span className="flex items-start gap-[3px]">
-        {done && <Mark kind="done" className="h-[17px] w-3" />}
-        <span className="line-clamp-2 min-w-0 flex-1 break-words">{children}</span>
+        {done && <Mark kind="done" className="h-4 w-3" />}
+        <span className="line-clamp-3 min-w-0 flex-1 break-words">{children}</span>
       </span>
-      {(time !== undefined || late) && (
-        <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[12px] leading-[15px] font-normal tabular text-ink-3">
-          {late && <Clock className="mt-px size-3 shrink-0 text-red" aria-label="Past due" />}
-          {/* Time and course each get their own unbroken line. */}
-          {time !== undefined && (
-            <span className="min-w-0">
-              {time.split(" · ").map((part) => (
-                <span key={part} className="block truncate whitespace-nowrap">
-                  {part}
-                </span>
-              ))}
-            </span>
-          )}
-        </span>
+      {(time !== undefined || course !== undefined || late) && (
+        <ChipMeta
+          time={time}
+          course={course}
+          late={late}
+          className="mt-px text-[12px] leading-[14px]"
+        />
       )}
     </>
   );
@@ -155,20 +200,19 @@ export function DueLine({
   compact?: boolean;
 }) {
   const { color, label } = useCourses();
+  const course = label(item.courseCanvasId) || undefined;
   const done = isDoneOrSubmitted(item);
   const late = !done && now !== undefined && isOverdue(item, now);
   const minute = item.dueAt === undefined ? undefined : minuteOf(item.dueAt, zone);
   const tooltip =
     minute === undefined ? item.title : `${item.title} · due ${clockTimeMeridiem(minute)}`;
   if (!roomy && !compact) {
-    // The end-of-day default is left out so the title keeps the room; the
-    // tooltip always carries it.
-    // The small line says when and for which course; the title gets the room.
-    const when = minute === undefined || minute === END_OF_DAY ? undefined : clockTimeMeridiem(minute);
-    const time = [when, label(item.courseCanvasId)].filter(Boolean).join(" · ") || undefined;
+    // The meta line says when and for which course. The end-of-day default
+    // is left out (the Due band implies it); the tooltip always carries it.
+    const when = minute === undefined || minute === END_OF_DAY ? undefined : shortClock(minute);
     return (
       <Line todoKey={item.key} color={color(item.courseCanvasId)} title={tooltip} muted={done}>
-        <ChipBody time={time} done={done} late={late}>
+        <ChipBody time={when} course={course} done={done} late={late}>
           {item.title}
         </ChipBody>
       </Line>
@@ -187,10 +231,13 @@ export function DueLine({
       {roomy && (
         <span className={cn("min-w-0 flex-1 truncate", done && "text-ink-3")}>{item.title}</span>
       )}
-      {roomy && minute !== undefined && (
-        <span className="shrink-0 text-xs font-normal tabular text-ink-3">
-          {clockTimeMeridiem(minute)}
-        </span>
+      {roomy && (minute !== undefined || course !== undefined) && (
+        <ChipMeta
+          time={minute === undefined ? undefined : clockTimeMeridiem(minute)}
+          course={course}
+          late={late}
+          className="max-w-[50%] text-xs"
+        />
       )}
     </Line>
   );

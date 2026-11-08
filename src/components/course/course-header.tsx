@@ -4,14 +4,23 @@ import { ChevronLeft, ChevronRight, ArrowUpRight, ExternalLink, Search } from "l
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
+import { COURSE_CONTENT } from "./content-width";
 import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
-import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
+import {
+  courseColorVar,
+  courseLabel,
+  courseStyle,
+  courseTitle,
+  shortCode,
+  type Course,
+} from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
 import { CourseTag } from "@/components/app/bits";
 import { HeaderTitle } from "@/components/app/page-header";
 import { formatTerm } from "@/lib/terms";
 import { useSyncInfo } from "@/lib/sync-info";
+import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 
@@ -43,8 +52,11 @@ export function CourseHeader({
   }, [pathname, badges, tabsRef]);
 
   const name = course === undefined ? "" : courseTitle(course);
+  // A phone leads with the short code; the full title is one quiet line under it.
+  const label = course === undefined ? "" : courseLabel(course);
   const code = course === undefined ? undefined : shortCode(course);
   const term = formatTerm(course?.term);
+  const subtitle = [name !== label ? name : undefined, term].filter(Boolean).join(" · ");
   const meta = [
     code,
     term,
@@ -58,24 +70,24 @@ export function CourseHeader({
       className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[10px] md:hidden">
+      {/* Phones: code as the title (its dot carries the course colour) on the
+          row with back, search and Canvas; the long title and term share one
+          truncated line under it, which runs the full width under the icons too. */}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-3 md:hidden">
         <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
-        <div className="min-w-0">
-          <h1 className="line-clamp-3 text-[20px] leading-[25px] font-semibold tracking-[-0.022em] text-balance">
-            {name || <span className="text-ink-3">Course</span>}
-          </h1>
-          <div className="mt-1 flex min-w-0 items-center text-[12.5px] text-ink-3">
-            {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
-            {code !== undefined && term !== undefined && (
-              <span className="mx-[6px]" aria-hidden>
-                ·
-              </span>
-            )}
-            {term !== undefined && <span className="min-w-0 truncate">{term}</span>}
-          </div>
-        </div>
+        <h1 className="flex min-w-0 items-center gap-2 text-[20px] leading-6 font-semibold tracking-[-0.02em]">
+          {label === "" ? (
+            <span className="text-ink-3">Course</span>
+          ) : (
+            <>
+              <span className="size-2 shrink-0 rounded-full bg-c" aria-hidden />
+              <span className="truncate">{label}</span>
+              {name !== label && <span className="sr-only">: {name}</span>}
+            </>
+          )}
+        </h1>
         <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
           <button
             type="button"
@@ -88,11 +100,20 @@ export function CourseHeader({
             <ExternalLink className="size-[18px]" />
           </a>
         </div>
+        {subtitle !== "" && (
+          <p className="col-start-2 col-end-4 mt-[2px] truncate text-[13px] leading-[18px] text-ink-3">
+            {name !== label && <span aria-hidden>{name}</span>}
+            {name !== label && term !== undefined && <span aria-hidden> · </span>}
+            {term}
+          </p>
+        )}
       </div>
 
       {/* The page frame's 64px bar; the tabs sit below it. The course colour
-          rides on the code tag, so the title starts at the gutter like every page's. */}
-      <div className="hidden h-16 items-center gap-5 px-6 md:flex">
+          rides on the code tag, so the title starts at the gutter like every page's.
+          Bar and tabs take the tab content's width, so "Open in Canvas" ends
+          on the same right edge as every course tab's content. */}
+      <div className={cn(COURSE_CONTENT, "hidden h-16 items-center gap-5 px-6 md:flex")}>
         <HeaderTitle
           className="flex-1"
           title={name || <span className="text-ink-3">Course</span>}
@@ -118,11 +139,14 @@ export function CourseHeader({
         </a>
       </div>
 
-      {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
-      <div className="group/tabs relative mt-1 md:mt-0">
+      {/* A tab past either edge fades into the surface, so the row reads as
+          "scroll for more". Phones run tighter gaps and a bare count on Files,
+          so at common widths the next tab's first letters peek past the fade
+          instead of the row ending in a gap. */}
+      <div className={cn(COURSE_CONTENT, "group/tabs relative")}>
         <nav
           ref={tabsRef}
-          className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex scroll-px-4 gap-4 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
           <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
@@ -145,7 +169,8 @@ export function CourseHeader({
           aria-hidden
           className="pointer-events-none absolute top-0 bottom-[2px] left-0 w-[max(var(--cover-start,0px),16px)] bg-linear-to-r from-surface from-[calc(100%-12px)] to-transparent opacity-0 transition-[opacity,width] group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
         />
-        {/* The chevron says "more" either way, and a tap brings the rest in. */}
+        {/* "More this way": a 24px fade at the very edge, so a clipped tab's
+            visible letters stay full strength. A tap brings the rest in. */}
         <button
           type="button"
           tabIndex={-1}
@@ -153,7 +178,7 @@ export function CourseHeader({
           onClick={() =>
             tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
           }
-          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface from-15% to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
         >
           <ChevronRight className="size-[14px]" />
         </button>
@@ -201,7 +226,9 @@ function Tab({
 function TabCount({ n }: { n: number }) {
   return (
     <span className="tabular rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
-      {n} new
+      {n}
+      {/* "new" from md up; on a phone the pill alone carries it, as the tab bar's counts do. */}
+      <span className="sr-only md:not-sr-only"> new</span>
     </span>
   );
 }

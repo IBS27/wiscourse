@@ -2,10 +2,9 @@
 // bands above it for the things that do not (Due and Plan). The grid runs
 // the whole day and scrolls under the headers and bands, opening at 8 AM or
 // an hour before the week's first block, whichever is earlier. A week with
-// nothing timed draws shorter hours, and its window grows no taller than
-// 8 AM to midnight.
+// nothing timed shows a short note under the bands instead of empty hours.
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { CalendarClock, ChevronUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "../../../convex/todos";
@@ -15,8 +14,6 @@ import {
   blockLabel,
   blockTimeLabel,
   clockTime,
-  EMPTY_GRID_BOUNDS,
-  gridBounds,
   firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
@@ -29,6 +26,7 @@ import {
   type GridBounds,
 } from "@/lib/calendar";
 import { AllDayLine, DoneLine, DueLine, PlanLine } from "./bands";
+import { EmptySchedule } from "./empty-schedule";
 import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL, TODAY_TINT } from "./block-styles";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
@@ -67,7 +65,9 @@ export function WeekGrid({
   now,
   zone,
   compact = false,
+  loading = false,
   onAddClassTimes,
+  onNewEvent,
   onOpenBlock,
   onOpenEvent,
 }: {
@@ -78,26 +78,18 @@ export function WeekGrid({
   zone: string;
   /** Phone layout: band items shrink to their marks. */
   compact?: boolean;
+  /** Still fetching: keep the grid rather than flash the empty note. */
+  loading?: boolean;
   /** Set when no class times exist yet: the grid nudges for them. */
   onAddClassTimes?: () => void;
+  onNewEvent: () => void;
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
   const first = firstBlockMinute(days, models);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  // A week with nothing timed draws 8 AM–midnight to fit the space it has
-  // (never shorter than EMPTY_GRID_BOUNDS' hours), so it neither scrolls
-  // nor leaves a blank band above the footer.
-  const empty = first === undefined;
-  const viewHeight = useViewHeight(scrollRef);
-  const bounds = empty
-    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, Math.floor(viewHeight / EMPTY_VIEW_HOURS)))
-    : GRID_BOUNDS;
-  const nowMinute = minuteOf(now, zone);
-  const nowTop = minuteOffset(nowMinute, bounds);
-  const showNow = days.includes(todayKey);
+  // Nothing in the week takes up time: a note, not fourteen empty hours.
+  const empty = !loading && first === undefined;
   const [expanded, setExpanded] = useState(false);
-  useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
 
   const dueLine = (item: TodoItem) => (
     <DueLine key={item.key} item={item} zone={zone} now={now} compact={compact} />
@@ -135,7 +127,7 @@ export function WeekGrid({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {onAddClassTimes !== undefined && <ClassTimesStrip onOpen={onAddClassTimes} />}
+      {onAddClassTimes !== undefined && !empty && <ClassTimesStrip onOpen={onAddClassTimes} />}
 
       <div className={cn("grid border-b border-line", ROW)} style={grid}>
         <div />
@@ -169,49 +161,102 @@ export function WeekGrid({
         />
       )}
 
-      <div
-        ref={scrollRef}
-        className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
-        style={grid}
-      >
-        {/* Nothing else lives in the gutter (the now pill sits in today's
-            column), so every hour keeps its label. */}
-        <div className="relative" style={{ height: bounds.height }}>
-          {bounds.hours.map((hour) => (
-            <span
-              key={hour}
-              className={cn(HOUR_LABEL, "right-2")}
-              style={{ top: minuteOffset(hour * 60, bounds) }}
-            >
-              {hourLabel(hour)}
-            </span>
-          ))}
-        </div>
+      {empty ? (
+        <EmptySchedule
+          title={`No ${days.some((day) => (models.get(day)?.allDay.length ?? 0) > 0) ? "timed " : ""}classes or events this week`}
+          onAddClassTimes={onAddClassTimes}
+          onNewEvent={onNewEvent}
+        />
+      ) : (
+        <WeekTimeline
+          days={days}
+          models={models}
+          todayKey={todayKey}
+          now={now}
+          zone={zone}
+          first={first}
+          columns={grid}
+          onOpenBlock={onOpenBlock}
+        />
+      )}
+    </div>
+  );
+}
 
-        {days.map((day) => {
-          const isToday = day === todayKey;
-          const isPast = day < todayKey;
-          const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
-          return (
-            <div
-              key={day}
-              className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
-              style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
-            >
-              {blocks.map((block) => (
-                <Block
-                  key={block.id}
-                  block={block}
-                  bounds={bounds}
-                  past={isPast}
-                  onOpen={onOpenBlock}
-                />
-              ))}
-              {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
-            </div>
-          );
-        })}
+/**
+ * The scrolling hours. Its own component so the scroll position is set up
+ * afresh each time it mounts (after the empty note, say).
+ */
+function WeekTimeline({
+  days,
+  models,
+  todayKey,
+  now,
+  zone,
+  first,
+  columns,
+  onOpenBlock,
+}: {
+  days: string[];
+  models: Map<string, DayModel>;
+  todayKey: string;
+  now: number;
+  zone: string;
+  /** The week's earliest block start, if any. */
+  first: number | undefined;
+  columns: CSSProperties;
+  onOpenBlock: (block: TimeBlock) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const bounds = GRID_BOUNDS;
+  const nowMinute = minuteOf(now, zone);
+  const nowTop = minuteOffset(nowMinute, bounds);
+  const showNow = days.includes(todayKey);
+  useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
+
+  return (
+    <div
+      ref={scrollRef}
+      className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
+      style={columns}
+    >
+      {/* Nothing else lives in the gutter (the now pill sits in today's
+          column), so every hour keeps its label. */}
+      <div className="relative" style={{ height: bounds.height }}>
+        {bounds.hours.map((hour) => (
+          <span
+            key={hour}
+            className={cn(HOUR_LABEL, "right-2")}
+            style={{ top: minuteOffset(hour * 60, bounds) }}
+          >
+            {hourLabel(hour)}
+          </span>
+        ))}
       </div>
+
+      {days.map((day) => {
+        const isToday = day === todayKey;
+        const isPast = day < todayKey;
+        const blocks = layoutBlocks(models.get(day)?.blocks ?? []);
+        return (
+          <div
+            key={day}
+            className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
+            style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
+          >
+            {blocks.map((block) => (
+              <Block
+                key={block.id}
+                block={block}
+                bounds={bounds}
+                past={isPast}
+                onOpen={onOpenBlock}
+              />
+            ))}
+            {isToday && showNow && <NowLine top={nowTop} minute={nowMinute} />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -293,7 +338,7 @@ function Band({
           <div
             key={day}
             className={cn(
-              "flex min-h-8 min-w-0 border-l border-line p-1",
+              "flex min-h-8 min-w-0 border-l border-line px-[3px] py-1",
               compact ? "flex-wrap content-start justify-center" : "flex-col gap-[3px]",
               day === todayKey && TODAY_TINT,
             )}
@@ -414,22 +459,4 @@ export function NowLine({
       <span className="h-[1.5px] flex-1 bg-today" aria-hidden />
     </div>
   );
-}
-
-/** 8 AM to midnight: what an empty week's grid shows without scrolling. */
-const EMPTY_VIEW_HOURS = 16;
-
-/** The element's current height, kept up to date as the window resizes. */
-function useViewHeight(ref: RefObject<HTMLElement | null>): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    setHeight(el.clientHeight);
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref]);
-  return height;
 }

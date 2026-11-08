@@ -12,9 +12,9 @@ import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
-import { CountBadge } from "@/components/app/bits";
+import { SectionCount } from "@/components/app/bits";
 import { FeedRowBody } from "@/components/agenda/new-rail";
-import { FEED_ROW } from "@/components/agenda/feed-row";
+import { RAIL_FEED_ROW } from "@/components/agenda/feed-row";
 import { MeetingsEditor } from "@/components/calendar/meetings-editor";
 import { dayLetters, minuteRange } from "@/lib/calendar";
 import { announcementsHref, todoHref } from "@/lib/course-routes";
@@ -65,7 +65,7 @@ export function OverviewRail({
   };
 
   return (
-    <aside className="flex shrink-0 flex-col border-t border-line bg-sunken lg:w-[340px] lg:border-t-0 lg:border-l">
+    <aside className="flex shrink-0 flex-col border-t border-line bg-surface lg:w-[340px] lg:border-t-0 lg:border-l">
       <StandingFact courseId={courseId} canvasId={canvasId} hub={hub} />
       <InstructorFact course={course} />
       {facts?.officeHours !== undefined && <Fact label="Office hours" value={facts.officeHours} />}
@@ -73,7 +73,7 @@ export function OverviewRail({
 
       <div className="flex items-center gap-2 px-5 pt-5 pb-2">
         <span className="text-[13px] font-semibold tracking-[-0.005em] text-ink">Recent</span>
-        <CountBadge n={unseen.length} />
+        {unseen.length > 0 && <SectionCount n={unseen.length} />}
         {unseen.length > 0 && (
           <button
             type="button"
@@ -108,7 +108,7 @@ export function OverviewRail({
                   seenVersion: item.seenVersion,
                 });
               }}
-              className={FEED_ROW}
+              className={RAIL_FEED_ROW}
             >
               <FeedRowBody
                 title={feedTitle(item)}
@@ -160,7 +160,7 @@ function Fact({
         )}
       </div>
       {value}
-      {sub !== undefined && <div className="mt-[2px] text-[12px] text-ink-3">{sub}</div>}
+      {sub !== undefined && <div className="mt-[2px] text-[12px] text-ink-2">{sub}</div>}
     </>
   );
   return to === undefined ? (

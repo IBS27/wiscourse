@@ -42,7 +42,7 @@ export function SyllabusFacts({
   if (cells.length === 0) return null;
 
   return (
-    <div className="grid gap-4 border-b border-line px-4 py-5 sm:grid-cols-2 md:px-6 lg:grid-cols-4">
+    <div className="grid gap-4 border-b border-line px-4 py-5 sm:grid-cols-2 md:px-6 md:pt-6 lg:grid-cols-4">
       {cells.map((cell) => (
         <div key={cell.label} className="min-w-0 text-[13px] text-ink">
           <div className="mb-1 text-[12px] font-medium text-ink-3">{cell.label}</div>

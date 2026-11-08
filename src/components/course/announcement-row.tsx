@@ -42,7 +42,6 @@ export function AnnouncementRow({
   const links = detectLinks(announcement.message, courseId);
 
   const when = announcement.postedAt === undefined ? undefined : formatAgo(announcement.postedAt, now);
-  const meta = [author, when].filter(Boolean).join(" · ");
 
   return (
     <article
@@ -69,7 +68,11 @@ export function AnnouncementRow({
             {announcement.title}
             {unread && <span className="sr-only"> (unread)</span>}
           </span>
-          <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
+          {/* The date rides the byline, next to the copy rather than at the far edge. */}
+          <span className="mt-[2px] flex min-w-0 text-xs text-ink-3">
+            <span className="truncate">{author}</span>
+            {when !== undefined && <span className="tabular shrink-0">&nbsp;· {when}</span>}
+          </span>
           {!open && (
             <span className="mt-[5px] line-clamp-2 max-w-[72ch] text-[13px] leading-[1.5] text-ink-3">
               {preview(announcement.message)}

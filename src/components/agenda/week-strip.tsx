@@ -24,7 +24,7 @@ export function WeekStrip({
   const byDay = itemsByDay(items, days, todayKey, now);
 
   return (
-    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-[2px] md:px-5 md:py-2", compact && "gap-1 px-3 pt-[2px]")}>
+    <div className={cn("grid grid-cols-7 gap-1 border-b border-line px-3 py-0 md:px-5 md:py-2", compact && "gap-1 px-3 pt-[2px]")}>
       {days.map((day) => {
         const isToday = day === todayKey;
         const isPast = day < todayKey;
@@ -49,8 +49,8 @@ export function WeekStrip({
               isSelected && "bg-hover shadow-[inset_0_0_0_1px_var(--line-2)]",
             )}
           >
-            <div className="flex items-center justify-center gap-[6px] max-sm:flex-col max-sm:gap-[2px]">
-              <span className={cn("text-[12px] font-medium text-ink-3", isToday && "font-semibold text-ink")}>
+            <div className="flex items-center justify-center gap-[6px] max-sm:flex-col max-sm:gap-0">
+              <span className={cn("text-[12px] font-medium max-sm:text-[11px] max-sm:leading-[14px] text-ink-3", isToday && "font-semibold text-ink")}>
                 {compact ? dow[0] : dow}
               </span>
               <span
@@ -64,7 +64,7 @@ export function WeekStrip({
                 {Number(day.slice(-2))}
               </span>
             </div>
-            <div className="mt-[2px] flex h-[6px] items-center justify-center gap-[3px] md:mt-[3px]">
+            <div className="mt-px flex h-[6px] items-center justify-center gap-[3px] md:mt-[3px]">
               {shown.map((c) => (
                 <i
                   key={c}

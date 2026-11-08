@@ -1,6 +1,7 @@
 import type { Summary } from "../../../convex/lib/grades";
 import { formatPercent, formatPoints, usesWeights } from "@/lib/grades-ui";
 import { Meter } from "./bits";
+import { cn } from "@/lib/utils";
 
 interface Segment {
   key: number;
@@ -39,10 +40,14 @@ function segmentsOf(summary: Summary): Segment[] {
 }
 
 /**
- * One compact row per group, in fixed columns so each reads straight across:
- * name (160) · share and how much is graded (220) · score bar (160) · % (64).
- * On a narrow container the share line drops under the name.
+ * One compact row per group: the name with its share and how much is graded
+ * beneath it, then the score bar filling the space after it, ending 80px
+ * (gap + score column) before the %, which is right-aligned on the content's
+ * edge, under the table's % column.
  */
+const COLUMNS =
+  "grid-cols-[minmax(0,1fr)_72px_52px] @2xl:grid-cols-[200px_minmax(120px,1fr)_64px]";
+
 export function CompositionStrip({
   summary,
   note,
@@ -56,21 +61,17 @@ export function CompositionStrip({
 
   return (
     <section className="@container min-w-0">
-      <h2 className="text-[12.5px] font-medium text-ink-3">
-        How the grade is built
-        {note !== undefined && <span className="font-normal"> · {note}</span>}
-      </h2>
-      {/* Fills the content width, so its right edge meets the table's below. */}
-      <ul className="mt-1 grid list-none grid-cols-1 p-0 @2xl:pr-6">
-        {/* Column labels, so the bar reads as the score, not the share graded. */}
-        <li
-          aria-hidden
-          className="hidden min-w-0 grid-cols-[160px_220px_minmax(160px,1fr)_64px] gap-x-4 pt-1 text-[11.5px] text-ink-3 @2xl:grid"
-        >
-          <span />
-          <span>Weight · graded so far</span>
-          <span className="col-span-2">Score</span>
-        </li>
+      <div className="flex items-baseline gap-4">
+        <h2 className="min-w-0 text-[12.5px] font-medium text-ink-3">
+          How the grade is built
+          {note !== undefined && <span className="font-normal"> · {note}</span>}
+        </h2>
+        {/* A column label over the %, so the bar reads as the score, not the share graded. */}
+        <span aria-hidden className="ml-auto hidden shrink-0 text-[12.5px] text-ink-3 @2xl:block">
+          Score
+        </span>
+      </div>
+      <ul className="mt-1 grid list-none grid-cols-1 p-0">
         {segments.map((segment) => {
           // The bar is the score, so it always agrees with the number beside it;
           // how much is graded so far is said in words.
@@ -79,25 +80,23 @@ export function CompositionStrip({
           return (
             <li
               key={segment.key}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @2xl:grid-cols-[160px_220px_minmax(160px,1fr)_64px]"
+              className={cn("grid min-w-0 items-center gap-x-4 py-[6px] text-[13px]", COLUMNS)}
             >
               <span className="min-w-0">
                 <span className="block truncate font-medium text-ink" title={segment.name}>
                   {segment.name}
                 </span>
-                <span className="tabular block truncate text-[12.5px] text-ink-3 @2xl:hidden">
-                  {segment.size} of grade · {graded}
+                <span className="tabular block truncate text-[12.5px] text-ink-2">
+                  {segment.size} of grade<span className="text-ink-3"> · {graded}</span>
                 </span>
-              </span>
-              <span className="tabular hidden truncate text-[12.5px] whitespace-nowrap text-ink-3 @2xl:block">
-                {segment.size} of grade · {graded}
               </span>
               <span
                 role="img"
                 aria-label={`${segment.name}: ${segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}`}
                 className="block"
               >
-                <Meter fraction={score} />
+                {/* Neutral ink like the Grades index and course rail meters, at score weight. */}
+                <Meter fraction={score} tone="neutral" className="h-[6px]" />
               </span>
               {segment.percent === undefined ? (
                 <span className="text-right text-ink-3" title="not yet graded">

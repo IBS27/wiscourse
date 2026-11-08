@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
@@ -14,7 +15,6 @@ import {
 } from "@/components/grades/ledger-row";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, useToday, type Course } from "@/lib/hooks";
-import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 
 export const Route = createFileRoute("/grades/")({
@@ -25,7 +25,6 @@ function GradesIndex() {
   const { loading, courses, visible, other, past, termName, color } = useCourses();
   // One subscription for the whole page; every row reads its book from it.
   const books = useQuery(api.grades.index);
-  const seen = useSeen("grade");
   const info = useSyncInfo();
   const today = useToday();
   const now = useNow();
@@ -43,7 +42,6 @@ function GradesIndex() {
         course={course}
         color={color(course.canvasId)}
         book={byCourse.get(course.canvasId)}
-        seen={seen}
         today={today}
       />
     ));
@@ -51,55 +49,59 @@ function GradesIndex() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <PageHeader
+        contentClassName="max-w-[1080px]"
         title="Grades"
         subtitle={subtitle(termName, visible.length, info?.lastSyncedAt, now)}
       />
 
-      {loading || books === undefined ? (
-        <LedgerSkeleton />
-      ) : courses.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
-          <BarChart3 className="size-5 text-ink-3" aria-hidden />
-          <p className="text-[13.5px] font-medium">No courses yet</p>
-          <p className="text-[12.5px] text-ink-3">
-            Connect Canvas in{" "}
-            <Link to="/settings" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
-              Settings
-            </Link>
-            , then run a sync.
-          </p>
-        </div>
-      ) : (
-        <>
-          {visible.length > 0 && <GradesLedgerHeader />}
-          {rows(visible)}
-          {visible.length === 0 && (
-            <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
-              No courses in the current term.
+      {/* Capped and left on the gutter, so values sit near their names on wide screens. */}
+      <div className="w-full md:max-w-[1128px]">
+        {loading || books === undefined ? (
+          <LedgerSkeleton />
+        ) : courses.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
+            <BarChart3 className="size-5 text-ink-3" aria-hidden />
+            <p className="text-[13.5px] font-medium">No courses yet</p>
+            <p className="text-[12.5px] text-ink-3">
+              Connect Canvas in{" "}
+              <Link to="/settings" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
+                Settings
+              </Link>
+              , then run a sync.
             </p>
-          )}
-          {other.length > 0 && (
-            <LedgerFold
-              label="Other"
-              count={other.length}
-              hint="Orientation, advising and student-org courses"
-            >
-              {rows(other)}
-            </LedgerFold>
-          )}
-          <LedgerPastTerms
-            courses={past}
-            color={color}
-            renderRow={(course) => (
-              <GradesPastRow
-                key={course.canvasId}
-                course={course}
-                color={color(course.canvasId)}
-              />
+          </div>
+        ) : (
+          <>
+            {visible.length > 0 && <GradesLedgerHeader />}
+            {rows(visible)}
+            {visible.length === 0 && (
+              <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
+                No courses in the current term.
+              </p>
             )}
-          />
-        </>
-      )}
+            {other.length > 0 && (
+              <LedgerFold
+                label="Other"
+                count={other.length}
+                hint="Orientation, advising and student-org courses"
+              >
+                {rows(other)}
+              </LedgerFold>
+            )}
+            <LedgerPastTerms
+              courses={past}
+              color={color}
+              renderRow={(course) => (
+                <GradesPastRow
+                  key={course.canvasId}
+                  course={course}
+                  color={color(course.canvasId)}
+                />
+              )}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -110,13 +112,24 @@ function subtitle(
   count: number,
   lastSyncedAt: number | undefined,
   now: number,
-): string | undefined {
-  const parts = [
-    termName,
-    count > 0 ? `${count} course${count === 1 ? "" : "s"}` : undefined,
-    lastSyncedAt === undefined ? undefined : `synced ${formatSince(lastSyncedAt, now)}`,
-  ].filter((part): part is string => part !== undefined);
-  return parts.length === 0 ? undefined : parts.join(" · ");
+): ReactNode {
+  const parts = [termName, count > 0 ? `${count} course${count === 1 ? "" : "s"}` : undefined].filter(
+    (part): part is string => part !== undefined,
+  );
+  const synced = lastSyncedAt === undefined ? undefined : `synced ${formatSince(lastSyncedAt, now)}`;
+  if (parts.length === 0 && synced === undefined) return undefined;
+  // Phones keep the term and count; the sync time would only truncate there.
+  return (
+    <>
+      {parts.join(" · ")}
+      {synced !== undefined && (
+        <span className="max-md:hidden">
+          {parts.length > 0 ? " · " : ""}
+          {synced}
+        </span>
+      )}
+    </>
+  );
 }
 
 function LedgerSkeleton() {

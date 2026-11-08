@@ -128,7 +128,16 @@ export function Meter({
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
   return (
     // Coverage is a thin neutral meter; a score is a thicker bar in the course colour.
-    <span className={cn("block overflow-hidden rounded-full bg-line", tone === "course" ? "h-[6px]" : "h-1", className)} aria-hidden>
+    // The neutral track is a step firmer in light (so an empty meter still shows)
+    // and a step quieter in dark (so it never reads as a grey fill).
+    <span
+      className={cn(
+        "block overflow-hidden rounded-full",
+        tone === "course" ? "h-[6px] bg-line" : "h-1 bg-line-2 dark:bg-line",
+        className,
+      )}
+      aria-hidden
+    >
       {percent > 0 && (
         <span
           className={cn("block h-full rounded-full", tone === "course" ? "bg-c" : "bg-ink-3")}

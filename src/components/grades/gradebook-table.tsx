@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GroupResult, RowResult, Summary } from "../../../convex/lib/grades";
@@ -22,14 +21,19 @@ import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /**
- * Assignment · Due · Score · % · Class median. Below `md` the median and the
- * due column fold away and score/percent stack on the right. On desktop the
- * due and median columns collapse to zero width when no row has a value.
+ * Assignment · Score · % · Class median. A row's due date rides after its
+ * name, so no column is ever blank. Below `md` the median column folds away
+ * and score/percent stack on the right. On desktop the median column is
+ * left out when no row in the whole table has one, so every group keeps the
+ * same columns and % lands on the content's right edge. Score fits a what-if
+ * field plus "/100". Text sits on the page gutter; only the group plates
+ * reach 8px past it.
  */
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,112px)_136px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] md:gap-x-4 md:gap-y-0";
+const COLS_MEDIAN = "md:grid-cols-[minmax(0,1fr)_128px_72px_96px]";
+const COLS_PLAIN = "md:grid-cols-[minmax(0,1fr)_128px_72px]";
 const MOBILE_1 = "col-start-1 row-start-1 md:col-auto md:row-auto";
-const MOBILE_2 = "col-start-1 row-start-2 md:col-auto md:row-auto";
 const MOBILE_3 = "col-start-2 row-start-1 md:col-auto md:row-auto";
 const MOBILE_4 = "col-start-2 row-start-2 md:col-auto md:row-auto";
 
@@ -57,31 +61,28 @@ export function GradebookTable({
 }) {
   // Canvas only sends medians for some courses; an all-empty column is noise.
   const hasMedian = summary.groups.some((g) => g.rows.some((r) => r.row.median !== undefined));
-  const hasDue = summary.groups.some((g) => g.rows.some((r) => dueLabel(r.row) !== undefined));
-  const columns = {
-    ...(hasDue ? {} : { "--due-col": "0px" }),
-    ...(hasMedian ? {} : { "--median-col": "0px" }),
-  } as CSSProperties;
+  const row = cn(ROW, hasMedian ? COLS_MEDIAN : COLS_PLAIN);
   return (
-    <div role="table" aria-label="Grades" style={columns}>
+    <div role="table" aria-label="Grades">
       <div
         role="row"
         className={cn(
-          ROW,
+          row,
           "hidden h-9 border-b border-line text-xs font-medium text-ink-3 md:grid",
         )}
       >
         <span role="columnheader">Assignment</span>
-        <span role="columnheader">{hasDue ? "Due" : ""}</span>
         <span role="columnheader" className="text-right">
           Score
         </span>
         <span role="columnheader" className="text-right">
           %
         </span>
-        <span role="columnheader" className="text-right">
-          {hasMedian ? "Class median" : ""}
-        </span>
+        {hasMedian && (
+          <span role="columnheader" className="text-right">
+            Class median
+          </span>
+        )}
       </div>
 
       {summary.groups.map((group, index) => (
@@ -89,6 +90,8 @@ export function GradebookTable({
           key={group.group.canvasId}
           group={group}
           first={index === 0}
+          row={row}
+          median={hasMedian}
           whatIf={whatIf}
           seen={seen}
         />
@@ -98,7 +101,7 @@ export function GradebookTable({
         <div
           role="row"
           className={cn(
-            ROW,
+            row,
             "mt-4 flex items-center justify-between border-t border-line-2 py-3 text-[13.5px] font-semibold md:grid md:h-12 md:py-0",
           )}
         >
@@ -107,11 +110,10 @@ export function GradebookTable({
             <span className="ml-2 text-[12.5px] font-normal text-ink-3">{footer.sub}</span>
           </div>
           <span role="cell" className="hidden md:block" />
-          <span role="cell" className="hidden md:block" />
           <span
             role="cell"
             aria-colspan={2}
-            className="tabular flex items-center justify-end gap-[10px] whitespace-nowrap md:col-span-2"
+            className="tabular flex items-center justify-end gap-[10px] whitespace-nowrap md:col-[3/-1]"
           >
             {footer.score === undefined ? DASH : formatPercent(footer.score)}
             {footer.letter !== undefined && (
@@ -127,11 +129,16 @@ export function GradebookTable({
 function GroupSection({
   group,
   first,
+  row,
+  median,
   whatIf,
   seen,
 }: {
   group: GroupResult;
   first: boolean;
+  /** The table's row grid, with or without the median column. */
+  row: string;
+  median: boolean;
   whatIf?: WhatIf;
   seen: Seen;
 }) {
@@ -144,8 +151,9 @@ function GroupSection({
       <div
         role="row"
         className={cn(
-          ROW,
-          "rounded-lg bg-sunken py-[9px] dark:bg-hover text-[14px] font-semibold md:h-10 md:py-0",
+          row,
+          // The plate reaches 8px past the gutter so its text stays on it.
+          "-mx-2 rounded-lg bg-sunken px-2 py-[9px] dark:bg-hover text-[14px] font-semibold md:h-10 md:py-0",
           first ? "mt-3" : "mt-6",
         )}
       >
@@ -162,7 +170,6 @@ function GroupSection({
             </span>
           )}
         </div>
-        <span role="cell" className="hidden md:block" />
         <div
           role="cell"
           className={cn(
@@ -179,11 +186,18 @@ function GroupSection({
         <span role="cell" className="tabular hidden text-right md:block">
           {group.percent === undefined ? "" : formatPercent(group.percent)}
         </span>
-        <span role="cell" className="hidden md:block" />
+        {median && <span role="cell" className="hidden md:block" />}
       </div>
 
       {group.rows.map((result) => (
-        <AssignmentRow key={result.row.canvasId} result={result} whatIf={whatIf} seen={seen} />
+        <AssignmentRow
+          key={result.row.canvasId}
+          result={result}
+          row={row}
+          median={median}
+          whatIf={whatIf}
+          seen={seen}
+        />
       ))}
     </>
   );
@@ -191,10 +205,14 @@ function GroupSection({
 
 function AssignmentRow({
   result,
+  row: grid,
+  median,
   whatIf,
   seen,
 }: {
   result: RowResult;
+  row: string;
+  median: boolean;
   whatIf?: WhatIf;
   seen: Seen;
 }) {
@@ -208,22 +226,29 @@ function AssignmentRow({
     <div
       role="row"
       className={cn(
-        ROW,
+        grid,
         "border-b border-line py-[9px] text-[13px] transition-colors hover:bg-hover md:py-0",
         whatIf === undefined ? "md:h-10" : "md:min-h-[46px] md:py-[6px]",
       )}
     >
-      <div role="rowheader" className={cn(MOBILE_1, "flex min-w-0 items-center gap-2")}>
+      <div
+        role="rowheader"
+        // Phones: the name gets its own line; date and status wrap beneath it.
+        className={cn(MOBILE_1, "flex min-w-0 items-center gap-2 max-md:flex-wrap max-md:gap-y-[2px]")}
+      >
         <Link
           to={todoHref("assignment", row.canvasId)}
           onClick={() => {
             if (row.postedAt !== undefined) seen.mark(row.canvasId, String(row.postedAt));
           }}
           // A grade table has no unread state: every row is one regular weight.
-          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4"
+          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4 max-md:basis-full"
         >
           {row.name}
         </Link>
+        {due !== undefined && (
+          <span className="shrink-0 text-[12.5px] whitespace-nowrap text-ink-3 md:pl-1">{due}</span>
+        )}
         {state !== undefined &&
           (result.dropped ? (
             // A dropped score is decided, not wrong: a quiet pill, never a strike.
@@ -245,18 +270,6 @@ function AssignmentRow({
             <span className="size-[5px] shrink-0 rounded-full bg-ink-2" aria-hidden />
             <span className="sr-only">edited</span>
           </>
-        )}
-      </div>
-
-      <div
-        role="cell"
-        className={cn(MOBILE_2, "truncate pl-[14px] text-xs text-ink-3 md:pl-0 md:text-[12.5px]")}
-      >
-        {due ?? (
-          // Never a blank cell: an undated row says so, quietly.
-          <span className="hidden md:inline" title="No due date">
-            <span className="sr-only">No due date</span>
-          </span>
         )}
       </div>
 
@@ -290,9 +303,11 @@ function AssignmentRow({
         )}
       </div>
 
-      <div role="cell" className="tabular hidden text-right text-[12.5px] text-ink-3 md:block">
-        {row.median === undefined ? "" : formatPoints(row.median)}
-      </div>
+      {median && (
+        <div role="cell" className="tabular hidden text-right text-[12.5px] text-ink-3 md:block">
+          {row.median === undefined ? "" : formatPoints(row.median)}
+        </div>
+      )}
     </div>
   );
 }

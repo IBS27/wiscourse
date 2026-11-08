@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChevronLeft, SearchX } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, SearchX } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { HEADER_BAR } from "@/components/app/page-header";
@@ -52,7 +52,8 @@ function TodoPage() {
     <div className="flex flex-1 flex-col">
       {/* The page frame: a 64px bar with the breadcrumb centred in it, in
           the body's left-aligned 720px column (the page's title is the
-          heading below). Phones get a compact 48px back bar. */}
+          heading below). Phones get a compact 48px back bar, with Open in
+          Canvas as its labelled outline action so the page's own Plan leads the body. */}
       <header className={cn(HEADER_BAR, "max-md:h-12")}>
         <div className="flex h-full w-full max-w-[720px] items-center">
           <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center">
@@ -66,9 +67,22 @@ function TodoPage() {
               </Link>
             </div>
           </nav>
+          {item && item.kind !== "local" && item.htmlUrl && (
+            <a
+              href={item.htmlUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Open in Canvas"
+              className="inline-flex h-8 shrink-0 items-center gap-[6px] rounded-lg border border-line px-3 text-[13px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:hidden"
+            >
+              Canvas
+              <ArrowUpRight className="size-[14px] text-ink-3" aria-hidden />
+            </a>
+          )}
         </div>
       </header>
-      <div className="flex-1">
+      {/* A flex column, so the detail's xl rail runs the full height. */}
+      <div className="flex flex-1 flex-col">
         {missing ? (
           <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
             <SearchX className="size-5 text-ink-3" />

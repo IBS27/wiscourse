@@ -162,7 +162,7 @@ it("renders the week as bands over a time grid", () => {
   expect(screen.getByText("Plan")).toBeDefined();
   // Due times are chips in the band (title, then "time · course"), never blocks.
   expect(screen.getByText("Problem Set 3")).toBeDefined();
-  expect(screen.getByText(/^5:00 PM/)).toBeDefined();
+  expect(screen.getByText("Problem Set 3").parentElement?.parentElement?.textContent).toMatch(/5 PM·ECON 101/);
   expect(screen.getByText("Email prof re: office hours")).toBeDefined();
   // Two lecture occurrences this week (Tue and Thu), each with its location.
   expect(screen.getAllByText("MATH 340")).toHaveLength(2);
@@ -170,6 +170,8 @@ it("renders the week as bands over a time grid", () => {
   // The local event is in the grid, lighter and dashed.
   expect(screen.getByText("Study group — P3")).toBeDefined();
   expect(screen.getByText(`Times in ${ZONE}`)).toBeDefined();
+  expect(screen.getByText("Noon")).toBeDefined();
+  expect(screen.queryByText("No classes or events this week")).toBeNull();
   // Exactly one new-event affordance per layout: the desktop button carries
   // its own label, the phone FAB is the only one named "New event".
   expect(screen.getAllByLabelText("New event")).toHaveLength(1);
@@ -181,6 +183,38 @@ it("nudges for class times only when there are none", () => {
   const Calendar = setup({ view: "week", date: "2026-09-10" });
   render(<Calendar />);
   expect(screen.getByText("Add your class times so lectures show here")).toBeDefined();
+});
+
+it("replaces the hours with a note when nothing in the week is timed", () => {
+  state.values.set("meetings:list", []);
+  state.values.set(
+    "calendar:range",
+    (state.values.get("calendar:range") as { allDay?: boolean }[]).filter((e) => e.allDay),
+  );
+  const Calendar = setup({ view: "week", date: "2026-09-10" });
+  render(<Calendar />);
+
+  // All-day events stay in the band, so the note says "timed".
+  expect(screen.getByText("No timed classes or events this week")).toBeDefined();
+  // The Due band stays; the empty hours and the redundant nudge go.
+  expect(screen.getByText("Due")).toBeDefined();
+  expect(screen.getByText("Problem Set 3")).toBeDefined();
+  expect(screen.queryByText("Noon")).toBeNull();
+  expect(screen.queryByText("Add your class times so lectures show here")).toBeNull();
+  expect(screen.getByRole("button", { name: "Add class times" })).toBeDefined();
+
+  // The toolbar's phone button shares the name; this is the note's own.
+  fireEvent.click(screen.getByText("New event"));
+  expect(screen.getByRole("dialog")).toBeDefined();
+});
+
+it("shows the note for a day with nothing timed", () => {
+  const Calendar = setup({ view: "day", date: "2026-09-09" });
+  render(<Calendar />);
+  expect(screen.getByText("No classes or events this day")).toBeDefined();
+  expect(screen.queryByText("Noon")).toBeNull();
+  // Class times exist, so only the event action is offered.
+  expect(screen.queryByRole("button", { name: "Add class times" })).toBeNull();
 });
 
 it("hides class meetings in the month until they are asked for", () => {

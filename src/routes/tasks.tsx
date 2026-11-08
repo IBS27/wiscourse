@@ -3,9 +3,9 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, ChevronRight, CircleCheck, Inbox, ListFilter, Plus } from "lucide-react";
 import type { TodoItem } from "../../convex/todos";
-import { Dot, Kbd } from "@/components/app/bits";
+import { Dot, Kbd, SectionCount } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
-import { HEADER_BUTTON, PageHeader } from "@/components/app/page-header";
+import { HEADER_BUTTON, PageHeader, READING_FRAME, READING_WIDTH } from "@/components/app/page-header";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -82,9 +82,9 @@ function Tasks() {
       {/* Header, filters and list all run to the main area's gutters, so their edges line up. */}
       <PageHeader
         title="Tasks"
-        // One 960px column for header, filters and list, so a row's status
+        // One reading column for header, filters and list, so a row's status
         // sits near its title instead of across a 1200px row.
-        contentClassName="max-w-[960px]"
+        contentClassName={READING_WIDTH}
         subtitle={
           scoped
             ? `${scoped.filter((i) => !isDone(i)).length} open · ${scoped.filter(isDone).length} done`
@@ -113,7 +113,7 @@ function Tasks() {
         }
       />
 
-      <div className="max-w-[1008px] px-4 md:px-6">
+      <div className={cn(READING_FRAME, "px-4 md:px-6")}>
         <div className="flex w-full items-center gap-2 overflow-x-auto border-b border-line py-[10px] [scrollbar-width:none] md:flex-wrap md:overflow-visible">
           <Segmented label="Status" value={view} onChange={setView} options={VIEWS} />
           {courseOptions.length > 0 && (
@@ -151,7 +151,7 @@ function Tasks() {
         </div>
       </div>
 
-      <div className="w-full max-w-[1008px] pb-8">
+      <div className={cn(READING_FRAME, "w-full pb-8")}>
         {filtered === undefined ? null : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-10 py-20 text-center">
             <span className="mb-1 grid size-10 place-items-center rounded-full bg-chip text-ink-3">
@@ -209,7 +209,7 @@ function HandledSection({ items, todayKey, now }: { items: TodoItem[]; todayKey:
         <ChevronRight className={cn("size-[13px] self-center text-ink-3 transition-transform", open && "rotate-90")} aria-hidden />
         <h2 className="text-[13px] font-semibold tracking-[-0.005em] text-ink-2">Submitted or graded</h2>
         <span className="text-[12.5px] text-ink-3">Canvas has these; mark them done to clear them</span>
-        <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
+        <SectionCount n={items.length} sep />
       </button>
       {open && items.map((it, i) => <AgendaItem key={it.key} item={it} first={i === 0} todayKey={todayKey} now={now} />)}
     </section>
@@ -222,7 +222,7 @@ function Section({ title, detail, items, red, todayKey, now }: { title: string; 
       <div className="flex items-baseline gap-2 px-4 pt-6 pb-2 md:px-6">
         <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
         {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
-        <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{items.length}</span>
+        <SectionCount n={items.length} sep={Boolean(detail)} />
       </div>
       {items.map((it, i) => (
         <AgendaItem key={it.key} item={it} first={i === 0} todayKey={todayKey} now={now} />

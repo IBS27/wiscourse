@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { OVERVIEW_ROW, OVERVIEW_ROW_NO_ICON, SECTION_TITLE, type RowIcon } from "./overview-icons";
+import { SectionCount } from "@/components/app/bits";
 import { cn } from "@/lib/utils";
 
 /**
@@ -68,12 +69,14 @@ export function OverviewRow({
 
 /**
  * The heading above each overview block: sentence case, the body's loudest
- * label, quiet detail beside it, extras at the right. `muted` is the
- * smaller sub-heading inside a block.
+ * label, quiet detail beside it, then its count (the shared `SectionCount`,
+ * so the dot spacing matches Home and Tasks), extras at the right. `muted`
+ * is the smaller sub-heading inside a block.
  */
 export function SectionHead({
   title,
   detail,
+  count,
   right,
   red = false,
   muted = false,
@@ -82,6 +85,7 @@ export function SectionHead({
 }: {
   title: string;
   detail?: ReactNode;
+  count?: number;
   right?: ReactNode;
   red?: boolean;
   muted?: boolean;
@@ -104,6 +108,7 @@ export function SectionHead({
       {detail !== undefined && (
         <span className="min-w-0 truncate text-[12.5px] text-ink-3">{detail}</span>
       )}
+      {count !== undefined && <SectionCount n={count} sep={detail !== undefined} className="shrink-0" />}
       {right !== undefined && (
         <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[12px] text-ink-3">
           {right}

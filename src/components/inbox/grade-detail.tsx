@@ -138,7 +138,11 @@ export function GradeDetail({
 
 type Stats = NonNullable<NonNullable<FunctionReturnType<typeof api.inbox.gradeDetail>>["scoreStatistics"]>;
 
-/** The score, a bar against the points possible, and the class spread when Canvas shares it. */
+/**
+ * The score, a bar against the points possible, and the class spread when
+ * Canvas shares it. The bar is the Grades composition row's: neutral ink,
+ * 6px, capped at 240px like every other meter, with the percentage after it.
+ */
 function ScoreCard({
   score,
   points,
@@ -156,40 +160,39 @@ function ScoreCard({
   const median = stats?.median;
 
   return (
-    <section aria-label="Score" className="rounded-xl border border-line px-5 pt-4 pb-5">
+    // Hugs its content (score, a 240px meter, a 2×2 stat grid) instead of spanning the pane.
+    <section aria-label="Score" className="w-full max-w-[360px] rounded-xl border border-line px-4 py-4">
       <div className="text-[12.5px] font-medium text-ink-3">Your score</div>
-      <div className="tabular mt-[6px] flex items-baseline gap-3">
+      <div className="tabular mt-[6px] text-[30px] leading-none font-semibold tracking-[-0.025em] text-ink">
         {scored ? (
           <>
-            <span className="text-[30px] leading-none font-semibold tracking-[-0.025em] text-ink">
-              {formatPoints(score)}
-              <span className="font-normal text-ink-3">/{formatPoints(points)}</span>
-            </span>
-            {pct !== undefined && <span className="text-[15px] font-medium text-ink-2">{pct}</span>}
+            {formatPoints(score)}
+            <span className="font-normal text-ink-3">/{formatPoints(points)}</span>
           </>
         ) : (
-          <span className="text-[30px] leading-none font-semibold tracking-[-0.025em] text-ink">
-            {grade ?? "—"}
-          </span>
+          (grade ?? "—")
         )}
       </div>
 
       {fraction !== undefined && (
-        <div className="relative mt-4">
-          <Meter fraction={fraction} />
-          {median !== undefined && points !== undefined && points > 0 && (
-            <span
-              aria-hidden
-              title={`Class median ${formatPoints(median)}`}
-              className="absolute -top-[3px] h-3 w-[2px] -translate-x-1/2 rounded-full bg-ink"
-              style={{ left: `${Math.max(0, Math.min(1, median / points)) * 100}%` }}
-            />
-          )}
+        <div className="mt-3 flex items-center gap-3">
+          <div className="relative w-full max-w-[240px]">
+            <Meter fraction={fraction} tone="neutral" className="h-[6px]" />
+            {median !== undefined && points !== undefined && points > 0 && (
+              <span
+                aria-hidden
+                title={`Class median ${formatPoints(median)}`}
+                className="absolute -top-[3px] h-3 w-[2px] -translate-x-1/2 rounded-full bg-ink"
+                style={{ left: `${Math.max(0, Math.min(1, median / points)) * 100}%` }}
+              />
+            )}
+          </div>
+          {pct !== undefined && <span className="tabular text-[13px] font-semibold text-ink">{pct}</span>}
         </div>
       )}
 
       {stats !== undefined && (
-        <dl className="tabular mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4 @md:grid-cols-4">
+        <dl className="tabular mt-4 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4">
           {median !== undefined && <Stat label="Class median">{formatPoints(median)}</Stat>}
           <Stat label="Mean">{formatPoints(stats.mean)}</Stat>
           <Stat label="High">{formatPoints(stats.max)}</Stat>

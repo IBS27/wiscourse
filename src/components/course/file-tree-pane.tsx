@@ -75,7 +75,7 @@ export function FileTreePane({
   );
 }
 
-const ROW = "flex h-[30px] items-center rounded-md pr-2 transition-colors";
+const ROW = "flex min-h-[30px] items-center rounded-md pr-2 transition-colors";
 /** File counts: one fixed right-aligned column, whatever the row. */
 const COUNT = "tabular ml-auto w-9 shrink-0 text-right text-[12px] text-ink-3";
 const indentStyle = (level: number) => ({ paddingLeft: 2 + level * 14 });
@@ -163,7 +163,9 @@ function FolderRows({
           ) : (
             <Folder className="size-[14px] shrink-0 text-ink-3" aria-hidden />
           )}
-          <span className="truncate">{node.folder.name}</span>
+          {/* Two lines before an ellipsis: folder names are long and alike
+              ("Quizzes and Solutions"), and their ends tell them apart. */}
+          <span className="line-clamp-2 leading-[1.35] break-words">{node.folder.name}</span>
           <span className={cn(COUNT, "font-normal")}>{node.totalFiles}</span>
         </button>
       </div>

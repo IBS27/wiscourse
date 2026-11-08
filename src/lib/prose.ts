@@ -25,6 +25,27 @@ export const PROSE = [
   "[&_hr]:my-5 [&_hr]:border-line",
 ].join(" ");
 
+/**
+ * Embedded images (screenshots, diagrams) sit on a soft sunken plate, capped
+ * at 480px, instead of a stark column-wide rectangle: no hairline, so an
+ * image's own border never reads as a double frame. The plate is an 8px
+ * border rather than padding, because a replaced element's content is clipped
+ * to its inner border curve: outer 14px less the 8px border leaves the image
+ * itself rounded-md, concentric with the plate (with padding its corners would
+ * stay square). In dark the plate is the raised step above the page and the
+ * whole thing is dimmed to 72%, so a white screenshot isn't the brightest
+ * object on the page; opacity, not a brightness filter, which would darken
+ * the plate below the page into a black slab. Canvas equation images are
+ * text, so they stay inline and unframed. Applied to Canvas HTML (reader and
+ * to-do description), not the assistant's answers. Literal classes, so
+ * Tailwind can scan them.
+ */
+export const IMAGE_FRAME = [
+  "[&_img:not([src*=equation])]:my-3 [&_img:not([src*=equation])]:h-auto [&_img:not([src*=equation])]:max-w-[min(100%,480px)]",
+  "[&_img:not([src*=equation])]:rounded-[14px] [&_img:not([src*=equation])]:border-8 [&_img:not([src*=equation])]:border-sunken [&_img:not([src*=equation])]:bg-sunken",
+  "dark:[&_img:not([src*=equation])]:border-raised dark:[&_img:not([src*=equation])]:bg-raised dark:[&_img:not([src*=equation])]:opacity-[0.72]",
+].join(" ");
+
 // Dotted underline stays inside wiscourse; solid plus a ↗ leaves it.
 const LINK = "text-c underline decoration-c/45 underline-offset-[3px] hover:decoration-c";
 export const INTERNAL_LINK = `${LINK} decoration-dotted`;

@@ -76,11 +76,10 @@ it("shows Canvas's number, the group that is still open and the median column", 
   expect(screen.getByText("Project 2").closest("div.grid")?.textContent).toContain("— / 100");
 });
 
-it("folds the due column away only when no row has a due date", () => {
+it("has no due column; a dated row carries its date after the name", () => {
   mount();
-  const table = screen.getByRole("table", { name: "Grades" });
-  expect(table.style.getPropertyValue("--due-col")).toBe("0px");
-  expect(table.style.getPropertyValue("--median-col")).toBe("");
+  expect(screen.getByRole("columnheader", { name: "Class median" })).toBeTruthy();
+  expect(screen.queryByRole("columnheader", { name: "Due" })).toBeNull();
   cleanup();
 
   const [projects, exams] = book.groups;
@@ -90,9 +89,11 @@ it("folds the due column away only when no row has a due date", () => {
     groups: [{ ...projects, assignments: [{ ...first, dueAt: Date.UTC(2026, 8, 14, 17) }, ...rest] }, exams],
   };
   mount(dated);
-  const withDue = screen.getByRole("table", { name: "Grades" });
-  expect(withDue.style.getPropertyValue("--due-col")).toBe("");
-  expect(screen.getByRole("columnheader", { name: "Due" })).toBeTruthy();
+  expect(screen.queryByRole("columnheader", { name: "Due" })).toBeNull();
+  const names = screen.getAllByRole("rowheader").map((cell) => cell.textContent);
+  expect(names.find((name) => name?.startsWith("Project 1"))).toMatch(/Sep 14/);
+  // An undated row has no suffix.
+  expect(names).toContain("Project 2");
 });
 
 it("recomputes the total from a what-if score and remembers it", () => {

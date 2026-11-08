@@ -11,6 +11,7 @@ import { usableInterpretation } from "@/lib/interpreted-course";
 import { Link } from "@tanstack/react-router";
 import { Info, Sparkles } from "lucide-react";
 import { OverviewWeek } from "@/components/course/overview-week";
+import { COURSE_CONTENT } from "@/components/course/content-width";
 import {
   courseColorVar,
   courseStyle,
@@ -51,10 +52,11 @@ function CourseOverview() {
 
   return (
     <div
-      className="flex flex-1 flex-col lg:flex-row"
+      className="flex flex-1 flex-col lg:flex-row lg:justify-between"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="min-w-0 flex-1 pb-6">
+      {/* The rail keeps the right edge; the column stops at the course width. */}
+      <div className={`${COURSE_CONTENT} min-w-0 flex-1 pb-6`}>
         <OverviewDue todos={todos} canvasId={canvasId} now={now} todayKey={today} />
         {interpreted ? (
           <InterpretedOverview

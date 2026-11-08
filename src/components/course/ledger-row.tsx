@@ -12,8 +12,14 @@ import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
-/** Course · next due · new; the new column is exactly as wide as its slots. */
-export const LEDGER_COLS = "md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-x-6";
+/**
+ * Course · next due · new. The new column is exactly as wide as its slots.
+ * Course and next due share what is left; from xl next due gets a fixed
+ * 280px and the course takes the rest. A fixed track at md would squeeze the
+ * course to nothing beside the sidebar.
+ */
+export const LEDGER_COLS =
+  "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:gap-x-6 xl:grid-cols-[minmax(0,1fr)_280px_auto]";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =
@@ -30,10 +36,11 @@ type SlotKey = (typeof NEW_SLOTS)[number]["key"];
 
 /**
  * One slot, right-aligned so a column of numbers ends exactly where its
- * label does: 96px names it in full (the widest label fits without spilling
- * past the right edge), 56px abbreviates. Header and cells share the class.
+ * label does: 88px names it in full, 56px abbreviates. Flex-end, so a label
+ * a hair wider than its slot spills left, never past the right edge. Header
+ * and cells share the class.
  */
-const SLOT = "w-14 shrink-0 text-right whitespace-nowrap tabular xl:w-24";
+const SLOT = "flex w-14 shrink-0 justify-end whitespace-nowrap tabular xl:w-[88px]";
 
 export function LedgerRow({
   course,
@@ -72,7 +79,11 @@ export function LedgerRow({
       )}
     >
       <div className="min-w-0">
-        <div className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink">
+        {/* One line on desktop, so every row is the same height; the full name is the tooltip. */}
+        <div
+          className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink md:truncate"
+          title={courseTitle(course)}
+        >
           {courseTitle(course)}
         </div>
         <CourseMeta code={code} instructor={instructor} />
@@ -83,7 +94,7 @@ export function LedgerRow({
           <span className="text-[12.5px] text-ink-3">Nothing due</span>
         ) : (
           <>
-            <span className="line-clamp-2 text-[13px] text-ink-2">
+            <span className="line-clamp-2 text-[13px] text-ink-2 md:line-clamp-1" title={next.title}>
               <span className="text-ink-3 md:hidden">Next · </span>
               {next.title}
             </span>
@@ -108,8 +119,9 @@ export function LedgerRow({
 
 /**
  * Fixed slots on desktop, one per kind, numbers only: the header names each
- * slot, so a column reads like a table, and a zero is a quiet dash. Phones
- * have no header, so they get the same counts as words.
+ * slot, so a column reads like a table; a zero is a faint "0", so every
+ * column stays filled and the counts that exist stand out. Phones have no header, so they get the same
+ * counts as words.
  */
 function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
   const present = NEW_SLOTS.filter((slot) => counts[slot.key] > 0);
@@ -125,10 +137,10 @@ function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
         {NEW_SLOTS.map((slot) => (
           <span
             key={slot.key}
-            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink/35")}
+            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink-3/50")}
             aria-hidden
           >
-            {counts[slot.key] > 0 ? counts[slot.key] : "—"}
+            {counts[slot.key]}
           </span>
         ))}
       </span>

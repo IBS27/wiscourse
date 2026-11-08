@@ -18,6 +18,7 @@ import type { TodoItem } from "../../../convex/todos";
 import { CourseTag } from "@/components/app/bits";
 import { Button } from "@/components/ui/button";
 import { SubmissionPanel } from "@/components/todo/submission-panel";
+import { IMAGE_FRAME } from "@/lib/prose";
 import { refOf } from "@/lib/todo-ref";
 import {
   addDays,
@@ -68,7 +69,8 @@ export function TodoDetail({ item }: { item: TodoItem }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key.toLowerCase() === "p") {
         e.preventDefault();
-        document.getElementById("plan-date")?.focus();
+        const phone = !window.matchMedia("(min-width: 768px)").matches;
+        document.getElementById(phone ? "plan-date-phone" : "plan-date")?.focus();
       }
       if (e.key.toLowerCase() === "d") {
         e.preventDefault();
@@ -80,8 +82,16 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   }, [ref, done, setDone]);
 
   return (
-    // The same centred column as the top bar; the description keeps a reading measure inside it.
-    <div className="w-full max-w-[768px] px-4 pb-10 md:px-6 xl:max-w-[1088px]" style={courseStyle(color(item.courseCanvasId))}>
+    // Below xl one stacked column, the top bar's left-aligned 720px. At xl Plan
+    // and Notes move to a full-height 340px right rail, like Home's and the
+    // course page's, and the main column runs to 24px before it (the prose
+    // keeps its own reading measure). The main wrapper is `contents` below xl
+    // so the rail can sit between its sections.
+    <div
+      className="flex w-full max-w-[768px] flex-1 flex-col px-4 pb-10 md:px-6 xl:max-w-none xl:flex-row xl:px-0 xl:pb-0"
+      style={courseStyle(color(item.courseCanvasId))}
+    >
+      <div className="contents xl:block xl:min-w-0 xl:flex-1 xl:px-6 xl:pb-10">
       {/* Header */}
       <div className="pt-4 pb-4 md:pt-8 md:pb-6">
         <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
@@ -123,9 +133,9 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             )}
           </div>
         </div>
-        {/* Status chips wrap among themselves; the primary action ends the row
-            at the content's right edge, or takes its own full-width row on a phone. */}
-        <div className="mt-[14px] flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+        {/* Status chips wrap among themselves; Open in Canvas ends the row at
+            the content's right edge (on a phone it's the top bar's action). */}
+        <div className="mt-[14px] flex items-start gap-4">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-[6px]">
             {done ? (
               <StatusChip>
@@ -159,9 +169,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             <Button
               asChild
               size="sm"
-              // Primary on desktop; on a phone it's a secondary outline so the
-              // page's own Plan controls aren't outranked.
-              className="h-10 w-full shrink-0 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-ink-2 hover:border-line-2 hover:bg-hover hover:text-ink md:-mt-1 md:h-8 md:w-auto md:text-[12.5px]"
+              className="-mt-1 h-8 shrink-0 rounded-lg border border-line bg-surface px-3 text-[12.5px] font-medium text-ink-2 hover:border-line-2 hover:bg-hover hover:text-ink max-md:hidden"
             >
               <a href={item.htmlUrl} target="_blank" rel="noreferrer">
                 Open in Canvas
@@ -170,84 +178,28 @@ export function TodoDetail({ item }: { item: TodoItem }) {
             </Button>
           )}
         </div>
+        {/* Phones: the plan controls right under the status line, above the
+            description, so planning is the first thing in reach. */}
+        <PlanControls
+          className="mt-3 md:hidden"
+          grid="always"
+          dateId="plan-date-phone"
+          value={item.plannedDay}
+          today={today}
+          onPlan={(plannedDay) => void setPlannedDay({ ref, plannedDay })}
+        />
       </div>
 
-      {/* Plan and Notes: compact property rows, so the description starts high.
-          On a phone, where they stack tall, the assignment text comes first. */}
-      {/* Wide screens: the assignment text on the left, Plan and Notes as a
-          properties rail on the right (labels stacked), like Home's and the
-          course page's rails. */}
-      <div className="flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:items-start xl:gap-x-10">
-      <div className="max-md:order-2 xl:col-start-2 xl:row-start-1 xl:[&>section]:grid-cols-1">
-      <PropertyRow title="Plan">
-        <div className="flex flex-wrap items-center gap-[6px]">
-          <QuickPlan label="Today" active={item.plannedDay === today} onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
-          <QuickPlan
-            label="Tomorrow"
-            active={item.plannedDay === addDays(today, 1)}
-            onClick={() => void setPlannedDay({ ref, plannedDay: addDays(today, 1) })}
-          />
-          <PlanDate value={item.plannedDay} onChange={(plannedDay) => void setPlannedDay({ ref, plannedDay })} />
-          {item.plannedDay !== undefined && (
-            <button
-              type="button"
-              onClick={() => void setPlannedDay({ ref, plannedDay: null })}
-              className="h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 md:h-8 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
-            >
-              Clear
-            </button>
-          )}
-        </div>
-
-        <div className="mt-[6px]">
-          {item.subtasks.map((s) => (
-            <div key={s.id} className="group -mx-2 flex items-center gap-[10px] rounded-md px-2 py-[5px] text-[13.5px] transition-colors hover:bg-hover">
-              <button
-                type="button"
-                onClick={() => void setSubtaskDone({ ref, subtaskId: s.id, done: !s.done })}
-                className={cn(
-                  "grid size-[15px] shrink-0 place-items-center rounded-[4px] border-[1.5px] border-line-2 transition-colors hover:border-ink-3",
-                  s.done && "border-ink-3 bg-ink-3",
-                )}
-                aria-label={s.done ? "Mark subtask not done" : "Mark subtask done"}
-              >
-                <Check className={cn("size-[10px] stroke-[2.4] text-today-fg", !s.done && "opacity-0")} />
-              </button>
-              <span className={cn("text-ink", s.done && "text-ink-3 line-through decoration-line-2")}>{s.title}</span>
-              <button
-                type="button"
-                onClick={() => void removeSubtask({ ref, subtaskId: s.id })}
-                className="ml-auto text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 hover:text-ink focus-visible:opacity-100"
-                aria-label="Remove subtask"
-              >
-                <X className="size-[13px]" />
-              </button>
-            </div>
-          ))}
-          <AddSubtask onAdd={(title) => void addSubtask({ ref, title })} />
-        </div>
-      </PropertyRow>
-      </div>
-
-      <div className="max-md:order-3 xl:col-start-2 xl:row-start-2 xl:[&>section]:grid-cols-1">
-      <PropertyRow title="Notes">
-        <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
-      </PropertyRow>
-      </div>
-
-      {/* Description (Canvas) */}
+      {/* Description (Canvas): above Plan and Notes on a phone, where they stack tall. */}
       {!isLocal && description && (
-        <div className="max-md:order-1 xl:col-start-1 xl:row-span-3 xl:row-start-1">
-        <PropertyRow title="Description" prose>
+        <PropertyRow title="Description" prose className="order-2 max-md:order-1">
           <div className={PROSE} dangerouslySetInnerHTML={{ __html: sanitize(description) }} />
         </PropertyRow>
-        </div>
       )}
-      </div>
 
       {/* Submission (Canvas) */}
       {!isLocal && (
-        <PropertyRow title="Submission" prose>
+        <PropertyRow title="Submission" prose className="order-3">
           <div className="flex items-start gap-[10px]">
             <SubmissionIcon item={item} />
             <div className="min-w-0">
@@ -270,7 +222,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
       )}
 
       {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2 border-t border-line py-5">
+      <div className="order-3 flex flex-wrap items-center gap-2 border-t border-line py-5">
         <button
           type="button"
           onClick={() => void setDone({ ref, done: !done })}
@@ -308,13 +260,78 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           <span className="text-[12px] text-ink-3 md:ml-auto">Canvas todos can't be deleted — only re-planned.</span>
         )}
       </div>
+      </div>
+
+      {/* Plan and Notes: compact property rows below xl, so the description
+          starts high; at xl a properties rail with stacked labels. */}
+      <aside
+        aria-label="Plan and notes"
+        className="order-1 max-md:order-2 xl:w-[340px] xl:shrink-0 xl:border-l xl:border-line xl:bg-surface"
+      >
+      {/* At xl a flex column pinned to the viewport below the 64px bar, so
+          Notes fills the rail's height and stays in view beside a long
+          description. */}
+      <div className="contents xl:sticky xl:top-0 xl:flex xl:h-[calc(100dvh-4rem)] xl:flex-col xl:overflow-y-auto xl:px-5 xl:pt-8 xl:pb-6">
+      {/* On a phone the plan controls sit in the header, so this row is
+          just the subtasks. */}
+      <PropertyRow
+        title={
+          <>
+            <span className="md:hidden">Subtasks</span>
+            <span className="max-md:hidden">Plan</span>
+          </>
+        }
+        rail
+      >
+        <PlanControls
+          className="max-md:hidden"
+          grid="xl"
+          dateId="plan-date"
+          value={item.plannedDay}
+          today={today}
+          onPlan={(plannedDay) => void setPlannedDay({ ref, plannedDay })}
+        />
+        <div className="md:mt-[6px]">
+          {item.subtasks.map((s) => (
+            <div key={s.id} className="group -mx-2 flex items-center gap-[10px] rounded-md px-2 py-[5px] text-[13.5px] transition-colors hover:bg-hover">
+              <button
+                type="button"
+                onClick={() => void setSubtaskDone({ ref, subtaskId: s.id, done: !s.done })}
+                className={cn(
+                  "grid size-[15px] shrink-0 place-items-center rounded-[4px] border-[1.5px] border-line-2 transition-colors hover:border-ink-3",
+                  s.done && "border-ink-3 bg-ink-3",
+                )}
+                aria-label={s.done ? "Mark subtask not done" : "Mark subtask done"}
+              >
+                <Check className={cn("size-[10px] stroke-[2.4] text-today-fg", !s.done && "opacity-0")} />
+              </button>
+              <span className={cn("text-ink", s.done && "text-ink-3 line-through decoration-line-2")}>{s.title}</span>
+              <button
+                type="button"
+                onClick={() => void removeSubtask({ ref, subtaskId: s.id })}
+                className="ml-auto text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 hover:text-ink focus-visible:opacity-100"
+                aria-label="Remove subtask"
+              >
+                <X className="size-[13px]" />
+              </button>
+            </div>
+          ))}
+          <AddSubtask onAdd={(title) => void addSubtask({ ref, title })} />
+        </div>
+      </PropertyRow>
+
+      <PropertyRow title="Notes" rail fill>
+        <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
+      </PropertyRow>
+      </div>
+      </aside>
     </div>
   );
 }
 
 /** Reading typography for Canvas-authored HTML. */
 const PROSE = cn(
-  "max-w-[68ch] text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
+  "max-w-[680px] text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
   "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
   "[&_p]:my-3 [&_strong]:font-semibold [&_strong]:text-ink [&_b]:font-semibold [&_b]:text-ink",
   "[&_h1]:mt-6 [&_h1]:mb-2 [&_h1]:text-[16px] [&_h1]:font-semibold [&_h1]:tracking-[-0.01em] [&_h1]:text-ink",
@@ -323,7 +340,8 @@ const PROSE = cn(
   "[&_h4]:mt-5 [&_h4]:mb-2 [&_h4]:text-[14px] [&_h4]:font-semibold [&_h4]:text-ink",
   "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_li]:pl-1 [&_li::marker]:text-ink-3",
   "[&_a]:font-medium [&_a]:text-ink [&_a]:underline [&_a]:decoration-line-2 [&_a]:underline-offset-[3px] [&_a]:transition-colors hover:[&_a]:decoration-ink",
-  "[&_img]:my-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-line",
+  "[&_img]:h-auto [&_img]:max-w-full",
+  IMAGE_FRAME,
   "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line-2 [&_blockquote]:pl-4 [&_blockquote]:text-ink-3",
   "[&_hr]:my-6 [&_hr]:border-line",
   "[&_code]:rounded [&_code]:bg-chip [&_code]:px-1 [&_code]:py-px [&_code]:text-[12.5px]",
@@ -342,12 +360,20 @@ function PropertyRow({
   title,
   inline = false,
   prose = false,
+  rail = false,
+  fill = false,
+  className,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   inline?: boolean;
   /** Reading content, not controls: more air, label aligned to the first text line. */
   prose?: boolean;
+  /** In the xl properties rail: label stacked above, no rule above the first row. */
+  rail?: boolean;
+  /** The rail's last row: takes the rail's remaining height at xl. */
+  fill?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -356,6 +382,9 @@ function PropertyRow({
         "grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[88px_minmax(0,1fr)] md:gap-x-4",
         inline && "grid-cols-[64px_minmax(0,1fr)] gap-x-3",
         prose && "md:py-5",
+        rail && "xl:grid-cols-1 xl:py-5 xl:first:border-t-0 xl:first:pt-0",
+        fill && "xl:flex-1 xl:grid-rows-[auto_1fr] xl:pb-0",
+        className,
       )}
     >
       <h2
@@ -363,25 +392,85 @@ function PropertyRow({
           "text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink",
           prose ? "md:pt-[3px]" : "md:pt-[7px]",
           inline && "pt-[11px]",
+          rail && "xl:pt-0",
         )}
       >
         {title}
       </h2>
-      <div className="min-w-0">{children}</div>
+      <div className={cn("min-w-0", fill && "xl:flex xl:flex-col xl:self-stretch")}>{children}</div>
     </section>
   );
 }
 
-const PLAN_BUTTON =
-  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+/**
+ * Today / Tomorrow / Pick a date (and Clear once planned). `grid` sets where
+ * the three share one row as equal thirds: always (the phone header) or only
+ * at xl (the 300px rail); between, they wrap as a flex row.
+ */
+function PlanControls({
+  value,
+  today,
+  onPlan,
+  grid,
+  dateId,
+  className,
+}: {
+  value: string | undefined;
+  today: string;
+  onPlan: (day: string | null) => void;
+  grid: "always" | "xl";
+  /** Only the one focused by the P shortcut gets the id. */
+  dateId?: string;
+  className?: string;
+}) {
+  const tomorrow = addDays(today, 1);
+  return (
+    <div
+      className={cn(
+        grid === "always"
+          ? "grid grid-cols-3 gap-[6px]"
+          : "flex flex-wrap items-center gap-[6px] xl:grid xl:grid-cols-3",
+        className,
+      )}
+    >
+      <QuickPlan label="Today" active={value === today} onClick={() => onPlan(today)} grid={grid} />
+      <QuickPlan label="Tomorrow" active={value === tomorrow} onClick={() => onPlan(tomorrow)} grid={grid} />
+      <PlanDate id={dateId} value={value} onChange={onPlan} grid={grid} />
+      {value !== undefined && (
+        <button
+          type="button"
+          onClick={() => onPlan(null)}
+          className={cn(
+            "h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none md:h-8",
+            grid === "always"
+              ? "col-span-3 -ml-[9px] h-8 justify-self-start"
+              : "xl:col-span-3 xl:-ml-[9px] xl:h-7 xl:justify-self-start",
+          )}
+        >
+          Clear
+        </button>
+      )}
+    </div>
+  );
+}
 
-function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+const PLAN_BUTTON =
+  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+
+/** Equal-third cells centre their label and trim the side padding. */
+const planCell = (grid: "always" | "xl") => (grid === "always" ? "justify-center px-2" : "xl:justify-center xl:px-2");
+
+function QuickPlan({ label, active, onClick, grid }: { label: string; active: boolean; onClick: () => void; grid: "always" | "xl" }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={cn(PLAN_BUTTON, active ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink")}
+      className={cn(
+        PLAN_BUTTON,
+        planCell(grid),
+        active ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
+      )}
     >
       {label}
     </button>
@@ -393,19 +482,49 @@ function QuickPlan({ label, active, onClick }: { label: string; active: boolean;
  * or the planned day; once focused (click, or P) the native field shows so the
  * date can be typed, and a click also opens the browser's picker.
  */
-function PlanDate({ value, onChange }: { value: string | undefined; onChange: (day: string | null) => void }) {
+function PlanDate({
+  id,
+  value,
+  onChange,
+  grid,
+}: {
+  id?: string;
+  value: string | undefined;
+  onChange: (day: string | null) => void;
+  grid: "always" | "xl";
+}) {
   return (
     <label
       className={cn(
         PLAN_BUTTON,
-        "group relative cursor-pointer md:min-w-[124px] focus-within:ring-2 focus-within:ring-line-2",
+        planCell(grid),
+        "group relative min-w-0 cursor-pointer focus-within:ring-2 focus-within:ring-line-2 md:min-w-[124px] xl:min-w-0",
         value !== undefined ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
       )}
     >
-      <CalendarDays className="size-[14px] text-ink-3 group-focus-within:invisible" />
-      <span className="group-focus-within:invisible">{value !== undefined ? formatDayLong(value) : "Pick a date"}</span>
+      {/* A third of the 300px rail fits "Pick a date" only without the icon;
+          phones keep it unless the screen is narrower than 375px. */}
+      <CalendarDays
+        className={cn(
+          "size-[14px] shrink-0 text-ink-3 group-focus-within:invisible",
+          grid === "always" ? "max-[374px]:hidden" : "xl:hidden",
+        )}
+      />
+      <span className="truncate group-focus-within:invisible">
+        {value === undefined ? (
+          "Pick a date"
+        ) : grid === "always" ? (
+          formatDayShort(value)
+        ) : (
+          <>
+            <span className="xl:hidden">{formatDayLong(value)}</span>
+            {/* The rail's date cell is a third: "Fri Nov 13". */}
+            <span className="max-xl:hidden">{formatDayShort(value)}</span>
+          </>
+        )}
+      </span>
       <input
-        id="plan-date"
+        id={id}
         type="date"
         aria-label="Planned day"
         value={value ?? ""}
@@ -564,8 +683,10 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
       }}
       placeholder="Add notes…"
       aria-label="Notes"
-      rows={draft === "" ? 1 : Math.max(2, Math.min(10, draft.split("\n").length + 1))}
-      className={cn(FIELD, "block w-full resize-none px-[10px] py-[9px] text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3 md:py-[5px]")}
+      // At least 96px, so it reads as a place to write; grows with the text up
+      // to 12 lines. In the xl rail it fills the rail's remaining height.
+      rows={Math.max(4, Math.min(12, draft.split("\n").length + 1))}
+      className={cn(FIELD, "block min-h-[96px] w-full resize-none px-[10px] py-2 text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3 xl:min-h-[240px] xl:flex-1")}
     />
   );
 }

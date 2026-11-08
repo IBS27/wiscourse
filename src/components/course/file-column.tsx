@@ -66,7 +66,8 @@ export function FileColumn({
           </button>
         )}
         <span className="truncate font-medium text-ink">{folder?.folder.name ?? "Files"}</span>
-        <span className="ml-auto shrink-0 text-xs">
+        {/* The count follows the folder name, never alone at the far edge. */}
+        <span className="tabular shrink-0 text-xs">
           {atRoot
             ? `${tree.files.length} file${tree.files.length === 1 ? "" : "s"}`
             : `${folder?.totalFiles ?? 0} file${folder?.totalFiles === 1 ? "" : "s"}`}

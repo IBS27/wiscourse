@@ -84,6 +84,36 @@ export function CountBadge({ n, className }: { n: number; className?: string }) 
   );
 }
 
+/** An inline middle-dot separator inside running text: 6px each side. */
+export function Sep() {
+  return (
+    <span className="mx-[6px]" aria-hidden>
+      ·
+    </span>
+  );
+}
+
+/**
+ * A section's count, inline right after its label: "Overdue 5". `sep` adds a
+ * middle dot when a sub-label sits between ("This week through Fri · 13").
+ * Sits in the label's gap-2 flex row; never pushed to the far edge. A zero
+ * count renders nothing — the section's empty line already says so.
+ */
+export function SectionCount({ n, sep, className }: { n: number; sep?: boolean; className?: string }) {
+  if (n === 0) return null;
+  return (
+    // With `sep`, pull back 2px of the row's 8px gap so the dot has 6px each side, like `Sep`.
+    <span className={cn("text-xs font-normal tracking-normal text-ink-3 tabular", sep && "-ml-[2px]", className)}>
+      {sep && (
+        <span className="mr-[6px]" aria-hidden>
+          ·
+        </span>
+      )}
+      {n}
+    </span>
+  );
+}
+
 export function SectionLabel({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("eyebrow", className)}>{children}</div>;
 }

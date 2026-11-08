@@ -6,6 +6,7 @@ import { api } from "../../convex/_generated/api";
 import { AnnouncementRow } from "@/components/course/announcement-row";
 import { SectionHead } from "@/components/course/overview-row";
 import { SECTION_COUNT } from "@/components/course/overview-icons";
+import { READING_FRAME } from "@/components/app/page-header";
 import { courseColorVar, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { useMarkSeenOnMount, useSeen } from "@/lib/seen";
 
@@ -51,9 +52,10 @@ function CourseAnnouncements() {
   };
 
   return (
-    // A list page: full width to the main area's gutters, rules inset with it.
+    // A reading list: the shared reading width (Tasks, Settings), so each
+    // date stays near its excerpt; rules inset to the gutters.
     <div
-      className="w-full min-w-0 flex-1 pb-8"
+      className={`${READING_FRAME} w-full min-w-0 flex-1 pb-8`}
       style={courseStyle(courseColorVar(course?.color))}
     >
       {rows === undefined ? null : rows.length === 0 ? (
@@ -66,8 +68,13 @@ function CourseAnnouncements() {
         <>
           <SectionHead
             title="Announcements"
-            detail={unreadCount > 0 && unreadCount < rows.length ? `${unreadCount} unread` : undefined}
-            right={<span className={SECTION_COUNT}>{rows.length}</span>}
+            detail={
+              // The count sits right after the label, never alone at the far edge.
+              <>
+                <span className={SECTION_COUNT}>{rows.length}</span>
+                {unreadCount > 0 && unreadCount < rows.length && <> · {unreadCount} unread</>}
+              </>
+            }
           />
           {rows.map((announcement) => (
             <AnnouncementRow

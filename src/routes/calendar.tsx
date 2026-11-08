@@ -213,6 +213,8 @@ function Calendar() {
 
   // Only once the meetings query has answered; the nudge must not flash.
   const noMeetings = !loading && meetings.length === 0 && visible.length > 0;
+  const addClassTimes = noMeetings ? () => setMeetingsFor("any") : undefined;
+  const newEvent = () => setEditingEvent("new");
   const title =
     view === "day"
       ? formatDayMedium(anchor)
@@ -255,7 +257,7 @@ function Calendar() {
         showClasses={view === "month" ? showClasses : undefined}
         onToggleClasses={view === "month" ? toggleClasses : undefined}
         onSubscribe={() => setSubscribing(true)}
-        onNewEvent={() => setEditingEvent("new")}
+        onNewEvent={newEvent}
       />
 
       {info?.connected === false && <ConnectCard />}
@@ -268,7 +270,9 @@ function Calendar() {
           now={now}
           zone={zone}
           compact={mobile}
-          onAddClassTimes={noMeetings ? () => setMeetingsFor("any") : undefined}
+          loading={loading}
+          onAddClassTimes={addClassTimes}
+          onNewEvent={newEvent}
           onOpenBlock={openBlock}
           onOpenEvent={setEditingEvent}
         />
@@ -299,9 +303,12 @@ function Calendar() {
           todayKey={today}
           now={now}
           zone={zone}
+          loading={loading}
           onSelectDay={(day) => go({ date: day })}
           onShiftWeek={(delta) => go({ date: addDays(anchor, delta * 7) })}
           onShiftDay={(delta) => go({ date: addDays(anchor, delta) })}
+          onAddClassTimes={addClassTimes}
+          onNewEvent={newEvent}
           onOpenBlock={openBlock}
           onOpenEvent={setEditingEvent}
         />

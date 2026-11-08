@@ -31,10 +31,10 @@ export function InboxRow({
       aria-current={selected ? "true" : undefined}
       className={cn(
         "group relative isolate flex cursor-pointer items-start py-[11px] pr-4 pl-4 text-inherit no-underline focus-visible:outline-none md:pr-8 md:pl-8",
-        // Hairline between rows, from the title column to the content edge.
-        "after:absolute after:right-4 after:bottom-0 after:left-[65px] after:h-px after:bg-line md:after:right-8 md:after:left-[81px]",
-        // Hover, focus and selection fill a rounded plate that stays inside the list's gutters.
+        // Hover, focus and selection fill a rounded plate that stays inside the list's gutters;
+        // the hairline between rows starts under the title and ends on the plate's right edge.
         "before:absolute before:inset-x-1 before:inset-y-[2px] before:-z-10 before:rounded-[6px] before:transition-colors md:before:inset-x-6",
+        "after:absolute after:right-1 after:bottom-0 after:left-[65px] after:h-px after:bg-line md:after:right-6 md:after:left-[81px]",
         "focus-visible:before:bg-hover",
         // Selected sits a clear step above hover in both themes; its own hairline drops so the plate reads as one block.
         // The row above drops its hairline too, so nothing touches the plate.

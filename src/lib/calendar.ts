@@ -313,7 +313,7 @@ function freeLane(laneEnds: number[], minute: number): number {
 export interface GridBounds {
   startMinute: number;
   endMinute: number;
-  /** Pixels per hour: full height, or compact for a week with no blocks. */
+  /** Pixels per hour. */
   pxPerHour: number;
   /** Whole hours the gutter labels. */
   hours: number[];
@@ -325,23 +325,6 @@ export interface GridBounds {
  * `gridScrollTop` decides where it opens.
  */
 export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
-
-/**
- * An hour's height when the grid has nothing timed to show: the empty hours
- * take less room, so the bands above (and the call to add class times) lead.
- */
-export const EMPTY_PX_PER_HOUR = 28;
-
-/** The midnight-to-midnight grid for a week with nothing timed. */
-export const EMPTY_GRID_BOUNDS: GridBounds = gridBounds(EMPTY_PX_PER_HOUR);
-
-/**
- * The tallest the empty grid's window grows: 8 AM to midnight, so it still
- * opens at 8 AM (the hours before stay a scroll away) and never pads the
- * view with blank space past the end of the day.
- */
-export const EMPTY_GRID_MAX_VIEW =
-  EMPTY_GRID_BOUNDS.height - gridScrollTop(undefined, EMPTY_GRID_BOUNDS);
 
 /** The midnight-to-midnight grid at `pxPerHour`. */
 export function gridBounds(pxPerHour: number): GridBounds {

@@ -89,7 +89,15 @@ export function FileList({
 
   return (
     <div className={cn("flex min-w-0 flex-col", className)}>
-      <div className="flex h-11 shrink-0 items-center gap-[6px] border-b border-line pr-6 pl-4 text-[12.5px] whitespace-nowrap text-ink-3">
+      {/* The rule stops where the rows and filter do (the content cap's right
+          gutter); beside a preview it runs on to meet the preview's header. */}
+      <div
+        className={cn(
+          "relative flex h-11 shrink-0 items-center gap-[6px] pr-6 pl-4 text-[12.5px] whitespace-nowrap text-ink-3",
+          "after:absolute after:bottom-0 after:left-0 after:h-px after:bg-line",
+          compact ? "after:right-0" : "after:right-6",
+        )}
+      >
         <div className="flex min-w-0 items-center gap-[6px] overflow-hidden">
           {searching ? (
             <span className="truncate">

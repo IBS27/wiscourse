@@ -7,6 +7,7 @@ import { fileHref, moduleHref, pageHref } from "@/lib/course-routes";
 import { CanvasHtml } from "@/components/reader/canvas-html";
 import { SyllabusFacts } from "@/components/course/syllabus-facts";
 import { SyllabusGrading } from "@/components/course/syllabus-grading";
+import { COURSE_CONTENT } from "@/components/course/content-width";
 import { courseColorVar, courseStyle, useCourses } from "@/lib/hooks";
 
 export const Route = createFileRoute("/courses/$courseId/syllabus")({
@@ -61,17 +62,17 @@ function CourseSyllabus() {
 
   return (
     <div
-      className="min-w-0 flex-1 pb-8"
+      className={`${COURSE_CONTENT} min-w-0 flex-1 pb-8`}
       style={courseStyle(courseColorVar(course?.color))}
     >
       <SyllabusFacts course={course} facts={facts ?? undefined} />
       <SyllabusGrading canvasId={canvasId} />
       {detail === undefined ? null : hasBody ? (
-        <div className="max-w-[760px] px-4 pt-5 md:px-6">
+        <div className="max-w-[760px] px-4 pt-5 md:px-6 md:pt-6">
           <CanvasHtml html={body} courseId={canvasId} />
         </div>
       ) : loading ? null : sources.size > 0 ? (
-        <div className="space-y-3 px-4 pt-5 md:px-6">
+        <div className="space-y-3 px-4 pt-5 md:px-6 md:pt-6">
           <p className="text-[13px] text-ink-3">
             Syllabus and course information
           </p>
@@ -82,7 +83,7 @@ function CourseSyllabus() {
           ))}
         </div>
       ) : front ? (
-        <div className="px-4 pt-5 md:px-6">
+        <div className="px-4 pt-5 md:px-6 md:pt-6">
           <p className="mb-3 text-[13px] text-ink-3">
             Check the instructor’s course home for policies and course
             information.

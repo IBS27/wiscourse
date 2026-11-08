@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, type MouseEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { canvasUrl, fileHref, rewriteCanvasHref } from "@/lib/course-routes";
 import { cn } from "@/lib/utils";
-import { EXTERNAL_LINK, INTERNAL_LINK, PROSE } from "@/lib/prose";
+import { EXTERNAL_LINK, IMAGE_FRAME, INTERNAL_LINK, PROSE } from "@/lib/prose";
 
 export interface Heading {
   id: string;
@@ -48,7 +48,7 @@ export function CanvasHtml({
   if (markup === "") return null;
   return (
     <div
-      className={cn(PROSE, className)}
+      className={cn(PROSE, IMAGE_FRAME, className)}
       onClick={onClick}
       // Sanitised above; `transform` only ever adds attributes of our own.
       dangerouslySetInnerHTML={{ __html: markup }}

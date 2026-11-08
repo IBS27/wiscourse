@@ -6,7 +6,6 @@ import { CourseTag } from "@/components/app/bits";
 import { dayKeyOf, formatPlannedRelative } from "@/lib/dates";
 import { coverageLabel, formatPercent, formatPoints, schemeLabel } from "@/lib/grades-ui";
 import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
-import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /** The grid the header and every row share. */
@@ -30,7 +29,8 @@ export function GradesLedgerHeader() {
       )}
     >
       <span>Course</span>
-      <span className="text-right">Current grade</span>
+      {/* Ends over the % edge, not the letter chip beside it (26px chip + 10px gap). */}
+      <span className="pr-9 text-right whitespace-nowrap">Current grade</span>
       <span>Graded so far</span>
       <span>Latest posted</span>
     </div>
@@ -41,14 +41,12 @@ export function GradesLedgerRow({
   course,
   color,
   book,
-  seen,
   today,
 }: {
   course: Course;
   color: string;
   /** Undefined while `grades.index` is in flight. */
   book: Gradebook | undefined;
-  seen: Seen;
   today: string;
 }) {
   const summary = useMemo(() => (book === undefined ? undefined : summarize(book)), [book]);
@@ -65,8 +63,6 @@ export function GradesLedgerRow({
 
   const code = shortCode(course);
   const coverage = summary === undefined ? undefined : coverageLabel(summary);
-  const unseen =
-    latest?.postedAt !== undefined && !seen.has(latest.canvasId, String(latest.postedAt));
 
   return (
     <Link
@@ -74,7 +70,7 @@ export function GradesLedgerRow({
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
+        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-6 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
         GUTTER,
         RULE,
         LEDGER_COLUMNS,
@@ -128,7 +124,8 @@ export function GradesLedgerRow({
           <span className="text-[13px] text-ink-3">—</span>
         ) : (
           <>
-            <div className={cn("line-clamp-2 text-[13px] leading-[1.35]", unseen ? "font-medium text-ink" : "text-ink-2")}>
+            {/* One line, one weight in every row: the ledger reads as a column. */}
+            <div className="truncate text-[13px] leading-[1.35] text-ink" title={latest.name}>
               {latest.name}
             </div>
             <div className="tabular mt-[3px] truncate text-[12.5px] text-ink-3">
