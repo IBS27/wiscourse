@@ -73,9 +73,12 @@ export function CommandPalette() {
         className={cn(
           mobile
             ? "top-0 left-0 h-dvh w-full max-w-none translate-x-0 rounded-none border-0"
-            : scope === undefined
-              ? "max-w-[620px]"
-              : "max-w-[700px]",
+            : [
+                "top-[14vh] rounded-xl border-line-2/70",
+                "shadow-[0_24px_64px_-16px_rgba(16,17,20,0.28),0_2px_6px_rgba(16,17,20,0.05)]",
+                "dark:border-line-2 dark:shadow-[0_24px_64px_-12px_rgba(0,0,0,0.75)]",
+                scope === undefined ? "max-w-[660px]" : "max-w-[800px]",
+              ],
         )}
       >
         <DialogTitle className="sr-only">Search</DialogTitle>

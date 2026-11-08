@@ -106,6 +106,9 @@ export function buildAgenda(items: TodoItem[], opts: AgendaOptions): Bucket[] {
     return (a.dueAt ?? Infinity) - (b.dueAt ?? Infinity) || a.title.localeCompare(b.title);
   };
   for (const list of Object.values(buckets)) list.sort(byTime);
+  // Overdue reads newest first: the item that just slipped is the one most
+  // worth rescuing, and it shouldn't hide behind weeks-old backlog.
+  buckets.overdue.reverse();
 
   return [
     { id: "overdue", title: "Overdue", items: buckets.overdue },

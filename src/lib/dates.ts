@@ -177,6 +177,15 @@ export function formatDueRelative(ms: number, todayKey: string): string {
   return `${formatDayShort(key)}, ${formatTime(ms)}`;
 }
 
+/** Compact `formatDueRelative` for phones: "9:00 PM", "Wed 9:00 PM", "Oct 21, 9:00 PM". */
+export function formatDueCompact(ms: number, todayKey: string): string {
+  const key = dayKeyOf(ms);
+  if (key === todayKey) return formatTime(ms);
+  const diff = dayDiff(todayKey, key);
+  if (diff > 0 && diff < 7) return `${formatWeekday(key)} ${formatTime(ms)}`;
+  return `${formatDayShort(key).replace(/^\S+ /, "")}, ${formatTime(ms)}`;
+}
+
 /** Planned-day label: "today", "tomorrow", "Sun", "Sun Aug 23". */
 export function formatPlannedRelative(key: string, todayKey: string): string {
   if (key === todayKey) return "today";
@@ -204,6 +213,16 @@ export function formatLate(dueAt: number, now: number = Date.now()): string {
   const hours = Math.floor(diff / 3_600_000);
   if (hours >= 1) return `${hours} hour${hours === 1 ? "" : "s"} late`;
   return "just past due";
+}
+
+/** Compact `formatLate` for tight rows: "15d late", "4h late". */
+export function formatLateShort(dueAt: number, now: number = Date.now()): string {
+  const diff = now - dueAt;
+  const days = Math.floor(diff / DAY_MS);
+  if (days >= 1) return `${days}d late`;
+  const hours = Math.floor(diff / 3_600_000);
+  if (hours >= 1) return `${hours}h late`;
+  return "Past due";
 }
 
 /** "2 minutes ago", "just now", "3 hours ago". */

@@ -1,6 +1,6 @@
 import type { Summary } from "../../../convex/lib/grades";
 import { formatPercent, formatPoints, usesWeights } from "@/lib/grades-ui";
-import { cn } from "@/lib/utils";
+import { Meter } from "./bits";
 
 interface Segment {
   key: number;
@@ -39,61 +39,78 @@ function segmentsOf(summary: Summary): Segment[] {
 }
 
 /**
- * The weights drawn once, to scale, each filled to the share of that group
- * that is graded — so an empty block says "this much is still entirely open"
- * without a sentence. Ink only: the course colour is carried elsewhere.
+ * One compact row per group, in fixed columns so each reads straight across:
+ * name (160) · share and how much is graded (220) · score bar (160) · % (64).
+ * On a narrow container the share line drops under the name.
  */
 export function CompositionStrip({
   summary,
   note,
 }: {
   summary: Summary;
-  /** Appended to the heading, e.g. "+25% from your edits". */
+  /** Shown beside the heading, e.g. "+25% from your edits". */
   note?: string;
 }) {
   const segments = segmentsOf(summary);
   if (segments.length === 0) return null;
 
   return (
-    <section className="pb-2">
-      <div className="eyebrow">
+    <section className="@container min-w-0">
+      <h2 className="text-[12.5px] font-medium text-ink-3">
         How the grade is built
-        <span className="ml-[6px] font-medium tracking-normal normal-case text-ink-3">
-          · {Math.round(summary.coverage * 100)}% graded so far
-          {note !== undefined && ` · ${note}`}
-        </span>
-      </div>
-      <div className="mt-2 flex h-3 gap-[3px] overflow-hidden rounded-[3px]">
-        {segments.map((segment) => (
-          <span
-            key={segment.key}
-            className="relative block h-full min-w-[3px] shrink grow-0 overflow-hidden rounded-[2px] bg-chip"
-            style={{ flexBasis: `${segment.share * 100}%` }}
-          >
-            <span
-              className="absolute inset-y-0 left-0 bg-ink-2"
-              style={{ width: `${Math.max(0, Math.min(1, segment.fill)) * 100}%` }}
-            />
-          </span>
-        ))}
-      </div>
-      <ul className="mt-[10px] flex list-none flex-wrap gap-x-[22px] gap-y-1 p-0 text-xs text-ink-3">
-        {segments.map((segment) => (
-          <li key={segment.key} className="inline-flex items-center gap-[7px] whitespace-nowrap">
-            <span
-              className={cn(
-                "size-2 shrink-0 rounded-[2px]",
-                segment.percent === undefined ? "bg-chip" : "bg-ink-2",
+        {note !== undefined && <span className="font-normal"> · {note}</span>}
+      </h2>
+      {/* Fills the content width, so its right edge meets the table's below. */}
+      <ul className="mt-1 grid list-none grid-cols-1 p-0 @2xl:pr-6">
+        {/* Column labels, so the bar reads as the score, not the share graded. */}
+        <li
+          aria-hidden
+          className="hidden min-w-0 grid-cols-[160px_220px_minmax(160px,1fr)_64px] gap-x-4 pt-1 text-[11.5px] text-ink-3 @2xl:grid"
+        >
+          <span />
+          <span>Weight · graded so far</span>
+          <span className="col-span-2">Score</span>
+        </li>
+        {segments.map((segment) => {
+          // The bar is the score, so it always agrees with the number beside it;
+          // how much is graded so far is said in words.
+          const graded = `${Math.round(Math.max(0, Math.min(1, segment.fill)) * 100)}% graded`;
+          const score = segment.percent === undefined ? 0 : Math.max(0, Math.min(1, segment.percent / 100));
+          return (
+            <li
+              key={segment.key}
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_72px_52px] items-center gap-x-4 gap-y-[2px] py-[6px] text-[13px] @2xl:grid-cols-[160px_220px_minmax(160px,1fr)_64px]"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium text-ink" title={segment.name}>
+                  {segment.name}
+                </span>
+                <span className="tabular block truncate text-[12.5px] text-ink-3 @2xl:hidden">
+                  {segment.size} of grade · {graded}
+                </span>
+              </span>
+              <span className="tabular hidden truncate text-[12.5px] whitespace-nowrap text-ink-3 @2xl:block">
+                {segment.size} of grade · {graded}
+              </span>
+              <span
+                role="img"
+                aria-label={`${segment.name}: ${segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}`}
+                className="block"
+              >
+                <Meter fraction={score} />
+              </span>
+              {segment.percent === undefined ? (
+                <span className="text-right text-ink-3" title="not yet graded">
+                  —<span className="sr-only"> not yet graded</span>
+                </span>
+              ) : (
+                <span className="tabular text-right font-semibold text-ink">
+                  {formatPercent(segment.percent)}
+                </span>
               )}
-              aria-hidden
-            />
-            <span className="font-medium text-ink">{segment.name}</span>
-            <span>{segment.size} ·</span>
-            <span className={segment.percent === undefined ? undefined : "tabular text-ink-2"}>
-              {segment.percent === undefined ? "not yet graded" : formatPercent(segment.percent)}
-            </span>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Eye, FileText } from "lucide-react";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Markdown } from "./markdown";
 import { ChangeCard } from "./change-card";
+import { CourseTag } from "@/components/app/bits";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
@@ -114,7 +115,7 @@ function Sources({ sources }: { sources: Source[] }) {
   const { label, color } = useCourses();
   if (sources.length === 0) return null;
   return (
-    <div className="mt-[10px] flex flex-wrap gap-[6px]">
+    <div className="mt-3 flex flex-wrap gap-[6px]">
       {sources.map((s) => (
         <a
           key={s.href}
@@ -124,12 +125,12 @@ function Sources({ sources }: { sources: Source[] }) {
             event.preventDefault();
             void navigate({ to: s.href });
           }}
-          className="inline-flex h-6 max-w-[280px] items-center gap-[6px] rounded-md bg-chip pr-[9px] pl-2 text-[12px] text-ink-2 hover:text-ink"
+          className="inline-flex h-7 max-w-[300px] items-center gap-[7px] rounded-lg border border-line bg-surface pr-[10px] pl-[9px] text-[12px] text-ink-2 transition-colors hover:bg-hover hover:text-ink"
           style={courseStyle(color(s.courseCanvasId))}
         >
-          <FileText className="size-3 shrink-0 text-c" />
+          <FileText className="size-[13px] shrink-0 text-ink-3" />
           <span className="truncate">{s.title}</span>
-          {label(s.courseCanvasId) && <span className="shrink-0 text-ink-3">{label(s.courseCanvasId)}</span>}
+          {label(s.courseCanvasId) && <CourseTag className="shrink-0 font-normal text-ink-3">{label(s.courseCanvasId)}</CourseTag>}
         </a>
       ))}
     </div>
@@ -143,7 +144,7 @@ function StreamingText({ text, streaming }: { text: string; streaming: boolean }
 
 export function UserMessage({ message }: { message: UIMessage }) {
   return (
-    <div className="ml-auto w-fit max-w-[86%] rounded-[12px_12px_4px_12px] border border-line bg-sunken px-3 pt-2 pb-[9px] text-[14px] leading-[1.5] break-words whitespace-pre-wrap">
+    <div className="ml-auto w-fit max-w-[82%] rounded-[16px_16px_5px_16px] bg-chip px-[14px] py-[9px] text-[14px] leading-[1.55] break-words whitespace-pre-wrap text-ink">
       {message.text}
     </div>
   );

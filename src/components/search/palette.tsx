@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react"
 import { useMutation, useQuery } from "convex/react";
 import { useNavigate } from "@tanstack/react-router";
 import type { FunctionReturnType } from "convex/server";
-import { Search, X } from "lucide-react";
+import { LoaderCircle, Search, SearchX, X } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Kbd } from "@/components/app/bits";
 import { PaletteRow, type RowContext } from "./palette-row";
@@ -16,7 +16,7 @@ import {
   todoHref,
 } from "@/lib/course-routes";
 import { formatSince } from "@/lib/dates";
-import { courseLabel, courseStyle, useCourses } from "@/lib/hooks";
+import { courseLabel, courseStyle, courseTitle, useCourses } from "@/lib/hooks";
 import { normalizeCode } from "@/lib/quickAdd";
 import { useQuickAdd } from "@/lib/quick-add-context";
 import {
@@ -24,6 +24,7 @@ import {
   filterByType,
   groupHits,
   keyOf,
+  matchRanges,
   parseScopedQuery,
   rankItems,
   rowDomId,
@@ -148,14 +149,11 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
     keyOf(item.kind, item.kind === "page" ? (item.pageSlug ?? "") : item.canvasId);
 
   const rowContext = (entry: Entry): RowContext => {
-    if (entry.type !== "result") return { courseColor: color(undefined), unseen: false, now };
+    if (entry.type !== "result") return { courseColor: color(undefined), now };
     const item = entry.item;
-    const kindSeen = seen[item.kind];
     return {
-      courseLabel:
-        scope !== undefined || item.kind === "course" ? undefined : label(item.courseCanvasId),
+      courseLabel: scope !== undefined ? undefined : label(item.courseCanvasId),
       courseColor: color(item.courseCanvasId),
-      unseen: kindSeen !== undefined && !kindSeen.has(item.canvasId),
       moduleName: scope === undefined ? undefined : moduleContext.get(itemKey(item))?.name,
       now,
     };
@@ -205,7 +203,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
             kind: "course",
             canvasId: course.canvasId,
             courseCanvasId: course.canvasId,
-            title: course.nickname ?? course.name,
+            title: courseTitle(course),
             folded: "",
             htmlUrl:
               byKey.get(keyOf("course", course.canvasId))?.htmlUrl ?? courseHref(course.canvasId),
@@ -220,12 +218,20 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
     for (const group of groups) {
       const open = expanded.has(group.id);
       const shown = open ? group.hits : group.hits.slice(0, GROUP_PREVIEW);
-      const entries: Entry[] = shown.map((hit) => ({
-        id: hit.item.id,
-        type: "result",
-        item: hit.item,
-        ranges: hit.ranges,
-      }));
+      const entries: Entry[] = shown.map((hit) => {
+        // Courses read by their plain title; the short code sits in the course column.
+        const course = hit.item.kind === "course" ? byId.get(hit.item.canvasId) : undefined;
+        if (course === undefined) {
+          return { id: hit.item.id, type: "result", item: hit.item, ranges: hit.ranges };
+        }
+        const title = courseTitle(course);
+        return {
+          id: hit.item.id,
+          type: "result",
+          item: { ...hit.item, title },
+          ranges: matchRanges(query, title),
+        };
+      });
       if (!open && group.hits.length > shown.length) {
         entries.push({
           id: `show-all:${group.id}`,
@@ -341,23 +347,24 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
   const showTabs = mobile || browsing || filter !== "all";
   const previewItem = current?.type === "result" ? current.item : undefined;
   const previewModule = previewItem === undefined ? undefined : moduleContext.get(itemKey(previewItem));
-  const example = visible[0] === undefined ? undefined : normalizeCode(visible[0].courseCode);
+  const noMatches = !browsing && index !== undefined && hits.length === 0 && entries.length > 0;
+  const example = visible[0] === undefined ? undefined : normalizeCode(courseLabel(visible[0]));
 
   return (
     <div className={cn("flex min-h-0 flex-col", mobile && "h-full")}>
       <div
         className={cn(
-          "flex shrink-0 items-center gap-[10px] border-b border-line px-4",
-          mobile ? "h-[54px]" : "h-[50px]",
+          "flex shrink-0 items-center gap-3 border-b border-line",
+          mobile ? "h-14 pr-3 pl-4" : "h-14 px-[18px]",
         )}
       >
-        <Search className="size-[15px] shrink-0 text-ink-3" />
+        <Search className="size-[17px] shrink-0 text-ink-3" />
         {scopeCourse !== undefined && (
           <span
             style={courseStyle(color(scopeCourse.canvasId))}
-            className="inline-flex h-6 shrink-0 items-center gap-[6px] rounded-md bg-chip px-2 text-xs font-medium text-ink-2"
+            className="inline-flex h-[26px] shrink-0 items-center gap-[6px] rounded-full bg-chip pr-[5px] pl-[10px] text-[12.5px] font-medium text-ink-2"
           >
-            <span className="size-[6px] rounded-full bg-c" />
+            <span className="size-[7px] rounded-full bg-c" />
             {courseLabel(scopeCourse)}
             <button
               type="button"
@@ -367,7 +374,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
                 onScope(undefined);
                 inputRef.current?.focus();
               }}
-              className="text-ink-3 hover:text-ink-2"
+              className="grid size-[18px] place-items-center rounded-full text-ink-3 transition-colors hover:bg-hover hover:text-ink"
             >
               <X className="size-[11px]" />
             </button>
@@ -381,7 +388,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
           onKeyDown={onKeyDown}
           placeholder={
             scopeCourse === undefined
-              ? "Search this semester…"
+              ? "Search assignments, pages, files…"
               : `Search ${courseLabel(scopeCourse)}…`
           }
           spellCheck={false}
@@ -391,10 +398,14 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
           aria-controls="ck-list"
           aria-label="Search"
           aria-activedescendant={current === undefined ? undefined : rowDomId(current.id)}
-          className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-ink-3"
+          className="min-w-0 flex-1 bg-transparent text-[16px] tracking-[-0.01em] outline-none placeholder:text-ink-3"
         />
         {mobile ? (
-          <button type="button" onClick={onClose} className="shrink-0 text-[13px] text-ink-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 shrink-0 rounded-md px-2 text-[14px] font-medium text-ink-2 transition-colors hover:bg-hover"
+          >
             Cancel
           </button>
         ) : (
@@ -405,8 +416,8 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
       {showTabs && (
         <div
           className={cn(
-            "flex shrink-0 gap-[2px] border-b border-line px-[10px] pt-2 pb-[2px]",
-            mobile && "overflow-x-auto whitespace-nowrap",
+            "flex shrink-0 gap-1 border-b border-line px-3 py-2",
+            mobile && "overflow-x-auto whitespace-nowrap [scrollbar-width:none]",
           )}
         >
           {tabs.map((tab) => (
@@ -417,9 +428,12 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
               // app listens for bare keys everywhere else.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => setRawFilter(tab.id)}
+              aria-pressed={tab.id === filter}
               className={cn(
-                "flex shrink-0 items-center gap-[5px] rounded-md px-[9px] py-[5px] text-xs font-medium",
-                tab.id === filter ? "bg-today text-today-fg" : "text-ink-3 hover:text-ink-2",
+                "flex h-7 shrink-0 items-center rounded-md px-[10px] text-[12.5px] font-medium transition-colors",
+                tab.id === filter
+                  ? "bg-chip text-ink shadow-[inset_0_0_0_1px_var(--line)]"
+                  : "text-ink-3 hover:bg-hover hover:text-ink-2",
               )}
             >
               {tab.label}
@@ -433,20 +447,55 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
           id="ck-list"
           role="listbox"
           aria-label="Results"
-          className={cn("min-w-0 flex-1 overflow-y-auto p-[6px]", mobile ? "" : "max-h-[440px]")}
+          className={cn(
+            "min-w-0 flex-1 overflow-y-auto px-2 pb-2",
+            mobile ? "" : "max-h-[min(460px,62vh)]",
+          )}
         >
+          {noMatches && (
+            <div className="flex flex-col items-center gap-[6px] px-4 pt-8 pb-4 text-center">
+              <SearchX className="size-[18px] text-ink-3" />
+              <p className="text-[13.5px] font-medium text-ink">No results for “{query.trim()}”</p>
+              <p className="text-[12.5px] text-ink-3">
+                {filter === "all"
+                  ? "Try fewer letters, or part of a word."
+                  : "Try another filter, or fewer letters."}
+              </p>
+            </div>
+          )}
           {entries.length === 0 ? (
-            <div className="px-[10px] py-6 text-center text-[13px] text-ink-3">
-              {index === undefined
-                ? "Loading…"
-                : query.trim().length === 0
-                  ? "Nothing here yet."
-                  : `No results for “${query.trim()}”`}
+            <div className="flex flex-col items-center gap-[6px] px-4 py-10 text-center">
+              {index === undefined ? (
+                <>
+                  <LoaderCircle className="size-[18px] animate-spin text-ink-3 motion-reduce:animate-none" />
+                  <p className="text-[13px] text-ink-3">Loading your courses…</p>
+                </>
+              ) : query.trim().length === 0 ? (
+                <>
+                  <Search className="size-[18px] text-ink-3" />
+                  <p className="text-[13px] text-ink-2">Nothing here yet</p>
+                </>
+              ) : (
+                <>
+                  <SearchX className="size-[18px] text-ink-3" />
+                  <p className="text-[13.5px] font-medium text-ink">
+                    No results for “{query.trim()}”
+                  </p>
+                  <p className="text-[12.5px] text-ink-3">
+                    {filter === "all"
+                      ? "Try fewer letters, or part of a word."
+                      : "Try another filter, or fewer letters."}
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             sections.map((section) => (
               <div key={section.id} role="group" aria-labelledby={`ck-g-${section.id}`}>
-                <div id={`ck-g-${section.id}`} className="eyebrow px-[10px] pt-[10px] pb-1">
+                <div
+                  id={`ck-g-${section.id}`}
+                  className="px-3 pt-[14px] pb-[6px] text-[12px] font-medium text-ink-3"
+                >
                   {section.label}
                 </div>
                 {section.entries.map((entry) => (
@@ -481,20 +530,25 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
       </div>
 
       {!mobile && (
-        <div className="flex h-9 shrink-0 items-center gap-[14px] border-t border-line px-[14px] text-[11.5px] text-ink-3">
+        <div className="flex h-10 shrink-0 items-center gap-4 border-t border-line bg-sunken px-[18px] text-[12px] text-ink-3">
           {scope !== undefined ? (
             <>
-              <Hint kbd="⌫">clear scope</Hint>
+              <Hint kbd="↑↓">move</Hint>
               <Hint kbd="↵">open</Hint>
-              <Hint kbd="⌘↵">Canvas</Hint>
+              <Hint kbd="⌘↵">open in Canvas</Hint>
+              <span className="ml-auto">
+                <Hint kbd="⌫">all courses</Hint>
+              </span>
             </>
           ) : browsing ? (
             <>
-              <Hint kbd="⇥">filter</Hint>
+              <Hint kbd="↑↓">move</Hint>
               <Hint kbd="↵">open</Hint>
+              <Hint kbd="⇥">filter</Hint>
               {example !== undefined && (
                 <span className="ml-auto">
-                  Type <b className="font-semibold text-ink-2">#{example}</b> to scope a course
+                  Type <span className="font-medium text-ink-2">#{example}</span> to search one
+                  course
                 </span>
               )}
             </>
@@ -503,7 +557,7 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
               <Hint kbd="↑↓">move</Hint>
               <Hint kbd="↵">open</Hint>
               <Hint kbd="⌘↵">open in Canvas</Hint>
-              <span className="ml-auto">
+              <span className="ml-auto tabular">
                 {hits.length} result{hits.length === 1 ? "" : "s"}
               </span>
             </>
@@ -516,8 +570,8 @@ export function Palette({ mobile, scope, index, recents, onScope, onClose }: Pal
 
 function Hint({ kbd, children }: { kbd: string; children: string }) {
   return (
-    <span className="flex items-center gap-1">
-      <Kbd>{kbd}</Kbd>
+    <span className="flex items-center gap-[6px]">
+      <Kbd className="min-w-[20px] text-center">{kbd}</Kbd>
       {children}
     </span>
   );

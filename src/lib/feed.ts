@@ -16,19 +16,13 @@ export function feedSeenKind(type: FeedItem["type"]): SeenKind {
   return "assignment";
 }
 
-/** "Homework 3 graded — 47/50", "Problem Set 4 due date moved", … */
+/** "Homework 3", "Problem Set 4 due date moved", … Grade scores live in the subtitle. */
 export function feedTitle(item: FeedItem): string {
-  if (item.type === "grade") {
-    const score =
-      item.score !== undefined && item.pointsPossible !== undefined
-        ? ` — ${scoreOf(item.score, item.pointsPossible)}`
-        : "";
-    return `${item.title} graded${score}`;
-  }
+  if (item.type === "grade") return item.title;
   if (item.type === "change") {
     return `${item.title} ${item.change ? formatChange(item.change).verb : "updated"}`;
   }
-  if (item.type === "assignment") return `New assignment — ${item.title}`;
+  if (item.type === "assignment") return item.title;
   return item.title;
 }
 
@@ -40,6 +34,7 @@ export function feedSubtitle(item: FeedItem, dueAt?: number): string | undefined
   }
   if (item.type === "assignment") {
     return join([
+      "New assignment",
       dueAt === undefined ? undefined : `Due ${shortDateTime(dueAt)}`,
       pointsLabel(item.pointsPossible),
     ]);
@@ -49,8 +44,17 @@ export function feedSubtitle(item: FeedItem, dueAt?: number): string | undefined
       ? percent(item.score, item.pointsPossible)
       : undefined;
   const letter =
-    item.grade !== undefined && item.grade !== String(item.score) ? item.grade : undefined;
-  return join([pct, letter]) ?? "Grade posted";
+    item.grade !== undefined && item.grade !== String(item.score) && item.grade !== pct ? item.grade : undefined;
+  const score =
+    item.score !== undefined && item.pointsPossible !== undefined
+      ? scoreOf(item.score, item.pointsPossible)
+      : undefined;
+  return join([score === undefined ? "Grade posted" : `Graded ${score}`, letter]);
+}
+
+/** What happened, as a glance says it: the announcement body stays out. */
+export function feedStatus(item: FeedItem): string | undefined {
+  return item.type === "announcement" ? "Announcement" : feedSubtitle(item);
 }
 
 function join(parts: (string | undefined)[]): string | undefined {

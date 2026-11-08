@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import {
+  ChevronDown,
   File,
   FileText,
   GraduationCap,
@@ -8,10 +9,9 @@ import {
   Plus,
   RefreshCw,
   Rows3,
-  SquareCheck,
+  ClipboardList,
 } from "lucide-react";
-import { Kbd } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
+import { Kbd, CourseTag } from "@/components/app/bits";
 import { formatAgo, formatMonthDay } from "@/lib/dates";
 import { formatBytes } from "@/lib/format";
 import { courseStyle } from "@/lib/hooks";
@@ -25,7 +25,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const KIND_ICON: Record<SearchKind, ComponentType<{ className?: string }>> = {
-  assignment: SquareCheck,
+  assignment: ClipboardList,
   page: FileText,
   file: File,
   announcement: Megaphone,
@@ -39,9 +39,7 @@ export interface RowContext {
   /** Short course label, omitted once the palette is scoped to one course. */
   courseLabel?: string;
   courseColor: string;
-  /** Never opened — the one place course colour shows in ⌘K. */
-  unseen: boolean;
-  /** Module name for a scoped result; replaces the generic type chip. */
+  /** Module name for a scoped result. */
   moduleName?: string;
   now: number;
 }
@@ -66,19 +64,35 @@ export function PaletteRow({
       ? ACTION_ICON[entry.action]
       : entry.type === "result"
         ? KIND_ICON[entry.item.kind]
-        : undefined;
+        : ChevronDown;
 
-  const showDot = entry.type === "result" && context.unseen;
-  const meta =
+  const details =
     entry.type === "result"
-      ? metaFor(entry.item, context)
-      : entry.type === "action"
-        ? entry.note
-        : undefined;
-  const chip = entry.type === "result" ? chipFor(entry.item, context) : undefined;
+      ? detailsFor(entry.item, context, entry.ago)
+      : entry.type === "action" && entry.note !== undefined
+        ? [entry.note]
+        : [];
   const kbd = entry.type === "result" || entry.type === "action" ? entry.kbd : undefined;
   const code = entry.type === "result" ? context.courseLabel : undefined;
-  const hasMeta = meta !== undefined && meta !== "";
+  const showAll = entry.type === "showAll";
+
+  const title =
+    entry.type === "result" ? (
+      <Highlight text={entry.item.title} ranges={entry.ranges} />
+    ) : (
+      entry.label
+    );
+
+  const meta = details.length > 0 && (
+    <span className="truncate">
+      {details.map((d, i) => (
+        <span key={i}>
+          {i > 0 && <span className="px-[5px] opacity-60">·</span>}
+          {d}
+        </span>
+      ))}
+    </span>
+  );
 
   return (
     <div
@@ -92,42 +106,41 @@ export function PaletteRow({
       onMouseMove={onHover}
       style={courseStyle(context.courseColor)}
       className={cn(
-        "flex cursor-pointer items-center gap-[10px] rounded-lg px-[10px] text-ink",
-        mobile ? "h-11" : "h-[38px]",
+        "flex cursor-pointer items-center gap-3 rounded-lg px-3 text-ink transition-colors duration-75",
+        showAll ? "h-8 text-[13px] text-ink-3" : mobile ? "min-h-[52px] py-2" : "h-10",
         active && "bg-hover",
-        entry.type === "showAll" && "text-ink-2",
+        active && showAll && "text-ink-2",
       )}
     >
-      <span className="grid w-[14px] shrink-0 place-items-center text-ink-3">
-        {showDot ? <UnreadDot className="size-[7px]" /> : Icon && <Icon className="size-[14px]" />}
+      <span
+        className={cn("grid w-4 shrink-0 place-items-center", active ? "text-ink-2" : "text-ink-3")}
+      >
+        <Icon className={showAll ? "size-[14px]" : "size-[15px]"} />
       </span>
 
-      <span className="min-w-0 truncate">
-        {entry.type === "result" ? (
-          <Highlight text={entry.item.title} ranges={entry.ranges} />
-        ) : (
-          entry.label
-        )}
-      </span>
-
-      {(code !== undefined || hasMeta) && (
-        <span className="shrink-0 truncate text-[12px] text-ink-3">
-          {code !== undefined && <span className="font-medium text-c">{code}</span>}
-          {code !== undefined && hasMeta && " · "}
-          {meta}
+      {mobile && !showAll ? (
+        <span className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="truncate text-[15px] leading-tight">{title}</span>
+          {(code !== undefined || meta) && (
+            <span className="flex min-w-0 items-center text-[12.5px] text-ink-3">
+              {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+              {code !== undefined && meta && <span className="px-[6px] opacity-60">·</span>}
+              {meta}
+            </span>
+          )}
         </span>
+      ) : (
+        <>
+          <span className={cn("min-w-0 flex-1 truncate", !showAll && "text-[14px]")}>{title}</span>
+          {meta && (
+            <span className="flex max-w-[45%] shrink-0 text-[12px] tabular text-ink-3">{meta}</span>
+          )}
+          {kbd !== undefined && <Kbd className="shrink-0">{kbd}</Kbd>}
+          {code !== undefined && (
+            <CourseTag className="w-[92px] shrink-0 text-[12px]">{code}</CourseTag>
+          )}
+        </>
       )}
-
-      <span className="ml-auto flex shrink-0 items-center gap-2 pl-3 text-[11.5px] text-ink-3">
-        {chip !== undefined && (
-          <span className="rounded-[5px] bg-chip px-[6px] py-px text-[11px]">{chip}</span>
-        )}
-        {entry.type === "result" && entry.ago !== undefined && (
-          <span>{formatAgo(entry.ago, context.now)}</span>
-        )}
-        {kbd !== undefined && !mobile && <Kbd>{kbd}</Kbd>}
-        {active && !mobile && <Kbd>↵</Kbd>}
-      </span>
     </div>
   );
 }
@@ -150,40 +163,39 @@ function Highlight({ text, ranges }: { text: string; ranges: MatchRange[] }) {
   return <>{out}</>;
 }
 
-/** The secondary line: what tells two similarly-named things apart. */
-function metaFor(item: SearchItem, ctx: RowContext): string | undefined {
+/** The quiet details after the title: what tells two similar things apart. */
+function detailsFor(item: SearchItem, ctx: RowContext, ago: number | undefined): string[] {
+  const out: string[] = [];
   switch (item.kind) {
     case "assignment":
       if (item.score !== undefined && item.pointsPossible !== undefined) {
-        return `${item.score}/${item.pointsPossible}`;
+        out.push(`${item.score}/${item.pointsPossible}`);
+      } else if (item.dueAt !== undefined) {
+        out.push(`Due ${formatMonthDay(item.dueAt)}`);
       }
-      if (item.dueAt === undefined) return undefined;
-      if (item.dueAt < ctx.now) return "overdue";
-      return `due ${formatMonthDay(item.dueAt)}`;
-    case "file":
-      return lastSegment(item.folderPath);
+      break;
+    case "page":
+      if (ctx.moduleName !== undefined) out.push(ctx.moduleName);
+      break;
+    case "file": {
+      const folder = lastSegment(item.folderPath);
+      if (folder !== undefined) out.push(folder);
+      if (item.size !== undefined) out.push(formatBytes(item.size));
+      break;
+    }
     case "announcement":
-      return item.postedAt === undefined ? undefined : formatAgo(item.postedAt, ctx.now);
+      if (item.postedAt !== undefined && ago === undefined) out.push(formatAgo(item.postedAt, ctx.now));
+      break;
+    case "module":
+      if (item.itemCount !== undefined) {
+        out.push(`${item.itemCount} item${item.itemCount === 1 ? "" : "s"}`);
+      }
+      break;
     case "course":
-      return item.courseCode;
-    case "page":
-    case "module":
-      return undefined;
+      break;
   }
-}
-
-/** The right-hand type chip: kind, size, module or item count. */
-function chipFor(item: SearchItem, ctx: RowContext): string | undefined {
-  switch (item.kind) {
-    case "page":
-      return ctx.moduleName ?? "Page";
-    case "file":
-      return item.size === undefined ? undefined : formatBytes(item.size);
-    case "module":
-      return item.itemCount === undefined ? undefined : `${item.itemCount} items`;
-    default:
-      return undefined;
-  }
+  if (ago !== undefined) out.push(formatAgo(ago, ctx.now));
+  return out;
 }
 
 function lastSegment(path: string | undefined): string | undefined {

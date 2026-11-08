@@ -10,7 +10,7 @@
 import type { TodoItem } from "../../convex/todos";
 import { MEETING_KIND_LABELS, type MeetingOccurrence } from "../../convex/lib/meetings";
 import { CAMPUS_TIME_ZONE, dayKeyIn, minuteOfDayIn, zonedToUtc } from "../../convex/lib/zones";
-import { addDays, dayDiff, startOfMondayWeek } from "./dates";
+import { addDays, dayDiff, startOfWeek } from "./dates";
 
 /** One hour of grid, in pixels (docs/calendar.html: 48px per hour). */
 export const PX_PER_HOUR = 48;
@@ -18,12 +18,10 @@ export const PX_PER_HOUR = 48;
 export const MIN_BLOCK_PX = 40;
 /** The same floor in minutes — what a 40px block covers on the grid. */
 const MIN_BLOCK_MINUTES = (MIN_BLOCK_PX / PX_PER_HOUR) * 60;
-/** Breathing room above the first hour line so its label is not clipped. */
-export const GRID_TOP_PAD = 10;
-/** Where the timeline opens when today is not in view: the start of the day. */
+/** Where the timeline opens: the start of the working day. */
 export const GRID_OPENS_AT = 8 * 60;
-/** How far above the now-line the timeline opens on today, so it has context. */
-const NOW_LEAD = 60;
+/** How far above an earlier first block the timeline opens, for context. */
+const BLOCK_LEAD = 60;
 
 /** Shape of a `calendarEvents` row; structural so tests need no Convex ids. */
 export interface CalendarEvent {
@@ -315,6 +313,8 @@ function freeLane(laneEnds: number[], minute: number): number {
 export interface GridBounds {
   startMinute: number;
   endMinute: number;
+  /** Pixels per hour: full height, or compact for a week with no blocks. */
+  pxPerHour: number;
   /** Whole hours the gutter labels. */
   hours: number[];
   height: number;
@@ -324,32 +324,77 @@ export interface GridBounds {
  * The whole day, midnight to midnight. The grid scrolls inside its view, and
  * `gridScrollTop` decides where it opens.
  */
-export const GRID_BOUNDS: GridBounds = {
-  startMinute: 0,
-  endMinute: 24 * 60,
-  hours: Array.from({ length: 24 }, (_, hour) => hour),
-  height: GRID_TOP_PAD + 24 * PX_PER_HOUR,
-};
+export const GRID_BOUNDS: GridBounds = gridBounds(PX_PER_HOUR);
 
 /**
- * The scroll offset the timeline opens at: an hour above the now-line when
- * today is in view, otherwise 8 AM. Clamped so the top pad stays visible.
+ * An hour's height when the grid has nothing timed to show: the empty hours
+ * take less room, so the bands above (and the call to add class times) lead.
  */
-export function gridScrollTop(nowMinute: number | undefined): number {
-  const minute = nowMinute === undefined ? GRID_OPENS_AT : nowMinute - NOW_LEAD;
-  return Math.max(0, minuteOffset(Math.max(0, minute), GRID_BOUNDS) - GRID_TOP_PAD);
+export const EMPTY_PX_PER_HOUR = 28;
+
+/** The midnight-to-midnight grid for a week with nothing timed. */
+export const EMPTY_GRID_BOUNDS: GridBounds = gridBounds(EMPTY_PX_PER_HOUR);
+
+/**
+ * The tallest the empty grid's window grows: 8 AM to midnight, so it still
+ * opens at 8 AM (the hours before stay a scroll away) and never pads the
+ * view with blank space past the end of the day.
+ */
+export const EMPTY_GRID_MAX_VIEW =
+  EMPTY_GRID_BOUNDS.height - gridScrollTop(undefined, EMPTY_GRID_BOUNDS);
+
+/** The midnight-to-midnight grid at `pxPerHour`. */
+export function gridBounds(pxPerHour: number): GridBounds {
+  return {
+    startMinute: 0,
+    endMinute: 24 * 60,
+    pxPerHour,
+    hours: Array.from({ length: 24 }, (_, hour) => hour),
+    height: 24 * pxPerHour,
+  };
+}
+
+/**
+ * The scroll offset the timeline opens at: 8 AM, or an hour above the
+ * earliest block in view when that starts sooner, so a morning exam is never
+ * scrolled away. The hour's line then sits under the band's bottom border,
+ * so the two read as one rule; its label hangs below it, fully in view.
+ */
+export function gridScrollTop(
+  firstBlockMinute: number | undefined,
+  bounds: GridBounds = GRID_BOUNDS,
+): number {
+  const minute =
+    firstBlockMinute === undefined
+      ? GRID_OPENS_AT
+      : Math.min(GRID_OPENS_AT, firstBlockMinute - BLOCK_LEAD);
+  return minuteOffset(Math.max(0, minute), bounds);
+}
+
+/** The earliest block start across `models` for `days`, if any. */
+export function firstBlockMinute(
+  days: string[],
+  models: Map<string, DayModel>,
+): number | undefined {
+  let first: number | undefined;
+  for (const day of days) {
+    for (const block of models.get(day)?.blocks ?? []) {
+      if (first === undefined || block.startMinute < first) first = block.startMinute;
+    }
+  }
+  return first;
 }
 
 /** Pixels from the top of the grid body for a given minute of the day. */
 export function minuteOffset(minute: number, bounds: GridBounds): number {
-  return GRID_TOP_PAD + ((minute - bounds.startMinute) / 60) * PX_PER_HOUR;
+  return ((minute - bounds.startMinute) / 60) * bounds.pxPerHour;
 }
 
 export function blockGeometry(
   block: { startMinute: number; endMinute: number },
   bounds: GridBounds,
 ): { top: number; height: number } {
-  const drawn = ((block.endMinute - block.startMinute) / 60) * PX_PER_HOUR;
+  const drawn = ((block.endMinute - block.startMinute) / 60) * bounds.pxPerHour;
   const height = Math.max(MIN_BLOCK_PX, drawn);
   const top = minuteOffset(block.startMinute, bounds);
   // A short block near the bottom edge is nudged up so its 40px minimum
@@ -357,7 +402,7 @@ export function blockGeometry(
   // midnight already fits exactly and must not be pulled up.
   const overflow = top + height - bounds.height;
   if (height > drawn && overflow > 0) {
-    return { top: Math.max(GRID_TOP_PAD, top - overflow), height };
+    return { top: Math.max(0, top - overflow), height };
   }
   return { top, height };
 }
@@ -365,22 +410,22 @@ export function blockGeometry(
 // ── Day sets ────────────────────────────────────────────────────────────────
 
 /**
- * Monday … Sunday of the week containing `key`. Named for its start on
- * purpose: src/lib/agenda.ts exports a Sunday-start `weekDays` for Home.
+ * Sunday … Saturday of the week containing `key` — the same week Home's
+ * strip shows (src/lib/agenda.ts `weekDays`), so the two never disagree.
  */
-export function mondayWeekDays(key: string): string[] {
-  const monday = startOfMondayWeek(key);
-  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+export function calendarWeekDays(key: string): string[] {
+  const sunday = startOfWeek(key);
+  return Array.from({ length: 7 }, (_, i) => addDays(sunday, i));
 }
 
 /**
- * The month grid containing `key`: whole Monday-start weeks covering the
- * month — four rows for a February that starts on a Monday, usually five,
+ * The month grid containing `key`: whole Sunday-start weeks covering the
+ * month — four rows for a February that starts on a Sunday, usually five,
  * six when the 1st falls late in the week.
  */
 export function monthDays(key: string): string[] {
   const first = `${key.slice(0, 7)}-01`;
-  const start = startOfMondayWeek(first);
+  const start = startOfWeek(first);
   const last = lastDayOfMonth(key);
   const weeks = Math.ceil((dayDiff(start, last) + 1) / 7);
   return Array.from({ length: weeks * 7 }, (_, i) => addDays(start, i));

@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { Megaphone } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { AnnouncementRow } from "@/components/course/announcement-row";
+import { SectionHead } from "@/components/course/overview-row";
+import { SECTION_COUNT } from "@/components/course/overview-icons";
 import { courseColorVar, courseStyle, useCourses, useNow } from "@/lib/hooks";
 import { useMarkSeenOnMount, useSeen } from "@/lib/seen";
 
@@ -38,6 +41,8 @@ function CourseAnnouncements() {
     ? [...announcements, target] : announcements;
   useMarkSeenOnMount("discussion", rows?.some((row) => row.canvasId === openId) ? openId : undefined);
 
+  const unreadCount = (rows ?? []).filter((row) => !seen.has(row.canvasId)).length;
+
   const toggle = (id: number) => {
     void navigate({
       search: openId === id ? {} : { item: `announcement:${id}` },
@@ -46,23 +51,38 @@ function CourseAnnouncements() {
   };
 
   return (
-    <div className="min-w-0 flex-1 pb-8" style={courseStyle(courseColorVar(course?.color))}>
+    // A list page: full width to the main area's gutters, rules inset with it.
+    <div
+      className="w-full min-w-0 flex-1 pb-8"
+      style={courseStyle(courseColorVar(course?.color))}
+    >
       {rows === undefined ? null : rows.length === 0 ? (
-        <p className="p-4 text-[13px] text-ink-3 md:p-5">No announcements yet.</p>
+        <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+          <Megaphone className="size-5 text-ink-3" aria-hidden />
+          <p className="text-[13px] text-ink-2">No announcements yet.</p>
+          <p className="text-[12.5px] text-ink-3">Posts from your instructor will show up here.</p>
+        </div>
       ) : (
-        rows.map((announcement) => (
-          <AnnouncementRow
-            key={announcement.canvasId}
-            announcement={announcement}
-            courseId={canvasId}
-            open={openId === announcement.canvasId}
-            unread={!seen.has(announcement.canvasId)}
-            now={now}
-            autoScroll={initialOpenId === announcement.canvasId ||
-              (target?.canvasId === announcement.canvasId && !announcements?.some((row) => row.canvasId === target.canvasId))}
-            onToggle={() => toggle(announcement.canvasId)}
+        <>
+          <SectionHead
+            title="Announcements"
+            detail={unreadCount > 0 && unreadCount < rows.length ? `${unreadCount} unread` : undefined}
+            right={<span className={SECTION_COUNT}>{rows.length}</span>}
           />
-        ))
+          {rows.map((announcement) => (
+            <AnnouncementRow
+              key={announcement.canvasId}
+              announcement={announcement}
+              courseId={canvasId}
+              open={openId === announcement.canvasId}
+              unread={!seen.has(announcement.canvasId)}
+              now={now}
+              autoScroll={initialOpenId === announcement.canvasId ||
+                (target?.canvasId === announcement.canvasId && !announcements?.some((row) => row.canvasId === target.canvasId))}
+              onToggle={() => toggle(announcement.canvasId)}
+            />
+          ))}
+        </>
       )}
     </div>
   );

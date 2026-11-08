@@ -8,6 +8,7 @@ import {
   blockGeometry,
   blockTimeLabel,
   eventCourseId,
+  firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
   hourLabel,
@@ -17,7 +18,7 @@ import {
   PX_PER_HOUR,
 } from "@/lib/calendar";
 import { AllDayLine, DueLine, PlanLine } from "./bands";
-import { blockFill, BLOCK_SUBTITLE } from "./block-styles";
+import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL } from "./block-styles";
 import { NowLine } from "./week-grid";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatDayLong, formatWeekday } from "@/lib/dates";
@@ -38,7 +39,7 @@ export function DayView({
   onOpenEvent,
 }: {
   day: string;
-  /** The week the strip shows, Monday first. */
+  /** The week the strip shows, Sunday first, as on Home. */
   days: string[];
   models: Map<string, DayModel>;
   todayKey: string;
@@ -54,7 +55,7 @@ export function DayView({
   const bodySwipe = useSwipe((delta) => onShiftDay(delta));
   const stripSwipe = useSwipe((delta) => onShiftWeek(delta));
   const scrollRef = useRef<HTMLDivElement>(null);
-  useTimelineScroll(scrollRef, gridScrollTop(day === todayKey ? minuteOf(now, zone) : undefined));
+  useTimelineScroll(scrollRef, gridScrollTop(firstBlockMinute([day], models)), PX_PER_HOUR);
   const band = [
     ...(model?.allDay ?? []).map((event) => (
       <AllDayLine key={`all:${event._id}`} event={event} onOpen={onOpenEvent} roomy />
@@ -81,7 +82,7 @@ export function DayView({
 
       <div {...bodySwipe} className="flex min-h-0 flex-1 flex-col">
         {band.length > 0 && (
-          <div className="flex shrink-0 flex-col gap-[2px] border-b border-line bg-sunken px-3 py-2">
+          <div className="flex shrink-0 flex-col gap-px border-b border-line px-[10px] py-[6px] md:px-4">
             {band}
           </div>
         )}
@@ -126,14 +127,14 @@ export function DayTimeline({
   return (
     <div className="relative pr-3" style={{ height: bounds.height + 8 }}>
       {bounds.hours.map((hour) => (
+        // The line is the hour's top edge minus one pixel, as on the week
+        // grid, so the hour at the top of the view tucks under the border above.
         <div
           key={hour}
           className="absolute right-0 left-[52px] border-t border-line"
-          style={{ top: minuteOffset(hour * 60, bounds) }}
+          style={{ top: minuteOffset(hour * 60, bounds) - 1 }}
         >
-          <span className="absolute -top-[7px] -left-[52px] w-11 text-right text-[10.5px] tabular text-ink-3">
-            {hourLabel(hour)}
-          </span>
+          <span className={cn(HOUR_LABEL, "-left-[52px] w-11 text-right")}>{hourLabel(hour)}</span>
         </div>
       ))}
 
@@ -163,7 +164,7 @@ export function DayTimeline({
               {block.title}
             </div>
             {height >= PX_PER_HOUR * 0.75 && (
-              <div className={cn("truncate text-[11.5px] tabular", BLOCK_SUBTITLE)}>
+              <div className={cn("truncate text-[12px] tabular", BLOCK_SUBTITLE)}>
                 {[blockTimeLabel(block), block.subtitle]
                   .filter((s) => s !== undefined)
                   .join(" · ")}
@@ -194,7 +195,7 @@ export function CalendarWeekStrip({
 }) {
   const { color } = useCourses();
   return (
-    <div className="grid grid-cols-7 gap-1 border-b border-line px-3 pt-[2px] pb-3">
+    <div className="grid grid-cols-7 gap-1 border-b border-line px-2 py-2 md:px-4">
       {days.map((day) => {
         const model = models.get(day);
         const isToday = day === todayKey;
@@ -221,25 +222,23 @@ export function CalendarWeekStrip({
             aria-pressed={selected === day}
             aria-label={formatDayLong(day)}
             className={cn(
-              "rounded-lg border border-transparent px-1 pt-[7px] pb-2 text-center hover:bg-hover",
-              isToday && "border-line-2 bg-hover",
-              selected === day && !isToday && "border-line-2",
+              "rounded-[10px] px-1 pt-[7px] pb-[6px] text-center transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+              selected === day && "bg-hover",
             )}
           >
             <div
               className={cn(
-                "text-[10.5px] font-semibold tracking-[0.08em] uppercase",
-                isToday ? "text-ink-2" : "text-ink-3",
+                "text-[12px] font-medium",
+                isToday || selected === day ? "text-ink" : "text-ink-3",
               )}
             >
               {formatWeekday(day)}
             </div>
             <div
               className={cn(
-                "mx-auto mt-[3px] grid size-[26px] place-items-center rounded-[7px] text-[14px] font-semibold tracking-[-0.02em]",
-                isPast && "text-ink-3",
+                "mx-auto mt-[3px] grid size-[26px] place-items-center rounded-full text-[14px] font-semibold tabular tracking-[-0.01em]",
+                isPast && selected !== day && "text-ink-3",
                 isToday && "bg-today text-today-fg",
-                selected === day && !isToday && "bg-chip",
               )}
             >
               {Number(day.slice(-2))}

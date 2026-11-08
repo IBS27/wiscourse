@@ -1,32 +1,29 @@
 /**
  * The overview's "Due" block: this course's slice of the unified todo
  * list, so it can never drift from Home or Tasks. Overdue first, then the
- * next seven days — anything further out belongs on Tasks, not here.
+ * next seven days — anything further out belongs on Tasks, not here. Rows
+ * are Home's own AgendaItem, so the anatomy (completion circle, title, meta
+ * line, late status) is the same everywhere.
  */
 
-import { CircleHelp, MessageSquare, SquareCheck } from "lucide-react";
-import type { RowIcon } from "./overview-icons";
-import { OverviewRow, SectionHead } from "./overview-row";
+import { CalendarCheck } from "lucide-react";
+import { SectionHead } from "./overview-row";
+import { SECTION_COUNT } from "./overview-icons";
 import type { TodoItem } from "../../../convex/todos";
-import { Pill } from "@/components/app/bits";
+import { AgendaItem } from "@/components/agenda/agenda-item";
 import { isOverdue } from "@/lib/agenda";
-import { DAY_MS, dayKeyOf, formatDayShort, formatTime, formatWeekday } from "@/lib/dates";
-
-const ICON: Record<string, RowIcon> = {
-  assignment: SquareCheck,
-  quiz: CircleHelp,
-  discussion: MessageSquare,
-  local: SquareCheck,
-};
+import { DAY_MS } from "@/lib/dates";
 
 export function OverviewDue({
   todos,
   canvasId,
   now,
+  todayKey,
 }: {
   todos: TodoItem[] | undefined;
   canvasId: number;
   now: number;
+  todayKey: string;
 }) {
   if (todos === undefined) return null;
   const open = todos.filter(
@@ -42,43 +39,37 @@ export function OverviewDue({
   );
   const items = [...overdue, ...soon].sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0));
 
-  const detail = [
-    overdue.length > 0 ? `${overdue.length} overdue` : undefined,
-    soon.length > 0 ? `${soon.length} this week` : undefined,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // The total sits at the right; the detail names the window, and the
+  // overdue share when there is one.
+  const detail = (
+    <>
+      Next 7 days
+      {overdue.length > 0 && (
+        <>
+          {" · "}
+          <span className="text-red">{overdue.length} overdue</span>
+        </>
+      )}
+    </>
+  );
 
   return (
     <section>
-      <SectionHead title="Due" detail={detail === "" ? undefined : detail} red={overdue.length > 0} />
+      <SectionHead
+        title="Due"
+        detail={detail}
+        right={<span className={SECTION_COUNT}>{items.length}</span>}
+      />
       {items.length === 0 ? (
-        <div className="px-4 pb-3 text-[12.5px] text-ink-3 md:px-5">
+        <div className="flex items-center gap-[10px] px-4 py-2 text-[13px] text-ink-3 md:px-6">
+          <CalendarCheck className="size-[14px] shrink-0" aria-hidden />
           Nothing due in the next week.
         </div>
       ) : (
-        items.map((item) => (
-          <OverviewRow
-            key={item.key}
-            icon={ICON[item.kind] ?? SquareCheck}
-            title={item.title}
-            to={`/todo/${item.key}`}
-            meta={dueMeta(item, now)}
-          />
+        items.map((item, i) => (
+          <AgendaItem key={item.key} item={item} first={i === 0} todayKey={todayKey} now={now} hideCourse />
         ))
       )}
     </section>
   );
-}
-
-function dueMeta(item: TodoItem, now: number) {
-  if (item.dueAt === undefined) return item.plannedDay === undefined ? "No due date" : undefined;
-  if (isOverdue(item, now)) {
-    return <Pill tone="red">Overdue · was {formatWeekday(dayKeyOf(item.dueAt))}</Pill>;
-  }
-  const parts = [
-    `${formatDayShort(dayKeyOf(item.dueAt))} · ${formatTime(item.dueAt)}`,
-    item.pointsPossible === undefined ? undefined : `${item.pointsPossible} pts`,
-  ].filter(Boolean);
-  return parts.join(" · ");
 }

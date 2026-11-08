@@ -68,15 +68,19 @@ export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "av
             <ChevronsUpDown className="ml-auto size-[14px] text-ink-3" />
           </button>
         ) : (
-          <button type="button" className="rounded-full outline-none" aria-label="Account">
-            <Avatar initials={initials} attention={attention} size={30} />
+          <button
+            type="button"
+            className="shrink-0 cursor-pointer rounded-full outline-none focus-visible:ring-2 focus-visible:ring-line-2"
+            aria-label="Account"
+          >
+            <Avatar initials={initials} attention={attention} size={36} />
           </button>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent side={variant === "sidebar" ? "top" : "bottom"} align={variant === "sidebar" ? "start" : "end"}>
         <div className="px-2 pt-[6px] pb-[7px]">
           <div className="font-medium text-ink">{name}</div>
-          {email && <div className="mt-px text-[11.5px] text-ink-3">{email}</div>}
+          {email && <div className="mt-px text-[12px] text-ink-3">{email}</div>}
         </div>
         <DropdownMenuSeparator />
         {info?.connected && (attention || daysLeft !== undefined) && (
@@ -154,7 +158,10 @@ export function ProfileMenu({ variant = "sidebar" }: { variant?: "sidebar" | "av
 function Avatar({ initials, attention, size = 22 }: { initials: string; attention: boolean; size?: number }) {
   return (
     <span
-      className="relative grid shrink-0 place-items-center rounded-full border border-line bg-chip text-[10px] font-semibold text-ink-2"
+      className={cn(
+        "relative grid shrink-0 place-items-center rounded-full border border-line bg-chip font-semibold text-ink-2",
+        size >= 32 ? "text-[12.5px]" : "text-[10px]",
+      )}
       style={{ width: size, height: size }}
     >
       {initials}

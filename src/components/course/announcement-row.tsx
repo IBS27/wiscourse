@@ -1,8 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
-import { ExternalLink, SquareCheck } from "lucide-react";
+import { ExternalLink, ClipboardList } from "lucide-react";
 import { CanvasHtml } from "@/components/reader/canvas-html";
-import { Initials } from "@/components/inbox/detail-shell";
 import { fileHref, rewriteCanvasHref } from "@/lib/course-routes";
 import { formatAgo } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -42,55 +41,58 @@ export function AnnouncementRow({
   const author = announcement.authorName ?? "Course staff";
   const links = detectLinks(announcement.message, courseId);
 
+  const when = announcement.postedAt === undefined ? undefined : formatAgo(announcement.postedAt, now);
+  const meta = [author, when].filter(Boolean).join(" · ");
+
   return (
     <article
       ref={ref}
-      className={cn(
-        "relative border-b border-line",
-        open && "bg-surface",
-        unread &&
-          "before:absolute before:top-[14px] before:left-0 before:h-4 before:w-[3px] before:rounded-r-[3px] before:bg-c",
-      )}
+      className="relative after:absolute after:right-4 after:bottom-0 after:left-[34px] after:h-px after:bg-line md:after:right-6 md:after:left-[42px]"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="block w-full px-4 pt-[13px] pb-[14px] text-left hover:bg-hover md:px-5"
+        className="group grid w-full grid-cols-[6px_minmax(0,1fr)] gap-x-3 px-4 py-[13px] text-left transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:px-6"
       >
-        <div className="flex items-center gap-2 text-xs text-ink-3">
-          <Initials name={author} />
-          <span className="truncate font-medium text-ink-2">{author}</span>
-          <span className="tabular ml-auto shrink-0">
-            {announcement.postedAt === undefined ? "" : formatAgo(announcement.postedAt, now)}
+        {/* The dot gutter is kept on read rows too, so titles never shift. */}
+        <span className="flex justify-center pt-[8px]" aria-hidden>
+          {unread && <span className="size-[6px] rounded-full bg-unread" />}
+        </span>
+        <span className="min-w-0">
+          <span
+            className={cn(
+              "block text-[14.5px] leading-[1.4] tracking-[-0.01em] text-ink",
+              unread ? "font-semibold" : "font-normal",
+            )}
+          >
+            {announcement.title}
+            {unread && <span className="sr-only"> (unread)</span>}
           </span>
-        </div>
-        <div
-          className={cn(
-            "mt-1 text-[14px] tracking-[-0.005em]",
-            unread ? "font-semibold" : "font-medium",
+          <span className="tabular mt-[2px] block text-[12.5px] text-ink-3">{meta}</span>
+          {!open && (
+            <span className="mt-[5px] line-clamp-2 max-w-[72ch] text-[13px] leading-[1.5] text-ink-3">
+              {preview(announcement.message)}
+            </span>
           )}
-        >
-          {announcement.title}
-        </div>
-        {!open && (
-          <div className="mt-[3px] line-clamp-2 text-[12.5px] leading-[1.5] text-ink-3">
-            {preview(announcement.message)}
-          </div>
-        )}
+        </span>
       </button>
 
       {open && (
-        <div className="px-4 pb-[14px] md:px-5">
-          <CanvasHtml html={announcement.message} courseId={courseId} className="text-[13.5px]" />
-          <div className="mt-3 flex flex-wrap gap-2">
+        <div className="pr-4 pb-5 pl-[34px] md:pr-6 md:pl-[42px]">
+          <CanvasHtml
+            html={announcement.message}
+            courseId={courseId}
+            className="max-w-[720px] text-[13.5px]"
+          />
+          <div className="mt-4 flex flex-wrap gap-2">
             {links.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="inline-flex h-[27px] max-w-[280px] items-center gap-[6px] rounded-lg border border-line bg-surface px-[10px] text-xs font-medium text-ink no-underline hover:bg-hover"
+                className="inline-flex h-7 max-w-[280px] items-center gap-[6px] rounded-md border border-line bg-surface px-[10px] text-[12.5px] font-medium text-ink no-underline transition-colors hover:border-line-2 hover:bg-hover"
               >
-                <SquareCheck className="size-[13px] shrink-0 text-ink-3" />
+                <ClipboardList className="size-[13px] shrink-0 text-ink-3" />
                 <span className="truncate">Open {link.label}</span>
               </Link>
             ))}
@@ -98,7 +100,7 @@ export function AnnouncementRow({
               href={announcement.htmlUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-[27px] items-center gap-[6px] rounded-lg px-[10px] text-xs font-medium text-ink-3 no-underline hover:bg-hover hover:text-ink"
+              className="inline-flex h-7 items-center gap-[6px] rounded-md px-[10px] text-[12.5px] font-medium text-ink-3 no-underline transition-colors hover:bg-hover hover:text-ink"
             >
               <ExternalLink className="size-[13px]" />
               Reply in Canvas
@@ -132,10 +134,15 @@ function detectLinks(html: string | undefined, courseId: number): { to: string; 
   return out;
 }
 
-function preview(html: string | undefined): string {
+/** Plain text of the body, cut at a word boundary past one line; CSS clamps the rest. */
+function preview(html: string | undefined, max = 240): string {
   if (html === undefined) return "";
-  return new DOMParser()
+  const text = new DOMParser()
     .parseFromString(html, "text/html")
     .body.textContent!.replace(/\s+/g, " ")
     .trim();
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max + 1);
+  const end = cut.lastIndexOf(" ");
+  return `${(end > max * 0.6 ? cut.slice(0, end) : cut.slice(0, max)).replace(/[\s,;:.–—-]+$/, "")}…`;
 }

@@ -1,5 +1,5 @@
-// Block fills for the time grid, kept out of marks.tsx so that file stays
-// component-only (fast refresh).
+// Block fills and shared constants for the time grids, kept out of the
+// component files so those stay component-only (fast refresh).
 
 /**
  * Block fills: a tint of the course colour, deeper in dark mode. Local
@@ -18,3 +18,17 @@ export const BLOCK_SUBTITLE = "text-[color-mix(in_srgb,var(--c)_70%,var(--ink))]
 export function blockFill(local: boolean): string {
   return local ? LOCAL_BLOCK_FILL : BLOCK_FILL;
 }
+
+/**
+ * A calm wash on today's column and header: visible at a glance, never so
+ * strong it reads as a selected or disabled column.
+ */
+export const TODAY_TINT =
+  "bg-[color-mix(in_srgb,var(--ink)_3.5%,transparent)] dark:bg-[color-mix(in_srgb,white_4%,transparent)]";
+
+/**
+ * A gutter hour label: hung just below its line rather than centred on it,
+ * so the hour at the top of the view is never cut in half by the band.
+ */
+export const HOUR_LABEL =
+  "absolute mt-[3px] text-[11.5px] leading-none whitespace-nowrap tabular text-ink-3";

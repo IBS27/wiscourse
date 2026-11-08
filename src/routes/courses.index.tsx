@@ -1,14 +1,14 @@
 import { useInboxFeed, useTodoList } from "@/lib/list-queries";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
-import { LedgerRow } from "@/components/course/ledger-row";
+import { LEDGER_COLS, LedgerRow, NewCountsHead } from "@/components/course/ledger-row";
 import { LedgerPastTerms } from "@/components/course/ledger-past";
 import { LedgerFold } from "@/components/course/ledger-fold";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, type Course } from "@/lib/hooks";
-import { openSearch } from "@/lib/search-context";
 import { useSyncInfo } from "@/lib/sync-info";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/courses/")({
   component: CoursesIndex,
@@ -38,41 +38,39 @@ function CoursesIndex() {
       <PageHeader
         title="Courses"
         subtitle={subtitle(termName, visible, info?.lastSyncedAt, now)}
-        actions={
-          // Desktop has ⌘K in the sidebar; on mobile this is the only way in.
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={() => openSearch()}
-            className="text-ink-3 md:hidden"
-          >
-            <Search className="size-[18px]" />
-          </button>
-        }
       />
 
       {loading ? (
         <LedgerSkeleton />
       ) : courses.length === 0 ? (
-        <p className="p-4 text-sm text-ink-3 md:p-5">
-          No courses yet. Connect Canvas in{" "}
-          <Link to="/settings" className="font-medium text-ink underline underline-offset-4">
-            Settings
-          </Link>
-          , then run a sync.
-        </p>
+        <div className="flex flex-col items-center gap-2 px-6 py-20 text-center">
+          <BookOpen className="size-5 text-ink-3" aria-hidden />
+          <p className="text-[13px] text-ink-2">No courses yet.</p>
+          <p className="text-[12.5px] text-ink-3">
+            Connect Canvas in{" "}
+            <Link to="/settings" className="font-medium text-ink underline underline-offset-4">
+              Settings
+            </Link>
+            , then run a sync.
+          </p>
+        </div>
       ) : (
         <>
           {visible.length > 0 && (
-            <div className="hidden h-8 grid-cols-[minmax(0,1fr)_250px_230px] items-center gap-x-4 border-b border-line px-5 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase md:grid">
+            <div
+              className={cn(
+                "mx-6 hidden items-end border-b border-line pt-[10px] pb-2 text-[12px] font-medium text-ink-3 md:grid",
+                LEDGER_COLS,
+              )}
+            >
               <span>Course</span>
               <span>Next due</span>
-              <span>New</span>
+              <NewCountsHead />
             </div>
           )}
           {rows(visible)}
           {visible.length === 0 && (
-            <p className="p-4 text-[13px] text-ink-3 md:p-5">
+            <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
               {other.length > 0
                 ? "No courses in the current term."
                 : "Every course this term is hidden. Unhide one in Settings."}
@@ -113,8 +111,7 @@ function LedgerSkeleton() {
   return (
     <div>
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex h-[58px] items-center gap-3 border-b border-line px-4 md:px-5">
-          <div className="size-2 rounded-full bg-chip" />
+        <div key={i} className="flex h-[62px] items-center gap-3 border-b border-line px-4 md:px-6">
           <div className="flex-1 space-y-2">
             <div className="h-3 w-1/3 rounded bg-chip" />
             <div className="h-2.5 w-1/4 rounded bg-chip" />

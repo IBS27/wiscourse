@@ -76,6 +76,25 @@ it("shows Canvas's number, the group that is still open and the median column", 
   expect(screen.getByText("Project 2").closest("div.grid")?.textContent).toContain("— / 100");
 });
 
+it("folds the due column away only when no row has a due date", () => {
+  mount();
+  const table = screen.getByRole("table", { name: "Grades" });
+  expect(table.style.getPropertyValue("--due-col")).toBe("0px");
+  expect(table.style.getPropertyValue("--median-col")).toBe("");
+  cleanup();
+
+  const [projects, exams] = book.groups;
+  const [first, ...rest] = projects.assignments;
+  const dated: Gradebook = {
+    ...book,
+    groups: [{ ...projects, assignments: [{ ...first, dueAt: Date.UTC(2026, 8, 14, 17) }, ...rest] }, exams],
+  };
+  mount(dated);
+  const withDue = screen.getByRole("table", { name: "Grades" });
+  expect(withDue.style.getPropertyValue("--due-col")).toBe("");
+  expect(screen.getByRole("columnheader", { name: "Due" })).toBeTruthy();
+});
+
 it("recomputes the total from a what-if score and remembers it", () => {
   mount();
   fireEvent.click(screen.getByRole("button", { name: /What-if/ }));

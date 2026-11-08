@@ -136,7 +136,7 @@ function PageBody({
                 hash={crumb.hash}
                 className={
                   i === 0
-                    ? "font-medium text-c hover:underline"
+                    ? "font-medium text-ink-2 hover:text-ink hover:underline"
                     : "truncate hover:text-ink-2"
                 }
               >

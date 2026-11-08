@@ -1,14 +1,16 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Clock } from "lucide-react";
+import { Check, ChevronRight, Clock, Inbox } from "lucide-react";
 import {
   contentItems,
   itemCountLabel,
   lockReason,
   moduleProgress,
+  showsItemIcons,
   type ModuleDoc,
   type ModuleWithItems,
 } from "./module-utils";
 import { ModuleRow } from "./module-row";
+import { Meter } from "@/components/grades/bits";
 import type { ModuleRowContext } from "./module-context";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,8 @@ export function ModuleAccordion({
   const open = new Set(toggled?.ids ?? (seed === undefined ? [] : [seed]));
   if (focusModuleId !== undefined && toggled?.focus !== focusModuleId) open.add(focusModuleId);
 
+  const showIcon = useMemo(() => showsItemIcons(modules), [modules]);
+
   const toggle = (canvasId: number) => {
     const next = new Set(open);
     if (!next.delete(canvasId)) next.add(canvasId);
@@ -53,7 +57,7 @@ export function ModuleAccordion({
           <section
             key={module.canvasId}
             id={`module-${module.canvasId}`}
-            className="scroll-mt-24 border-b border-line"
+            className="relative scroll-mt-24 after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6"
           >
             <button
               type="button"
@@ -61,28 +65,25 @@ export function ModuleAccordion({
               aria-expanded={expanded}
               onClick={() => toggle(module.canvasId)}
               className={cn(
-                "flex w-full items-center gap-[10px] px-4 pt-[13px] pb-3 text-left text-[13.5px] font-semibold tracking-[-0.01em] md:px-5",
-                locked ? "cursor-default text-ink-3" : "hover:bg-hover",
-                !locked && !expanded && "text-ink-2",
+                "group flex min-h-12 w-full items-center gap-[10px] px-4 py-3 text-left text-[14px] font-semibold tracking-[-0.005em] transition-colors outline-none md:px-6",
+                locked ? "cursor-default text-ink-3" : "text-ink hover:bg-hover focus-visible:bg-hover",
               )}
             >
               <ChevronRight
                 className={cn(
-                  "size-[14px] shrink-0 text-ink-3 transition-transform",
+                  "size-[14px] shrink-0 text-ink-3 transition-transform group-hover:text-ink-2",
                   expanded && "rotate-90",
                   locked && "invisible",
                 )}
               />
-              <span className="truncate">{module.name}</span>
+              <span className="line-clamp-2 min-w-0 md:truncate">{module.name}</span>
               {/* "0 of 6 viewed" before the seen rows land is a claim, not a
                   blank. Say nothing until it settles. */}
               {!locked && total > 0 && !ctx.seenLoading && (
-                <span className="shrink-0 text-[11.5px] font-medium text-ink-3">
-                  {viewed === total ? "All viewed" : `${viewed} of ${total} viewed`}
-                </span>
+                <Progress viewed={viewed} total={total} />
               )}
               {locked && (
-                <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[11.5px] font-medium text-ink-3">
+                <span className="ml-auto flex shrink-0 items-center gap-[6px] pl-3 text-[12px] font-normal text-ink-3">
                   <Clock className="size-[13px]" />
                   {lockReason(module, byId)} · {itemCountLabel(module)}
                 </span>
@@ -91,18 +92,46 @@ export function ModuleAccordion({
 
             {expanded &&
               (contentItems(module.items).length === 0 ? (
-                <div className="border-t border-line px-4 py-3 text-[12.5px] text-ink-3 md:px-5 md:pl-[46px]">
+                <div className="flex items-center gap-[10px] py-3 pr-4 pl-10 text-[12.5px] text-ink-3 md:pl-12">
+                  <Inbox className="size-[14px] shrink-0" aria-hidden />
                   Nothing in this module yet.
                 </div>
               ) : (
-                module.items.map((item) => (
-                  <ModuleRow key={item.canvasId} item={item} ctx={ctx} />
-                ))
+                <div className="pb-2">
+                  {module.items.map((item) => (
+                    <ModuleRow key={item.canvasId} item={item} ctx={ctx} showIcon={showIcon} />
+                  ))}
+                </div>
               ))}
           </section>
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Every module header reads the same: a small neutral meter and
+ * "N of M viewed" in fixed columns, so the meters line up down the list
+ * whether a module is open or not. A finished module says "Done".
+ */
+function Progress({ viewed, total }: { viewed: number; total: number }) {
+  const done = viewed === total;
+  return (
+    <span className="tabular ml-auto flex shrink-0 items-center gap-[10px] pl-3 text-[12px] font-normal tracking-normal text-ink-3">
+      {/* An empty track for "0 viewed" is noise; the count says it. */}
+      {viewed > 0 && <Meter fraction={viewed / total} className="hidden w-[64px] sm:block" tone="neutral" />}
+      <span className="flex min-w-[96px] items-center justify-end gap-1 whitespace-nowrap">
+        {done ? (
+          <>
+            <Check className="size-[13px]" aria-hidden />
+            Done
+          </>
+        ) : (
+          `${viewed} of ${total} viewed`
+        )}
+      </span>
+    </span>
   );
 }
 

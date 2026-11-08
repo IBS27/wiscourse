@@ -4,26 +4,35 @@
 
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
+import { Clock } from "lucide-react";
 import type { TodoItem } from "../../../convex/todos";
 import { Mark } from "./marks";
 import {
   clockTimeMeridiem,
-  denseTime,
   eventCourseId,
   isDoneOrSubmitted,
   minuteOf,
   type CalendarEvent,
 } from "@/lib/calendar";
+import { isOverdue } from "@/lib/agenda";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-/** The shared `.li` row: mark, title, optional right-aligned time. */
+/**
+ * The shared band item. In the week's columns it is a small event chip: a
+ * course-colour wash with a 2px bar on its left, the time on its own line
+ * above a title of up to three lines. The Day band has the width for one
+ * line and a right-aligned time instead, and the phone's week shows the
+ * mark alone. The tooltip always carries the full title.
+ */
 function Line({
   color,
   onClick,
   todoKey,
   title,
   roomy,
+  compact,
+  muted,
   className,
   children,
 }: {
@@ -31,97 +40,254 @@ function Line({
   onClick?: () => void;
   /** When set the row links to the todo detail instead of firing `onClick`. */
   todoKey?: string;
-  /** Tooltip; the row itself truncates. */
+  /** Tooltip; the row itself clamps. */
   title?: string;
-  /** The phone's Due band gives each line more room than the week grid. */
+  /** The Day view's band gives each line more room than the week grid. */
   roomy?: boolean;
+  /** The phone's week: the mark alone, named by its tooltip and label. */
+  compact?: boolean;
+  /** A finished item: the same chip, quieter. */
+  muted?: boolean;
   className?: string;
   children: ReactNode;
 }) {
   const shell = cn(
-    "flex h-[22px] w-full items-center gap-[6px] overflow-hidden rounded-[5px] pr-[6px] pl-1 text-left text-[11.5px] font-medium whitespace-nowrap text-ink hover:bg-hover",
-    roomy && "h-[26px] px-[6px] text-[12.5px]",
+    "rounded-[5px] text-left font-medium text-ink transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+    compact
+      ? "flex size-[22px] items-center justify-center hover:bg-hover"
+      : roomy
+        ? "flex h-[28px] w-full items-center gap-[6px] px-[6px] text-[12.5px] whitespace-nowrap hover:bg-hover"
+        : cn(CHIP, muted && "opacity-60 hover:opacity-100"),
     className,
   );
+  const label = compact ? title : undefined;
   if (todoKey !== undefined) {
     return (
-      <Link to="/todo/$key" params={{ key: todoKey }} className={shell} style={courseStyle(color)} title={title}>
+      <Link
+        to="/todo/$key"
+        params={{ key: todoKey }}
+        className={shell}
+        style={courseStyle(color)}
+        title={title}
+        aria-label={label}
+      >
         {children}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} className={shell} style={courseStyle(color)} title={title}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={shell}
+      style={courseStyle(color)}
+      title={title}
+      aria-label={label}
+    >
       {children}
     </button>
   );
 }
 
+/** The week's event chip: a ~11% course-colour wash (deeper in dark) and a 2px course bar. */
+const CHIP = cn(
+  "block w-full shrink-0 rounded-[6px] border-l-2 border-c py-[4px] pr-[6px] pl-[7px] text-[13px] leading-[17px]",
+  "bg-[color-mix(in_srgb,var(--c)_11%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--c)_17%,var(--surface))]",
+  "dark:bg-[color-mix(in_srgb,var(--c)_18%,var(--surface))] dark:hover:bg-[color-mix(in_srgb,var(--c)_25%,var(--surface))]",
+);
+
+/**
+ * A chip's body: the title (two lines at most), led by a check when the
+ * item is done, then one quiet meta line ("11:00 AM · ASTRON 103") that
+ * truncates rather than wraps. `late` marks it with a small red clock.
+ */
+function ChipBody({
+  time,
+  done,
+  late,
+  children,
+}: {
+  time?: string;
+  done?: boolean;
+  late?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <span className="flex items-start gap-[3px]">
+        {done && <Mark kind="done" className="h-[17px] w-3" />}
+        <span className="line-clamp-2 min-w-0 flex-1 break-words">{children}</span>
+      </span>
+      {(time !== undefined || late) && (
+        <span className="mt-[2px] flex min-w-0 items-start gap-[4px] text-[12px] leading-[15px] font-normal tabular text-ink-3">
+          {late && <Clock className="mt-px size-3 shrink-0 text-red" aria-label="Past due" />}
+          {/* Time and course each get their own unbroken line. */}
+          {time !== undefined && (
+            <span className="min-w-0">
+              {time.split(" · ").map((part) => (
+                <span key={part} className="block truncate whitespace-nowrap">
+                  {part}
+                </span>
+              ))}
+            </span>
+          )}
+        </span>
+      )}
+    </>
+  );
+}
+
+/** 11:59 PM — Canvas's default deadline, which the Due band already implies. */
+const END_OF_DAY = 23 * 60 + 59;
+
 export function DueLine({
   item,
   zone,
+  now,
   roomy,
+  compact,
 }: {
   item: TodoItem;
   zone: string;
+  /** Marks a past-due, unfinished chip with a red clock. */
+  now?: number;
   roomy?: boolean;
+  compact?: boolean;
 }) {
-  const { color } = useCourses();
+  const { color, label } = useCourses();
   const done = isDoneOrSubmitted(item);
+  const late = !done && now !== undefined && isOverdue(item, now);
+  const minute = item.dueAt === undefined ? undefined : minuteOf(item.dueAt, zone);
+  const tooltip =
+    minute === undefined ? item.title : `${item.title} · due ${clockTimeMeridiem(minute)}`;
+  if (!roomy && !compact) {
+    // The end-of-day default is left out so the title keeps the room; the
+    // tooltip always carries it.
+    // The small line says when and for which course; the title gets the room.
+    const when = minute === undefined || minute === END_OF_DAY ? undefined : clockTimeMeridiem(minute);
+    const time = [when, label(item.courseCanvasId)].filter(Boolean).join(" · ") || undefined;
+    return (
+      <Line todoKey={item.key} color={color(item.courseCanvasId)} title={tooltip} muted={done}>
+        <ChipBody time={time} done={done} late={late}>
+          {item.title}
+        </ChipBody>
+      </Line>
+    );
+  }
   return (
     <Line
       todoKey={item.key}
       color={color(item.courseCanvasId)}
-      title={item.title}
+      title={tooltip}
       roomy={roomy}
+      compact={compact}
       className={cn(done && "text-ink-3")}
     >
       <Mark kind={done ? "done" : "due"} />
-      <span className={cn("min-w-0 flex-1 truncate", done && "line-through decoration-line-2")}>
-        {item.title}
-      </span>
-      {item.dueAt !== undefined && (
-        <span className={cn("tabular font-normal text-ink-3", roomy ? "text-xs" : "text-[11px]")}>
-          {roomy
-            ? clockTimeMeridiem(minuteOf(item.dueAt, zone))
-            : denseTime(minuteOf(item.dueAt, zone))}
+      {roomy && (
+        <span className={cn("min-w-0 flex-1 truncate", done && "text-ink-3")}>{item.title}</span>
+      )}
+      {roomy && minute !== undefined && (
+        <span className="shrink-0 text-xs font-normal tabular text-ink-3">
+          {clockTimeMeridiem(minute)}
         </span>
       )}
     </Line>
   );
 }
 
-export function PlanLine({ item, roomy }: { item: TodoItem; roomy?: boolean }) {
+export function PlanLine({
+  item,
+  roomy,
+  compact,
+}: {
+  item: TodoItem;
+  roomy?: boolean;
+  compact?: boolean;
+}) {
   const { color } = useCourses();
+  if (!roomy && !compact) {
+    return (
+      <Line todoKey={item.key} color={color(item.courseCanvasId)} title={item.title}>
+        <ChipBody>{item.title}</ChipBody>
+      </Line>
+    );
+  }
   return (
-    <Line todoKey={item.key} color={color(item.courseCanvasId)} title={item.title} roomy={roomy}>
+    <Line
+      todoKey={item.key}
+      color={color(item.courseCanvasId)}
+      title={item.title}
+      roomy={roomy}
+      compact={compact}
+    >
       <Mark kind="planned" />
-      <span className="min-w-0 flex-1 truncate">{item.title}</span>
+      {roomy && <span className="min-w-0 flex-1 truncate">{item.title}</span>}
     </Line>
   );
 }
 
-/** All-day events (holidays, "no classes") sit in the Due band, unstyled. */
+/** All-day events (holidays, "no classes") ride in the Due band. */
 export function AllDayLine({
   event,
   onOpen,
   roomy,
+  compact,
 }: {
   event: CalendarEvent;
   onOpen: (event: CalendarEvent) => void;
   roomy?: boolean;
+  compact?: boolean;
 }) {
   const { color } = useCourses();
+  const chip = !roomy && !compact;
   return (
     <Line
       color={color(eventCourseId(event))}
       onClick={() => onOpen(event)}
       title={event.title}
       roomy={roomy}
-      className="font-medium text-ink-2"
+      compact={compact}
+      className={chip ? undefined : "text-ink-2"}
     >
-      <Mark kind="event" />
-      <span className="min-w-0 flex-1 truncate">{event.title}</span>
+      {chip ? (
+        <ChipBody time="All day">{event.title}</ChipBody>
+      ) : (
+        <>
+          <Mark kind="event" />
+          {roomy && <span className="min-w-0 flex-1 truncate">{event.title}</span>}
+        </>
+      )}
     </Line>
+  );
+}
+
+/**
+ * A day's finished items, folded into one muted line ("✓ 3 done"); on the
+ * phone's narrow columns just the check and the count. Opens the full list.
+ */
+export function DoneLine({
+  count,
+  compact,
+  onClick,
+}: {
+  count: number;
+  compact?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={`${count} done`}
+      aria-label={`Show ${count} done`}
+      className={cn(
+        "flex h-[22px] shrink-0 items-center gap-[5px] rounded-[5px] text-left text-ink-3 tabular transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+        compact ? "gap-px px-[3px] text-[11px]" : "w-full pr-1 pl-[3px] text-[12px]",
+      )}
+    >
+      <Mark kind="done" />
+      {compact ? count : `${count} done`}
+    </button>
   );
 }

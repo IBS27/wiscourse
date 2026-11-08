@@ -1,22 +1,22 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, MessagesSquare } from "lucide-react";
+import { ChevronLeft, MessagesSquare, X } from "lucide-react";
 import { ThreadList } from "./thread-list";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 /** Mobile header controls: back to Home, and the chat list in a sheet. */
 export function AskMobileNav({ activeId }: { activeId?: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Link to="/" aria-label="Back to Home" className="grid size-8 place-items-center rounded-lg text-ink-2 md:hidden">
+      <Link to="/" aria-label="Back to Home" className="grid size-8 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-hover md:hidden">
         <ChevronLeft className="size-[18px]" />
       </Link>
       <button
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Chats"
-        className="order-last grid size-8 place-items-center rounded-lg text-ink-2 md:hidden"
+        className="order-last grid size-8 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-hover md:hidden"
       >
         <MessagesSquare className="size-[17px]" />
       </button>
@@ -24,6 +24,12 @@ export function AskMobileNav({ activeId }: { activeId?: string }) {
         <DialogContent className="top-0 left-0 flex h-dvh w-full max-w-none translate-x-0 flex-col rounded-none border-0">
           <DialogTitle className="sr-only">Chats</DialogTitle>
           <ThreadList activeId={activeId} onNavigate={() => setOpen(false)} />
+          <DialogClose
+            aria-label="Close chats"
+            className="absolute top-3 right-2 grid size-8 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-hover"
+          >
+            <X className="size-[18px]" />
+          </DialogClose>
         </DialogContent>
       </Dialog>
     </>

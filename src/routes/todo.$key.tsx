@@ -1,10 +1,12 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, SearchX } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
+import { HEADER_BAR } from "@/components/app/page-header";
 import { TodoDetail } from "@/components/todo/todo-detail";
 import { announcementsHref } from "@/lib/course-routes";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/todo/$key")({
   component: TodoPage,
@@ -48,15 +50,31 @@ function TodoPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3 md:px-5">
-        <Link to="/" className="flex items-center gap-1 text-[13px] text-ink-3 hover:text-ink">
-          <ChevronLeft className="size-4" />
-          Home
-        </Link>
-      </div>
-      <div className="flex-1 md:bg-page md:px-6">
+      {/* The page frame: a 64px bar with the breadcrumb centred in it, in
+          the body's left-aligned 720px column (the page's title is the
+          heading below). Phones get a compact 48px back bar. */}
+      <header className={cn(HEADER_BAR, "max-md:h-12")}>
+        <div className="flex h-full w-full max-w-[720px] items-center">
+          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center">
+            <div className="flex h-6 min-w-0 items-center gap-2">
+              <Link
+                to="/"
+                className="-ml-2 flex h-7 shrink-0 items-center gap-1 rounded-md pr-[10px] pl-[6px] text-[13px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+              >
+                <ChevronLeft className="size-4" />
+                Home
+              </Link>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <div className="flex-1">
         {missing ? (
-          <div className="px-5 py-10 text-center text-[13px] text-ink-3">Todo not found.</div>
+          <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
+            <SearchX className="size-5 text-ink-3" />
+            <div className="text-[14px] font-medium text-ink-2">Todo not found</div>
+            <div className="text-[12.5px] text-ink-3">It may have been deleted, or Canvas removed it.</div>
+          </div>
         ) : item === undefined || item === null ? null : (
           <TodoDetail item={item} />
         )}

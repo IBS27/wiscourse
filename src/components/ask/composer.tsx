@@ -79,7 +79,7 @@ export function Composer({
   return (
     <div
       className={cn(
-        "rounded-xl border border-line-2 bg-surface focus-within:border-ink-3/60",
+        "cursor-text rounded-[14px] border border-line-2 bg-surface transition-[border-color,box-shadow] focus-within:border-ink-3/50",
         className,
       )}
       onClick={(event) => {
@@ -94,12 +94,12 @@ export function Composer({
         rows={1}
         placeholder={placeholder}
         aria-label="Message"
-        className="block max-h-[220px] min-h-[44px] w-full resize-none bg-transparent px-3 pt-[11px] pb-1 text-[14px] leading-[1.5] outline-none placeholder:text-ink-3"
+        className="block max-h-[220px] min-h-[48px] w-full resize-none bg-transparent px-[14px] pt-3 pb-1 text-[16px] leading-[1.5] outline-none placeholder:text-ink-3 md:text-[14.5px]"
       />
-      <div className="flex items-center gap-[6px] py-[6px] pr-[6px] pl-2">
+      <div className="flex items-center gap-[6px] pt-1 pr-2 pb-2 pl-[10px]">
         <CourseChip value={courseCanvasId} onChange={onCourseChange} />
         {draft.length > MAX_PROMPT_CHARS - 400 && (
-          <span className={cn("text-[11.5px] tabular text-ink-3", tooLong && "text-red")}>
+          <span className={cn("text-[12px] tabular text-ink-3", tooLong && "text-red")}>
             {draft.length.toLocaleString()} / {MAX_PROMPT_CHARS.toLocaleString()}
           </span>
         )}
@@ -109,7 +109,7 @@ export function Composer({
             onClick={onStop}
             aria-label="Stop"
             title="Stop"
-            className="ml-auto grid size-7 place-items-center rounded-lg bg-today text-today-fg"
+            className="ml-auto grid size-8 place-items-center rounded-[10px] bg-today text-today-fg transition-opacity hover:opacity-90"
           >
             <Square className="size-[10px] fill-current" />
           </button>
@@ -121,8 +121,8 @@ export function Composer({
             aria-label="Send"
             title="Send"
             className={cn(
-              "ml-auto grid size-7 place-items-center rounded-lg",
-              canSend ? "bg-today text-today-fg" : "bg-chip text-ink-3",
+              "ml-auto grid size-8 place-items-center rounded-[10px] transition-colors",
+              canSend ? "bg-today text-today-fg hover:opacity-90" : "bg-chip text-ink-3",
             )}
           >
             <ArrowUp className="size-[15px] stroke-[2.2]" />
@@ -149,7 +149,7 @@ function CourseChip({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 max-w-[220px] items-center gap-[6px] rounded-md bg-chip px-[7px] text-[12px] text-ink-2 outline-none hover:text-ink data-[state=open]:text-ink"
+          className="inline-flex h-7 max-w-[220px] items-center gap-[6px] rounded-lg px-[8px] text-[12.5px] font-medium text-ink-2 shadow-[inset_0_0_0_1px_var(--line)] outline-none transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 data-[state=open]:bg-hover data-[state=open]:text-ink"
           style={courseStyle(color(value))}
         >
           {selected ? <Dot /> : null}

@@ -1,16 +1,9 @@
 import { teachingRange } from "@/lib/course-structure";
-import {
-  ExternalLink,
-  File as FileIcon,
-  FileText,
-  ListChecks,
-  MessagesSquare,
-  SquareCheckBig,
-  type LucideIcon,
-} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import type { TodoItem } from "../../../convex/todos";
-import { extensionOf, fileIcon } from "./file-kinds";
+import { extensionOf } from "./file-kinds";
+import { iconsDiffer, ROW_ICON } from "./overview-icons";
 import { isDone, isOverdue } from "@/lib/agenda";
 import {
   DAY_MS,
@@ -104,8 +97,9 @@ export function itemStatus(item: ModuleItemDoc, ctx: StatusContext): ItemStatus 
   switch (item.type) {
     case "SubHeader":
       return { kind: "none" };
+    // The type icon already says "page", "quiz" or "assignment".
     case "Page":
-      return { kind: "text", text: "Page" };
+      return { kind: "none" };
     case "File": {
       const file =
         item.contentCanvasId === undefined ? undefined : ctx.files.get(item.contentCanvasId);
@@ -127,11 +121,8 @@ export function fileMeta(file: { filename: string; size: number }): string {
 
 function todoStatus(item: ModuleItemDoc, ctx: StatusContext): ItemStatus {
   const todo = findTodo(item, ctx);
-  if (todo === undefined) {
-    // Outside the todo window (or ungraded): say what it is, not when.
-    const noun = item.type === "Quiz" || item.type === "Discussion" ? item.type : "Assignment";
-    return { kind: "text", text: noun };
-  }
+  // Outside the todo window (or ungraded): the icon says what it is.
+  if (todo === undefined) return { kind: "none" };
   if (todo.submission === "submitted" || todo.submission === "graded") return { kind: "submitted" };
   if (isDone(todo)) return { kind: "text", text: "Done" };
   if (isOverdue(todo, ctx.now)) return { kind: "overdue" };
@@ -342,21 +333,14 @@ export function lockReason(
 
 // ── icons ───────────────────────────────────────────────────────────────────
 
-const TYPE_ICON: Partial<Record<ModuleItemDoc["type"], LucideIcon>> = {
-  Page: FileText,
-  Assignment: SquareCheckBig,
-  Quiz: ListChecks,
-  Discussion: MessagesSquare,
-  ExternalUrl: ExternalLink,
-  ExternalTool: ExternalLink,
-};
+/** The item's type icon, from the one map every course list draws with. */
+export function itemIcon(item: ModuleItemDoc): LucideIcon {
+  return ROW_ICON[item.type];
+}
 
-/** Type icon; files narrow further by content type. */
-export function itemIcon(item: ModuleItemDoc, files?: Map<number, FileDoc>): LucideIcon {
-  if (item.type === "File") {
-    const file =
-      item.contentCanvasId === undefined ? undefined : files?.get(item.contentCanvasId);
-    return file === undefined ? FileIcon : fileIcon(file.contentType, file.filename);
-  }
-  return TYPE_ICON[item.type] ?? FileIcon;
+/** Whether a modules list needs its icon column: only when the types differ. */
+export function showsItemIcons(modules: ModuleWithItems[]): boolean {
+  return iconsDiffer(
+    modules.flatMap((m) => m.items.filter((i) => i.type !== "SubHeader").map(itemIcon)),
+  );
 }

@@ -8,17 +8,17 @@
 :root {
   --radius: 0.5rem;
 
-  --page: #ececee;
+  --page: #f4f4f6;
   --surface: #ffffff;
-  --sunken: #f4f4f5;
+  --sunken: #f8f8f9;
   --raised: #ffffff;
-  --hover: #f4f4f5;
-  --line: #e5e5e8;
-  --line-2: #d6d6db;
-  --chip: #f4f4f5;
-  --ink: #18181b;
-  --ink-2: #55555f;
-  --ink-3: #8a8a93;
+  --hover: #f4f4f6;
+  --line: #e7e7eb;
+  --line-2: #dcdce1;
+  --chip: #f2f2f4;
+  --ink: #1b1b1f;
+  --ink-2: #45454e;
+  --ink-3: #565660;
   --red: #c5050c;
   --red-bg: #fdf1f1;
   --today-bg: #18181b;
@@ -31,8 +31,10 @@
   --course-amber: #b45309;
   --course-teal: #0f766e;
   --course-sky: #0369a1;
-  --course-rose: #be123c;
-  --course-emerald: #047857;
+  /* Keys are stored per course; values avoid red (overdue owns it) and keep
+     neighbouring hues apart. */
+  --course-rose: #a21caf;
+  --course-emerald: #4d7c0f;
   --course-violet: #6d28d9;
   --course-orange: #c2410c;
   --course-none: #71717a;
@@ -61,41 +63,48 @@
   /* UW–Madison Badger Red. Logo + overdue only — not a UI accent. */
   --brand: var(--red);
   --brand-ink: #101114;
+  /* Unread marker: neutral, so it never competes with a course dot. Used only
+     in the left gutter of feed lists (Home "New", Inbox); elsewhere read state
+     is carried by title weight. */
+  --unread: var(--ink-3);
 }
 
 .dark {
-  --page: #0b0b0b;
-  --surface: #181818;
-  --sunken: #0f0f0f;
-  --raised: #1e1e1e;
-  --hover: #242424;
-  --line: #2b2b2b;
-  --line-2: #3c3c3c;
-  --chip: #242424;
-  --ink: #e8e8e8;
-  --ink-2: #a3a3a3;
-  --ink-3: #737373;
+  --page: #0b0b0d;
+  --surface: #17171a;
+  --sunken: #0f0f11;
+  --raised: #202024;
+  --hover: #232328;
+  --line: #313137;
+  --line-2: #4a4a52;
+  --chip: #232327;
+  --ink: #ececef;
+  --ink-2: #c6c6ce;
+  --ink-3: #a5a5af;
   --red: #ff4b54;
   --red-bg: #2b1417;
-  --today-bg: #e8e8e8;
-  --today-fg: #181818;
+  --today-bg: #d9d9de;
+  --today-fg: #17171a;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
   --menu-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
 
-  --course-indigo: #818cf8;
-  --course-amber: #f0a13a;
-  --course-teal: #2dd4bf;
-  --course-sky: #4cb4ec;
-  --course-rose: #fb7185;
-  --course-emerald: #34d399;
-  --course-violet: #a78bfa;
-  --course-orange: #fb923c;
+  --course-indigo: #8f96f3;
+  --course-amber: #e2a756;
+  --course-teal: #4cc2b2;
+  --course-sky: #6cb6e6;
+  --course-rose: #dc8ae3;
+  --course-emerald: #9bcf5f;
+  --course-violet: #b39cf2;
+  --course-orange: #ef9b62;
   --course-none: #8c8c8c;
 
-  --brand-ink: #e8e8e8;
+  --brand-ink: #ececef;
 }
 
 @theme inline {
+  /* Metadata floor: text-xs is 13px, not 12px. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.4;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
@@ -143,6 +152,7 @@
   --color-today-fg: var(--today-fg);
   /* The current row/card's course colour; set via style={{ "--c": ... }}. */
   --color-c: var(--c, var(--course-none));
+  --color-unread: var(--unread);
 
   --shadow-menu: var(--menu-shadow);
   --shadow-float: var(--shadow);
@@ -157,6 +167,11 @@
   }
   body {
     @apply bg-background text-foreground text-[14px] leading-[1.45] antialiased;
+    /* Inter: open 4/6/9 and a single-storey a read softer at UI sizes. */
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--course-sky) 22%, transparent);
   }
   button {
     @apply cursor-pointer;
@@ -167,13 +182,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Uppercase section/eyebrow label. */
-@utility eyebrow {
-  font-size: 11px;
+/* Page title in the top bar of every screen. */
+@utility page-title {
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-3);
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+/* Section label inside a card or panel. */
+@utility eyebrow {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink);
 }
 
 /* Landing page (src/components/landing): row stagger, switcher progress bar,

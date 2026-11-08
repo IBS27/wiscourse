@@ -6,7 +6,6 @@
 import { useDraft } from "@/lib/drafts";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarClock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarToolbar, HintBar, type CalendarView } from "@/components/calendar/toolbar";
 import { WeekGrid } from "@/components/calendar/week-grid";
@@ -19,7 +18,7 @@ import { useCalendarData } from "@/components/calendar/use-calendar";
 import {
   monthDays,
   shiftMonth,
-  mondayWeekDays,
+  calendarWeekDays,
   type CalendarEvent,
   type TimeBlock,
 } from "@/lib/calendar";
@@ -29,7 +28,7 @@ import {
   dayKeyOf,
   formatDayMedium,
   formatMonthYear,
-  startOfMondayWeek,
+  startOfWeek,
 } from "@/lib/dates";
 import { useCourses, useIsMobile, useNow, useToday } from "@/lib/hooks";
 import { useSyncInfo } from "@/lib/sync-info";
@@ -80,7 +79,7 @@ function Calendar() {
   const [subscribing, setSubscribing] = useState(false);
 
   const days = useMemo(
-    () => (view === "month" ? monthDays(anchor) : mondayWeekDays(anchor)),
+    () => (view === "month" ? monthDays(anchor) : calendarWeekDays(anchor)),
     [view, anchor],
   );
   const { models, meetings, loading } = useCalendarData({ days });
@@ -245,7 +244,7 @@ function Calendar() {
         view={view}
         title={title}
         compactTitle={compactTitle}
-        detail={week === undefined ? undefined : `· Week ${week}`}
+        detail={week === undefined ? undefined : `Week ${week}`}
         onView={setView}
         onPrev={() => shift(-1)}
         onNext={() => shift(1)}
@@ -268,9 +267,8 @@ function Calendar() {
           todayKey={today}
           now={now}
           zone={zone}
-          prompt={
-            noMeetings ? <ClassTimesPrompt onOpen={() => setMeetingsFor("any")} /> : undefined
-          }
+          compact={mobile}
+          onAddClassTimes={noMeetings ? () => setMeetingsFor("any") : undefined}
           onOpenBlock={openBlock}
           onOpenEvent={setEditingEvent}
         />
@@ -327,22 +325,9 @@ function Calendar() {
   );
 }
 
-function ClassTimesPrompt({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex items-center gap-[9px] border-b border-line px-5 py-[9px] text-left text-[12.5px] text-ink-3 hover:text-ink"
-    >
-      <CalendarClock className="size-[14px]" />
-      Add your class times so lectures show here
-    </button>
-  );
-}
-
 function ConnectCard() {
   return (
-    <div className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-[10px] border border-line bg-surface p-4">
+    <div className="mx-4 mt-4 flex items-center justify-between gap-4 rounded-[10px] border border-line bg-surface p-4 md:mx-6">
       <div>
         <div className="text-[14px] font-semibold tracking-[-0.01em]">Connect Canvas</div>
         <div className="mt-[3px] text-[12.5px] text-ink-3">
@@ -356,10 +341,14 @@ function ConnectCard() {
   );
 }
 
-/** "Week 2" of the term, from the earliest term start among the courses. */
+/**
+ * "Week 2" of the term, from the earliest term start among the courses.
+ * Counted in the calendar's own Sunday-start weeks, so the label always
+ * names the week on screen.
+ */
 function teachingWeek(
   courses: { termStartAt?: number; startAt?: number }[],
-  mondayKey: string,
+  sundayKey: string,
 ): number | undefined {
   let earliest: number | undefined;
   for (const course of courses) {
@@ -368,6 +357,6 @@ function teachingWeek(
     if (earliest === undefined || start < earliest) earliest = start;
   }
   if (earliest === undefined) return undefined;
-  const week = dayDiff(startOfMondayWeek(dayKeyOf(earliest)), mondayKey) / 7 + 1;
+  const week = dayDiff(startOfWeek(dayKeyOf(earliest)), sundayKey) / 7 + 1;
   return Number.isInteger(week) && week >= 1 && week <= 20 ? week : undefined;
 }

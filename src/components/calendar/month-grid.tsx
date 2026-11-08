@@ -108,10 +108,13 @@ export function MonthGrid({
           gridTemplateRows: `30px repeat(${weeks}, minmax(0, 1fr))`,
         }}
       >
-        {days.slice(0, 7).map((day) => (
+        {days.slice(0, 7).map((day, index) => (
           <div
             key={`head-${day}`}
-            className="flex h-[30px] items-center border-r border-b border-line px-[9px] text-[10.5px] font-semibold tracking-[0.08em] text-ink-3 uppercase last:border-r-0"
+            className={cn(
+              "flex h-[30px] items-center border-r border-b border-line px-[10px] text-[12px] font-medium text-ink-3",
+              index === 6 && "border-r-0",
+            )}
           >
             {formatWeekday(day)}
           </div>
@@ -135,14 +138,15 @@ export function MonthGrid({
               aria-pressed={selected === day}
               onClick={() => onSelect(selected === day ? null : day)}
               className={cn(
-                "min-h-0 min-w-0 border-r border-b border-line px-[6px] pt-[6px] pb-2 text-left hover:bg-hover",
+                // A button centres its content; a day reads from the top.
+                "flex min-h-0 min-w-0 flex-col items-stretch justify-start overflow-hidden border-r border-b border-line px-[5px] pt-[5px] pb-[6px] text-left transition-colors hover:bg-hover focus-visible:z-[1] focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none focus-visible:ring-inset",
                 (index + 1) % 7 === 0 && "border-r-0",
                 selected === day && "bg-sunken shadow-[inset_0_0_0_1px_var(--line-2)]",
               )}
             >
               <div
                 className={cn(
-                  "mb-1 ml-px grid size-[22px] place-items-center rounded-md text-[12.5px] font-semibold tracking-[-0.02em]",
+                  "mb-[3px] grid h-[22px] min-w-[22px] shrink-0 place-items-center self-start rounded-full px-1 text-[12.5px] font-semibold tabular tracking-[-0.01em]",
                   !sameMonth(day, monthKey) && "font-medium text-ink-3",
                   day < todayKey && "text-ink-3",
                   isToday && "bg-today text-today-fg",
@@ -151,7 +155,7 @@ export function MonthGrid({
                 {Number(day.slice(-2))}
               </div>
               {compact === true ? (
-                <div aria-hidden className="flex flex-wrap gap-[3px] px-px">
+                <div aria-hidden className="flex flex-wrap gap-[3px] px-[6px]">
                   {dotColors(lines).map((c) => (
                     <i key={c} className="block size-[5px] rounded-full" style={{ background: c }} />
                   ))}
@@ -163,7 +167,7 @@ export function MonthGrid({
                       key={line.key}
                       style={courseStyle(line.color)}
                       className={cn(
-                        "flex h-5 items-center gap-[5px] overflow-hidden rounded-[5px] px-1 text-[11.5px] font-medium whitespace-nowrap",
+                        "flex h-5 shrink-0 items-center gap-[5px] overflow-hidden rounded-[5px] px-px text-[12px] font-medium whitespace-nowrap",
                         line.mark === "none" && "text-ink-3",
                         day < todayKey && "text-ink-3",
                       )}
@@ -173,7 +177,7 @@ export function MonthGrid({
                     </div>
                   ))}
                   {more > 0 && (
-                    <div className="px-1 pt-[2px] text-[11px] font-medium text-ink-3">+{more} more</div>
+                    <div className="shrink-0 pt-px pl-[20px] text-[11px] font-medium text-ink-3">+{more} more</div>
                   )}
                 </>
               )}

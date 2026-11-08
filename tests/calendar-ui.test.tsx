@@ -109,8 +109,8 @@ beforeEach(() => {
       _id: "e1",
       source: "local",
       title: "Study group — P3",
-      startAt: at("2026-09-13", 16 * 60),
-      endAt: at("2026-09-13", 18 * 60),
+      startAt: at("2026-09-12", 16 * 60),
+      endAt: at("2026-09-12", 18 * 60),
       location: "College Library",
     },
     {
@@ -154,11 +154,15 @@ it("renders the week as bands over a time grid", () => {
   const Calendar = setup({ view: "week", date: "2026-09-10" });
   render(<Calendar />);
 
+  // Weeks start on Sunday, as Home's strip does; the term began Wed Sep 2.
+  expect(screen.getByText("Week 2")).toBeDefined();
+  expect(screen.getByText("Sun")).toBeDefined();
+  expect(screen.queryByText("13")).toBeNull();
   expect(screen.getByText("Due")).toBeDefined();
   expect(screen.getByText("Plan")).toBeDefined();
-  // Due times are one-liners in the band, never blocks.
+  // Due times are chips in the band (title, then "time · course"), never blocks.
   expect(screen.getByText("Problem Set 3")).toBeDefined();
-  expect(screen.getByText("5:00p")).toBeDefined();
+  expect(screen.getByText(/^5:00 PM/)).toBeDefined();
   expect(screen.getByText("Email prof re: office hours")).toBeDefined();
   // Two lecture occurrences this week (Tue and Thu), each with its location.
   expect(screen.getAllByText("MATH 340")).toHaveLength(2);
@@ -274,7 +278,9 @@ it("shows the day view with its week strip and timeline", () => {
   const Calendar = setup({ view: "day", date: "2026-09-10" });
   render(<Calendar />);
   expect(screen.getByText("Thursday, Sep 10")).toBeDefined();
-  expect(screen.getByRole("button", { name: /^Monday, September 7/ })).toBeDefined();
+  const strip = screen.getAllByRole("button", { name: /^\w+day, September \d+$/ });
+  expect(strip[0].getAttribute("aria-label")).toBe("Sunday, September 6");
+  expect(strip[6].getAttribute("aria-label")).toBe("Saturday, September 12");
   expect(screen.getByText("MATH 340")).toBeDefined();
   expect(screen.getByText("11:00 – 12:15 · Van Vleck B102")).toBeDefined();
 });

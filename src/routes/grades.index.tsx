@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
-import { Search } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import type { Gradebook } from "../../convex/lib/grades";
 import { PageHeader } from "@/components/app/page-header";
@@ -14,7 +14,6 @@ import {
 } from "@/components/grades/ledger-row";
 import { formatSince } from "@/lib/dates";
 import { useCourses, useNow, useToday, type Course } from "@/lib/hooks";
-import { openSearch } from "@/lib/search-context";
 import { useSeen } from "@/lib/seen";
 import { useSyncInfo } from "@/lib/sync-info";
 
@@ -54,34 +53,28 @@ function GradesIndex() {
       <PageHeader
         title="Grades"
         subtitle={subtitle(termName, visible.length, info?.lastSyncedAt, now)}
-        actions={
-          <button
-            type="button"
-            aria-label="Search"
-            onClick={() => openSearch()}
-            className="text-ink-3 md:hidden"
-          >
-            <Search className="size-[18px]" />
-          </button>
-        }
       />
 
       {loading || books === undefined ? (
         <LedgerSkeleton />
       ) : courses.length === 0 ? (
-        <p className="p-4 text-sm text-ink-3 md:p-5">
-          No courses yet. Connect Canvas in{" "}
-          <Link to="/settings" className="font-medium text-ink underline underline-offset-4">
-            Settings
-          </Link>
-          , then run a sync.
-        </p>
+        <div className="flex flex-col items-center gap-2 px-4 py-16 text-center">
+          <BarChart3 className="size-5 text-ink-3" aria-hidden />
+          <p className="text-[13.5px] font-medium">No courses yet</p>
+          <p className="text-[12.5px] text-ink-3">
+            Connect Canvas in{" "}
+            <Link to="/settings" className="font-medium text-ink-2 underline underline-offset-4 hover:text-ink">
+              Settings
+            </Link>
+            , then run a sync.
+          </p>
+        </div>
       ) : (
         <>
           {visible.length > 0 && <GradesLedgerHeader />}
           {rows(visible)}
           {visible.length === 0 && (
-            <p className="p-4 text-[13px] text-ink-3 md:p-5">
+            <p className="px-4 py-6 text-[13px] text-ink-3 md:px-6">
               No courses in the current term.
             </p>
           )}
@@ -130,13 +123,12 @@ function LedgerSkeleton() {
   return (
     <div>
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="flex h-[60px] items-center gap-3 border-b border-line px-4 md:px-5">
-          <div className="size-2 rounded-full bg-chip" />
+        <div key={i} className="flex h-16 items-center gap-8 border-b border-line px-4 md:px-6">
           <div className="flex-1 space-y-2">
             <div className="h-3 w-1/3 rounded bg-chip" />
-            <div className="h-2.5 w-1/4 rounded bg-chip" />
+            <div className="h-2.5 w-1/5 rounded bg-chip" />
           </div>
-          <div className="h-3 w-14 rounded bg-chip" />
+          <div className="h-3 w-16 rounded bg-chip" />
         </div>
       ))}
     </div>

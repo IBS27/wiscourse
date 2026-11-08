@@ -86,7 +86,8 @@ it("shows the instructor schedule in Overview and switches between source sectio
   expect(screen.getByTestId("source-html").textContent).not.toContain(
     "Write a shell",
   );
-  fireEvent.click(screen.getByRole("button", { name: "Projects" }));
+  fireEvent.click(screen.getByRole("button", { name: "Next section" }));
+  expect(screen.getByRole("button", { name: /^Projects/ })).toBeTruthy();
   expect(screen.getByTestId("source-html").textContent).toContain(
     "Write a shell",
   );
@@ -151,10 +152,8 @@ it("selects the current instructional week and never renders locked page bodies"
     />,
   );
   expect(
-    screen
-      .getByRole("button", { name: /Projects/ })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
+    screen.getByRole("button", { name: /^Projects/ }).getAttribute("aria-haspopup"),
+  ).toBe("menu");
   expect(screen.queryByText("Hidden content")).toBeNull();
 });
 it("uses only fresh validated maps and isolates instructor HTML sections", () => {
@@ -256,8 +255,8 @@ it("shows the upcoming week's dated entries with their linked materials", () => 
   );
   expect(screen.getByText("Weekly course plan")).toBeTruthy();
   expect(
-    screen.getByRole("button", { name: /Week 2/ }).getAttribute("aria-pressed"),
-  ).toBe("true");
+    screen.getByRole("button", { name: /^Week 2/ }).getAttribute("aria-haspopup"),
+  ).toBe("menu");
   const schedule = screen.getByRole("list", { name: "Week 2 schedule" });
   expect(schedule.textContent).toContain("Tue, Sep 8");
   expect(schedule.textContent).toContain("Scheduling");
@@ -273,4 +272,89 @@ it("keeps the original Overview when every section only restates a page", () => 
   const fresh = { resources, sourceRevision: 1, resultRevision: 1 };
   expect(usableInterpretation({ ...fresh, map: flat })).toBe(false);
   expect(usableInterpretation({ ...fresh, map })).toBe(true);
+});
+it("lists a chapter's groups by date, undated last", () => {
+  const entry = (title: string, date: string | null) => ({
+    title,
+    date,
+    resourceIds: [],
+    evidence: proof,
+  });
+  const chapter: CourseMap = {
+    ...map,
+    sections: [
+      {
+        ...map.sections[0],
+        id: "c12",
+        title: "Chapter 12: Vectors",
+        resourceIds: [],
+        entries: [
+          entry("Homework 12.1", "2026-09-10"),
+          entry("Review", null),
+          entry("Module Quiz 1", "2026-09-06"),
+        ],
+      },
+    ],
+  } as CourseMap;
+  render(
+    <InterpretedOverview
+      map={chapter}
+      resources={resources}
+      modules={[]}
+      courseId="1"
+      today="2026-09-05"
+    />,
+  );
+  const items = screen
+    .getByRole("list", { name: "Chapter 12: Vectors schedule" })
+    .querySelectorAll("li");
+  expect([...items].map((li) => li.querySelector("h3")?.textContent)).toEqual([
+    "Module Quiz 1",
+    "Homework 12.1",
+    "Review",
+  ]);
+});
+it("opens on the chapter whose dated groups bracket today and marks the next group", () => {
+  const entry = (title: string, date: string) => ({
+    title,
+    date,
+    resourceIds: [],
+    evidence: proof,
+  });
+  const chapter = (id: string, title: string, entries: ReturnType<typeof entry>[]) => ({
+    ...map.sections[0],
+    id,
+    title,
+    resourceIds: [],
+    entries,
+  });
+  const chapters: CourseMap = {
+    ...map,
+    sections: [
+      chapter("c12", "Chapter 12: Vectors", [entry("Quiz 1", "2026-09-06")]),
+      chapter("c15", "Chapter 15: Integrals", [
+        entry("Homework 15.1", "2026-10-29"),
+        entry("Quiz 18", "2026-11-08"),
+        entry("Homework 15.9", "2026-11-19"),
+      ]),
+      chapter("c16", "Chapter 16: Vector calculus", [entry("Homework 16.1", "2026-11-26")]),
+    ],
+  };
+  render(
+    <InterpretedOverview
+      map={chapters}
+      resources={resources}
+      modules={[]}
+      courseId="1"
+      today="2026-11-06"
+    />,
+  );
+  const items = screen
+    .getByRole("list", { name: "Chapter 15: Integrals schedule" })
+    .querySelectorAll(":scope > li");
+  expect([...items].map((li) => li.querySelector(".tabular")?.textContent)).toEqual([
+    "Thu, Oct 29",
+    "Sun, Nov 8This week",
+    "Thu, Nov 19",
+  ]);
 });

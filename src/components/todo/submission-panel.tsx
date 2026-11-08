@@ -66,7 +66,7 @@ export function SubmissionPanel({ item }: { item: TodoItem }) {
   else composer = <Composer item={item} panel={panel} />;
 
   return (
-    <div className="mt-2 flex flex-col gap-2">
+    <div className="mt-3 flex flex-col gap-2">
       {row !== null && <OutboxCard row={row} item={item} panel={panel} now={now} />}
       {composer}
     </div>
@@ -242,7 +242,7 @@ function FilePicker({ files, setFiles, allowed }: { files: File[]; setFiles: (ne
           }}
         />
       </label>
-      <div className="mt-1 text-[11.5px] text-ink-3">
+      <div className="mt-1 text-[12px] text-ink-3">
         {allowed ? `Allowed: ${allowed.join(", ")}. ` : ""}Up to {MAX_FILES} files, 20 MB each.
       </div>
       {files.length > 0 && (
@@ -358,7 +358,7 @@ function ConfirmDialog({
         </DialogDescription>
 
         <div className="mt-4 rounded-lg border border-line bg-sunken p-3">
-          <div className="mb-2 flex items-center gap-[6px] text-[11.5px] font-medium text-ink-3">
+          <div className="mb-2 flex items-center gap-[6px] text-[12px] font-medium text-ink-3">
             {KIND_ICON[content.kind]}
             {KIND_LABEL[content.kind]}
           </div>

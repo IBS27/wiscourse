@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { dayKeyOf, startOfDay, addDays } from "./dates";
 import { classifyCourses, formatTerm } from "./terms";
 import { useDisplayTimeZone } from "./time-zone";
+import { courseLabel } from "./course-name";
 
 export type Course = NonNullable<
   ReturnType<typeof useQuery<typeof api.courses.list>>
@@ -45,17 +46,7 @@ export function useCourses() {
   }, [courses, now]);
 }
 
-// UW's Canvas often puts the full title in `courseCode` ("Career Fair
-// Preparation"); only a genuinely short code is worth showing beside a name.
-export function shortCode(c: { name: string; courseCode: string }): string | undefined {
-  const code = c.courseCode.trim();
-  if (code.length === 0 || code.length > 14 || code === c.name.trim()) return undefined;
-  return code;
-}
-
-export function courseLabel(c: { name: string; courseCode: string; nickname?: string }): string {
-  return c.nickname ?? shortCode(c) ?? c.name;
-}
+export { courseLabel, courseTitle, shortCode } from "./course-name";
 
 /** Sets the `--c` course colour for a subtree. */
 export function courseStyle(color: string): CSSProperties {

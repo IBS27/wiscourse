@@ -3,14 +3,37 @@ import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { FeedItem } from "../../../convex/inbox";
 import type { TodoItem } from "../../../convex/todos";
-import { UnreadDot } from "./unread-dot";
-import { Dot } from "@/components/app/bits";
+import { Clock } from "lucide-react";
+import { CourseTag } from "@/components/app/bits";
 import { courseHref } from "@/lib/course-routes";
 import { formatDayShort, formatTime, formatWeekday, dayKeyOf } from "@/lib/dates";
-import { courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { familyName } from "@/lib/instructors";
 import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
+
+/** Course · next due · new; the new column is exactly as wide as its slots. */
+export const LEDGER_COLS = "md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_auto] md:gap-x-6";
+
+/** Hairline under each row, from the title's edge to the content's. */
+const RULE =
+  "after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6";
+
+/** The fixed slots of the New column, in the order the header draws them. */
+const NEW_SLOTS = [
+  { key: "announcement", label: "Announcements", short: "Ann." },
+  { key: "file", label: "Files", short: "Files" },
+  { key: "grade", label: "Grades", short: "Grades" },
+  { key: "assignment", label: "Assignments", short: "Assign." },
+] as const;
+type SlotKey = (typeof NEW_SLOTS)[number]["key"];
+
+/**
+ * One slot, right-aligned so a column of numbers ends exactly where its
+ * label does: 96px names it in full (the widest label fits without spilling
+ * past the right edge), 56px abbreviates. Header and cells share the class.
+ */
+const SLOT = "w-14 shrink-0 text-right whitespace-nowrap tabular xl:w-24";
 
 export function LedgerRow({
   course,
@@ -31,82 +54,136 @@ export function LedgerRow({
   const seenFiles = useSeen("file");
 
   const code = shortCode(course);
-  const meta = [code, familyName(course.verifiedInstructors?.[0])].filter(
-    (part): part is string => part !== undefined && part !== "",
-  );
+  const instructor = familyName(course.verifiedInstructors?.[0]);
 
   const next = nextDue(todos, course.canvasId);
   const overdue = next?.dueAt !== undefined && next.dueAt < now;
   const freshFiles = (fresh ?? []).filter((file) => !seenFiles.has(file.canvasId)).length;
-  const summary = newSummary(feed, course.canvasId, freshFiles);
+  const counts = newCounts(feed, course.canvasId, freshFiles);
 
   return (
     <Link
       to={courseHref(course.canvasId)}
       style={courseStyle(color)}
-      className="grid grid-cols-1 gap-y-[6px] border-b border-line px-4 py-[11px] text-inherit no-underline hover:bg-hover md:h-[58px] md:grid-cols-[minmax(0,1fr)_250px_230px] md:items-center md:gap-x-4 md:gap-y-0 md:px-5 md:py-0"
+      className={cn(
+        "group relative grid grid-cols-1 gap-y-[6px] px-4 py-3 text-inherit no-underline transition-colors outline-none hover:bg-hover focus-visible:bg-hover md:min-h-[62px] md:items-center md:gap-y-0 md:px-6 md:py-[10px]",
+        LEDGER_COLS,
+        RULE,
+      )}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <Dot className="size-2" />
-        <div className="min-w-0">
-          <div className="truncate text-[14px] leading-[1.25] font-medium tracking-[-0.01em]">
-            {course.nickname ?? course.name}
-          </div>
-          <div className="mt-[2px] truncate text-xs text-ink-3">
-            {meta.map((part, i) => (
-              <span key={`${i}-${part}`}>
-                {i > 0 && <span className="opacity-55"> · </span>}
-                <span className={cn(i === 0 && code !== undefined && "font-medium text-c")}>
-                  {part}
-                </span>
-              </span>
-            ))}
-          </div>
+      <div className="min-w-0">
+        <div className="text-[14px] leading-[1.35] font-medium tracking-[-0.01em] text-ink">
+          {courseTitle(course)}
         </div>
+        <CourseMeta code={code} instructor={instructor} />
       </div>
 
-      <div
-        className={cn(
-          "min-w-0 text-[13px] leading-[1.25]",
-          // A bare em-dash on its own line is noise once the row stacks.
-          next === undefined && "hidden text-ink-3 md:block",
-        )}
-      >
+      <div className={cn("min-w-0 leading-[1.35]", next === undefined && "hidden md:block")}>
         {next === undefined ? (
-          "—"
+          <span className="text-[12.5px] text-ink-3">Nothing due</span>
         ) : (
           <>
-            <span className="block truncate">{next.title}</span>
+            <span className="line-clamp-2 text-[13px] text-ink-2">
+              <span className="text-ink-3 md:hidden">Next · </span>
+              {next.title}
+            </span>
             {next.dueAt !== undefined && (
-              <span className={cn("mt-[2px] block text-xs text-ink-3", overdue && "text-red")}>
-                {overdue
-                  ? `Overdue · was ${formatWeekday(dayKeyOf(next.dueAt))} ${formatTime(next.dueAt)}`
-                  : `${formatDayShort(dayKeyOf(next.dueAt))} · ${formatTime(next.dueAt)}`}
+              <span className="tabular mt-[2px] flex items-center gap-[5px] text-[12.5px] text-ink-3">
+                {overdue && <Clock className="size-3 shrink-0 text-red" aria-hidden />}
+                <span className={cn(overdue && "text-ink-2")}>
+                  {overdue
+                    ? `Overdue · was ${formatWeekday(dayKeyOf(next.dueAt))} ${formatTime(next.dueAt)}`
+                    : `${formatDayShort(dayKeyOf(next.dueAt))} · ${formatTime(next.dueAt)}`}
+                </span>
               </span>
             )}
           </>
         )}
       </div>
 
-      <div
-        className={cn(
-          "items-center gap-2 text-[12.5px]",
-          summary === undefined ? "hidden text-ink-3 md:flex" : "flex text-ink-2",
-        )}
-      >
-        {summary === undefined ? (
-          "—"
-        ) : (
-          <>
-            <UnreadDot />
-            {summary}
-          </>
-        )}
-      </div>
+      <NewCounts counts={counts} />
     </Link>
   );
 }
 
+/**
+ * Fixed slots on desktop, one per kind, numbers only: the header names each
+ * slot, so a column reads like a table, and a zero is a quiet dash. Phones
+ * have no header, so they get the same counts as words.
+ */
+function NewCounts({ counts }: { counts: Record<SlotKey, number> }) {
+  const present = NEW_SLOTS.filter((slot) => counts[slot.key] > 0);
+  const label =
+    present.length === 0
+      ? "Nothing new"
+      : present.map((slot) => plural(counts[slot.key], slot.label)).join(" · ");
+  return (
+    <>
+      {present.length > 0 && <span className="text-[12.5px] text-ink-3 md:hidden">{label}</span>}
+      <span className="hidden justify-end text-[13px] md:flex" title={label}>
+        <span className="sr-only">{label}</span>
+        {NEW_SLOTS.map((slot) => (
+          <span
+            key={slot.key}
+            className={cn(SLOT, counts[slot.key] > 0 ? "font-medium text-ink-2" : "text-ink/35")}
+            aria-hidden
+          >
+            {counts[slot.key] > 0 ? counts[slot.key] : "—"}
+          </span>
+        ))}
+      </span>
+    </>
+  );
+}
+
+/**
+ * The header cell over `NewCounts`: "New since you looked" spans the slots
+ * with a rule under it, and each slot is named in full beneath (abbreviated
+ * where the row is too narrow to spell them out).
+ */
+export function NewCountsHead() {
+  return (
+    <span className="flex flex-col items-stretch">
+      <span className="border-b border-line pb-[5px] text-center">New since you looked</span>
+      <span className="flex justify-end pt-[5px]">
+        {NEW_SLOTS.map(({ key, label, short }) => (
+          <span key={key} className={cn(SLOT, "font-normal")} title={label}>
+            <span className="hidden xl:inline">{label}</span>
+            <span className="xl:hidden" aria-hidden>
+              {short}
+            </span>
+            <span className="sr-only xl:hidden">{label}</span>
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+
+/** "MATH 234 · Williams", the code as a course tag. */
+function CourseMeta({
+  code,
+  instructor,
+  className,
+}: {
+  code: string | undefined;
+  instructor: string | undefined;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] text-ink-3", className)}>
+      {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+      {code !== undefined && instructor !== undefined && (
+        <span className="text-line-2" aria-hidden>
+          ·
+        </span>
+      )}
+      {instructor !== undefined && <span className="truncate">{instructor}</span>}
+    </div>
+  );
+}
+
+/** A course inside an open past-term fold, indented to the fold's label. */
 export function LedgerPastRow({ course, color }: { course: Course; color: string }) {
   const code = shortCode(course) ?? course.courseCode;
   const instructor = familyName(course.verifiedInstructors?.[0]);
@@ -115,16 +192,13 @@ export function LedgerPastRow({ course, color }: { course: Course; color: string
     <Link
       to={courseHref(course.canvasId)}
       style={courseStyle(color)}
-      className="flex items-center gap-4 border-b border-line px-4 py-[10px] text-ink-2 no-underline hover:bg-hover md:h-[42px] md:px-5 md:py-0"
+      className="group relative flex min-h-10 items-center gap-4 py-2 pr-4 pl-[38px] no-underline transition-colors outline-none after:absolute after:right-4 after:bottom-0 after:left-[38px] after:h-px after:bg-line hover:bg-hover focus-visible:bg-hover md:pr-6 md:pl-[46px] md:after:right-6 md:after:left-[46px]"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Dot className="size-2 opacity-45" />
-        <div className="min-w-0 truncate">
-          <span className="text-[13.5px] font-medium">{course.nickname ?? course.name}</span>
-          <span className="ml-[10px] text-xs text-ink-3">
-            {[code, instructor].filter(Boolean).join(" · ")}
-          </span>
-        </div>
+      <div className="min-w-0 flex-1 md:flex md:items-center md:gap-3">
+        <span className="block truncate text-[13px] text-ink-2 transition-colors group-hover:text-ink md:min-w-0">
+          {courseTitle(course)}
+        </span>
+        <CourseMeta code={code} instructor={instructor} className="shrink-0 md:mt-0" />
       </div>
       {final !== undefined && (
         <span className="tabular shrink-0 text-[12.5px] text-ink-3">
@@ -149,24 +223,24 @@ function nextDue(todos: TodoItem[] | undefined, canvasId: number): TodoItem | un
     .sort((a, b) => (a.dueAt ?? 0) - (b.dueAt ?? 0))[0];
 }
 
-/** "2 announcements · 3 files · 1 grade", or undefined when nothing is new. */
-function newSummary(
+/** Unseen feed items per slot, plus fresh files. New and changed assignments share a slot. */
+function newCounts(
   feed: FeedItem[] | undefined,
   canvasId: number,
   files: number,
-): string | undefined {
+): Record<SlotKey, number> {
   const unseen = (feed ?? []).filter((f) => f.courseCanvasId === canvasId && !f.seen);
-  const count = (type: FeedItem["type"]) => unseen.filter((f) => f.type === type).length;
-  const parts = [
-    plural(count("announcement"), "announcement"),
-    plural(files, "file"),
-    plural(count("grade"), "grade"),
-    plural(count("assignment"), "assignment"),
-    plural(count("change"), "change"),
-  ].filter((part): part is string => part !== undefined);
-  return parts.length === 0 ? undefined : parts.join(" · ");
+  const count = (...types: FeedItem["type"][]) => unseen.filter((f) => types.includes(f.type)).length;
+  return {
+    announcement: count("announcement"),
+    file: files,
+    grade: count("grade"),
+    assignment: count("assignment", "change"),
+  };
 }
 
-function plural(n: number, noun: string): string | undefined {
-  return n === 0 ? undefined : `${n} ${noun}${n === 1 ? "" : "s"}`;
+/** "1 announcement", "6 files": the slot label, singular when it should be. */
+function plural(n: number, label: string): string {
+  const noun = label.toLowerCase();
+  return `${n} ${n === 1 ? noun.replace(/s$/, "") : noun}`;
 }

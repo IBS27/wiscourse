@@ -6,10 +6,12 @@ import {
   lockReason,
   moduleProgress,
   moduleTopic,
+  showsItemIcons,
   type ModuleDoc,
   type ModuleWithItems,
 } from "./module-utils";
 import { ModuleRow } from "./module-row";
+import { Meter } from "@/components/grades/bits";
 import type { ModuleRowContext } from "./module-context";
 import { startOfMondayWeek } from "@/lib/dates";
 import { cn } from "@/lib/utils";
@@ -33,6 +35,7 @@ export function ModuleTimeline({
   const groups = groupModulesByWeek(modules, courseStartKey);
   const byId = new Map<number, ModuleDoc>(modules.map((m) => [m.canvasId, m]));
   const thisWeek = startOfMondayWeek(todayKey);
+  const showIcon = showsItemIcons(modules);
 
   return (
     <div className="pb-6">
@@ -46,19 +49,26 @@ export function ModuleTimeline({
           <section
             key={group.key}
             className={cn(
-              "grid grid-cols-1 border-b border-line md:grid-cols-[132px_minmax(0,1fr)] md:px-5",
+              "relative grid grid-cols-1 after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:grid-cols-[132px_minmax(0,1fr)] md:px-6 md:after:right-6 md:after:left-6",
               current && "bg-sunken",
             )}
           >
             <div className="px-4 pt-[14px] pb-1 text-[12.5px] text-ink-3 md:px-0 md:py-[14px] md:pr-4">
               <b
                 className={cn(
-                  "text-[13.5px] font-semibold tracking-[-0.01em] md:block",
-                  current ? "text-c" : group.weekStart === undefined ? "text-ink-3" : "text-ink",
+                  "inline-flex items-center gap-[6px] text-[13.5px] font-semibold tracking-[-0.01em] md:flex",
+                  group.weekStart === undefined && !current ? "text-ink-3" : "text-ink",
                 )}
               >
+                {current && <span className="size-[6px] rounded-full bg-c" aria-hidden />}
                 {group.label}
               </b>
+              {current && (
+                <span className="text-ink-2 md:block">
+                  <span className="md:hidden"> · </span>
+                  This week
+                </span>
+              )}
               {group.range !== undefined && (
                 <span className="md:block">
                   <span className="md:hidden"> · </span>
@@ -68,7 +78,12 @@ export function ModuleTimeline({
               {total > 0 && !ctx.seenLoading && (
                 <span className="tabular md:mt-[6px] md:block">
                   <span className="md:hidden"> · </span>
-                  {viewed}/{total}
+                  <Meter
+                    fraction={viewed / total}
+                    tone="neutral"
+                    className="mb-[5px] hidden w-[88px] md:block"
+                  />
+                  {viewed === total ? "Done" : `${viewed} of ${total} viewed`}
                 </span>
               )}
             </div>
@@ -82,6 +97,7 @@ export function ModuleTimeline({
                   byId={byId}
                   groupLabel={group.label}
                   current={current}
+                  showIcon={showIcon}
                 />
               ))}
             </div>
@@ -98,6 +114,7 @@ function ModuleBlock({
   byId,
   groupLabel,
   current,
+  showIcon,
 }: {
   module: ModuleWithItems;
   ctx: ModuleRowContext;
@@ -105,6 +122,7 @@ function ModuleBlock({
   groupLabel: string;
   /** Inside the current week, whose `bg-sunken` matches `bg-hover` in light mode. */
   current: boolean;
+  showIcon: boolean;
 }) {
   const topic = moduleTopic(module.name);
   const title = topic === "" ? module.name : topic;
@@ -123,7 +141,7 @@ function ModuleBlock({
   return (
     <div id={`module-${module.canvasId}`} className="scroll-mt-24">
       {topic !== "" && topic !== groupLabel && (
-        <div className="px-4 pt-[6px] pb-[2px] text-[12.5px] font-medium text-ink-2 md:pl-[30px]">
+        <div className="px-4 pt-2 pb-[2px] text-[12.5px] font-medium text-ink-2 md:pl-[30px]">
           {title}
         </div>
       )}
@@ -133,6 +151,7 @@ function ModuleBlock({
           item={item}
           ctx={ctx}
           dense
+          showIcon={showIcon}
           className={current ? "hover:bg-surface" : undefined}
         />
       ))}
@@ -162,7 +181,7 @@ function LockedRow({
       <span className="truncate">
         {title} · {detail}
       </span>
-      <span className="tabular ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">
+      <span className="tabular ml-auto shrink-0 text-[12px] whitespace-nowrap text-ink-3">
         {meta}
       </span>
     </div>

@@ -1,29 +1,36 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { latestPosted, letterFor, schemeFor, summarize, type Gradebook } from "../../../convex/lib/grades";
-import { Coverage, ESTIMATED_LETTER_NOTE, GradeNumber } from "./bits";
-import { Dot } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
+import { CoverageBar, GradeNumber, Letter } from "./bits";
+import { CourseTag } from "@/components/app/bits";
 import { dayKeyOf, formatPlannedRelative } from "@/lib/dates";
 import { coverageLabel, formatPercent, formatPoints, schemeLabel } from "@/lib/grades-ui";
-import { courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import type { Seen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /** The grid the header and every row share. */
 export const LEDGER_COLUMNS =
-  "md:grid-cols-[minmax(0,1fr)_150px_210px_minmax(0,330px)]";
+  "md:grid-cols-[minmax(0,1fr)_128px_minmax(0,180px)_minmax(0,290px)]";
+
+const GUTTER = "px-4 md:px-6";
+
+/** Hairline under each row, inset to the content gutters like every other table. */
+const RULE =
+  "relative after:absolute after:right-4 after:bottom-0 after:left-4 after:h-px after:bg-line md:after:right-6 md:after:left-6";
 
 export function GradesLedgerHeader() {
   return (
     <div
       className={cn(
-        "hidden h-[34px] items-center gap-x-4 border-b border-line px-5 text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase md:grid",
+        "hidden h-9 items-center gap-x-8 text-xs font-medium text-ink-3 md:grid",
+        GUTTER,
+        RULE,
         LEDGER_COLUMNS,
       )}
     >
       <span>Course</span>
-      <span>Current</span>
+      <span className="text-right">Current grade</span>
       <span>Graded so far</span>
       <span>Latest posted</span>
     </div>
@@ -67,46 +74,36 @@ export function GradesLedgerRow({
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
       className={cn(
-        "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 border-b border-line px-4 py-[11px] text-inherit no-underline hover:bg-hover md:h-[60px] md:py-0 md:px-5",
+        "grid grid-cols-[minmax(0,1fr)_96px] items-start gap-x-4 py-3 text-inherit no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:min-h-[64px] md:items-center md:gap-x-8 md:py-[10px]",
+        GUTTER,
+        RULE,
         LEDGER_COLUMNS,
       )}
     >
-      <div className="flex min-w-0 items-center gap-3">
-        <Dot className="size-2" />
-        <div className="min-w-0">
-          <div className="truncate text-[14px] leading-[1.25] font-medium tracking-[-0.01em]">
-            {course.nickname ?? course.name}
-          </div>
-          <div className="mt-[1px] truncate text-xs text-ink-3">
-            {code !== undefined && <span className="font-medium text-c">{code}</span>}
-            {/* Desktop spells out the scheme; the phone spends the line on
-                coverage and what just landed instead. */}
-            {summary !== undefined && (
-              <span className="hidden md:inline">
-                {code !== undefined && " · "}
-                {schemeLabel(summary)}
-              </span>
-            )}
-            <span className="md:hidden">
-              {coverage !== undefined && (
-                <>
-                  {code !== undefined && " · "}
-                  {hidden ? "totals hidden" : coverage.replace(" of grade", " graded")}
-                </>
-              )}
-              {latest !== undefined && (
-                <>
-                  {" · "}
-                  {unseen && <UnreadDot className="mr-[5px] inline-block align-[1px]" />}
-                  {latest.name}
-                </>
-              )}
+      <div className="min-w-0">
+        <div className="line-clamp-2 text-[14px] leading-[1.3] font-medium tracking-[-0.01em] md:line-clamp-1">
+          {courseTitle(course)}
+        </div>
+        <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] text-ink-3">
+          {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+          {/* Desktop spells out the scheme; the phone spends the line on
+              how much is graded instead. */}
+          {summary !== undefined && (
+            <span className="hidden min-w-0 truncate md:inline">
+              {code !== undefined && <Sep />}
+              {schemeLabel(summary)}
             </span>
-          </div>
+          )}
+          {coverage !== undefined && (
+            <span className="min-w-0 truncate md:hidden">
+              {code !== undefined && <Sep />}
+              {hidden ? "totals hidden" : coverage.replace(" of grade", " graded")}
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="col-start-2 row-start-1 justify-self-end md:col-auto md:row-auto md:justify-self-auto">
+      <div className="col-start-2 row-start-1 flex justify-end md:col-auto md:row-auto">
         <GradeNumber
           score={hidden ? undefined : score}
           letter={hidden ? undefined : letter}
@@ -117,37 +114,41 @@ export function GradesLedgerRow({
 
       <div className="hidden min-w-0 md:block">
         {coverage === undefined || hidden ? (
-          <span className="text-[12.5px] text-ink-3">—</span>
+          <span className="text-[13px] text-ink-3">—</span>
         ) : (
-          <Coverage fraction={summary?.coverage ?? 0} label={coverage} trackClassName="w-20" />
+          <>
+            <div className="tabular truncate text-[13px] text-ink-2">{coverage}</div>
+            <CoverageBar fraction={summary?.coverage ?? 0} className="mt-[7px] max-w-[160px]" />
+          </>
         )}
       </div>
 
-      <div className="hidden min-w-0 items-center gap-[9px] text-[13px] md:flex">
+      <div className="hidden min-w-0 md:block">
         {latest === undefined ? (
-          <span className="text-[12.5px] text-ink-3">—</span>
+          <span className="text-[13px] text-ink-3">—</span>
         ) : (
           <>
-            {unseen && <UnreadDot />}
-            <span className="truncate">{latest.name}</span>
-            <span className="tabular shrink-0 font-medium">
-              {formatPoints(latest.score ?? 0)}
-              {(latest.pointsPossible ?? 0) > 0 && (
-                <span className="font-normal text-ink-3">
-                  {" / "}
-                  {formatPoints(latest.pointsPossible ?? 0)}
-                </span>
-              )}
-            </span>
-            {latest.postedAt !== undefined && (
-              <span className="shrink-0 whitespace-nowrap text-ink-3">
-                · {formatPlannedRelative(dayKeyOf(latest.postedAt), today)}
-              </span>
-            )}
+            <div className={cn("line-clamp-2 text-[13px] leading-[1.35]", unseen ? "font-medium text-ink" : "text-ink-2")}>
+              {latest.name}
+            </div>
+            <div className="tabular mt-[3px] truncate text-[12.5px] text-ink-3">
+              <span className="font-medium text-ink-2">{formatPoints(latest.score ?? 0)}</span>
+              {(latest.pointsPossible ?? 0) > 0 && ` / ${formatPoints(latest.pointsPossible ?? 0)}`}
+              {latest.postedAt !== undefined &&
+                ` · ${formatPlannedRelative(dayKeyOf(latest.postedAt), today)}`}
+            </div>
           </>
         )}
       </div>
     </Link>
+  );
+}
+
+function Sep() {
+  return (
+    <span className="mr-[6px]" aria-hidden>
+      ·
+    </span>
   );
 }
 
@@ -172,31 +173,25 @@ export function GradesPastRow({ course, color }: { course: Course; color: string
       to="/grades/$courseId"
       params={{ courseId: String(course.canvasId) }}
       style={courseStyle(color)}
-      className="flex items-center gap-4 border-b border-line px-4 py-[10px] text-ink-2 no-underline hover:bg-hover md:h-[42px] md:py-0 md:px-5"
+      className={cn(
+        "flex items-center gap-4 py-[10px] text-ink-2 no-underline transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none md:h-11 md:py-0",
+        GUTTER,
+        RULE,
+      )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        <Dot className="size-2 opacity-45" />
-        <div className="min-w-0 truncate">
-          <span className="text-[13.5px]">{course.nickname ?? course.name}</span>
-          <span className="ml-[10px] text-xs text-ink-3">{code}</span>
-        </div>
+        <span className="min-w-0 truncate text-[13.5px]">{courseTitle(course)}</span>
+        {code !== undefined && (
+          <CourseTag className="shrink-0 text-xs font-normal text-ink-3">{code}</CourseTag>
+        )}
       </div>
-      <span className="tabular shrink-0 text-[12.5px] text-ink-3">
+      <span className="tabular flex shrink-0 items-center gap-[10px] text-[12.5px] text-ink-3">
         {letter === undefined && score === undefined ? (
           hidden ? "Hidden" : "—"
         ) : (
           <>
-            Final
-            {letter !== undefined && (
-              <b
-                title={estimated ? ESTIMATED_LETTER_NOTE : undefined}
-                className={cn("ml-[6px] font-semibold text-ink", estimated && "font-medium text-ink-2 underline decoration-dashed underline-offset-4")}
-              >
-                {letter}
-                {estimated && <span className="sr-only"> (estimated)</span>}
-              </b>
-            )}
-            {score !== undefined && <span className="ml-2">{formatPercent(score)}</span>}
+            <span>Final{score !== undefined && ` ${formatPercent(score)}`}</span>
+            {letter !== undefined && <Letter letter={letter} estimated={estimated} />}
           </>
         )}
       </span>

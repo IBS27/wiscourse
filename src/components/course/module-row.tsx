@@ -1,8 +1,7 @@
 import { createElement, type CSSProperties, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight, Check, ChevronRight, Clock } from "lucide-react";
 import { Pill } from "@/components/app/bits";
-import { UnreadDot } from "./unread-dot";
 import type { ModuleRowContext } from "./module-context";
 import {
   itemIcon,
@@ -14,30 +13,39 @@ import {
 } from "./module-utils";
 import { cn } from "@/lib/utils";
 
-/** One module item: unread gutter · type icon · title · meta. */
+/** One module item: type icon · title · meta. */
 export function ModuleRow({
   item,
   ctx,
   dense = false,
+  showIcon = true,
   className,
 }: {
   item: ModuleItemDoc;
   ctx: ModuleRowContext;
   /** The timeline's tighter gutter, without the row rule. */
   dense?: boolean;
+  /** Off when every row in the list would draw the same icon. */
+  showIcon?: boolean;
   className?: string;
 }) {
   const id = `item-${item.canvasId}`;
-  const style = {
-    paddingLeft: (dense ? 30 : 46) + item.indent * 22,
-    paddingRight: dense ? 16 : 20,
-  };
+  // `--pl` is the icon column: under the module title in the accordion,
+  // tighter in the timeline. Indents step in from there.
+  const style = { paddingLeft: `calc(var(--pl) + ${item.indent * 22}px)` } as CSSProperties;
+  const gutter = dense
+    ? "[--pl:30px] pr-4"
+    : "[--pl:40px] pr-4 md:[--pl:48px] md:pr-6";
 
   if (item.type === "SubHeader") {
     return (
       <div
         id={id}
-        className={cn("eyebrow scroll-mt-24 pt-[14px] pb-[6px]", className)}
+        className={cn(
+          "scroll-mt-24 pt-4 pb-[6px] text-[12.5px] font-medium text-ink-2",
+          gutter,
+          className,
+        )}
         style={style}
       >
         {item.title}
@@ -46,7 +54,6 @@ export function ModuleRow({
   }
 
   const target = itemTarget(item, ctx.courseId);
-  const unread = !ctx.isSeen(item);
 
   return (
     <ItemLink
@@ -54,25 +61,36 @@ export function ModuleRow({
       target={target}
       onOpen={() => ctx.open(item)}
       className={cn(
-        "flex scroll-mt-24 items-center gap-[10px] py-2 text-[13px] text-ink hover:bg-hover",
-        !dense && "border-t border-line",
+        "group/row relative flex min-h-11 scroll-mt-24 items-center gap-[10px] py-[10px] text-[14px] leading-[1.4] tracking-[-0.006em] text-ink transition-colors outline-none",
+        target.kind !== "none" && "hover:bg-hover focus-visible:bg-hover",
+        gutter,
+        // Hairline above each row, inset to the title column.
+        !dense &&
+          "before:absolute before:top-0 before:right-4 before:h-px before:bg-line md:before:right-6",
+        !dense && (showIcon ? "before:left-[calc(var(--pl)+25px)]" : "before:left-(--pl)"),
         className,
       )}
       style={style}
     >
-      {unread ? (
-        <UnreadDot className="-ml-4" />
-      ) : (
-        <span className="-ml-4 size-[6px] shrink-0" aria-hidden />
-      )}
-      {createElement(itemIcon(item, ctx.files), {
-        className: "size-[14px] shrink-0 text-ink-3",
-      })}
-      <span className={cn("truncate", unread && "font-medium")}>{item.title}</span>
+      {showIcon &&
+        createElement(itemIcon(item), {
+          className: "size-[15px] shrink-0 text-ink-3",
+          "aria-hidden": true,
+        })}
+      {/* One weight for every item: the module's progress says what's been viewed. */}
+      <span className="line-clamp-2 min-w-0 md:truncate">{item.title}</span>
       {target.kind === "external" && (
         <ArrowUpRight className="-ml-[4px] size-3 shrink-0 text-ink-3" />
       )}
-      <StatusMeta status={itemStatus(item, ctx.status)} />
+      <span className="ml-auto flex shrink-0 items-center gap-2 pl-3">
+        <StatusMeta status={itemStatus(item, ctx.status)} />
+        {target.kind === "internal" && (
+          <ChevronRight
+            className="-mr-[2px] size-[15px] text-ink-3 opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/row:opacity-100"
+            aria-hidden
+          />
+        )}
+      </span>
     </ItemLink>
   );
 }
@@ -132,13 +150,14 @@ export function ItemLink({
 function StatusMeta({ status }: { status: ItemStatus }) {
   if (status.kind === "none") return null;
   return (
-    <span className="tabular ml-auto shrink-0 text-[11.5px] whitespace-nowrap text-ink-3">
+    <span className="tabular text-[12.5px] whitespace-nowrap text-ink-3">
       {status.kind === "overdue" ? (
-        <Pill tone="red" className="h-[19px] text-[11px]">
+        <span className="flex items-center gap-[5px] text-ink-2">
+          <Clock className="size-3 text-red" aria-hidden />
           Overdue
-        </Pill>
+        </span>
       ) : status.kind === "submitted" ? (
-        <Pill className="h-[19px] text-[11px]">
+        <Pill className="h-[20px] text-[12px]">
           <Check />
           Submitted
         </Pill>

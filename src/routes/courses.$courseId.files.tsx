@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "convex/react";
+import { FolderOpen } from "lucide-react";
 import { api } from "../../convex/_generated/api";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { FileColumn } from "@/components/course/file-column";
@@ -10,7 +11,6 @@ import { FileTreePane } from "@/components/course/file-tree-pane";
 import {
   buildTree,
   fileAddedAt,
-  unreadFolderIds,
   type FileDoc,
 } from "@/components/course/file-tree";
 import { courseStyle, useCourses, useIsMobile, useNow } from "@/lib/hooks";
@@ -67,7 +67,7 @@ function CourseFiles() {
   const folderId = search.folder ?? selectedFile?.folderCanvasId ?? tree.root?.folder.canvasId;
   const folder = folderId === undefined ? undefined : tree.byId.get(folderId);
 
-  /** Posted recently and never opened — the one thing a dot ever means here. */
+  /** Posted recently and never opened: counts toward the "new" badge. */
   const isNew = (file: FileDoc) =>
     fileAddedAt(file) >= now - FRESH_MS && !seen.has(file.canvasId);
   const newCount = tree.files.filter(isNew).length;
@@ -84,8 +84,10 @@ function CourseFiles() {
   if (data === undefined) return <FilesSkeleton mobile={mobile} previewing={search.file !== undefined} />;
   if (tree.files.length === 0 && previewFile === undefined) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center p-10 text-[13px] text-ink-3">
-        No files yet
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 p-10 text-center">
+        <FolderOpen className="size-5 text-ink-3" aria-hidden />
+        <p className="text-[13px] text-ink-2">No files yet</p>
+        <p className="text-[12.5px] text-ink-3">Files your instructor shares will appear here.</p>
       </div>
     );
   }
@@ -136,15 +138,15 @@ function CourseFiles() {
       <FileTreePane
         tree={tree}
         selectedFolderId={folderId}
-        unreadFolders={unreadFolderIds(tree, isNew)}
         onSelect={selectFolder}
-        className="w-[200px] shrink-0"
+        className="w-[264px] shrink-0 xl:w-[288px]"
       />
       <FileList
         tree={tree}
         folder={folder}
         selectedFileId={selectedFile?.canvasId}
         isNew={isNew}
+        compact={previewFile !== undefined}
         onSelectFolder={selectFolder}
         onSelectFile={selectFile}
         className={cn("min-h-0", previewFile === undefined ? "min-w-0 flex-1" : COMPACT_LIST)}

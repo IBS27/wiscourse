@@ -3,9 +3,11 @@ import { useEffect, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
 import {
+  AlertCircle,
   ArrowUpRight,
   CalendarDays,
   Check,
+  Circle,
   Clock,
   Plus,
   Trash2,
@@ -13,7 +15,8 @@ import {
 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { TodoItem } from "../../../convex/todos";
-import { Chip, Dot, Kbd, Pill } from "@/components/app/bits";
+import { CourseTag } from "@/components/app/bits";
+import { Button } from "@/components/ui/button";
 import { SubmissionPanel } from "@/components/todo/submission-panel";
 import { refOf } from "@/lib/todo-ref";
 import {
@@ -28,9 +31,6 @@ import {
 import { isOverdue } from "@/lib/agenda";
 import { courseStyle, useCourses, useNow, useToday } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
-
-/** Header chips sit on the course tint, so they outline instead of filling. */
-const OUTLINE_CHIP = "border border-line-2 bg-transparent";
 
 const KIND_LABEL = { assignment: "Assignment", quiz: "Quiz", discussion: "Discussion", local: "Personal task" } as const;
 
@@ -80,101 +80,144 @@ export function TodoDetail({ item }: { item: TodoItem }) {
   }, [ref, done, setDone]);
 
   return (
-    <div className="mx-auto w-full max-w-[760px] md:my-6 md:rounded-[10px] md:border md:border-line md:bg-surface" style={courseStyle(color(item.courseCanvasId))}>
+    // The same centred column as the top bar; the description keeps a reading measure inside it.
+    <div className="w-full max-w-[768px] px-4 pb-10 md:px-6 xl:max-w-[1088px]" style={courseStyle(color(item.courseCanvasId))}>
       {/* Header */}
-      <div className="border-b border-line bg-c/8 px-[18px] pt-4 pb-[14px] md:rounded-t-[10px]">
-        <div className="flex items-center gap-[7px] text-[11.5px] text-ink-3">
-          <Dot />
+      <div className="pt-4 pb-4 md:pt-8 md:pb-6">
+        <div className="flex flex-wrap items-center gap-x-[7px] gap-y-1 text-[12.5px] text-ink-3">
           {course ? (
             <>
-              <span className="font-medium text-c">{label(course.canvasId)}</span>
-              <span>·</span>
+              <CourseTag>{label(course.canvasId)}</CourseTag>
+              <span className="text-line-2" aria-hidden>·</span>
             </>
           ) : null}
-          <span>
-            {KIND_LABEL[item.kind]}
-            {item.pointsPossible !== undefined ? ` · ${item.pointsPossible} points` : ""}
-          </span>
+          <span>{KIND_LABEL[item.kind]}</span>
+          {item.pointsPossible !== undefined && (
+            <>
+              <span className="text-line-2" aria-hidden>·</span>
+              <span className="tabular">{item.pointsPossible} {item.pointsPossible === 1 ? "point" : "points"}</span>
+            </>
+          )}
         </div>
-        {isLocal ? (
-          <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
-        ) : (
-          <h1 className="mt-[7px] mb-[11px] text-[17px] leading-[1.25] font-semibold tracking-[-0.02em]">{item.title}</h1>
-        )}
-        <div className="flex flex-wrap items-center gap-[7px]">
-          {done ? (
-            <Pill className={OUTLINE_CHIP}>
-              <Check />
-              Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
-              {item.doneBySubmission ? " · on submission" : ""}
-            </Pill>
-          ) : overdue && item.dueAt !== undefined ? (
-            <Pill tone="red">
-              <Clock />
-              Overdue — due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)} · {formatLate(item.dueAt, now)}
-            </Pill>
-          ) : item.dueAt !== undefined ? (
-            <Chip className={OUTLINE_CHIP}>
-              <Clock />
-              Due {formatDayShort(dayKeyOf(item.dueAt))}, {formatTime(item.dueAt)}
-            </Chip>
-          ) : (
-            <Chip className={OUTLINE_CHIP}>No due date</Chip>
+        {/* The same completion circle as the agenda row, beside the title. */}
+        <div className="mt-2 flex items-start gap-3">
+          <button
+            type="button"
+            aria-label={done ? "Mark not done" : "Mark done"}
+            aria-pressed={done}
+            onClick={() => void setDone({ ref, done: !done })}
+            className={cn(
+              "mt-[3px] grid size-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+              done ? "border-ink-3 bg-ink-3" : "border-ink-3/70 hover:border-ink-2 hover:bg-chip",
+            )}
+          >
+            <Check className={cn("size-[13px] stroke-[2.4] text-today-fg", !done && "opacity-0")} />
+          </button>
+          <div className="min-w-0 flex-1">
+            {isLocal ? (
+              <EditableTitle title={item.title} onSave={(title) => updateLocal({ todoId: item.todoId!, title })} />
+            ) : (
+              <h1 className={cn("text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-pretty", done ? "text-ink-3" : "text-ink")}>
+                {item.title}
+              </h1>
+            )}
+          </div>
+        </div>
+        {/* Status chips wrap among themselves; the primary action ends the row
+            at the content's right edge, or takes its own full-width row on a phone. */}
+        <div className="mt-[14px] flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-[6px]">
+            {done ? (
+              <StatusChip>
+                <Check />
+                Done {formatDayShort(dayKeyOf(item.doneAt!))}, {formatTime(item.doneAt!)}
+                {item.doneBySubmission ? " · on submission" : ""}
+              </StatusChip>
+            ) : overdue && item.dueAt !== undefined ? (
+              // One alarm: Canvas's "missing" flag and the lateness read as a single pill.
+              <StatusChip alarm>
+                <Clock />
+                {item.submission === "missing" ? "Missing" : "Overdue"} · {formatLate(item.dueAt, now)}
+              </StatusChip>
+            ) : null}
+            {/* The due date is a fact, not a status: plain muted text. */}
+            <span className="text-[12.5px] whitespace-nowrap text-ink-3 tabular">
+              {item.dueAt !== undefined
+                ? `Due ${formatDayShort(dayKeyOf(item.dueAt))}, ${formatTime(item.dueAt)}`
+                : "No due date"}
+            </span>
+            {item.plannedDay !== undefined && (
+              <StatusChip>
+                <CalendarDays />
+                Planned {formatPlannedRelative(item.plannedDay, today)}
+              </StatusChip>
+            )}
+            {isLocal && !course && <StatusChip>No course</StatusChip>}
+            <SubmissionChip item={item} merged={overdue && !done} />
+          </div>
+          {!isLocal && item.htmlUrl && (
+            <Button
+              asChild
+              size="sm"
+              // Primary on desktop; on a phone it's a secondary outline so the
+              // page's own Plan controls aren't outranked.
+              className="h-10 w-full shrink-0 rounded-lg border border-line bg-surface px-3 text-[14px] font-medium text-ink-2 hover:border-line-2 hover:bg-hover hover:text-ink md:-mt-1 md:h-8 md:w-auto md:text-[12.5px]"
+            >
+              <a href={item.htmlUrl} target="_blank" rel="noreferrer">
+                Open in Canvas
+                <ArrowUpRight className="size-[14px]" />
+              </a>
+            </Button>
           )}
-          {item.plannedDay !== undefined && (
-            <Chip className={OUTLINE_CHIP}>
-              <CalendarDays />
-              Planned {formatPlannedRelative(item.plannedDay, today)}
-            </Chip>
-          )}
-          {isLocal && !course && <Chip className={OUTLINE_CHIP}>No course</Chip>}
-          <SubmissionChip item={item} className={OUTLINE_CHIP} />
         </div>
       </div>
 
-      {/* Plan */}
-      <Block title="Plan">
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex h-8 items-center gap-[9px] rounded-lg border border-line bg-surface px-[10px] text-[13px] text-ink-2">
-            <CalendarDays className="size-[14px]" />
-            <input
-              id="plan-date"
-              type="date"
-              value={item.plannedDay ?? ""}
-              onChange={(e) => void setPlannedDay({ ref, plannedDay: e.target.value || null })}
-              className="bg-transparent text-ink outline-none"
-            />
-            <Kbd>P</Kbd>
-          </label>
-          <QuickPlan label="Today" onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
-          <QuickPlan label="Tomorrow" onClick={() => void setPlannedDay({ ref, plannedDay: addDays(today, 1) })} />
+      {/* Plan and Notes: compact property rows, so the description starts high.
+          On a phone, where they stack tall, the assignment text comes first. */}
+      {/* Wide screens: the assignment text on the left, Plan and Notes as a
+          properties rail on the right (labels stacked), like Home's and the
+          course page's rails. */}
+      <div className="flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_288px] xl:items-start xl:gap-x-10">
+      <div className="max-md:order-2 xl:col-start-2 xl:row-start-1 xl:[&>section]:grid-cols-1">
+      <PropertyRow title="Plan">
+        <div className="flex flex-wrap items-center gap-[6px]">
+          <QuickPlan label="Today" active={item.plannedDay === today} onClick={() => void setPlannedDay({ ref, plannedDay: today })} />
+          <QuickPlan
+            label="Tomorrow"
+            active={item.plannedDay === addDays(today, 1)}
+            onClick={() => void setPlannedDay({ ref, plannedDay: addDays(today, 1) })}
+          />
+          <PlanDate value={item.plannedDay} onChange={(plannedDay) => void setPlannedDay({ ref, plannedDay })} />
           {item.plannedDay !== undefined && (
-            <QuickPlan label="Clear" onClick={() => void setPlannedDay({ ref, plannedDay: null })} />
-          )}
-          {item.plannedDay !== undefined && (
-            <span className="text-xs text-ink-3">{formatDayLong(item.plannedDay)}</span>
+            <button
+              type="button"
+              onClick={() => void setPlannedDay({ ref, plannedDay: null })}
+              className="h-10 rounded-lg px-[9px] text-[12.5px] font-medium text-ink-3 md:h-8 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+            >
+              Clear
+            </button>
           )}
         </div>
 
-        <div className="mt-3">
+        <div className="mt-[6px]">
           {item.subtasks.map((s) => (
-            <div key={s.id} className="group flex items-center gap-[9px] py-[7px] text-[13px]">
+            <div key={s.id} className="group -mx-2 flex items-center gap-[10px] rounded-md px-2 py-[5px] text-[13.5px] transition-colors hover:bg-hover">
               <button
                 type="button"
                 onClick={() => void setSubtaskDone({ ref, subtaskId: s.id, done: !s.done })}
                 className={cn(
-                  "grid size-[15px] shrink-0 place-items-center rounded border-[1.5px] border-line-2",
+                  "grid size-[15px] shrink-0 place-items-center rounded-[4px] border-[1.5px] border-line-2 transition-colors hover:border-ink-3",
                   s.done && "border-ink-3 bg-ink-3",
                 )}
                 aria-label={s.done ? "Mark subtask not done" : "Mark subtask done"}
               >
                 <Check className={cn("size-[10px] stroke-[2.4] text-today-fg", !s.done && "opacity-0")} />
               </button>
-              <span className={cn(s.done && "text-ink-3 line-through decoration-line-2")}>{s.title}</span>
+              <span className={cn("text-ink", s.done && "text-ink-3 line-through decoration-line-2")}>{s.title}</span>
               <button
                 type="button"
                 onClick={() => void removeSubtask({ ref, subtaskId: s.id })}
-                className="ml-auto text-ink-3 opacity-0 group-hover:opacity-100 hover:text-ink"
+                className="ml-auto text-ink-3 opacity-0 transition-opacity group-hover:opacity-100 hover:text-ink focus-visible:opacity-100"
                 aria-label="Remove subtask"
               >
                 <X className="size-[13px]" />
@@ -183,142 +226,258 @@ export function TodoDetail({ item }: { item: TodoItem }) {
           ))}
           <AddSubtask onAdd={(title) => void addSubtask({ ref, title })} />
         </div>
-      </Block>
+      </PropertyRow>
+      </div>
 
-      {/* Notes */}
-      <Block title="Notes">
+      <div className="max-md:order-3 xl:col-start-2 xl:row-start-2 xl:[&>section]:grid-cols-1">
+      <PropertyRow title="Notes">
         <Notes value={item.notes ?? ""} onSave={(notes) => setNotes({ ref, notes })} />
-      </Block>
+      </PropertyRow>
+      </div>
 
       {/* Description (Canvas) */}
       {!isLocal && description && (
-        <Block title="Description">
-          <div
-            className="prose-sm max-w-none text-[13px] leading-[1.55] text-ink-2 [&_a]:text-ink [&_a]:underline [&_img]:max-w-full [&_p]:my-2 [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5"
-            dangerouslySetInnerHTML={{ __html: sanitize(description) }}
-          />
-        </Block>
+        <div className="max-md:order-1 xl:col-start-1 xl:row-span-3 xl:row-start-1">
+        <PropertyRow title="Description" prose>
+          <div className={PROSE} dangerouslySetInnerHTML={{ __html: sanitize(description) }} />
+        </PropertyRow>
+        </div>
       )}
+      </div>
 
       {/* Submission (Canvas) */}
       {!isLocal && (
-        <Block title="Submission">
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-line bg-sunken px-3 py-[11px]">
-            <div>
-              <div className="text-[13px] font-medium">{submissionTitle(item)}</div>
-              <div className="mt-[2px] text-xs text-ink-3">
+        <PropertyRow title="Submission" prose>
+          <div className="flex items-start gap-[10px]">
+            <SubmissionIcon item={item} />
+            <div className="min-w-0">
+              <div className={cn("text-[13.5px] font-medium text-ink", (item.submission === "missing" || item.submission === "late") && "text-red")}>
+                {submissionTitle(item)}
+              </div>
+              <div className="mt-[2px] text-[12.5px] text-ink-3">
                 {item.submittedAt !== undefined
                   ? `Submitted ${formatDayShort(dayKeyOf(item.submittedAt))}, ${formatTime(item.submittedAt)}`
                   : item.kind === "assignment" ? "As Canvas last reported it." : "Submit this in Canvas."}
               </div>
             </div>
           </div>
-          {item.kind === "assignment" && <SubmissionPanel item={item} />}
-          {item.htmlUrl && (
-            <a
-              href={item.htmlUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 flex items-center gap-2 pt-2 text-[12.5px] text-ink-3 hover:text-ink"
-            >
-              <ArrowUpRight className="size-[13px]" />
-              Open in Canvas
-            </a>
+          {item.kind === "assignment" && (
+            <div className="pl-[34px]">
+              <SubmissionPanel item={item} />
+            </div>
           )}
-        </Block>
+        </PropertyRow>
       )}
 
       {/* Actions */}
-      <Block>
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 border-t border-line py-5">
+        <button
+          type="button"
+          onClick={() => void setDone({ ref, done: !done })}
+          className={cn(
+            "flex h-8 items-center gap-[7px] rounded-lg border px-3 text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:ring-offset-1 focus-visible:outline-none",
+            done ? "border-line-2 bg-surface text-ink hover:bg-hover" : "border-transparent bg-today text-today-fg hover:opacity-90",
+          )}
+        >
+          <Check className="size-[14px]" />
+          {done ? "Mark not done" : "Mark done"}
+        </button>
+        {!done && (
           <button
             type="button"
-            onClick={() => void setDone({ ref, done: !done })}
-            className={cn(
-              "flex h-[31px] items-center gap-[7px] rounded-lg border px-3 text-[12.5px] font-medium",
-              done ? "border-line-2 bg-surface text-ink" : "border-transparent bg-today text-today-fg",
-            )}
+            onClick={() => void setPlannedDay({ ref, plannedDay: addDays(today, 1) })}
+            className="flex h-8 items-center rounded-lg border border-line-2 bg-surface px-3 text-[13px] font-medium text-ink transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
           >
-            <Check className="size-[14px]" />
-            {done ? "Mark not done" : "Mark done"}
-            <Kbd className={cn(!done && "border-today-fg/30 bg-transparent text-today-fg/80")}>D</Kbd>
+            Move to tomorrow
           </button>
-          {!done && (
-            <button
-              type="button"
-              onClick={() => void setPlannedDay({ ref, plannedDay: addDays(today, 1) })}
-              className="flex h-[31px] items-center rounded-lg border border-line-2 bg-surface px-3 text-[12.5px] font-medium"
-            >
-              Move to tomorrow
-            </button>
-          )}
-          {isLocal && (
-            <button
-              type="button"
-              onClick={() => {
-                if (confirm("Delete this task?")) {
-                  void deleteLocal({ todoId: item.todoId! }).then(() => navigate({ to: "/" }));
-                }
-              }}
-              className="ml-auto flex h-[31px] items-center gap-[7px] rounded-lg px-[6px] text-[12.5px] font-medium text-ink-3 hover:text-red"
-            >
-              <Trash2 className="size-[14px]" />
-              Delete
-            </button>
-          )}
-        </div>
-      </Block>
-      {!isLocal && (
-        <Block>
-          <div className="text-[12.5px] text-ink-3">Canvas todos can't be deleted — only re-planned. Personal tasks can.</div>
-        </Block>
-      )}
+        )}
+        {isLocal ? (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Delete this task?")) {
+                void deleteLocal({ todoId: item.todoId! }).then(() => navigate({ to: "/" }));
+              }
+            }}
+            className="ml-auto flex h-8 items-center gap-[7px] rounded-lg px-[10px] text-[13px] font-medium text-ink-3 transition-colors hover:bg-red-bg hover:text-red focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
+          >
+            <Trash2 className="size-[14px]" />
+            Delete
+          </button>
+        ) : (
+          <span className="text-[12px] text-ink-3 md:ml-auto">Canvas todos can't be deleted — only re-planned.</span>
+        )}
+      </div>
     </div>
   );
 }
 
-function Block({ title, children }: { title?: string; children: ReactNode }) {
+/** Reading typography for Canvas-authored HTML. */
+const PROSE = cn(
+  "max-w-[68ch] text-[14px] leading-[1.65] text-ink-2 [overflow-wrap:anywhere]",
+  "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+  "[&_p]:my-3 [&_strong]:font-semibold [&_strong]:text-ink [&_b]:font-semibold [&_b]:text-ink",
+  "[&_h1]:mt-6 [&_h1]:mb-2 [&_h1]:text-[16px] [&_h1]:font-semibold [&_h1]:tracking-[-0.01em] [&_h1]:text-ink",
+  "[&_h2]:mt-6 [&_h2]:mb-2 [&_h2]:text-[15px] [&_h2]:font-semibold [&_h2]:tracking-[-0.01em] [&_h2]:text-ink",
+  "[&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-[14px] [&_h3]:font-semibold [&_h3]:text-ink",
+  "[&_h4]:mt-5 [&_h4]:mb-2 [&_h4]:text-[14px] [&_h4]:font-semibold [&_h4]:text-ink",
+  "[&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:my-1 [&_li]:pl-1 [&_li::marker]:text-ink-3",
+  "[&_a]:font-medium [&_a]:text-ink [&_a]:underline [&_a]:decoration-line-2 [&_a]:underline-offset-[3px] [&_a]:transition-colors hover:[&_a]:decoration-ink",
+  "[&_img]:my-4 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-line",
+  "[&_blockquote]:my-3 [&_blockquote]:border-l-2 [&_blockquote]:border-line-2 [&_blockquote]:pl-4 [&_blockquote]:text-ink-3",
+  "[&_hr]:my-6 [&_hr]:border-line",
+  "[&_code]:rounded [&_code]:bg-chip [&_code]:px-1 [&_code]:py-px [&_code]:text-[12.5px]",
+  "[&_pre]:my-3 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:bg-sunken [&_pre]:p-3",
+  "[&_table]:my-4 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-[13px]",
+  "[&_td]:border [&_td]:border-line [&_td]:px-2 [&_td]:py-[6px] [&_th]:border [&_th]:border-line [&_th]:bg-sunken [&_th]:px-2 [&_th]:py-[6px] [&_th]:text-left [&_th]:font-medium [&_th]:text-ink",
+);
+
+/**
+ * One label style for every section — the Linear-style property sheet: a
+ * label column beside its content on desktop, so an empty Plan or Notes costs
+ * one line, not a section. On a phone the label sits above, so the content
+ * gets the full width; `inline` (Notes) keeps it beside even there.
+ */
+function PropertyRow({
+  title,
+  inline = false,
+  prose = false,
+  children,
+}: {
+  title: string;
+  inline?: boolean;
+  /** Reading content, not controls: more air, label aligned to the first text line. */
+  prose?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="border-b border-line px-[18px] py-[14px] last:border-b-0">
-      {title && <div className="eyebrow mb-[10px]">{title}</div>}
-      {children}
-    </div>
+    <section
+      className={cn(
+        "grid items-start gap-y-2 border-t border-line py-3 md:grid-cols-[88px_minmax(0,1fr)] md:gap-x-4",
+        inline && "grid-cols-[64px_minmax(0,1fr)] gap-x-3",
+        prose && "md:py-5",
+      )}
+    >
+      <h2
+        className={cn(
+          "text-[13px] leading-[18px] font-semibold tracking-[-0.005em] text-ink",
+          prose ? "md:pt-[3px]" : "md:pt-[7px]",
+          inline && "pt-[11px]",
+        )}
+      >
+        {title}
+      </h2>
+      <div className="min-w-0">{children}</div>
+    </section>
   );
 }
 
-function QuickPlan({ label, onClick }: { label: string; onClick: () => void }) {
+const PLAN_BUTTON =
+  "flex h-10 items-center md:h-8 gap-[6px] rounded-lg border px-[10px] text-[13px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none";
+
+function QuickPlan({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-8 rounded-lg border border-line bg-surface px-[10px] text-[12.5px] font-medium text-ink-2 hover:bg-hover"
+      aria-pressed={active}
+      className={cn(PLAN_BUTTON, active ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink")}
     >
       {label}
     </button>
   );
 }
 
-function SubmissionChip({ item, className }: { item: TodoItem; className?: string }) {
+/**
+ * A designed face over the native date input. At rest it reads "Pick a date"
+ * or the planned day; once focused (click, or P) the native field shows so the
+ * date can be typed, and a click also opens the browser's picker.
+ */
+function PlanDate({ value, onChange }: { value: string | undefined; onChange: (day: string | null) => void }) {
+  return (
+    <label
+      className={cn(
+        PLAN_BUTTON,
+        "group relative cursor-pointer md:min-w-[124px] focus-within:ring-2 focus-within:ring-line-2",
+        value !== undefined ? "border-line-2 bg-chip text-ink" : "border-line bg-surface text-ink-2 hover:bg-hover hover:text-ink",
+      )}
+    >
+      <CalendarDays className="size-[14px] text-ink-3 group-focus-within:invisible" />
+      <span className="group-focus-within:invisible">{value !== undefined ? formatDayLong(value) : "Pick a date"}</span>
+      <input
+        id="plan-date"
+        type="date"
+        aria-label="Planned day"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        onClick={(e) => {
+          try {
+            e.currentTarget.showPicker();
+          } catch {
+            // Not supported or not allowed; the native field still works.
+          }
+        }}
+        className="absolute inset-0 cursor-pointer rounded-lg bg-transparent px-[10px] text-[12.5px] text-ink opacity-0 outline-none [color-scheme:light_dark] focus:bg-surface focus:opacity-100"
+      />
+    </label>
+  );
+}
+
+/**
+ * One status chip style for the header row: 24px, a hairline edge, ink-2
+ * text. Only the alarm (overdue, or missing standing in for it) is tinted.
+ */
+function StatusChip({ alarm, children }: { alarm?: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 shrink-0 items-center gap-[5px] rounded-full border px-[9px] text-[12px] font-medium whitespace-nowrap [&_svg]:size-[12px]",
+        alarm ? "border-red/25 bg-red-bg text-red" : "border-line-2 text-ink-2",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** `merged`: the overdue pill already says "Missing", so this adds nothing. */
+function SubmissionChip({ item, merged }: { item: TodoItem; merged: boolean }) {
   switch (item.submission) {
     case "graded":
       return (
-        <Chip className={className}>
+        <StatusChip>
           <Check />
           Graded{item.score !== undefined && item.pointsPossible !== undefined ? ` ${item.score}/${item.pointsPossible}` : ""}
-        </Chip>
+        </StatusChip>
       );
     case "submitted":
       return (
-        <Chip className={className}>
+        <StatusChip>
           <Check />
           Submitted
-        </Chip>
+        </StatusChip>
       );
     case "missing":
-      return <Pill tone="red">Missing</Pill>;
+      return merged ? null : <StatusChip alarm>Missing</StatusChip>;
     default:
       return null;
   }
+}
+
+function SubmissionIcon({ item }: { item: TodoItem }) {
+  const bad = item.submission === "missing" || item.submission === "late";
+  const ok = item.submission === "graded" || item.submission === "submitted";
+  return (
+    <span
+      className={cn(
+        "mt-px grid size-6 shrink-0 place-items-center rounded-full [&_svg]:size-[13px]",
+        bad ? "bg-red-bg text-red" : ok ? "bg-chip text-ink" : "bg-chip text-ink-3",
+      )}
+      aria-hidden
+    >
+      {bad ? <AlertCircle /> : ok ? <Check /> : <Circle />}
+    </span>
+  );
 }
 
 function submissionTitle(item: TodoItem): string {
@@ -356,11 +515,18 @@ function EditableTitle({ title, onSave }: { title: string; onSave: (t: string) =
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         if (e.key === "Escape") setValue(title);
       }}
-      className="mt-[7px] mb-[11px] w-full bg-transparent text-[17px] leading-[1.25] font-semibold tracking-[-0.02em] outline-none"
+      className="-mx-2 mt-[5px] w-[calc(100%+16px)] rounded-md bg-transparent px-2 py-[3px] text-[22px] leading-[1.25] font-semibold tracking-[-0.022em] text-ink transition-colors outline-none hover:bg-hover focus:bg-hover"
       aria-label="Title"
     />
   );
 }
+
+/**
+ * Input-like surface for Add subtask and Notes: a hairline box at rest that
+ * strengthens on hover and focus, so both read as places to type.
+ */
+const FIELD =
+  "rounded-lg border border-line bg-surface transition-colors outline-none hover:border-line-2 hover:bg-hover focus-within:border-line-2 focus-within:bg-surface focus-within:ring-2 focus-within:ring-line focus:border-line-2 focus:bg-surface focus:ring-2 focus:ring-line";
 
 function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useDraft("todo:subtask", "");
@@ -372,13 +538,14 @@ function AddSubtask({ onAdd }: { onAdd: (title: string) => void }) {
     setValue("");
   };
   return (
-    <form onSubmit={submit} className="flex items-center gap-2 pt-2 text-[12.5px] text-ink-3">
-      <Plus className="size-[13px]" />
+    <form onSubmit={submit} className={cn(FIELD, "mt-1 flex h-10 items-center gap-2 px-[10px] text-[13px] text-ink-3 md:h-8")}>
+      <Plus className="size-[14px] shrink-0" />
       <input
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Add subtask"
-        className="flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
+        aria-label="Add subtask"
+        className="h-full min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-3"
       />
     </form>
   );
@@ -396,8 +563,9 @@ function Notes({ value, onSave }: { value: string; onSave: (v: string) => Promis
         if (draft.trim() !== value.trim()) save(draft.trim(), onSave).catch(() => {});
       }}
       placeholder="Add notes…"
-      rows={Math.max(2, Math.min(10, draft.split("\n").length + 1))}
-      className="w-full resize-none bg-transparent text-[13px] leading-[1.55] text-ink-2 outline-none placeholder:text-ink-3"
+      aria-label="Notes"
+      rows={draft === "" ? 1 : Math.max(2, Math.min(10, draft.split("\n").length + 1))}
+      className={cn(FIELD, "block w-full resize-none px-[10px] py-[9px] text-[13px] leading-[20px] text-ink-2 placeholder:text-ink-3 md:py-[5px]")}
     />
   );
 }

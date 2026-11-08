@@ -1,24 +1,26 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import type { RowIcon } from "./overview-icons";
-import { UnreadDot } from "./unread-dot";
+import { OVERVIEW_ROW, OVERVIEW_ROW_NO_ICON, SECTION_TITLE, type RowIcon } from "./overview-icons";
 import { cn } from "@/lib/utils";
 
-/** The overview's row: unread dot, type icon, title, right-aligned meta. */
+/**
+ * The overview's row, in the Home/Tasks anatomy: type icon · title (two
+ * lines at most) with the meta line under it. One weight for every row:
+ * these lists have no unread state. A list whose rows would all draw the
+ * same icon passes none, and the hairline moves out to the gutter.
+ */
 export function OverviewRow({
   icon: Icon,
   title,
   meta,
-  unread = false,
   to,
   href,
   onClick,
   className,
 }: {
-  icon: RowIcon;
+  icon?: RowIcon;
   title: ReactNode;
   meta?: ReactNode;
-  unread?: boolean;
   to?: string;
   href?: string;
   onClick?: () => void;
@@ -26,22 +28,24 @@ export function OverviewRow({
 }) {
   const body = (
     <>
-      {/* Always rendered so titles line up whether or not a row is new. */}
-      <span className="-ml-4 shrink-0">
-        {unread ? <UnreadDot /> : <span className="block size-[6px]" aria-hidden />}
-      </span>
-      <Icon className="size-[14px] shrink-0 text-ink-3" />
-      <span className={cn("truncate", unread && "font-medium")}>{title}</span>
-      {meta !== undefined && (
-        <span className="tabular ml-auto flex shrink-0 items-center gap-2 text-[11.5px] whitespace-nowrap text-ink-3">
-          {meta}
+      {Icon !== undefined && <Icon className="mt-[2px] size-[15px] shrink-0 text-ink-3" />}
+      <span className="min-w-0 flex-1">
+        <span className="line-clamp-2 text-[14px] leading-[1.4] font-medium tracking-[-0.006em] text-ink">
+          {title}
         </span>
-      )}
+        {meta !== undefined && (
+          <span className="tabular mt-[3px] flex min-w-0 items-center gap-[6px] text-[12.5px] whitespace-nowrap text-ink-3">
+            {meta}
+          </span>
+        )}
+      </span>
     </>
   );
+  const interactive = to !== undefined || href !== undefined;
   const cls = cn(
-    "flex w-full items-center gap-[10px] border-b border-line py-2 pr-4 pl-9 text-left text-[13px] text-ink no-underline md:pr-5",
-    (to !== undefined || href !== undefined) && "hover:bg-hover",
+    OVERVIEW_ROW,
+    Icon === undefined && OVERVIEW_ROW_NO_ICON,
+    interactive && "hover:bg-hover focus-visible:bg-hover",
     className,
   );
 
@@ -62,7 +66,11 @@ export function OverviewRow({
   return <div className={cls}>{body}</div>;
 }
 
-/** The uppercase section rule above each block. */
+/**
+ * The heading above each overview block: sentence case, the body's loudest
+ * label, quiet detail beside it, extras at the right. `muted` is the
+ * smaller sub-heading inside a block.
+ */
 export function SectionHead({
   title,
   detail,
@@ -84,28 +92,34 @@ export function SectionHead({
     <>
       <span
         className={cn(
-          "text-[11.5px] font-semibold tracking-[0.09em] uppercase",
+          "min-w-0 truncate",
+          muted
+            ? "text-[12.5px] font-medium text-ink-2"
+            : SECTION_TITLE,
           red && "text-red",
-          muted && "text-ink-3",
         )}
       >
         {title}
       </span>
       {detail !== undefined && (
-        <span className="truncate text-[11.5px] tracking-[0.01em] text-ink-3">{detail}</span>
+        <span className="min-w-0 truncate text-[12.5px] text-ink-3">{detail}</span>
       )}
       {right !== undefined && (
-        <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[11px] font-semibold text-ink-3">
+        <span className="ml-auto flex shrink-0 items-center gap-[6px] text-[12px] text-ink-3">
           {right}
         </span>
       )}
     </>
   );
-  const base = cn("flex items-center gap-2 px-4 pt-4 pb-[7px] md:px-5", className);
+  const base = cn(
+    "flex items-baseline gap-2 px-4 md:px-6",
+    muted ? "pt-3 pb-1" : "pt-5 pb-2 md:pt-6",
+    className,
+  );
   return to === undefined ? (
     <div className={base}>{inner}</div>
   ) : (
-    <Link to={to} className={cn(base, "hover:bg-hover")}>
+    <Link to={to} className={cn(base, "transition-colors hover:bg-hover")}>
       {inner}
     </Link>
   );

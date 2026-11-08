@@ -1,13 +1,13 @@
 // The calendar's top bar and footer hint line (docs/calendar.html, section A
 // on desktop, the phone's `.m-head` below `md`). One bar for all three views:
 // the month title, week navigation, the Day/Week/Month control, Subscribe and
-// the Event button — with the phone keeping only the title, the control, a
-// single new-event affordance and the account menu.
+// the Event button — with the phone keeping the title, a new-event button and
+// the shared search/account slot, and the view control on a row beneath.
 
 import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, GraduationCap, Plus, Share } from "lucide-react";
 import { Kbd } from "@/components/app/bits";
-import { ProfileMenu } from "@/components/app/profile-menu";
+import { HEADER_BUTTON, HeaderTitle, MobileHeaderSlot } from "@/components/app/page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +37,7 @@ export function CalendarToolbar({
   title: string;
   /** The phone's title — the mock shows "September 2026" on every view. */
   compactTitle?: string;
-  /** The quiet half of the title, e.g. "· Week 2". */
+  /** The subtitle line under the title, e.g. "Week 2". */
   detail?: string;
   onView: (view: CalendarView) => void;
   onPrev: () => void;
@@ -48,107 +48,120 @@ export function CalendarToolbar({
   onSubscribe: () => void;
   onNewEvent: () => void;
 }) {
+  const switcher = (
+    <div className="flex h-8 min-w-0 flex-1 items-center gap-px rounded-lg bg-chip p-[3px] md:ml-auto md:flex-none">
+      {VIEWS.map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          aria-pressed={view === v.id}
+          onClick={() => onView(v.id)}
+          className={cn(
+            "h-[26px] flex-1 rounded-md px-3 text-[12.5px] font-medium text-ink-3 transition-colors hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none",
+            view === v.id && "bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,.08)] dark:bg-raised dark:shadow-[inset_0_0_0_1px_var(--line-2)]",
+          )}
+        >
+          {v.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="flex h-[52px] shrink-0 items-center gap-[6px] border-b border-line px-4 md:h-[54px] md:gap-[10px] md:pr-4 md:pl-5">
-      <div className="mr-1 min-w-0 flex-1 truncate text-[17px] font-semibold tracking-[-0.02em] md:flex-none md:text-[15px] md:tracking-[-0.015em]">
-        <span className="md:hidden">{compactTitle ?? title}</span>
-        <span className="hidden md:inline">{title}</span>
-        {detail !== undefined && (
-          <span className="hidden font-medium text-ink-3 md:inline"> {detail}</span>
-        )}
-      </div>
+    <div className="shrink-0 border-b border-line md:border-b-0">
+      {/* The page frame's 64px bar (rule included): the title block sits where every page's does. */}
+      <div className="flex flex-wrap items-center gap-x-2 px-4 md:h-16 md:flex-nowrap md:border-b md:border-line md:px-6">
+        <HeaderTitle
+          className="mr-1 my-[11px] flex-1 md:my-0 md:mr-3 md:flex-none"
+          title={
+            <>
+              <span className="md:hidden">{compactTitle ?? title}</span>
+              <span className="hidden md:inline">{title}</span>
+            </>
+          }
+          subtitle={detail}
+        />
 
-      <div className="hidden items-center overflow-hidden rounded-lg border border-line bg-surface md:flex">
-        <NavButton label="Previous" onClick={onPrev}>
-          <ChevronLeft className="size-[13px]" />
-        </NavButton>
-        <NavButton label="Today" onClick={onToday} className="border-l border-line px-[9px]">
-          Today
-        </NavButton>
-        <NavButton label="Next" onClick={onNext} className="border-l border-line">
-          <ChevronRight className="size-[13px]" />
-        </NavButton>
-      </div>
+        <div className="hidden h-8 items-center overflow-hidden rounded-lg border border-line md:flex">
+          <NavButton label="Previous" onClick={onPrev}>
+            <ChevronLeft className="size-[15px]" />
+          </NavButton>
+          <NavButton label="Today" onClick={onToday} className="border-x border-line px-3">
+            Today
+          </NavButton>
+          <NavButton label="Next" onClick={onNext}>
+            <ChevronRight className="size-[15px]" />
+          </NavButton>
+        </div>
 
-      <div className="flex shrink-0 items-center gap-1 rounded-lg border border-line bg-sunken p-[2px] md:ml-auto">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            aria-pressed={view === v.id}
-            onClick={() => onView(v.id)}
-            className={cn(
-              "rounded-md px-[7px] py-[4px] text-[12px] font-medium text-ink-3 hover:text-ink md:px-[11px] md:text-[12.5px]",
-              view === v.id &&
-                "bg-surface text-ink shadow-[0_1px_2px_rgba(0,0,0,.06),inset_0_0_0_1px_var(--line)]",
-            )}
-          >
-            {v.label}
-          </button>
-        ))}
-      </div>
+        {/* Phones wrap the view control onto its own row under the 64px
+            bar, like tabs; from md up the wrapper dissolves into the bar. */}
+        <div className="order-last flex basis-full items-center gap-2 pb-[10px] md:contents">
+          {switcher}
+          {onToggleClasses !== undefined && (
+            <button
+              type="button"
+              onClick={onToggleClasses}
+              aria-pressed={showClasses === true}
+              aria-label="Show classes"
+              className={cn(
+                "grid size-8 shrink-0 place-items-center rounded-lg text-ink-3 transition-colors hover:bg-hover md:hidden",
+                showClasses === true && "bg-chip text-ink",
+              )}
+            >
+              <GraduationCap className="size-[16px]" />
+            </button>
+          )}
+        </div>
 
-      {onToggleClasses !== undefined && (
-        <>
+        {onToggleClasses !== undefined && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onToggleClasses}
             aria-pressed={showClasses === true}
             className={cn(
-              "hidden h-[30px] rounded-lg px-[7px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:inline-flex",
-              showClasses === true && "text-ink",
-            )}
-          >
-            Show classes
-          </Button>
-          <button
-            type="button"
-            onClick={onToggleClasses}
-            aria-pressed={showClasses === true}
-            aria-label="Show classes"
-            className={cn(
-              "grid size-7 shrink-0 place-items-center rounded-lg border border-line text-ink-3 md:hidden",
-              showClasses === true && "border-transparent bg-chip text-ink",
+              "hidden h-8 rounded-lg px-[10px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:inline-flex",
+              showClasses === true && "bg-chip text-ink",
             )}
           >
             <GraduationCap className="size-[15px]" />
-          </button>
-        </>
-      )}
+            Show classes
+          </Button>
+        )}
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onSubscribe}
-        aria-label="Subscribe in another calendar"
-        className="hidden h-[30px] rounded-lg px-[7px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:inline-flex"
-      >
-        <Share className="size-[14px]" />
-        Subscribe
-      </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSubscribe}
+          aria-label="Subscribe in another calendar"
+          className="hidden h-8 rounded-lg px-[10px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:inline-flex"
+        >
+          <Share className="size-[14px]" />
+          Subscribe
+        </Button>
 
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={onNewEvent}
-        className="hidden h-[30px] rounded-lg border-line-2 px-[11px] text-[12.5px] font-medium md:inline-flex"
-      >
-        <Plus className="size-[14px]" />
-        Event
-      </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onNewEvent}
+          className="hidden h-8 rounded-lg border-line-2 px-3 text-[12.5px] font-medium md:inline-flex"
+        >
+          <Plus className="size-[14px]" />
+          Event
+        </Button>
 
-      <button
-        type="button"
-        onClick={onNewEvent}
-        aria-label="New event"
-        className="grid size-7 shrink-0 place-items-center rounded-lg bg-today text-today-fg md:hidden"
-      >
-        <Plus className="size-[14px]" />
-      </button>
-      <span className="shrink-0 md:hidden">
-        <ProfileMenu variant="avatar" />
-      </span>
+        <button
+          type="button"
+          onClick={onNewEvent}
+          aria-label="New event"
+          className={cn(HEADER_BUTTON, "md:hidden")}
+        >
+          <Plus className="size-[16px]" />
+        </button>
+        <MobileHeaderSlot />
+      </div>
+
     </div>
   );
 }
@@ -168,9 +181,10 @@ function NavButton({
     <button
       type="button"
       aria-label={label}
+      title={label}
       onClick={onClick}
       className={cn(
-        "flex h-7 min-w-7 items-center justify-center px-[9px] text-[12.5px] font-medium text-ink-2 hover:bg-hover hover:text-ink",
+        "flex h-full min-w-8 items-center justify-center px-2 text-[12.5px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:bg-hover focus-visible:outline-none",
         className,
       )}
     >
@@ -182,27 +196,27 @@ function NavButton({
 /** "← → week · T today · D W M view · N new event · Times in …". */
 export function HintBar({ unit, zone }: { unit: string; zone: string }) {
   return (
-    <div className="mt-auto hidden shrink-0 gap-4 border-t border-line px-5 py-[10px] text-xs text-ink-3 md:flex">
-      <span className="flex items-center gap-[6px]">
-        <Kbd>←</Kbd>
-        <Kbd>→</Kbd>
-        {unit}
-      </span>
-      <span className="flex items-center gap-[6px]">
-        <Kbd>T</Kbd>
-        today
-      </span>
-      <span className="flex items-center gap-[6px]">
-        <Kbd>D</Kbd>
-        <Kbd>W</Kbd>
-        <Kbd>M</Kbd>
-        view
-      </span>
-      <span className="flex items-center gap-[6px]">
-        <Kbd>N</Kbd>
-        new event
-      </span>
+    <div className="mt-auto hidden h-10 shrink-0 items-center gap-5 border-t border-line px-6 text-[12px] text-ink-3 md:flex">
+      <Hint keys={["←", "→"]}>{unit}</Hint>
+      <Hint keys={["T"]}>today</Hint>
+      <Hint keys={["D", "W", "M"]}>view</Hint>
+      <Hint keys={["N"]}>new event</Hint>
       <span className="ml-auto">Times in {zone}</span>
     </div>
+  );
+}
+
+function Hint({ keys, children }: { keys: string[]; children: ReactNode }) {
+  return (
+    <span className="flex items-center gap-[6px]">
+      <span className="flex gap-[3px]">
+        {keys.map((key) => (
+          <Kbd key={key} className="grid h-[18px] min-w-[18px] place-items-center px-1 py-0 text-[10.5px]">
+            {key}
+          </Kbd>
+        ))}
+      </span>
+      {children}
+    </span>
   );
 }

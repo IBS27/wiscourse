@@ -58,10 +58,11 @@ export function buildTree(folders: FolderDoc[], files: FileDoc[]): FolderTree {
   }
 
   for (const node of byId.values()) {
+    // Canvas folder positions are upload order, not intent: name order,
+    // with Canvas' image-asset folders after everything a person named.
     node.children.sort(
       (a, b) =>
-        (a.folder.position ?? Number.MAX_SAFE_INTEGER) -
-          (b.folder.position ?? Number.MAX_SAFE_INTEGER) ||
+        Number(isAssetFolder(a.folder.name)) - Number(isAssetFolder(b.folder.name)) ||
         collator.compare(a.folder.name, b.folder.name),
     );
     node.files.sort((a, b) => collator.compare(a.displayName, b.displayName));
@@ -70,6 +71,25 @@ export function buildTree(folders: FolderDoc[], files: FileDoc[]): FolderTree {
   if (root !== undefined) measure(root, 0);
   visible.sort((a, b) => collator.compare(a.displayName, b.displayName));
   return { root, byId, filesById, files: visible };
+}
+
+/**
+ * Folders Canvas' course builder makes for embedded images ("mod8images",
+ * "mod_24_images", "course_image"), not ones a person named for students.
+ */
+export function isAssetFolder(name: string): boolean {
+  return /^(mod.*|.*[_-])?images?$/i.test(name.trim());
+}
+
+/** Children split into the named folders and the image-asset ones, order kept. */
+export function splitAssetFolders(children: FolderNode[]): {
+  named: FolderNode[];
+  assets: FolderNode[];
+} {
+  const named: FolderNode[] = [];
+  const assets: FolderNode[] = [];
+  for (const child of children) (isAssetFolder(child.folder.name) ? assets : named).push(child);
+  return { named, assets };
 }
 
 /** Depth and nested file total, cached on the node in one walk. */
@@ -115,22 +135,4 @@ export function fileAddedAt(file: FileDoc): number {
 /** Newest first, across the whole course. */
 export function recentFiles(tree: FolderTree, limit: number): FileDoc[] {
   return [...tree.files].sort((a, b) => fileAddedAt(b) - fileAddedAt(a)).slice(0, limit);
-}
-
-/** Folders holding at least one file the caller considers new. */
-export function unreadFolderIds(
-  tree: FolderTree,
-  isNew: (file: FileDoc) => boolean,
-): Set<number> {
-  const ids = new Set<number>();
-  const walk = (node: FolderNode): boolean => {
-    let any = node.files.some(isNew);
-    for (const child of node.children) {
-      if (walk(child)) any = true;
-    }
-    if (any) ids.add(node.folder.canvasId);
-    return any;
-  };
-  if (tree.root !== undefined) walk(tree.root);
-  return ids;
 }

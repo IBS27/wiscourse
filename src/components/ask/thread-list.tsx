@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "convex/react";
-import { Archive, ArchiveRestore, ChevronRight, MoreHorizontal, Pencil, SquarePen, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, MessagesSquare, MoreHorizontal, Pencil, SquarePen, Trash2 } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Dot, Kbd } from "@/components/app/bits";
 import {
@@ -33,29 +33,35 @@ export function ThreadList({ activeId, onNavigate }: { activeId?: string; onNavi
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-[54px] shrink-0 items-center justify-between pr-2 pl-4">
-        <span className="text-[14px] font-semibold tracking-[-0.015em]">Chats</span>
+      <div className="flex h-14 shrink-0 items-center px-4 md:h-16">
+        <span className="page-title">Chats</span>
+      </div>
+      <div className="shrink-0 px-[10px] pb-1">
         <Link
           to="/ask"
           onClick={onNavigate}
           aria-label="New chat"
-          title="New chat"
-          className="group flex h-7 items-center gap-[6px] rounded-md px-[6px] text-ink-3 hover:bg-hover hover:text-ink"
+          className="flex h-8 items-center gap-[9px] rounded-lg px-2 text-[13px] font-medium text-ink-2 transition-colors hover:bg-hover hover:text-ink focus-visible:ring-2 focus-visible:ring-line-2 focus-visible:outline-none"
         >
-          <SquarePen className="size-[15px]" />
-          <Kbd className="hidden group-hover:inline">⌘J</Kbd>
+          <SquarePen className="size-[15px] text-ink-3" />
+          <span className="flex-1">New chat</span>
+          <Kbd className="hidden md:inline">⌘J</Kbd>
         </Link>
       </div>
       <nav className="min-h-0 flex-1 overflow-y-auto px-[10px] pb-3" aria-label="Chats">
         {threads === undefined ? null : threads.length === 0 ? (
-          <p className="px-2 pt-2 text-[12.5px] leading-[1.5] text-ink-3">
-            Chats you start appear here.
-          </p>
+          <div className="mx-2 mt-4 flex flex-col items-start gap-1 border-t border-line pt-5">
+            <MessagesSquare className="mb-1 size-[16px] text-ink-3" />
+            <p className="text-[13px] font-medium text-ink-2">No chats yet</p>
+            <p className="text-[12.5px] leading-[1.5] text-ink-3">
+              Your conversations with Ask are saved here.
+            </p>
+          </div>
         ) : (
           <>
             {groups.map((group) => (
               <section key={group.id}>
-                <div className="eyebrow px-2 pt-[14px] pb-[5px] text-[10.5px] tracking-[0.1em]">{group.label}</div>
+                <div className="px-2 pt-4 pb-1 text-[12px] font-medium text-ink-3">{group.label}</div>
                 {group.threads.map((t) => (
                   <ThreadRow key={t.threadId} thread={t} active={t.threadId === activeId} label={when(t.lastMessageAt, todayKey, now)} running={isThreadRunning(t, now)} onNavigate={onNavigate} />
                 ))}
@@ -105,7 +111,7 @@ function ThreadRow({
   return (
     <div
       className={cn(
-        "group relative flex items-center rounded-lg text-[13px] text-ink-2 hover:bg-hover",
+        "group relative flex items-center rounded-lg text-[13px] text-ink-2 transition-colors hover:bg-hover",
         active && "bg-hover font-medium text-ink",
       )}
       style={courseStyle(color(thread.courseCanvasId))}
@@ -117,7 +123,7 @@ function ThreadRow({
           to="/ask/$threadId"
           params={{ threadId: thread.threadId }}
           onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-[9px] py-[7px] pr-8 pl-2 outline-none"
+          className="flex min-w-0 flex-1 items-center gap-[9px] rounded-lg py-[7px] pr-8 pl-2 outline-none focus-visible:ring-2 focus-visible:ring-line-2"
         >
           <Dot className={cn(thread.archivedAt !== undefined && "opacity-50")} />
           <span className={cn("min-w-0 flex-1 truncate", thread.archivedAt !== undefined && "text-ink-3")}>{thread.title}</span>

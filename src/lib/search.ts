@@ -127,6 +127,11 @@ function matchFolded(query: string, text: string): Match | null {
   return whole !== null && whole.score > combined.score ? whole : combined;
 }
 
+/** Highlight ranges for `query` in a display string other than the indexed title. */
+export function matchRanges(query: string, text: string): MatchRange[] {
+  return matchFolded(fold(query.trim()), fold(text))?.ranges ?? [];
+}
+
 export function keyOf(kind: SearchKind, id: string | number): string {
   return `${kind}:${id}`;
 }
@@ -243,7 +248,7 @@ const SPLIT_GROUP_OF: Partial<Record<SearchKind, GroupId>> = { page: "pages", fi
 /** Insertion order is render order. */
 const GROUP_LABEL: Record<GroupId, string> = {
   assignments: "Assignments",
-  pagesFiles: "Pages · Files",
+  pagesFiles: "Pages and files",
   pages: "Pages",
   files: "Files",
   announcements: "Announcements",

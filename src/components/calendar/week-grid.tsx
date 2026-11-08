@@ -1,44 +1,64 @@
 // Direction A: a time grid for the things that occupy time, with two thin
 // bands above it for the things that do not (Due and Plan). The grid runs
-// the whole day and scrolls under the headers and bands, opening on the
-// now-line or the morning.
+// the whole day and scrolls under the headers and bands, opening at 8 AM or
+// an hour before the week's first block, whichever is earlier. A week with
+// nothing timed draws shorter hours, and its window grows no taller than
+// 8 AM to midnight.
 
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { CalendarClock, ChevronUp, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { TodoItem } from "../../../convex/todos";
 import type { DayModel, LaidOutBlock, TimeBlock } from "@/lib/calendar";
 import {
   blockGeometry,
   blockLabel,
   blockTimeLabel,
   clockTime,
+  EMPTY_GRID_BOUNDS,
+  gridBounds,
+  firstBlockMinute,
   GRID_BOUNDS,
   gridScrollTop,
   hourLabel,
+  isDoneOrSubmitted,
   layoutBlocks,
   minuteOf,
   minuteOffset,
-  PX_PER_HOUR,
-  GRID_TOP_PAD,
   type CalendarEvent,
   type GridBounds,
 } from "@/lib/calendar";
-import { AllDayLine, DueLine, PlanLine } from "./bands";
-import { blockFill, BLOCK_SUBTITLE } from "./block-styles";
+import { AllDayLine, DoneLine, DueLine, PlanLine } from "./bands";
+import { blockFill, BLOCK_SUBTITLE, HOUR_LABEL, TODAY_TINT } from "./block-styles";
 import { useTimelineScroll } from "./use-timeline-scroll";
 import { formatWeekday } from "@/lib/dates";
 import { courseStyle, useCourses } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
-const COLUMNS: CSSProperties = { gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))" };
+/** The hour gutter, narrower on a phone where every pixel goes to the days. */
+const gutter = (compact: boolean) => (compact ? 44 : 56);
+const columns = (compact: boolean): CSSProperties => ({
+  gridTemplateColumns: `${gutter(compact)}px repeat(7, minmax(0, 1fr))`,
+});
 
 // The headers and bands sit outside the scrolling body but share its column
-// template, so they reserve the same scrollbar gutter (a no-op with overlay
-// scrollbars) to keep the weekday columns aligned.
-const GUTTER = "shrink-0 overflow-hidden [scrollbar-gutter:stable]";
+// template. The body hides its scrollbar (wheel, touch and keys still scroll
+// it), so no gutter is reserved and the hour lines run to the edge.
+const ROW = "shrink-0 overflow-hidden";
+const NO_SCROLLBAR = "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 
-const HOUR_LINES: CSSProperties = {
-  backgroundImage: `repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px ${PX_PER_HOUR}px)`,
-  backgroundPosition: `0 ${GRID_TOP_PAD}px`,
-};
+// Each hour's line is the last pixel of the hour before it, so the line at
+// the top of the view tucks under the band's border and midnight's under the
+// footer's: one rule at each edge, never two.
+const hourLines = (pxPerHour: number, height: number): CSSProperties => ({
+  backgroundImage: `repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px ${pxPerHour}px)`,
+  backgroundPosition: "0 -1px",
+  backgroundSize: `100% ${height - 1}px`,
+  backgroundRepeat: "no-repeat",
+});
+
+/** A day's band shows this many rows before folding the rest into "+N more". */
+const BAND_ROWS = 2;
 
 export function WeekGrid({
   days,
@@ -46,7 +66,8 @@ export function WeekGrid({
   todayKey,
   now,
   zone,
-  prompt,
+  compact = false,
+  onAddClassTimes,
   onOpenBlock,
   onOpenEvent,
 }: {
@@ -55,62 +76,111 @@ export function WeekGrid({
   todayKey: string;
   now: number;
   zone: string;
-  /** Quiet one-liner above the grid, e.g. the add-class-times nudge. */
-  prompt?: ReactNode;
+  /** Phone layout: band items shrink to their marks. */
+  compact?: boolean;
+  /** Set when no class times exist yet: the grid nudges for them. */
+  onAddClassTimes?: () => void;
   onOpenBlock: (block: TimeBlock) => void;
   onOpenEvent: (event: CalendarEvent) => void;
 }) {
-  const bounds = GRID_BOUNDS;
+  const first = firstBlockMinute(days, models);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // A week with nothing timed draws 8 AM–midnight to fit the space it has
+  // (never shorter than EMPTY_GRID_BOUNDS' hours), so it neither scrolls
+  // nor leaves a blank band above the footer.
+  const empty = first === undefined;
+  const viewHeight = useViewHeight(scrollRef);
+  const bounds = empty
+    ? gridBounds(Math.max(EMPTY_GRID_BOUNDS.pxPerHour, Math.floor(viewHeight / EMPTY_VIEW_HOURS)))
+    : GRID_BOUNDS;
   const nowMinute = minuteOf(now, zone);
   const nowTop = minuteOffset(nowMinute, bounds);
   const showNow = days.includes(todayKey);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  useTimelineScroll(scrollRef, gridScrollTop(showNow ? nowMinute : undefined));
+  const [expanded, setExpanded] = useState(false);
+  useTimelineScroll(scrollRef, gridScrollTop(first, bounds), bounds.pxPerHour);
+
+  const dueLine = (item: TodoItem) => (
+    <DueLine key={item.key} item={item} zone={zone} now={now} compact={compact} />
+  );
+  // Open items lead; finished ones fold into one "✓ N done" line until the
+  // bands are expanded.
+  const dueDone = days.map((day) => (models.get(day)?.due ?? []).filter(isDoneOrSubmitted));
+  const due = days.map((day, i) => {
+    const model = models.get(day);
+    return [
+      ...(model?.allDay ?? []).map((event) => (
+        <AllDayLine key={event._id} event={event} onOpen={onOpenEvent} compact={compact} />
+      )),
+      ...(model?.due ?? []).filter((item) => !isDoneOrSubmitted(item)).map(dueLine),
+      ...(expanded ? dueDone[i].map(dueLine) : []),
+    ];
+  });
+  const doneLines = dueDone.map((done) =>
+    expanded || done.length === 0 ? undefined : (
+      <DoneLine count={done.length} compact={compact} onClick={() => setExpanded(true)} />
+    ),
+  );
+  const planned = days.map((day) =>
+    (models.get(day)?.planned ?? []).map((item) => (
+      <PlanLine key={item.key} item={item} compact={compact} />
+    )),
+  );
+  const anyPlanned = planned.some((rows) => rows.length > 0);
+  const grid = columns(compact);
+  // Marks alone are small enough that a phone shows them all.
+  const fold = !compact && !expanded;
+  const expandable =
+    dueDone.some((done) => done.length > 0) ||
+    (!compact && [...due, ...planned].some((rows) => rows.length > BAND_ROWS));
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {prompt}
+      {onAddClassTimes !== undefined && <ClassTimesStrip onOpen={onAddClassTimes} />}
 
-      <div className={cn("grid border-b border-line", GUTTER)} style={COLUMNS}>
-        <div className="border-r border-line" />
+      <div className={cn("grid border-b border-line", ROW)} style={grid}>
+        <div />
         {days.map((day) => (
           <DayHeader key={day} day={day} todayKey={todayKey} />
         ))}
       </div>
 
-      <Band label="Due" days={days} todayKey={todayKey}>
-        {(day) => {
-          const model = models.get(day);
-          return (
-            <>
-              {model?.allDay.map((event) => (
-                <AllDayLine key={event._id} event={event} onOpen={onOpenEvent} />
-              ))}
-              {model?.due.map((item) => (
-                <DueLine key={item.key} item={item} zone={zone} />
-              ))}
-            </>
-          );
-        }}
-      </Band>
-
-      <Band label="Plan" days={days} todayKey={todayKey}>
-        {(day) => <>{models.get(day)?.planned.map((item) => <PlanLine key={item.key} item={item} />)}</>}
-      </Band>
+      <Band
+        label="Due"
+        days={days}
+        todayKey={todayKey}
+        rows={due}
+        footers={doneLines}
+        columns={grid}
+        fold={fold}
+        compact={compact}
+        onExpand={() => setExpanded(true)}
+        collapse={expanded && expandable ? () => setExpanded(false) : undefined}
+      />
+      {anyPlanned && (
+        <Band
+          label="Plan"
+          days={days}
+          todayKey={todayKey}
+          rows={planned}
+          columns={grid}
+          fold={fold}
+          compact={compact}
+          onExpand={() => setExpanded(true)}
+        />
+      )}
 
       <div
         ref={scrollRef}
-        className="relative grid min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-        style={COLUMNS}
+        className={cn("relative grid min-h-0 flex-1 overflow-y-auto", NO_SCROLLBAR)}
+        style={grid}
       >
-        <div
-          className="relative border-r border-line text-[10.5px] tabular text-ink-3"
-          style={{ height: bounds.height }}
-        >
+        {/* Nothing else lives in the gutter (the now pill sits in today's
+            column), so every hour keeps its label. */}
+        <div className="relative" style={{ height: bounds.height }}>
           {bounds.hours.map((hour) => (
             <span
               key={hour}
-              className="absolute right-2 -translate-y-1/2"
+              className={cn(HOUR_LABEL, "right-2")}
               style={{ top: minuteOffset(hour * 60, bounds) }}
             >
               {hourLabel(hour)}
@@ -125,8 +195,8 @@ export function WeekGrid({
           return (
             <div
               key={day}
-              className={cn("relative overflow-hidden border-l border-line", isToday && "bg-sunken")}
-              style={{ ...HOUR_LINES, height: bounds.height }}
+              className={cn("relative overflow-hidden border-l border-line", isToday && TODAY_TINT)}
+              style={{ ...hourLines(bounds.pxPerHour, bounds.height), height: bounds.height }}
             >
               {blocks.map((block) => (
                 <Block
@@ -150,24 +220,24 @@ function DayHeader({ day, todayKey }: { day: string; todayKey: string }) {
   const isToday = day === todayKey;
   const isPast = day < todayKey;
   return (
-    <div className="border-l border-line pt-[10px] pb-[9px] text-center">
-      <div
-        className={cn(
-          "text-[10.5px] font-semibold tracking-[0.08em] uppercase",
-          isToday ? "text-ink" : "text-ink-3",
-        )}
-      >
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-[2px] border-l border-line py-[7px] md:flex-row md:gap-[6px] md:py-[11px]",
+        isToday && TODAY_TINT,
+      )}
+    >
+      <span className={cn("text-[12px] font-medium", isToday ? "text-ink" : "text-ink-3")}>
         {formatWeekday(day)}
-      </div>
-      <div
+      </span>
+      <span
         className={cn(
-          "mx-auto mt-[3px] grid size-6 place-items-center rounded-[7px] text-[14px] font-semibold tracking-[-0.02em]",
-          isPast && "text-ink-3",
+          "grid h-6 min-w-6 place-items-center rounded-full px-[5px] text-[14px] font-semibold tabular tracking-[-0.01em]",
+          isPast ? "text-ink-3" : "text-ink",
           isToday && "bg-today text-today-fg",
         )}
       >
         {Number(day.slice(-2))}
-      </div>
+      </span>
     </div>
   );
 }
@@ -176,29 +246,97 @@ function Band({
   label,
   days,
   todayKey,
-  children,
+  rows,
+  footers,
+  columns,
+  fold,
+  compact,
+  onExpand,
+  collapse,
 }: {
   label: string;
   days: string[];
   todayKey: string;
-  children: (day: string) => ReactNode;
+  /** Each day's rows, in `days` order. */
+  rows: ReactNode[][];
+  /** A day's closing line under its rows (the Due band's "✓ N done"). */
+  footers?: (ReactNode | undefined)[];
+  columns: CSSProperties;
+  /** Long days fold into "+N more" (until expanded). */
+  fold: boolean;
+  compact: boolean;
+  onExpand: () => void;
+  /** Set while expanded: the fold-back control under the label. */
+  collapse?: () => void;
 }) {
   return (
-    <div className={cn("grid border-b border-line", GUTTER)} style={COLUMNS}>
-      <div className="border-r border-line pt-[7px] pr-2 text-right text-[10px] font-semibold tracking-[0.08em] text-ink-3 uppercase">
+    <div className={cn("grid border-b border-line", ROW)} style={columns}>
+      <div className="flex flex-col items-end gap-1 pt-[6px] pr-2 text-[12px] font-medium text-ink-3">
         {label}
+        {collapse !== undefined && (
+          <button
+            type="button"
+            onClick={collapse}
+            aria-label="Show fewer"
+            title="Show fewer"
+            className="-mr-1 grid size-5 place-items-center rounded-[5px] transition-colors hover:bg-hover hover:text-ink"
+          >
+            <ChevronUp className="size-[13px]" />
+          </button>
+        )}
       </div>
-      {days.map((day) => (
-        <div
-          key={day}
-          className={cn(
-            "flex min-h-[34px] flex-col gap-[2px] border-l border-line px-[5px] pt-[5px] pb-1",
-            day === todayKey && "bg-sunken",
-          )}
-        >
-          {children(day)}
-        </div>
-      ))}
+      {days.map((day, i) => {
+        const all = rows[i];
+        const folded = fold && all.length > BAND_ROWS;
+        const shown = folded ? all.slice(0, BAND_ROWS) : all;
+        return (
+          <div
+            key={day}
+            className={cn(
+              "flex min-h-8 min-w-0 border-l border-line p-1",
+              compact ? "flex-wrap content-start justify-center" : "flex-col gap-[3px]",
+              day === todayKey && TODAY_TINT,
+            )}
+          >
+            {shown}
+            {folded && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="h-[22px] shrink-0 rounded-[5px] pl-[9px] text-left text-[12px] font-medium text-ink-3 transition-colors hover:bg-hover hover:text-ink"
+              >
+                +{all.length - shown.length} more
+              </button>
+            )}
+            {footers?.[i]}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Above the day headers while no class times exist: an inline row, never an
+ * overlay, so it cannot cover the grid it is asking to fill.
+ */
+function ClassTimesStrip({ onOpen }: { onOpen: () => void }) {
+  return (
+    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-line px-4 text-[12.5px] md:px-6">
+      <CalendarClock className="size-[14px] shrink-0 text-ink-3" />
+      <span className="shrink-0 font-medium text-ink-2">No class times yet</span>
+      <span className="hidden min-w-0 truncate text-ink-3 sm:inline">
+        Add your class times so lectures show here
+      </span>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={onOpen}
+        className="ml-auto h-7 shrink-0 rounded-md px-[10px] text-[12.5px]"
+      >
+        <Plus className="size-[13px]" />
+        Add class times
+      </Button>
     </div>
   );
 }
@@ -217,13 +355,14 @@ function Block({
   const { color } = useCourses();
   const { top, height } = blockGeometry(block, bounds);
   const subtitle = block.subtitle ?? blockTimeLabel(block);
+  const pxPerHour = bounds.pxPerHour;
   return (
     <button
       type="button"
       onClick={() => onOpen(block)}
       aria-label={`${blockLabel(block)}, ${blockTimeLabel(block)}`}
       className={cn(
-        "absolute overflow-hidden rounded-md px-2 pt-1 text-left text-[11.5px] leading-[1.3] whitespace-nowrap",
+        "absolute overflow-hidden rounded-md px-2 pt-1 text-left text-[12px] leading-[1.3] whitespace-nowrap",
         blockFill(block.local),
         past && "opacity-50",
       )}
@@ -240,13 +379,17 @@ function Block({
         {block.code !== undefined && " "}
         {block.title}
       </div>
-      {height >= PX_PER_HOUR * 0.75 && (
+      {height >= pxPerHour * 0.75 && (
         <div className={cn("truncate text-[11px] tabular", BLOCK_SUBTITLE)}>{subtitle}</div>
       )}
     </button>
   );
 }
 
+/**
+ * The current time: a 2px ink rule across the day (red is kept for overdue),
+ * led by a small ink pill with the time, sitting on the line at its start.
+ */
 export function NowLine({
   top,
   minute,
@@ -264,11 +407,29 @@ export function NowLine({
       )}
       style={{ top }}
     >
-      <span className="-ml-[3px] block size-[6px] shrink-0 rounded-full bg-red" />
-      <span className="h-px flex-1 bg-red" />
-      <span className="pl-[3px] pr-[3px] text-[10px] font-semibold tabular text-red">
+      {/* Inset from the column edge so the pill never straddles the day divider. */}
+      <span className="ml-1 shrink-0 rounded-[4px] bg-today px-[4px] py-px text-[10.5px] leading-[13px] font-semibold tabular text-today-fg">
         {clockTime(minute)}
       </span>
+      <span className="h-[1.5px] flex-1 bg-today" aria-hidden />
     </div>
   );
+}
+
+/** 8 AM to midnight: what an empty week's grid shows without scrolling. */
+const EMPTY_VIEW_HOURS = 16;
+
+/** The element's current height, kept up to date as the window resizes. */
+function useViewHeight(ref: RefObject<HTMLElement | null>): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setHeight(el.clientHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => setHeight(el.clientHeight));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [ref]);
+  return height;
 }

@@ -8,7 +8,7 @@ import type { TodoItem } from "../../convex/todos";
 import { Button } from "@/components/ui/button";
 import { CountBadge, Kbd } from "@/components/app/bits";
 import { useQuickAdd } from "@/lib/quick-add-context";
-import { ProfileMenu } from "@/components/app/profile-menu";
+import { HEADER_BUTTON, PageHeader } from "@/components/app/page-header";
 import { SyncStatusLine } from "@/components/app/sync-status";
 import { useSyncInfo } from "@/lib/sync-info";
 import { AgendaItem } from "@/components/agenda/agenda-item";
@@ -25,7 +25,9 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const LATER_PREVIEW = 3;
+// Long buckets show a few rows and fold the rest, so an overdue backlog never
+// pushes today's work below the fold.
+const PREVIEW: Partial<Record<Bucket["id"], number>> = { overdue: 3, later: 3 };
 
 function Home() {
   const today = useToday();
@@ -34,7 +36,7 @@ function Home() {
   const info = useSyncInfo();
   const quickAdd = useQuickAdd();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
-  const [showLater, setShowLater] = useState(false);
+  const [expanded, setExpanded] = useState<Set<Bucket["id"]>>(new Set());
 
   const buckets = items ? buildAgenda(items, { todayKey: today, now }) : undefined;
   const dayItems =
@@ -44,42 +46,39 @@ function Home() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       {/* Top bar */}
-      <header className="flex items-end justify-between gap-5 border-b border-line px-4 py-[14px] md:items-center md:px-5">
-        <div>
-          <div className="text-[15px] font-semibold tracking-[-0.015em]">
+      <PageHeader
+        title={
+          <>
             <span className="md:hidden">{formatDayMedium(today)}</span>
             <span className="hidden md:inline">{formatDayLong(today)}</span>
-          </div>
-          <SyncStatusLine className="mt-[3px]" />
-        </div>
-        <button
-          type="button"
-          onClick={quickAdd.open}
-          className="hidden h-[34px] w-[352px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-[11px] text-[13px] text-ink-3 hover:border-line-2 md:flex"
-        >
-          <Plus className="size-[14px]" />
-          Add a task…
-          <Kbd className="ml-auto">N</Kbd>
-        </button>
-        <div className="flex items-center gap-3 md:hidden">
-          <Link
-            to="/ask"
-            aria-label="Ask"
-            className="grid size-8 place-items-center rounded-lg border border-line text-ink-2"
-          >
-            <MessageCircle className="size-[15px]" />
-          </Link>
-          <button
-            type="button"
-            onClick={quickAdd.open}
-            aria-label="Add a task"
-            className="grid size-8 place-items-center rounded-lg bg-today text-today-fg"
-          >
-            <Plus className="size-[14px]" />
-          </button>
-          <ProfileMenu variant="avatar" />
-        </div>
-      </header>
+          </>
+        }
+        subtitle={<SyncStatusLine />}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              className="hidden h-9 w-[320px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 transition-colors hover:border-line-2 hover:text-ink-2 md:flex"
+            >
+              <Plus className="size-[14px]" />
+              Add a task…
+              <Kbd className="ml-auto">N</Kbd>
+            </button>
+            <Link to="/ask" aria-label="Ask" className={cn(HEADER_BUTTON, "md:hidden")}>
+              <MessageCircle className="size-[16px]" />
+            </Link>
+            <button
+              type="button"
+              onClick={quickAdd.open}
+              aria-label="Add a task"
+              className={cn(HEADER_BUTTON, "md:hidden")}
+            >
+              <Plus className="size-[16px]" />
+            </button>
+          </>
+        }
+      />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -122,8 +121,12 @@ function Home() {
                   bucket={b}
                   todayKey={today}
                   now={now}
-                  showLater={showLater}
-                  onShowLater={() => setShowLater(true)}
+                  expanded={expanded.has(b.id)}
+                  onExpand={() => setExpanded((prev) => new Set(prev).add(b.id))}
+                  // Something due earlier today already sits in Overdue.
+                  slippedToday={buckets!.some(
+                    (x) => x.id === "overdue" && x.items.some((it) => it.dueAt !== undefined && dayKeyOf(it.dueAt) === today),
+                  )}
                 />
               ))
             )}
@@ -156,18 +159,20 @@ function BucketSection({
   bucket,
   todayKey,
   now,
-  showLater,
-  onShowLater,
+  expanded,
+  onExpand,
+  slippedToday,
 }: {
   bucket: Bucket;
   todayKey: string;
   now: number;
-  showLater: boolean;
-  onShowLater: () => void;
+  expanded: boolean;
+  onExpand: () => void;
+  slippedToday: boolean;
 }) {
   if (bucket.items.length === 0 && bucket.id !== "today") return null;
-  const isLater = bucket.id === "later";
-  const visible = isLater && !showLater ? bucket.items.slice(0, LATER_PREVIEW) : bucket.items;
+  const limit = PREVIEW[bucket.id];
+  const visible = limit !== undefined && !expanded ? bucket.items.slice(0, limit) : bucket.items;
   const hidden = bucket.items.length - visible.length;
   return (
     <Section
@@ -178,13 +183,13 @@ function BucketSection({
       todayKey={todayKey}
       now={now}
       red={bucket.id === "overdue"}
-      empty={bucket.id === "today" ? "Nothing due or planned today." : undefined}
+      empty={bucket.id === "today" ? (slippedToday ? "Nothing else due or planned today." : "Nothing due or planned today.") : undefined}
       footer={
         hidden > 0 ? (
           <button
             type="button"
-            onClick={onShowLater}
-            className="flex items-center gap-[6px] px-5 py-[11px] text-[12.5px] text-ink-3 hover:text-ink"
+            onClick={onExpand}
+            className="flex items-center gap-[6px] px-4 py-[11px] text-[12.5px] font-medium text-ink-3 hover:text-ink md:px-6"
           >
             Show {hidden} more
             <ChevronRight className="size-[13px]" />
@@ -220,13 +225,13 @@ function Section({
 }) {
   return (
     <section>
-      <div className="flex items-center gap-2 px-4 pt-4 pb-[7px] md:px-5">
-        <span className={cn("text-[11.5px] font-semibold tracking-[0.09em] uppercase", red && "text-red")}>{title}</span>
-        {detail && <span className="text-[11.5px] tracking-[0.01em] text-ink-3">{detail}</span>}
-        {action ?? <span className="ml-auto text-[11px] font-semibold text-ink-3">{count ?? items.length}</span>}
+      <div className="flex items-baseline gap-2 px-4 pt-[14px] pb-[6px] md:px-6 md:pt-6 md:pb-2">
+        <h2 className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", red && "text-red")}>{title}</h2>
+        {detail && <span className="text-[12.5px] text-ink-3">{detail}</span>}
+        {action ?? <span className="ml-auto text-[12px] font-medium text-ink-3 tabular">{count ?? items.length}</span>}
       </div>
       {items.length === 0 ? (
-        <div className="px-4 py-3 text-[12.5px] text-ink-3 md:px-5">{empty}</div>
+        <div className="px-4 py-1 text-[13px] text-ink-3 md:px-6 md:py-2">{empty}</div>
       ) : (
         items.map((item, i) => (
           <AgendaItem key={item.key} item={item} first={i === 0} todayKey={todayKey} now={now} />
@@ -249,7 +254,7 @@ function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-[9px] border-b border-line bg-sunken px-4 py-[11px] text-[13px] font-medium"
+        className="flex h-8 w-full items-center gap-[9px] border-b border-line px-4 text-[13px] font-semibold"
       >
         <Megaphone className="size-[14px]" />
         New
@@ -260,7 +265,7 @@ function MobileNew({ todayKey, now }: { todayKey: string; now: number }) {
         <div className="border-b border-line bg-sunken pt-2 pb-1">
           {groups.map((g) => (
             <div key={g.label}>
-              <div className="eyebrow px-[14px] pt-[6px] pb-1 text-[10.5px]">{g.label}</div>
+              <div className="px-4 pt-2 pb-[6px] text-[12px] font-medium text-ink-3">{g.label}</div>
               {g.items.map((f) => (
                 <FeedCard key={f.key} item={f} now={now} />
               ))}

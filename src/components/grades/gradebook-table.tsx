@@ -1,10 +1,9 @@
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { GroupResult, RowResult, Summary } from "../../../convex/lib/grades";
 import type { WhatIf } from "./what-if";
 import { Letter } from "./bits";
-import { Pill } from "@/components/app/bits";
-import { UnreadDot } from "@/components/course/unread-dot";
 import { todoHref } from "@/lib/course-routes";
 import {
   DASH,
@@ -24,10 +23,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * Assignment · Due · Score · % · Class median. Below `md` the median and the
- * due column fold away and score/percent stack on the right.
+ * due column fold away and score/percent stack on the right. On desktop the
+ * due and median columns collapse to zero width when no row has a value.
  */
 const ROW =
-  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-[1px] px-2 md:grid-cols-[minmax(0,1fr)_150px_120px_72px_96px] md:gap-x-[14px] md:gap-y-0 md:pr-[10px] md:pl-4";
+  "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-[2px] px-2 md:grid-cols-[minmax(0,1fr)_var(--due-col,112px)_136px_72px_var(--median-col,96px)] md:gap-x-4 md:gap-y-0";
 const MOBILE_1 = "col-start-1 row-start-1 md:col-auto md:row-auto";
 const MOBILE_2 = "col-start-1 row-start-2 md:col-auto md:row-auto";
 const MOBILE_3 = "col-start-2 row-start-1 md:col-auto md:row-auto";
@@ -55,17 +55,24 @@ export function GradebookTable({
   /** Omitted when the instructor hides totals. */
   footer?: TableFooter;
 }) {
+  // Canvas only sends medians for some courses; an all-empty column is noise.
+  const hasMedian = summary.groups.some((g) => g.rows.some((r) => r.row.median !== undefined));
+  const hasDue = summary.groups.some((g) => g.rows.some((r) => dueLabel(r.row) !== undefined));
+  const columns = {
+    ...(hasDue ? {} : { "--due-col": "0px" }),
+    ...(hasMedian ? {} : { "--median-col": "0px" }),
+  } as CSSProperties;
   return (
-    <div role="table" aria-label="Grades">
+    <div role="table" aria-label="Grades" style={columns}>
       <div
         role="row"
         className={cn(
           ROW,
-          "hidden h-8 border-b border-line text-[11px] font-semibold tracking-[0.08em] text-ink-3 uppercase md:grid",
+          "hidden h-9 border-b border-line text-xs font-medium text-ink-3 md:grid",
         )}
       >
         <span role="columnheader">Assignment</span>
-        <span role="columnheader">Due</span>
+        <span role="columnheader">{hasDue ? "Due" : ""}</span>
         <span role="columnheader" className="text-right">
           Score
         </span>
@@ -73,12 +80,18 @@ export function GradebookTable({
           %
         </span>
         <span role="columnheader" className="text-right">
-          Class median
+          {hasMedian ? "Class median" : ""}
         </span>
       </div>
 
-      {summary.groups.map((group) => (
-        <GroupSection key={group.group.canvasId} group={group} whatIf={whatIf} seen={seen} />
+      {summary.groups.map((group, index) => (
+        <GroupSection
+          key={group.group.canvasId}
+          group={group}
+          first={index === 0}
+          whatIf={whatIf}
+          seen={seen}
+        />
       ))}
 
       {footer !== undefined && (
@@ -86,7 +99,7 @@ export function GradebookTable({
           role="row"
           className={cn(
             ROW,
-            "mt-[14px] flex items-center justify-between border-t border-ink py-3 text-[13px] font-semibold md:grid md:h-[46px] md:py-0",
+            "mt-4 flex items-center justify-between border-t border-line-2 py-3 text-[13.5px] font-semibold md:grid md:h-12 md:py-0",
           )}
         >
           <div role="rowheader" className="min-w-0 truncate">
@@ -98,7 +111,7 @@ export function GradebookTable({
           <span
             role="cell"
             aria-colspan={2}
-            className="tabular flex items-baseline justify-end gap-2 whitespace-nowrap md:col-span-2"
+            className="tabular flex items-center justify-end gap-[10px] whitespace-nowrap md:col-span-2"
           >
             {footer.score === undefined ? DASH : formatPercent(footer.score)}
             {footer.letter !== undefined && (
@@ -113,10 +126,12 @@ export function GradebookTable({
 
 function GroupSection({
   group,
+  first,
   whatIf,
   seen,
 }: {
   group: GroupResult;
+  first: boolean;
   whatIf?: WhatIf;
   seen: Seen;
 }) {
@@ -130,16 +145,21 @@ function GroupSection({
         role="row"
         className={cn(
           ROW,
-          "mt-3 border-b border-line-2 py-[9px] text-[13px] font-semibold md:h-10 md:py-0",
+          "rounded-lg bg-sunken py-[9px] dark:bg-hover text-[14px] font-semibold md:h-10 md:py-0",
+          first ? "mt-3" : "mt-6",
         )}
       >
-        <div role="rowheader" className={cn(MOBILE_1, "flex min-w-0 items-center gap-2")}>
-          <span className="truncate">{group.group.name}</span>
-          {weight !== undefined && <Pill className="h-[19px] px-[6px] text-[11px]">{weight}</Pill>}
-          {drops !== undefined && (
-            <Pill tone="outline" className="h-[19px] px-[6px] text-[11px] font-normal">
-              {drops}
-            </Pill>
+        <div
+          role="rowheader"
+          className={cn(MOBILE_1, "flex min-w-0 flex-col gap-y-[1px] md:flex-row md:items-baseline md:gap-x-2")}
+        >
+          <span className="min-w-0 truncate">{group.group.name}</span>
+          {(weight !== undefined || drops !== undefined) && (
+            <span className="min-w-0 truncate text-xs font-normal text-ink-3">
+              {[weight === undefined ? undefined : `${weight} of grade`, drops]
+                .filter((part): part is string => part !== undefined)
+                .join(" · ")}
+            </span>
           )}
         </div>
         <span role="cell" className="hidden md:block" />
@@ -148,7 +168,7 @@ function GroupSection({
           className={cn(
             MOBILE_3,
             "tabular text-right whitespace-nowrap",
-            subtotal === undefined && "font-medium text-ink-3",
+            subtotal === undefined && "text-xs font-normal text-ink-3",
           )}
         >
           {subtotal === undefined ? "not yet graded" : <Score parts={subtotal} />}
@@ -183,42 +203,43 @@ function AssignmentRow({
   const due = dueLabel(row);
   const percent = rowPercent(row, result.effectiveScore);
   const edited = whatIf !== undefined && whatIf.edits.has(row.canvasId);
-  const unseen =
-    row.postedAt !== undefined &&
-    row.score !== undefined &&
-    !seen.has(row.canvasId, String(row.postedAt));
 
   return (
     <div
       role="row"
       className={cn(
         ROW,
-        "border-b border-line py-[7px] text-[13px] hover:bg-hover md:py-0",
-        whatIf === undefined ? "md:h-9" : "md:min-h-[42px] md:py-[6px]",
-        result.dropped && "opacity-55",
+        "border-b border-line py-[9px] text-[13px] transition-colors hover:bg-hover md:py-0",
+        whatIf === undefined ? "md:h-10" : "md:min-h-[46px] md:py-[6px]",
       )}
     >
       <div role="rowheader" className={cn(MOBILE_1, "flex min-w-0 items-center gap-2")}>
-        {unseen && <UnreadDot />}
         <Link
           to={todoHref("assignment", row.canvasId)}
           onClick={() => {
             if (row.postedAt !== undefined) seen.mark(row.canvasId, String(row.postedAt));
           }}
-          className="truncate text-inherit no-underline hover:underline hover:underline-offset-4"
+          // A grade table has no unread state: every row is one regular weight.
+          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4"
         >
           {row.name}
         </Link>
-        {state !== undefined && (
-          <span
-            className={cn(
-              "shrink-0 text-[11.5px] font-normal",
-              state.tone === "red" ? "text-red" : "text-ink-3",
-            )}
-          >
-            {state.label}
-          </span>
-        )}
+        {state !== undefined &&
+          (result.dropped ? (
+            // A dropped score is decided, not wrong: a quiet pill, never a strike.
+            <span className="inline-flex h-[18px] shrink-0 items-center rounded-full bg-chip px-[7px] text-[12px] text-ink-3">
+              {state.label}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "shrink-0 text-[12px] font-medium",
+                state.tone === "red" ? "text-red" : "text-ink-3",
+              )}
+            >
+              {state.label}
+            </span>
+          ))}
         {edited && (
           <>
             <span className="size-[5px] shrink-0 rounded-full bg-ink-2" aria-hidden />
@@ -227,19 +248,27 @@ function AssignmentRow({
         )}
       </div>
 
-      <div role="cell" className={cn(MOBILE_2, "truncate text-xs text-ink-3 md:text-[12.5px]")}>
-        {due}
+      <div
+        role="cell"
+        className={cn(MOBILE_2, "truncate pl-[14px] text-xs text-ink-3 md:pl-0 md:text-[12.5px]")}
+      >
+        {due ?? (
+          // Never a blank cell: an undated row says so, quietly.
+          <span className="hidden md:inline" title="No due date">
+            <span className="sr-only">No due date</span>
+          </span>
+        )}
       </div>
 
       <div
         role="cell"
         className={cn(
           MOBILE_3,
-          "tabular flex flex-col items-end justify-center gap-[1px] text-right font-medium whitespace-nowrap",
+          "tabular flex flex-col items-end justify-center gap-[1px] text-right whitespace-nowrap",
         )}
       >
         {whatIf === undefined ? (
-          <span className={cn(result.dropped && "line-through decoration-ink-3")}>
+          <span className={cn(result.dropped && "font-normal text-ink-3")}>
             <Score parts={scoreParts(row, result.effectiveScore)} />
           </span>
         ) : (
@@ -251,7 +280,8 @@ function AssignmentRow({
         role="cell"
         className={cn(
           MOBILE_4,
-          "tabular text-right text-xs text-ink-3 md:text-[13px] md:text-ink",
+          "tabular text-right text-xs text-ink-3 md:text-[13px]",
+          !result.dropped && "md:text-ink-2",
         )}
       >
         {percent === undefined ? "" : formatPercent(percent)}
@@ -320,7 +350,7 @@ function WhatIfCell({ result, whatIf }: { result: RowResult; whatIf: WhatIf }) {
           placeholder={result.counted ? "try a score" : original.value}
           onChange={(event) => commit(event.target.value)}
           className={cn(
-            "tabular h-[26px] w-[68px] shrink-0 rounded-md border bg-surface px-2 text-right text-[13px] font-medium text-ink outline-none placeholder:text-[11.5px] placeholder:font-normal placeholder:text-ink-3 focus:ring-[3px] disabled:border-line disabled:bg-transparent disabled:opacity-60",
+            "tabular h-7 w-[84px] shrink-0 rounded-md border bg-surface px-2 transition-colors text-right text-[13px] font-medium text-ink outline-none placeholder:text-[12px] placeholder:font-normal placeholder:text-ink-3 focus:ring-[3px] disabled:border-line disabled:bg-transparent disabled:opacity-60",
             invalid
               ? "border-red text-red focus:border-red focus:ring-red/20"
               : "border-line-2 focus:border-ink focus:ring-ink/10",

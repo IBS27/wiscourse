@@ -7,9 +7,10 @@ export const ESTIMATED_LETTER_NOTE =
   "Estimated from the grading scale — Canvas did not send a letter";
 
 /**
- * A letter chip. `estimated` marks one derived from the grading scale
- * because Canvas sent only a score: dashed edge and a tooltip, so it never
- * passes for the instructor's word.
+ * A letter chip, fixed-width so a column of them lines up. `estimated` marks
+ * one derived from the grading scale because Canvas sent only a score: it
+ * reads quieter and carries a tooltip, so it never passes for the
+ * instructor's word.
  */
 export function Letter({
   letter,
@@ -24,9 +25,11 @@ export function Letter({
     <span
       title={estimated ? ESTIMATED_LETTER_NOTE : undefined}
       className={cn(
-        "relative shrink-0 rounded-[5px] border border-line-2 font-semibold text-ink-2",
-        size === "sm" ? "-top-[2px] px-[6px] py-px text-xs" : "-top-[4px] rounded-md px-[7px] py-[2px] text-sm",
-        estimated && "border-dashed text-ink-3",
+        "inline-flex shrink-0 items-center justify-center bg-chip leading-none font-semibold whitespace-nowrap",
+        size === "sm"
+          ? "h-[20px] min-w-[26px] rounded-[5px] px-[5px] text-[12px]"
+          : "h-[28px] min-w-[34px] rounded-[7px] px-[7px] text-[15px]",
+        estimated ? "font-medium text-ink-3" : "text-ink-2",
       )}
     >
       {letter}
@@ -35,7 +38,7 @@ export function Letter({
   );
 }
 
-/** A percentage and its letter: the row-sized version. */
+/** A percentage and its letter: the row-sized version, right-aligned. */
 export function GradeNumber({
   score,
   letter,
@@ -51,11 +54,15 @@ export function GradeNumber({
   className?: string;
 }) {
   if (score === undefined) {
-    return <span className={cn("tabular text-[17px] font-medium text-ink-3", className)}>{placeholder}</span>;
+    return (
+      <span className={cn("tabular text-[13px] font-medium text-ink-3", className)}>
+        {placeholder}
+      </span>
+    );
   }
   return (
-    <span className={cn("inline-flex items-baseline gap-2", className)}>
-      <span className="tabular text-[17px] font-semibold tracking-[-0.02em]">
+    <span className={cn("inline-flex items-center justify-end gap-[10px]", className)}>
+      <span className="tabular text-[15px] font-semibold tracking-[-0.01em]">
         {formatPercent(score)}
       </span>
       {letter !== undefined && <Letter letter={letter} estimated={estimated} />}
@@ -70,34 +77,31 @@ export function BigGrade({
   estimated = false,
   was,
   placeholder = DASH,
+  className,
 }: {
   score: number | undefined;
   letter?: string;
   estimated?: boolean;
-  /** The Canvas number, shown struck through the arrow in what-if mode. */
+  /** The Canvas number, shown before the arrow in what-if mode. */
   was?: number;
   placeholder?: string;
+  className?: string;
 }) {
+  const number = "tabular text-[40px] leading-none tracking-[-0.035em]";
   return (
-    <div className="flex items-baseline gap-[10px]">
+    <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-2", className)}>
       {was !== undefined && (
-        <>
-          <span className="tabular text-[32px] leading-none font-medium tracking-[-0.03em] text-ink-3">
-            {formatPercent(was)}
-          </span>
-          <span className="relative -top-[2px] text-xl font-normal text-ink-3" aria-hidden>
+        <span className="flex items-center gap-3">
+          <span className={cn(number, "text-[28px] font-medium text-ink-3")}>{formatPercent(was)}</span>
+          <span className="text-lg text-ink-3" aria-hidden>
             →
           </span>
-        </>
+        </span>
       )}
       {score === undefined ? (
-        <span className="tabular text-[32px] leading-none font-medium tracking-[-0.03em] text-ink-3">
-          {placeholder}
-        </span>
+        <span className={cn(number, "font-medium text-ink-3")}>{placeholder}</span>
       ) : (
-        <span className="tabular text-[32px] leading-none font-semibold tracking-[-0.03em]">
-          {formatPercent(score)}
-        </span>
+        <span className={cn(number, "font-semibold")}>{formatPercent(score)}</span>
       )}
       {score !== undefined && letter !== undefined && (
         <Letter letter={letter} size="lg" estimated={estimated} />
@@ -106,32 +110,42 @@ export function BigGrade({
   );
 }
 
-/** "65% of grade" with the thin bar that makes the share visible. */
-export function Coverage({
+/**
+ * Every bar in the app (grade groups, "graded so far", module progress): a
+ * neutral 6px track with rounded ends, filled in the course colour (`--c`).
+ * Only the fill carries colour, so 0% reads as empty.
+ */
+export function Meter({
   fraction,
-  label,
-  trackClassName,
   className,
+  tone = "course",
 }: {
-  /** 0..1. */
   fraction: number;
-  label: string;
-  trackClassName?: string;
   className?: string;
+  /** Course colour measures a score; neutral ink measures how much is graded. */
+  tone?: "course" | "neutral";
 }) {
   const percent = Math.max(0, Math.min(1, fraction)) * 100;
   return (
-    <div className={cn("flex items-center gap-[10px] text-[12.5px] text-ink-2", className)}>
-      <span className={cn("h-1 w-24 shrink-0 overflow-hidden rounded-sm bg-chip", trackClassName)}>
-        <span className="block h-full rounded-sm bg-ink-2" style={{ width: `${percent}%` }} />
-      </span>
-      {label}
-    </div>
+    // Coverage is a thin neutral meter; a score is a thicker bar in the course colour.
+    <span className={cn("block overflow-hidden rounded-full bg-line", tone === "course" ? "h-[6px]" : "h-1", className)} aria-hidden>
+      {percent > 0 && (
+        <span
+          className={cn("block h-full rounded-full", tone === "course" ? "bg-c" : "bg-ink-3")}
+          style={{ width: `${percent}%` }}
+        />
+      )}
+    </span>
   );
 }
 
-/** One block of the summary strip: an eyebrow, a number, a quiet line under it. */
-export function Fact({
+/** How much of the grade is graded so far. */
+export function CoverageBar({ fraction, className }: { fraction: number; className?: string }) {
+  return <Meter fraction={fraction} className={className} tone="neutral" />;
+}
+
+/** One cell of the summary grid: a quiet label, a value, a quiet line under it. */
+export function Stat({
   label,
   meta,
   className,
@@ -144,9 +158,13 @@ export function Fact({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="eyebrow mb-[6px]">{label}</div>
-      {children}
-      {meta !== undefined && <div className="mt-[7px] text-[12.5px] text-ink-3">{meta}</div>}
+      <dt className="text-[12.5px] font-medium text-ink-3">{label}</dt>
+      <dd className="mt-[6px] min-w-0">
+        {children}
+        {meta !== undefined && meta !== "" && (
+          <div className="mt-[3px] text-[12.5px] text-ink-3">{meta}</div>
+        )}
+      </dd>
     </div>
   );
 }

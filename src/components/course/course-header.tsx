@@ -1,15 +1,17 @@
-import type { ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ExternalLink, Search } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
+import { Link, useLocation } from "@tanstack/react-router";
+import { ChevronLeft, ChevronRight, ArrowUpRight, ExternalLink, Search } from "lucide-react";
 import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
-import { UnreadDot } from "./unread-dot";
+import { revealInRow, useEdgeFade } from "./edge-fade";
 import { canvasCourseUrl } from "@/lib/course-routes";
-import { courseColorVar, courseStyle, shortCode, type Course } from "@/lib/hooks";
+import { courseColorVar, courseStyle, courseTitle, shortCode, type Course } from "@/lib/hooks";
 import { openSearch } from "@/lib/search-context";
+import { CourseTag } from "@/components/app/bits";
+import { HeaderTitle } from "@/components/app/page-header";
+import { formatTerm } from "@/lib/terms";
 import { useSyncInfo } from "@/lib/sync-info";
-import { cn } from "@/lib/utils";
 
 type CourseFacts = NonNullable<FunctionReturnType<typeof api.courses.facts>>;
 
@@ -28,12 +30,24 @@ export function CourseHeader({
   const sync = useSyncInfo();
   const canvasHref = canvasCourseUrl(courseId, sync?.instance);
   const hub = useQuery(api.courses.hub, Number.isFinite(canvasId) ? { canvasId } : "skip");
+  const tabsRef = useEdgeFade<HTMLElement>();
+  const pathname = useLocation({ select: (location) => location.pathname });
 
-  const name = course === undefined ? "" : (course.nickname ?? course.name);
+  // On a phone the open tab can sit past the edge (Syllabus, Grades). The
+  // Files count widens the row once the hub loads, so look again then.
+  const badges = hub?.newFiles;
+  useEffect(() => {
+    const nav = tabsRef.current;
+    const tab = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (nav && tab) revealInRow(nav, tab);
+  }, [pathname, badges, tabsRef]);
+
+  const name = course === undefined ? "" : courseTitle(course);
   const code = course === undefined ? undefined : shortCode(course);
+  const term = formatTerm(course?.term);
   const meta = [
     code,
-    course?.term,
+    term,
     course?.verifiedInstructors?.[0]?.name,
     facts?.meets,
     facts?.location,
@@ -41,24 +55,28 @@ export function CourseHeader({
 
   return (
     <header
-      className="border-b border-line"
+      className="border-b border-line bg-surface"
       style={courseStyle(courseColorVar(course?.color))}
     >
-      <div className="flex items-center gap-[10px] px-4 pt-[6px] pb-[10px] md:hidden">
-        <Link to="/courses" aria-label="All courses" className="shrink-0 text-ink-3">
+      <div className="flex items-start gap-[10px] px-4 pt-[max(16px,env(safe-area-inset-top))] pb-[10px] md:hidden">
+        <Link to="/courses" aria-label="All courses" className="-ml-1 mt-[2px] shrink-0 text-ink-3">
           <ChevronLeft className="size-5" />
         </Link>
         <div className="min-w-0">
-          <div className="truncate text-[19px] leading-tight font-semibold tracking-[-0.02em]">
+          <h1 className="line-clamp-3 text-[20px] leading-[25px] font-semibold tracking-[-0.022em] text-balance">
             {name || <span className="text-ink-3">Course</span>}
-          </div>
-          <div className="truncate text-xs text-ink-3">
-            {code !== undefined && <span className="font-medium text-c">{code}</span>}
-            {code !== undefined && course?.term !== undefined && " · "}
-            {course?.term}
+          </h1>
+          <div className="mt-1 flex min-w-0 items-center text-[12.5px] text-ink-3">
+            {code !== undefined && <CourseTag className="shrink-0">{code}</CourseTag>}
+            {code !== undefined && term !== undefined && (
+              <span className="mx-[6px]" aria-hidden>
+                ·
+              </span>
+            )}
+            {term !== undefined && <span className="min-w-0 truncate">{term}</span>}
           </div>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-[10px] text-ink-3">
+        <div className="mt-[3px] ml-auto flex shrink-0 items-center gap-[14px] text-ink-3">
           <button
             type="button"
             aria-label="Search this course"
@@ -72,53 +90,74 @@ export function CourseHeader({
         </div>
       </div>
 
-      <div className="hidden items-start gap-[14px] px-5 pt-[18px] md:flex">
-        <span className="mt-[9px] size-[10px] shrink-0 rounded-[3px] bg-c" aria-hidden />
-        <div className="min-w-0">
-          <h1 className="truncate text-[22px] leading-[1.2] font-semibold tracking-[-0.02em]">
-            {name || <span className="text-ink-3">Course</span>}
-          </h1>
-          <div className="mt-1 flex items-center gap-[7px] text-[12.5px] text-ink-3">
-            {meta.map((part, i) => (
-              <span key={`${i}-${part}`} className="contents">
-                {i > 0 && <span aria-hidden>·</span>}
-                <span className={cn("truncate", i === 0 && code !== undefined && "font-medium text-c")}>
-                  {part}
+      {/* The page frame's 64px bar; the tabs sit below it. The course colour
+          rides on the code tag, so the title starts at the gutter like every page's. */}
+      <div className="hidden h-16 items-center gap-5 px-6 md:flex">
+        <HeaderTitle
+          className="flex-1"
+          title={name || <span className="text-ink-3">Course</span>}
+          subtitle={meta.map((part, i) => (
+            <span key={`${i}-${part}`}>
+              {i > 0 && (
+                <span className="mx-[7px]" aria-hidden>
+                  ·
                 </span>
-              </span>
-            ))}
-          </div>
-        </div>
+              )}
+              {i === 0 && code !== undefined ? <CourseTag>{part}</CourseTag> : part}
+            </span>
+          ))}
+        />
         <a
           href={canvasHref}
           target="_blank"
           rel="noreferrer"
-          className="ml-auto inline-flex h-[31px] shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 hover:bg-hover"
+          className="inline-flex h-8 shrink-0 items-center gap-[7px] rounded-lg border border-line px-3 text-[12.5px] font-medium text-ink-2 transition-colors hover:border-line-2 hover:bg-hover hover:text-ink"
         >
-          <ExternalLink className="size-[14px]" />
           Open in Canvas
+          <ArrowUpRight className="size-[14px] text-ink-3" />
         </a>
       </div>
 
-      <nav className="mt-1 flex gap-[2px] overflow-x-auto px-4 md:mt-[14px] md:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
-        <Tab
-          to="/courses/$courseId/modules"
-          courseId={courseId}
-          label="Modules"
-          badge={hub?.unreadModules === true && <UnreadDot />}
+      {/* A tab past either edge fades into the surface, so the row reads as "scroll for more". */}
+      <div className="group/tabs relative mt-1 md:mt-0">
+        <nav
+          ref={tabsRef}
+          className="flex scroll-px-4 gap-5 overflow-x-auto px-4 md:scroll-px-6 md:gap-6 md:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <Tab to="/courses/$courseId" courseId={courseId} label="Overview" exact />
+          <Tab to="/courses/$courseId/modules" courseId={courseId} label="Modules" />
+          <Tab
+            to="/courses/$courseId/files"
+            courseId={courseId}
+            label="Files"
+            badge={
+              hub !== undefined && hub !== null && hub.newFiles > 0 && <TabCount n={hub.newFiles} />
+            }
+          />
+          <Tab to="/courses/$courseId/announcements" courseId={courseId} label="Announcements" />
+          <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
+          <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
+        </nav>
+        {/* Each edge covers the tab it would cut mid-word (`--cover-*`, set
+            by useEdgeFade), so the visible row ends on whole tabs; a short
+            fade softens the cover's inner edge. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-0 bottom-[2px] left-0 w-[max(var(--cover-start,0px),16px)] bg-linear-to-r from-surface from-[calc(100%-12px)] to-transparent opacity-0 transition-[opacity,width] group-has-[[data-fade-start=true]]/tabs:opacity-100 md:w-6"
         />
-        <Tab
-          to="/courses/$courseId/files"
-          courseId={courseId}
-          label="Files"
-          badge={
-            hub !== undefined && hub !== null && hub.newFiles > 0 && <TabCount n={hub.newFiles} />
+        {/* The chevron says "more" either way, and a tap brings the rest in. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden
+          onClick={() =>
+            tabsRef.current?.scrollBy({ left: tabsRef.current.clientWidth * 0.6, behavior: "smooth" })
           }
-        />
-        <Tab to="/courses/$courseId/syllabus" courseId={courseId} label="Syllabus" />
-        <Tab to="/courses/$courseId/grades" courseId={courseId} label="Grades" />
-      </nav>
+          className="invisible absolute top-0 right-0 bottom-[2px] flex w-6 items-center justify-end bg-linear-to-l from-surface to-transparent pr-[6px] text-ink-3 group-has-[[data-fade-end=true]]/tabs:visible md:pointer-events-none [&>svg]:hidden"
+        >
+          <ChevronRight className="size-[14px]" />
+        </button>
+      </div>
     </header>
   );
 }
@@ -127,6 +166,7 @@ type TabPath =
   | "/courses/$courseId"
   | "/courses/$courseId/modules"
   | "/courses/$courseId/files"
+  | "/courses/$courseId/announcements"
   | "/courses/$courseId/syllabus"
   | "/courses/$courseId/grades"
   | "/courses/$courseId/interpretation";
@@ -149,7 +189,7 @@ function Tab({
       to={to}
       params={{ courseId }}
       activeOptions={{ exact, includeSearch: false, includeHash: false }}
-      className="-mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent px-[10px] pt-2 pb-[10px] text-[13px] font-medium text-ink-3 hover:text-ink-2"
+      className="group -mb-px flex shrink-0 items-center gap-[6px] border-b-2 border-transparent pt-2 pb-[10px] text-[13px] font-medium text-ink-3 transition-colors outline-none hover:border-line-2 hover:text-ink focus-visible:text-ink"
       activeProps={{ className: "border-ink! text-ink!" }}
     >
       {label}
@@ -160,9 +200,8 @@ function Tab({
 
 function TabCount({ n }: { n: number }) {
   return (
-    <span className="rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
-      {n}
-      <span className="hidden md:inline"> new</span>
+    <span className="tabular rounded-full bg-chip px-[6px] py-px text-[10.5px] font-semibold text-ink-3">
+      {n} new
     </span>
   );
 }

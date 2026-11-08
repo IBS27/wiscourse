@@ -17,7 +17,7 @@ export function PageOutline({ headings }: { headings: Heading[] }) {
       aria-label="On this page"
       className="sticky top-0 hidden w-[220px] shrink-0 self-start py-7 pr-5 text-[12.5px] lg:block"
     >
-      <div className="eyebrow mb-2">On this page</div>
+      <div className="mb-2 text-[12px] font-medium text-ink-3">On this page</div>
       {headings.map((heading) => (
         <a
           key={heading.id}
