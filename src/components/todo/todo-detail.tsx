@@ -69,7 +69,8 @@ export function TodoDetail({ item }: { item: TodoItem }) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key.toLowerCase() === "p") {
         e.preventDefault();
-        document.getElementById("plan-date")?.focus();
+        const phone = !window.matchMedia("(min-width: 768px)").matches;
+        document.getElementById(phone ? "plan-date-phone" : "plan-date")?.focus();
       }
       if (e.key.toLowerCase() === "d") {
         e.preventDefault();
@@ -182,6 +183,7 @@ export function TodoDetail({ item }: { item: TodoItem }) {
         <PlanControls
           className="mt-3 md:hidden"
           grid="always"
+          dateId="plan-date-phone"
           value={item.plannedDay}
           today={today}
           onPlan={(plannedDay) => void setPlannedDay({ ref, plannedDay })}

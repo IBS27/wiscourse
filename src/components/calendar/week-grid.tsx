@@ -163,7 +163,7 @@ export function WeekGrid({
 
       {empty ? (
         <EmptySchedule
-          title="No classes or events this week"
+          title={`No ${days.some((day) => (models.get(day)?.allDay.length ?? 0) > 0) ? "timed " : ""}classes or events this week`}
           onAddClassTimes={onAddClassTimes}
           onNewEvent={onNewEvent}
         />

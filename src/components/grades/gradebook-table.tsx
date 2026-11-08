@@ -231,19 +231,23 @@ function AssignmentRow({
         whatIf === undefined ? "md:h-10" : "md:min-h-[46px] md:py-[6px]",
       )}
     >
-      <div role="rowheader" className={cn(MOBILE_1, "flex min-w-0 items-center gap-2")}>
+      <div
+        role="rowheader"
+        // Phones: the name gets its own line; date and status wrap beneath it.
+        className={cn(MOBILE_1, "flex min-w-0 items-center gap-2 max-md:flex-wrap max-md:gap-y-[2px]")}
+      >
         <Link
           to={todoHref("assignment", row.canvasId)}
           onClick={() => {
             if (row.postedAt !== undefined) seen.mark(row.canvasId, String(row.postedAt));
           }}
           // A grade table has no unread state: every row is one regular weight.
-          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4"
+          className="truncate text-[14px] text-ink no-underline hover:underline hover:underline-offset-4 max-md:basis-full"
         >
           {row.name}
         </Link>
         {due !== undefined && (
-          <span className="shrink-0 pl-1 text-[12.5px] whitespace-nowrap text-ink-3">{due}</span>
+          <span className="shrink-0 text-[12.5px] whitespace-nowrap text-ink-3 md:pl-1">{due}</span>
         )}
         {state !== undefined &&
           (result.dropped ? (

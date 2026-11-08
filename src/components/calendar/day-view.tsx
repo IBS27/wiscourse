@@ -97,7 +97,7 @@ export function DayView({
         )}
         {empty ? (
           <EmptySchedule
-            title={day === todayKey ? "No classes or events today" : "No classes or events this day"}
+            title={`No ${(model?.allDay.length ?? 0) > 0 ? "timed " : ""}classes or events ${day === todayKey ? "today" : "this day"}`}
             onAddClassTimes={onAddClassTimes}
             onNewEvent={onNewEvent}
           />

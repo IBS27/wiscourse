@@ -194,7 +194,8 @@ it("replaces the hours with a note when nothing in the week is timed", () => {
   const Calendar = setup({ view: "week", date: "2026-09-10" });
   render(<Calendar />);
 
-  expect(screen.getByText("No classes or events this week")).toBeDefined();
+  // All-day events stay in the band, so the note says "timed".
+  expect(screen.getByText("No timed classes or events this week")).toBeDefined();
   // The Due band stays; the empty hours and the redundant nudge go.
   expect(screen.getByText("Due")).toBeDefined();
   expect(screen.getByText("Problem Set 3")).toBeDefined();

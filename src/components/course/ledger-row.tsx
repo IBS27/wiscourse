@@ -13,10 +13,13 @@ import { useSeen } from "@/lib/seen";
 import { cn } from "@/lib/utils";
 
 /**
- * Course · next due · new. The course takes what is left once next due has
- * its 280px and the new column is exactly as wide as its slots.
+ * Course · next due · new. The new column is exactly as wide as its slots.
+ * Course and next due share what is left; from xl next due gets a fixed
+ * 280px and the course takes the rest. A fixed track at md would squeeze the
+ * course to nothing beside the sidebar.
  */
-export const LEDGER_COLS = "md:grid-cols-[minmax(0,1fr)_minmax(0,280px)_auto] md:gap-x-6";
+export const LEDGER_COLS =
+  "md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:gap-x-6 xl:grid-cols-[minmax(0,1fr)_280px_auto]";
 
 /** Hairline under each row, from the title's edge to the content's. */
 const RULE =

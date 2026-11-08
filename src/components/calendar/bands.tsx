@@ -108,7 +108,8 @@ function shortClock(minute: number): string {
 }
 
 /**
- * The quiet meta line ("11 AM · ASTRON 103"), the time in red when past due.
+ * The quiet meta line ("11 AM · ASTRON 103"), the time in red when past due;
+ * a late chip with no time reads "Late · ASTRON 103".
  * It never wraps: the time stays whole and the course truncates.
  */
 function ChipMeta({
@@ -129,9 +130,12 @@ function ChipMeta({
         className,
       )}
     >
-      {late && <span className="sr-only">Past due</span>}
-      {time !== undefined && <span className={cn("shrink-0", late && LATE)}>{time}</span>}
-      {time !== undefined && course !== undefined && (
+      {late && time !== undefined && <span className="sr-only">Past due</span>}
+      {/* Without a time (the 11:59 PM default), a late chip still says so. */}
+      {(time ?? (late ? "Late" : undefined)) !== undefined && (
+        <span className={cn("shrink-0", late && LATE)}>{time ?? "Late"}</span>
+      )}
+      {(time !== undefined || late) && course !== undefined && (
         <span className="shrink-0" aria-hidden>
           ·
         </span>
@@ -232,7 +236,7 @@ export function DueLine({
           time={minute === undefined ? undefined : clockTimeMeridiem(minute)}
           course={course}
           late={late}
-          className="shrink-0 text-xs"
+          className="max-w-[50%] text-xs"
         />
       )}
     </Line>
