@@ -1,5 +1,5 @@
 import {
-  useCallback, useEffect, useRef, useState,
+  useCallback, useEffect, useRef, useState, useSyncExternalStore,
   type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode, type RefObject,
 } from "react";
 import { SignInButton } from "@clerk/clerk-react";
@@ -113,14 +113,18 @@ function Stage({ children, className }: { children: ReactNode; className?: strin
 
 /* ---------- nav ---------- */
 
+const isDark = () => document.documentElement.classList.contains("dark");
+/** The page theme is the `dark` class on <html>; the app's theme module and the OS can both flip it. */
+function subscribeDark(notify: () => void) {
+  const observer = new MutationObserver(notify);
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+  return () => observer.disconnect();
+}
+
 function ThemeToggle() {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
-  const flip = () => {
-    const next = !dark;
-    setDark(next);
-    // Loaded on demand: the theme module reads matchMedia at import, which test environments lack.
-    void import("@/lib/theme").then((m) => m.setTheme(next ? "dark" : "light"));
-  };
+  const dark = useSyncExternalStore(subscribeDark, isDark);
+  // Loaded on demand: the theme module reads matchMedia at import, which test environments lack.
+  const flip = () => void import("@/lib/theme").then((m) => m.setTheme(dark ? "light" : "dark"));
   const Icon = dark ? Sun : Moon;
   return (
     <button
