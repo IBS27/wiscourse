@@ -1,532 +1,529 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
-  Calendar, Check, ChevronDown, ChevronRight, Clock, ExternalLink, FileText, LoaderCircle,
-  Paperclip, Plus, Search, Send, SquareCheck,
+  ArrowRight, BarChart3, BookOpen, CalendarDays, Check, Clock, Home, Inbox, ListChecks, ListTree,
+  MessageCircle, Plus, RefreshCw, Search, Undo2,
 } from "lucide-react";
-import { Kbd } from "@/components/app/bits";
+import { Chip, CountBadge, CourseTag, Dot, Kbd, Pill, SectionCount } from "@/components/app/bits";
+import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 import {
-  AGENDA, ASK_THREADS, CAL, CAL_DAYS, CAL_EVENTS, COURSES, FIRST_SYNC, GRADES, INBOX, MODULES,
-  QUICK_ADD_TEXT, RAIL, SEARCH, WEEK, calTop, courseVar, minutes, type CourseKey, type ModuleItem,
+  AGENDA, COURSES, FEED, QUICK_ADD_DAY, QUICK_ADD_TEXT, STORY, WEEK, c,
+  type AgendaRow, type FeedRow,
 } from "./landing-data";
+import { enter, useCountUp, useReducedMotion, useSequence, useTyped } from "./landing-motion";
 
 /**
- * Miniatures of real screens, used by the landing page. They are static JSX
- * with the app's tokens; the only state they take is what the page animates.
+ * Miniatures of real screens, used by the landing page. The markup mirrors the
+ * app's own components class for class (agenda rows, week strip, the Recent
+ * rail, quick add, first sync) with static data in place of queries; the only
+ * state they hold is what the page animates. They are decorative: each root is
+ * aria-hidden and nothing inside takes focus.
  */
 
-const vars = (v: Record<string, string | number>) => v as CSSProperties;
-const c = (key: CourseKey) => vars({ "--c": courseVar(key) });
+const POP = "animate-[lp-pop_.45s_var(--lp-ease)_both]";
 
-/* ---------- hero: Home ---------- */
+/** Height opens from zero when `on` flips, so a late row pushes its neighbours down smoothly. */
+function Arriving({ on, style, children }: { on: boolean; style?: CSSProperties; children: ReactNode }) {
+  return (
+    <div style={style} className={cn("grid transition-[grid-template-rows] duration-500 ease-[var(--lp-ease)]", on ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+      <div className={cn("overflow-hidden", on && "animate-[lp-flash_1.8s_ease-out_.15s_both]")}>
+        <div className={on ? "animate-[lp-arrive_.6s_var(--lp-ease)_both]" : "opacity-0"}>{children}</div>
+      </div>
+    </div>
+  );
+}
 
-export function HomePreview({ playing, synced }: { playing: boolean; synced: boolean }) {
+/* ---------- hero: the app on Home ---------- */
+
+const NAV = [
+  { label: "Home", icon: Home },
+  { label: "Inbox", icon: Inbox },
+  { label: "Courses", icon: BookOpen },
+  { label: "Tasks", icon: ListChecks },
+  { label: "Grades", icon: BarChart3 },
+  { label: "Calendar", icon: CalendarDays },
+  { label: "Ask", icon: MessageCircle },
+];
+
+function Sidebar({ home, inbox }: { home: number; inbox: number }) {
+  return (
+    <div className="hidden w-[212px] shrink-0 flex-col border-r border-line bg-sidebar px-[10px] pt-[14px] pb-3 md:flex">
+      <div className="flex items-center justify-between px-[6px] pt-[2px] pb-4">
+        <Logo className="text-[16px]" />
+        <span className="flex items-center gap-[6px] text-ink-3">
+          <Search className="size-[14px]" />
+          <Kbd>⌘K</Kbd>
+        </span>
+      </div>
+      <div className="flex flex-col gap-px">
+        {NAV.map(({ label, icon: Icon }) => {
+          const n = label === "Home" ? home : label === "Inbox" ? inbox : 0;
+          return (
+            <div
+              key={label}
+              className={cn(
+                "flex h-8 items-center gap-[10px] rounded-lg px-2 text-[13.5px] font-medium text-ink-2",
+                label === "Home" && "bg-[color-mix(in_oklab,var(--ink)_7%,var(--sidebar))] font-semibold text-ink dark:bg-hover",
+              )}
+            >
+              <Icon className="size-4" />
+              {label}
+              <CountBadge key={n} n={n} className={cn("ml-auto font-medium text-ink-2 tabular", POP)} />
+              {label === "Ask" && <Kbd className="ml-auto">⌘J</Kbd>}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-between px-2 pt-6 pb-[6px] text-[12px] font-medium text-ink-3">
+        <span>Courses</span>
+        <span className="text-[12.5px] font-normal">Fall 2026</span>
+      </div>
+      {COURSES.map((k) => (
+        <div key={k.code} className="flex h-[30px] items-center gap-[9px] rounded-lg px-2 text-[13px] text-ink-2" style={c(k.key)}>
+          <Dot />
+          <span className="min-w-0 flex-1 truncate">{k.code}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function WeekStrip() {
+  return (
+    <div className="grid grid-cols-7 gap-1 border-b border-line px-3 py-0 md:px-5 md:py-2">
+      {WEEK.map((d) => (
+        <div key={d.day} className="rounded-[10px] px-1 py-px text-center transition-colors hover:bg-hover md:py-[5px]">
+          <div className="flex items-center justify-center gap-[6px] max-sm:flex-col max-sm:gap-0">
+            <span className={cn("text-[12px] font-medium text-ink-3 max-sm:text-[11px] max-sm:leading-[14px]", d.today && "font-semibold text-ink")}>{d.label}</span>
+            <span
+              className={cn(
+                "grid size-[22px] place-items-center rounded-full text-[13.5px] font-semibold tracking-[-0.02em] tabular md:size-6",
+                d.past && "font-medium text-ink-3",
+                d.today && "bg-today text-today-fg",
+              )}
+            >
+              {d.day}
+            </span>
+          </div>
+          <div className="mt-px flex h-[6px] items-center justify-center gap-[3px] md:mt-[3px]">
+            {d.dots.map((k) => (
+              <i key={k} className={cn("block size-[6px] rounded-full bg-c", d.past && "opacity-60")} style={c(k)} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function AgendaLine({
+  row, first, done, doneAt, status, index, onToggle,
+}: {
+  row: AgendaRow;
+  first: boolean;
+  done: boolean;
+  doneAt: string;
+  status?: string;
+  index: number;
+  onToggle: () => void;
+}) {
+  const meta: ReactNode[] = [<CourseTag key="code">{row.code}</CourseTag>];
+  if (done) {
+    meta.push(<span key="done">Done {doneAt}</span>);
+  } else {
+    if (row.late) {
+      meta.push(
+        <span key="late" className="flex items-center gap-1 font-medium text-red">
+          <Clock className="size-[12px]" />
+          {row.late}
+        </span>,
+      );
+    }
+    row.meta.forEach((m) => meta.push(<span key={m}>{m}</span>));
+  }
+  if (row.subtasks) {
+    meta.push(
+      <span key="sub" className="flex items-center gap-1">
+        <ListTree className="size-[13px]" />
+        {row.subtasks}
+      </span>,
+    );
+  }
+  const submitted = status?.startsWith("Submitted") || status?.startsWith("Graded");
+  return (
+    <div
+      className={cn(
+        enter(index).className,
+        "group relative flex items-start gap-3 bg-surface py-[11px] pr-4 pl-4 transition-colors hover:bg-hover md:pr-6 md:pl-6",
+        "after:absolute after:right-4 after:bottom-0 after:left-[45px] after:h-px after:bg-line md:after:right-6 md:after:left-[53px]",
+        first && "before:absolute before:top-0 before:right-4 before:left-[45px] before:h-px before:bg-line md:before:right-6 md:before:left-[53px]",
+      )}
+      style={{ ...enter(index).style, ...c(row.c) }}
+    >
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={onToggle}
+        className={cn(
+          "mt-[2px] grid size-[17px] shrink-0 place-items-center rounded-full border-[1.5px] border-ink-3/70 transition-[background-color,border-color,scale] duration-200 group-hover:border-ink-2 hover:bg-chip active:scale-90",
+          done && "border-ink-3 bg-ink-3 hover:bg-ink-3",
+        )}
+      >
+        <Check className={cn("size-[11px] stroke-[2.2] text-today-fg transition-[scale,opacity] duration-200", !done && "scale-50 opacity-0")} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className={cn("text-[14px] leading-[1.4] font-medium tracking-[-0.006em] text-ink transition-colors duration-300", done && "text-ink-3 line-through decoration-line-2")}>
+          {row.title}
+        </div>
+        <div className="mt-[3px] flex min-w-0 items-center gap-x-[6px] overflow-hidden text-[13px] whitespace-nowrap text-ink-3">
+          {meta.map((m, i) => (
+            <span key={i} className={cn("flex items-center gap-[6px]", i === meta.length - 1 ? "min-w-0" : "shrink-0")}>
+              {i > 0 && <span className="text-line-2">·</span>}
+              {i === meta.length - 1 ? <span className="min-w-0 truncate">{m}</span> : m}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="mt-px flex shrink-0 items-center gap-2 max-sm:hidden">
+        {done ? (
+          <Pill tone="outline" className={POP}>
+            <Undo2 />
+            Undo
+          </Pill>
+        ) : status ? (
+          <Pill key={status} tone="quiet" className={POP}>
+            {submitted && <Check />}
+            {status}
+          </Pill>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function FeedLine({ row, divider }: { row: FeedRow; divider: boolean }) {
+  return (
+    <div
+      className={cn(
+        "relative flex gap-[10px] py-[10px] pr-5 pl-5 transition-colors hover:bg-hover",
+        divider && "after:absolute after:right-5 after:bottom-0 after:left-[42px] after:h-px after:bg-line",
+      )}
+      style={c(row.c)}
+    >
+      <span className="flex w-3 shrink-0 justify-center pt-[6px]">
+        {row.unread && <span className="size-[6px] rounded-full bg-unread" />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start gap-3">
+          <div className={cn("line-clamp-2 min-w-0 flex-1 text-[13px] leading-[1.4] tracking-[-0.005em] text-ink", row.unread ? "font-medium" : "font-normal")}>
+            {row.title}
+          </div>
+          <span className="shrink-0 pt-px text-[13px] text-ink-2 tabular">{row.when}</span>
+        </div>
+        <div className="mt-[3px] flex min-w-0 items-center gap-[6px] text-[13px] whitespace-nowrap text-ink-2">
+          <CourseTag className="shrink-0 text-[12.5px]">{row.code}</CourseTag>
+          <span className="text-line-2">·</span>
+          <span className="min-w-0 truncate">{row.status}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The Recent feed: header, grouped rows, footer link. `shown` is how far the
+ * arrivals have got (see `FeedRow.arrives`); `groups` trims the list for the
+ * shorter card.
+ */
+function RecentFeed({ shown, groups = FEED.length, first = 0 }: { shown: number; groups?: number; first?: number }) {
+  const visible = (row: FeedRow) => (row.arrives ?? 0) <= shown;
+  const unread = FEED.flatMap((g) => g.rows).filter((r) => r.unread && visible(r)).length;
+  let i = first;
+  return (
+    <>
+      <div className="flex min-h-[44px] items-baseline gap-2 px-5 pt-3 pb-1">
+        <span className="text-[13px] font-semibold tracking-[-0.01em]">Recent</span>
+        <SectionCount key={unread} n={unread} className={cn("inline-block", POP)} />
+        <span className="-mr-2 ml-auto rounded-md px-2 py-[3px] text-[12px] text-ink-3">Mark all read</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {FEED.slice(0, groups).map((g) => (
+          <div key={g.group}>
+            <div {...enter(i++)}>
+              <div className="px-5 pt-3 pb-1 text-[12px] font-medium text-ink-3">{g.group}</div>
+            </div>
+            {g.rows.map((row, r) => {
+              const line = <FeedLine row={row} divider={r < g.rows.length - 1} />;
+              return row.arrives ? (
+                <Arriving key={row.id} on={visible(row)} style={c(row.c)}>{line}</Arriving>
+              ) : (
+                <div key={row.id} {...enter(i++)}>{line}</div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="mt-auto flex items-center gap-[6px] border-t border-line px-5 py-3 text-[12.5px] font-medium text-ink-2">
+        View all in Inbox
+        <ArrowRight className="size-[13px]" />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Home, as the app shows it: sidebar, agenda, Recent rail. `step` is the
+ * hero's timeline: 0 rows cascade in, 1 the sync settles, 2 a task is ticked
+ * off, 3 a grade posts (a row lands in Recent and the agenda pill follows).
+ * The completion circles are live, so a visitor can tick rows too.
+ */
+export function HomeWindow({ step }: { step: number }) {
+  const [toggled, setToggled] = useState<ReadonlySet<string>>(new Set());
+  const synced = step >= 1;
+  const graded = step >= 3;
+  const isDone = (row: AgendaRow) =>
+    (row.doneAt !== undefined || (row.id === STORY.doneId && step >= 2)) !== toggled.has(row.id);
+  const toggle = (id: string) =>
+    setToggled((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  // The Home badge counts open work that is overdue or due today.
+  const open = AGENDA.slice(0, 2).flatMap((s) => s.rows).filter((r) => !isDone(r)).length;
   let i = 0;
   return (
     <div
       aria-hidden="true"
-      className="w-full overflow-hidden rounded-lg border border-line bg-surface shadow-float lg:w-[calc(100%+140px)] lg:max-w-[800px]"
+      data-on={step >= 0}
+      className="flex h-[560px] overflow-hidden rounded-xl border border-line bg-surface text-left text-ink shadow-[0_0_0_1px_color-mix(in_oklab,var(--ink)_3%,transparent),0_24px_60px_-18px_color-mix(in_oklab,var(--ink)_28%,transparent)] md:h-[640px] dark:shadow-[0_32px_80px_-20px_rgb(0_0_0/0.8)]"
     >
-      <div className="flex items-center justify-between border-b border-line px-4 py-3">
-        <div>
-          <div className="text-[15px] font-semibold tracking-[-0.015em]">Friday, August 21</div>
-          <div className="mt-[3px] flex items-center gap-[6px] text-xs text-ink-3">
-            {synced ? (
-              <span className="size-[6px] rounded-full bg-[var(--course-emerald)]" />
-            ) : (
-              <span className="size-[10px] animate-spin rounded-full border-[1.5px] border-line-2 border-t-ink-2" />
-            )}
-            <span>{synced ? "Synced just now · 4 courses · next check in 2 min" : "Syncing from Canvas…"}</span>
+      <Sidebar home={open} inbox={graded ? 4 : 3} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex h-14 shrink-0 items-center justify-between gap-5 border-b border-line px-4 md:h-16 md:px-6">
+          <div className="flex h-[42px] min-w-0 flex-col">
+            <div className="page-title h-6 truncate leading-6">
+              <span className="md:hidden">Fri, Aug 21</span>
+              <span className="hidden md:inline">Friday, August 21</span>
+            </div>
+            <div className="mt-[2px] flex h-4 items-center gap-[6px] text-[12.5px] leading-4 whitespace-nowrap text-ink-3">
+              <RefreshCw className={cn("size-[12px] shrink-0", !synced && "animate-spin")} />
+              <span key={String(synced)} className="animate-[lp-fade_.4s_ease_both]">{synced ? "Synced just now" : "Syncing…"}</span>
+              <span className="text-line-2 max-sm:hidden">·</span>
+              <span className="max-sm:hidden">4 courses</span>
+            </div>
+          </div>
+          <div className="hidden h-9 w-[280px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-3 text-[13px] text-ink-3 lg:flex">
+            <Plus className="size-[14px]" />
+            Add a task…
+            <Kbd className="ml-auto">N</Kbd>
+          </div>
+          <div className="grid size-9 shrink-0 place-items-center rounded-full text-ink-2 lg:hidden">
+            <Plus className="size-[16px]" />
           </div>
         </div>
-        <div className="hidden h-8 w-[300px] items-center gap-[9px] rounded-lg border border-line bg-sunken px-[11px] text-[13px] text-ink-3 lg:flex">
-          <Plus className="size-[14px]" />
-          Add a task…
-          <Kbd className="ml-auto">N</Kbd>
+
+        <div className="flex min-h-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <WeekStrip />
+            <div className="pt-0 pb-[26px] md:pt-[6px]">
+              {AGENDA.map((section) => {
+                const count = section.rows.length;
+                return (
+                  <div key={section.title}>
+                    <div {...enter(i++)}>
+                      <div className="flex items-baseline gap-2 px-4 pt-3 pb-[6px] md:px-6 md:pt-6 md:pb-2">
+                        <span className={cn("text-[13px] font-semibold tracking-[-0.005em] text-ink", section.red && "text-red")}>{section.title}</span>
+                        {section.detail && <span className="text-[12.5px] text-ink-3">{section.detail}</span>}
+                        <SectionCount n={count} sep={Boolean(section.detail)} />
+                      </div>
+                    </div>
+                    {section.rows.map((row, r) => (
+                      <AgendaLine
+                        key={row.id}
+                        row={row}
+                        first={r === 0}
+                        index={i++}
+                        done={isDone(row)}
+                        doneAt={row.doneAt ?? STORY.doneAt}
+                        status={row.id === STORY.gradedId && graded ? STORY.graded : row.status}
+                        onToggle={() => toggle(row.id)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="hidden w-[300px] shrink-0 flex-col border-l border-line bg-surface xl:flex">
+            <RecentFeed shown={graded ? 3 : 2} first={3} />
+          </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-7 gap-1 border-b border-line px-3 py-[10px]">
-        {WEEK.map((d) => (
-          <div
-            key={d.day}
-            className={cn(
-              "flex h-12 flex-col items-center justify-center gap-[5px] rounded-md text-xs text-ink-2 sm:h-[54px]",
-              d.today && "bg-today text-today-fg",
-            )}
-          >
-            <span className="text-[11px] sm:text-xs">{d.label}</span>
-            <b className={cn("text-sm font-semibold tracking-[-0.01em]", d.today ? "text-today-fg" : "text-ink")}>{d.day}</b>
-            <span className="flex h-[6px] gap-[2px] whitespace-nowrap sm:gap-[3px]">
-              {d.dots.map((k, j) => (
-                <i key={j} className="size-[6px] rounded-full bg-c" style={c(k)} />
-              ))}
-              {d.more && (
-                <em className={cn("hidden text-[9.5px] leading-[6px] font-semibold not-italic sm:inline", d.today ? "text-today-fg opacity-70" : "text-ink-3")}>
-                  +{d.more}
-                </em>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {AGENDA.map((e, n) => {
-        const style = vars({ "--i": i++ });
-        const anim = cn(
-          "opacity-0 translate-y-[6px]",
-          playing && "animate-[landing-in_.45s_cubic-bezier(.16,1,.3,1)_forwards] [animation-delay:calc(var(--i)*40ms+120ms)]",
-        );
-        if (e.kind === "section") {
-          return (
-            <div key={n} className={cn("flex items-baseline gap-2 px-4 pt-[10px] pb-1", anim)} style={style}>
-              <span className={cn("text-[12.5px] font-semibold tracking-[-0.01em]", e.red && "text-red")}>{e.title}</span>
-              {e.detail && <span className="text-[11.5px] text-ink-3">{e.detail}</span>}
-              <span className={cn("ml-auto rounded-full px-[7px] py-px text-[11px] font-semibold", e.red ? "bg-red-bg text-red" : "bg-chip text-ink-3")}>{e.count}</span>
-            </div>
-          );
-        }
-        return (
-          <div key={n} className={cn("mb-[2px] flex min-h-[46px] items-center gap-3 border-l-4 border-c py-[9px] pr-4 pl-3 hover:bg-hover", anim)} style={{ ...style, ...c(e.c) }}>
-            <span className={cn("relative size-[15px] shrink-0 rounded-[4px] border-[1.5px] border-line-2", e.done && "border-ink bg-ink")}>
-              {e.done && <span className="absolute top-px left-1 h-2 w-1 rotate-45 border-r-[1.5px] border-b-[1.5px] border-surface" />}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className={cn("truncate text-[13.5px] font-medium", e.done && "text-ink-3 line-through")}>{e.title}</div>
-              <div className="mt-[2px] truncate text-xs text-ink-3">{e.meta}</div>
-            </div>
-            <span className={cn("hidden shrink-0 text-xs whitespace-nowrap text-ink-3 sm:inline", e.tone === "red" && "text-red", e.tone === "ok" && "text-ink-2")}>{e.status}</span>
-          </div>
-        );
-      })}
     </div>
   );
 }
 
 /* ---------- quick add ---------- */
 
-export function QuickAddDemo({ typed }: { typed: number }) {
-  const text = QUICK_ADD_TEXT.slice(0, typed);
-  const chips: { at: number; key?: CourseKey; label: string }[] = [
-    { at: QUICK_ADD_TEXT.length, key: "indigo", label: "CS 537" },
-    { at: 14, label: "Planned Fri, Aug 21" },
-    { at: 12, label: "Personal task" },
-  ];
+/**
+ * The quick-add dialog typing its own example, over the day the task lands
+ * in. `step`: 0 typing, 1 Enter goes down, 2 the task is filed and the field
+ * clears.
+ */
+export function QuickAddDemo({ active }: { active: boolean }) {
+  const reduce = useReducedMotion();
+  const step = useSequence(active, [0, 3100, 3350], 9000);
+  const count = useTyped(QUICK_ADD_TEXT, step === 0 || step === 1, { delay: 500, speed: 75 });
+  // Reduced motion rests on the telling frame: the example typed out and filed.
+  const typed = reduce ? QUICK_ADD_TEXT.length : count;
+  const added = step >= 2;
+
+  const words = QUICK_ADD_TEXT.slice(0, typed).split(" ");
+  const day = words.includes("fri");
+  const course = words.includes("#cs537");
+  const title = words.filter((w) => w !== "fri" && !w.startsWith("#")).join(" ").trim();
+
   return (
-    <div aria-hidden="true" className="w-full rounded-lg border border-line bg-surface shadow-menu lg:ml-auto lg:max-w-[480px]">
-      <div className="flex min-h-[50px] items-center gap-[10px] border-b border-line px-4 py-[14px] text-sm sm:text-[15px]">
-        <Plus className="size-4 shrink-0 text-ink-3" />
-        {text && <span>{text}</span>}
-        <span className={cn("h-[18px] w-[1.5px] bg-ink animate-[landing-blink_1s_steps(2)_infinite]", !text && "-ml-1")} />
-        {!text && <span className="text-ink-3">Add a task…</span>}
-      </div>
-      <div className="flex min-h-[52px] flex-wrap gap-[6px] px-4 py-3">
-        {chips.map((ch) => (
-          <span
-            key={ch.label}
-            className={cn(
-              "inline-flex h-[26px] items-center gap-[6px] rounded-md border border-line bg-chip px-[9px] text-xs font-medium transition-[opacity,transform] duration-300 ease-[cubic-bezier(.16,1,.3,1)]",
-              typed >= ch.at ? "opacity-100" : "translate-y-1 opacity-0",
-            )}
-          >
-            {ch.key && <i className="size-[6px] rounded-full bg-c" style={c(ch.key)} />}
-            {ch.label}
-          </span>
-        ))}
-      </div>
-      <div className="flex gap-[14px] border-t border-line px-4 py-[10px] text-[11.5px] text-ink-3 [&_b]:font-medium [&_b]:text-ink-2">
-        <span><b>↵</b> add</span>
-        <span><b>⇥</b> edit chip</span>
-        <span className="hidden sm:inline"><b>⌥↵</b> add and keep open</span>
-        <span className="hidden sm:inline"><b>esc</b> cancel</span>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- New rail ---------- */
-
-export function NewRail() {
-  return (
-    <div aria-hidden="true" className="w-full overflow-hidden rounded-lg border border-line bg-sunken lg:max-w-[420px] dark:bg-surface">
-      <div className="flex items-center justify-between border-b border-line px-[14px] py-[11px] text-[13px] font-semibold">
-        <span>
-          New
-          <span className="ml-[6px] rounded-full border border-line bg-chip px-[7px] text-[11px] font-semibold text-ink-3">5</span>
-        </span>
-        <span className="text-[11.5px] font-medium text-ink-3">Mark all read</span>
-      </div>
-      {RAIL.map((g) => (
-        <div key={g.group}>
-          <div className="px-[14px] pt-[10px] pb-1 text-[11px] font-semibold tracking-[.06em] text-ink-3 uppercase">{g.group}</div>
-          {g.cards.map((k) => (
-            <div key={k.title} className="mx-[10px] mb-2 rounded-lg border border-line border-l-[3px] border-l-c bg-raised px-3 py-[10px]" style={c(k.c)}>
-              <div className="mb-1 flex items-center gap-2 text-[11.5px] text-ink-3">
-                <b className="font-semibold text-ink-2">{k.code}</b>
-                <span className="ml-auto">{k.when}</span>
-              </div>
-              <div className="text-[13px] font-medium tracking-[-0.005em]">
-                {k.title}
-                {k.grade && <span className="font-medium text-ink-2"> {k.grade}</span>}
-              </div>
-              <div className="mt-[2px] truncate text-xs text-ink-3">{k.sub}</div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ---------- showcase panes ---------- */
-
-function PaneHeader({ title, meta, action }: { title: string; meta?: string; action?: string }) {
-  return (
-    <div className="flex h-[50px] items-center justify-between gap-3 border-b border-line px-[18px]">
-      <span className="text-[15px] font-semibold tracking-[-0.015em]">
-        {title}
-        {meta && <span className="ml-2 hidden text-xs font-normal text-ink-3 lg:inline">{meta}</span>}
-      </span>
-      {action && <span className="hidden text-[12.5px] text-ink-3 lg:inline">{action}</span>}
-    </div>
-  );
-}
-
-const Eyebrow = ({ children, className }: { children: ReactNode; className?: string }) => (
-  <div className={cn("text-[10.5px] font-semibold tracking-[.09em] text-ink-3 uppercase", className)}>{children}</div>
-);
-
-export function InboxPane() {
-  return (
-    <>
-      <PaneHeader title="Inbox" meta="5 unread · 4 courses" action="Mark all read" />
-      <div className="flex gap-[6px] border-b border-line px-[18px] py-[10px]">
-        {["All", "Announcements", "Grades", "Assignments"].map((f, i) => (
-          <span
-            key={f}
-            className={cn("rounded-md border px-[9px] py-[3px] text-xs font-medium", i === 0 ? "border-today bg-today text-today-fg" : "border-line bg-surface text-ink-2")}
-          >
-            {f}
-          </span>
-        ))}
-      </div>
-      {INBOX.map((g) => (
-        <div key={g.group}>
-          <div className="px-[18px] pt-[14px] pb-1 text-[11px] font-semibold tracking-[.06em] text-ink-3 uppercase">{g.group}</div>
-          {g.items.map((it, i) => (
-            <div
-              key={it.title}
-              className={cn(
-                "grid grid-cols-[62px_1fr_auto] items-baseline gap-x-[10px] border-l-4 border-c py-[10px] pr-[14px] pl-[14px] lg:grid-cols-[76px_1fr_auto] lg:pr-[18px]",
-                i > 0 && "border-t border-t-line",
-              )}
-              style={c(it.c)}
-            >
-              <span className="text-[11px] font-semibold tracking-[.02em] text-c">{it.code}</span>
-              <span className="col-start-2 truncate text-[13.5px] font-medium">
-                {it.title}
-                {it.grade && <span className="font-medium text-ink-2"> {it.grade}</span>}
-              </span>
-              <span className={cn("hidden min-w-[34px] text-right text-[11.5px] text-ink-3 tabular sm:inline", !it.unread && "pr-[14px]")}>
-                {it.when}
-                {it.unread && <span className="ml-2 inline-block size-[6px] translate-y-[-1px] rounded-full bg-ink" />}
-              </span>
-              <span className="col-start-2 mt-[2px] truncate text-xs text-ink-3">{it.excerpt}</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </>
-  );
-}
-
-const MODULE_ICON: Record<ModuleItem["icon"], typeof FileText> = {
-  page: FileText, file: Paperclip, assignment: Calendar, external: ExternalLink,
-};
-
-export function CoursesPane() {
-  return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[208px_1fr]">
-      <div className="hidden border-r border-line bg-sunken px-2 py-3 lg:block">
-        <Eyebrow className="px-2 pt-1 pb-2">Courses · Fall 2026</Eyebrow>
-        {COURSES.map((k, i) => (
-          <div
-            key={k.code}
-            className={cn("grid grid-cols-[auto_1fr] items-center gap-x-2 rounded-md px-2 py-[7px] text-[13px] leading-[1.25] font-medium text-ink-2", i === 0 && "bg-hover text-ink")}
-            style={c(k.key)}
-          >
-            <span className="size-[6px] rounded-full bg-c" />
-            {k.name}
-            <small className="col-start-2 text-[11.5px] font-normal text-ink-3">{k.code}</small>
-          </div>
-        ))}
-      </div>
-      <div className="min-w-0">
-        <div className="px-[18px] pt-4">
-          <div className="text-[11px] font-semibold tracking-[.09em] text-[var(--course-indigo)] uppercase">CS 537</div>
-          <div className="mt-[2px] text-[17px] font-semibold tracking-[-0.015em]">Introduction to Operating Systems</div>
-        </div>
-        <div className="flex gap-[14px] border-b border-line px-[18px] pt-3 text-[13px] font-medium text-ink-3 sm:gap-[18px]">
-          {["Modules", "Pages", "Files", "Syllabus", "Announcements", "Grades"].map((t, i) => (
-            <span key={t} className={cn("-mb-px border-b-2 pb-[9px]", i === 0 ? "border-ink text-ink" : "border-transparent", i >= 4 && "hidden sm:inline")}>
-              {t}
-            </span>
-          ))}
-        </div>
-        <div className="px-[18px] pt-[10px]">
-          {MODULES.map((m, mi) => (
-            <div key={m.title}>
-              <div className={cn("flex items-center gap-2 py-2 text-[13.5px] font-semibold", mi > 0 && m.open && "mt-[6px]")}>
-                {m.open ? <ChevronDown className="size-[13px] text-ink-3" /> : <ChevronRight className="size-[13px] text-ink-3" />}
-                {m.title}
-              </div>
-              {m.items.map((it) => {
-                const Icon = MODULE_ICON[it.icon];
+    <div aria-hidden="true" data-on={active} className="relative mx-auto w-full max-w-[500px]">
+      <div className="relative z-[1] mx-auto w-[94%] overflow-hidden rounded-[10px] border border-line bg-surface shadow-float">
+        <div className="p-4">
+          <div className="flex h-[38px] items-center gap-[9px] rounded-lg border border-line-2 bg-sunken px-[11px] text-[14px]">
+            <Plus className="size-[14px] shrink-0 text-ink-3" />
+            <span className="flex min-w-0 items-center whitespace-pre">
+              {words.map((w, i) => {
+                const token = w === "fri" || w === "#cs537";
                 return (
-                  <div key={it.title} className="flex items-center gap-[9px] border-t border-line py-2 pl-[21px] text-[13px]">
-                    <Icon className="size-[14px] shrink-0 text-ink-3" strokeWidth={1.75} />
-                    <span className="truncate">{it.title}</span>
-                    <span className={cn("ml-auto inline-flex shrink-0 items-center gap-1 text-xs whitespace-nowrap", it.done ? "text-ink-2" : "text-ink-3")}>
-                      {it.done && <Check className="size-3" />}
-                      {it.right}
-                    </span>
-                  </div>
+                  <span key={i}>
+                    {i > 0 && " "}
+                    <span className={cn(token && "border-b-[1.5px] border-c pb-px")} style={w === "#cs537" ? c("indigo") : undefined}>{w}</span>
+                  </span>
                 );
               })}
-            </div>
-          ))}
+              <span className="ml-px h-[18px] w-[1.5px] animate-[lp-blink_1s_steps(2)_infinite] bg-ink" />
+              {typed === 0 && <span className="ml-[3px] text-ink-3">Add a task…</span>}
+            </span>
+          </div>
+          <div className="flex min-h-[36px] flex-wrap items-center gap-[7px] pt-3">
+            {typed === 0 ? (
+              <span className="text-xs text-ink-3">
+                Try <span className="text-ink-2">“problem set due mon 5pm #math340”</span>
+              </span>
+            ) : (
+              <>
+                <Chip solid>{title}</Chip>
+                {course && (
+                  <Chip className={POP}>
+                    <Dot style={c("indigo")} />
+                    CS 537
+                  </Chip>
+                )}
+                {day && (
+                  <Chip className={POP}>
+                    <CalendarDays />
+                    Planned Fri, Aug 21
+                  </Chip>
+                )}
+                <Chip className="max-sm:hidden">Personal task</Chip>
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-[14px] border-t border-line px-4 py-3 text-xs text-ink-3">
+          <span>
+            <b className={cn("inline-block rounded-[4px] px-[3px] font-semibold text-ink-2 transition-[background-color,scale] duration-150", step === 1 && "scale-90 bg-chip text-ink")}>↵</b> add
+          </span>
+          <span className="max-sm:hidden"><b className="font-semibold text-ink-2">⌥↵</b> add and keep open</span>
+          <span><b className="font-semibold text-ink-2">esc</b> cancel</span>
+        </div>
+      </div>
+
+      <div className="-mt-6 overflow-hidden rounded-[10px] border border-line bg-surface pt-7 pb-1">
+        <div className="flex items-baseline gap-2 px-4 pt-3 pb-[6px]">
+          <span className="text-[13px] font-semibold tracking-[-0.005em]">Today</span>
+          <span className="text-[12.5px] text-ink-3">Fri, Aug 21</span>
+          <SectionCount key={String(added)} n={QUICK_ADD_DAY.length + (added ? 1 : 0)} sep className={cn("inline-block", POP)} />
+        </div>
+        {QUICK_ADD_DAY.map((row) => (
+          <MiniRow key={row.title} title={row.title} code={row.code} meta={row.meta} style={c(row.c)} />
+        ))}
+        <Arriving on={added || reduce} style={c("indigo")}>
+          <MiniRow title="read ch 4" code="CS 537" meta="Planned today · Personal" style={c("indigo")} last />
+        </Arriving>
+      </div>
+    </div>
+  );
+}
+
+function MiniRow({ title, code, meta, style, last }: { title: string; code: string; meta: string; style: CSSProperties; last?: boolean }) {
+  return (
+    <div
+      className={cn("relative flex items-start gap-3 py-[10px] pr-4 pl-4", !last && "after:absolute after:right-4 after:bottom-0 after:left-[45px] after:h-px after:bg-line")}
+      style={style}
+    >
+      <span className="mt-[2px] size-[17px] shrink-0 rounded-full border-[1.5px] border-ink-3/70" />
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] leading-[1.4] font-medium tracking-[-0.006em]">{title}</div>
+        <div className="mt-[3px] flex items-center gap-[6px] text-[13px] whitespace-nowrap text-ink-3">
+          <CourseTag>{code}</CourseTag>
+          <span className="text-line-2">·</span>
+          <span className="min-w-0 truncate">{meta}</span>
         </div>
       </div>
     </div>
   );
 }
 
-export function GradesPane() {
-  return (
-    <>
-      <PaneHeader title="CS 537" meta="Operating Systems · Weighted by group" action="Fall 2026" />
-      <div className="grid grid-cols-1 lg:h-[calc(100%-50px)] lg:grid-cols-[3fr_2fr]">
-        <div className="order-first border-b border-line px-[18px] py-4 lg:order-none lg:border-b-0 lg:border-l lg:border-line lg:p-5">
-          <div className="grid grid-cols-[auto_1fr] items-center gap-x-[18px] lg:block">
-            <div className="text-[30px] leading-none font-semibold tracking-[-0.03em] tabular lg:text-[36px]">90.1%</div>
-            <div className="col-start-1 mt-[6px] text-xs text-ink-3">What-if total · was 89.4%</div>
-            <div className="col-start-2 row-span-2 row-start-1 text-[13px] leading-[1.5] lg:mt-[18px] lg:border-t lg:border-line lg:pt-[14px]">
-              Need <b className="font-semibold">84%</b> on the rest for an A.
-            </div>
-            <div className="hidden text-xs leading-[1.5] text-ink-3 lg:mt-[14px] lg:block">
-              Canvas is the source of truth. Edits stay on this device and never change your real grade.
-            </div>
-            <div className="hidden gap-[14px] text-xs text-ink-3 underline-offset-2 lg:mt-4 lg:flex [&_span]:underline">
-              <span>Reset</span>
-              <span>Open in Canvas</span>
-            </div>
-          </div>
-        </div>
-        <div className="lg:order-first">
-          <table className="w-full border-collapse text-[13px] tabular">
-            <thead>
-              <tr>
-                <th className="border-b border-line px-[18px] pt-[11px] pb-[9px] text-left text-[11px] font-semibold tracking-[.02em] text-ink-3">Assignment</th>
-                <th className="border-b border-line px-[18px] pt-[11px] pb-[9px] text-right text-[11px] font-semibold tracking-[.02em] text-ink-3">Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {GRADES.map((r, i) => (
-                <tr key={i} className={cn(r.kind === "group" && "bg-sunken font-semibold")}>
-                  <td className={cn("border-t border-line px-[18px] py-[10px]", r.kind === "sub" && "pl-8 text-ink-2")}>
-                    {r.title}
-                    {r.kind === "group" && <span className="ml-[6px] text-[11.5px] font-normal text-ink-3">{r.weight}</span>}
-                  </td>
-                  <td className={cn("border-t border-line px-[18px] py-[10px] text-right", r.muted && "text-ink-3")}>
-                    {r.kind === "group" && r.edit ? (
-                      <span className="-my-1 -mr-[7px] inline-block min-w-[50px] rounded-md border border-line-2 bg-surface px-[7px] py-[3px] text-right shadow-[0_0_0_3px_color-mix(in_srgb,var(--line-2)_35%,transparent)]">
-                        {r.score}
-                      </span>
-                    ) : (
-                      r.score
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </>
-  );
-}
+/* ---------- what changed ---------- */
 
-export function CalendarPane() {
-  const hours = Array.from({ length: CAL.endHour - CAL.startHour + 1 }, (_, i) => CAL.startHour + i);
-  const label = (h: number) => (h === 12 ? "12 PM" : h > 12 ? `${h - 12} PM` : `${h} AM`);
-  const top = (h: number) => CAL.headerPx + CAL.stripPx + (h - CAL.startHour) * CAL.pxPerHour;
+/** The Recent rail as a card, with the day's changes landing one after another. */
+export function RecentDemo({ active }: { active: boolean }) {
+  const step = useSequence(active, [1100, 2100, 3100]);
   return (
-    <>
-      <PaneHeader title="Week" meta="Aug 17 to 21" action="Today · Subscribe" />
-      <div className="grid h-[calc(100%-50px)] grid-cols-[44px_repeat(3,1fr)] lg:grid-cols-[44px_repeat(5,1fr)]">
-        <div className="relative border-r border-line">
-          <div className="h-[46px] border-b border-line" />
-          <div className="h-[26px] border-b border-line" />
-          {hours.map((h) => (
-            <span key={h} className="absolute right-[6px] -translate-y-1/2 text-[10.5px] text-ink-3 tabular" style={{ top: top(h) }}>
-              {label(h)}
-            </span>
-          ))}
-        </div>
-        {CAL_DAYS.map((d, di) => (
-          <div key={d.day} className={cn("relative border-l border-line first:border-l-0", di >= 3 && "hidden lg:block")}>
-            <div className="box-border h-[46px] border-b border-line pt-[6px] text-center text-[11px] font-medium text-ink-3">
-              {d.label}
-              <b
-                className={cn(
-                  "mt-px block h-[22px] text-[13px] leading-[22px] font-semibold text-ink tabular",
-                  d.today && "mx-auto grid w-[22px] place-items-center rounded-md bg-today text-today-fg",
-                )}
-              >
-                {d.day}
-              </b>
-            </div>
-            <div className="flex h-[26px] items-center gap-[3px] overflow-hidden border-b border-line px-1">
-              {d.due.map((p) => (
-                <span key={p.label} className="inline-flex h-[18px] items-center gap-1 rounded-md bg-chip px-[6px] text-[10px] font-medium whitespace-nowrap" style={c(p.c)}>
-                  <i className="size-[5px] rounded-full bg-c" />
-                  {p.label}
-                </span>
-              ))}
-            </div>
-            {hours.slice(1).map((h) => (
-              <i key={h} className="absolute right-0 left-0 h-px bg-line" style={{ top: top(h) }} />
-            ))}
-            {CAL_EVENTS.filter((e) => e.day === di).map((e) => (
-              <div
-                key={e.title + e.start}
-                className={cn(
-                  "absolute right-1 left-1 overflow-hidden rounded-md py-1 pr-[5px] pl-2 text-[10.5px] leading-[1.3] font-medium lg:py-[5px] lg:pr-[6px] lg:pl-[9px] lg:text-[11px] lg:whitespace-nowrap",
-                  "before:absolute before:top-0 before:bottom-0 before:left-0 before:w-[3px] before:bg-c",
-                  e.kind === "due" ? "border border-line bg-surface" : e.kind === "plan" ? "border border-dashed border-line-2 bg-surface" : "bg-chip",
-                )}
-                style={{ top: calTop(e.start), height: minutes(e.end) - minutes(e.start), ...c(e.c) }}
-              >
-                <span className="block truncate">{e.title}</span>
-                <small className="hidden truncate text-[10.5px] font-normal text-ink-3 lg:block">{e.sub}</small>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
-
-export function SearchPane() {
-  return (
-    <div className="h-full bg-sunken px-[14px] pt-5 lg:px-[18px] lg:pt-9">
-      <div className="mx-auto max-w-[560px] overflow-hidden rounded-lg border border-line bg-raised shadow-menu">
-        <div className="flex items-center gap-[10px] border-b border-line px-[14px] py-[13px] text-sm">
-          <Search className="size-[15px] text-ink-3" strokeWidth={1.75} />
-          sched
-          <span className="-ml-2 h-4 w-px bg-ink animate-[landing-blink_1s_steps(2)_infinite]" />
-          <Kbd className="ml-auto text-[10.5px]">Esc</Kbd>
-        </div>
-        {SEARCH.map((g) => (
-          <div key={g.group}>
-            <Eyebrow className="px-[14px] pt-[10px] pb-1">{g.group}</Eyebrow>
-            {g.rows.map((r) => (
-              <div key={r.title} className={cn("flex items-center gap-[10px] px-[14px] py-2 text-[13px]", r.on && "bg-hover")} style={r.c ? c(r.c) : undefined}>
-                {r.c && <span className="size-[6px] rounded-full bg-c" />}
-                {r.icon === "task" && <SquareCheck className="size-[14px] text-ink-3" strokeWidth={1.75} />}
-                {r.icon === "calendar" && <Calendar className="size-[14px] text-ink-3" strokeWidth={1.75} />}
-                <span className="truncate">{r.title}</span>
-                <span className="ml-auto flex shrink-0 gap-1 text-xs text-ink-3">
-                  {r.meta}
-                  {r.keys?.map((k) => <Kbd key={k} className="text-[10.5px]">{k}</Kbd>)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ))}
-        <div className="flex gap-[14px] border-t border-line px-[14px] py-[9px] text-[11.5px] text-ink-3 [&_b]:font-medium [&_b]:text-ink-2">
-          <span><b>↑↓</b> move</span>
-          <span><b>↵</b> open</span>
-          <span><b>esc</b> close</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function AskPane() {
-  return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[220px_1fr]">
-      <div className="hidden border-r border-line bg-sunken px-2 py-3 lg:block">
-        <Eyebrow className="px-2 pt-1 pb-2">Threads</Eyebrow>
-        {ASK_THREADS.map((t, i) => (
-          <div key={t} className={cn("truncate rounded-md px-2 py-[7px] text-[13px] text-ink-2", i === 0 && "bg-hover text-ink")}>{t}</div>
-        ))}
-      </div>
-      <div className="flex min-w-0 flex-col">
-        <div className="flex flex-1 flex-col gap-[14px] px-[22px] pt-[22px]">
-          <div className="max-w-[72%] self-end rounded-lg bg-chip px-3 py-[9px] text-[13.5px]">When is the CS 537 midterm, and what does it cover?</div>
-          <div className="max-w-[86%] text-[13.5px] leading-[1.55]">
-            <p className="mb-2"><b className="font-semibold">Thursday, October 15 at 7:15 PM</b> in Van Vleck B102. The syllabus lists it as covering chapters 1 to 7 of the textbook, which is everything through CPU scheduling.</p>
-            <p className="mb-2">You have one planned task that overlaps: a study group for Project 2 at 7 PM that day. Want me to move it?</p>
-            <span className="mt-[2px] inline-flex items-center gap-[6px] rounded-md border border-line px-2 py-[3px] text-xs text-ink-2">
-              <span className="size-[6px] rounded-full bg-[var(--course-indigo)]" />
-              CS 537 · Syllabus
-            </span>
-          </div>
-          <div className="max-w-[72%] self-end rounded-lg bg-chip px-3 py-[9px] text-[13.5px]">Yes, move it to Wednesday the 14th, same time.</div>
-          <div className="max-w-[86%] text-[13.5px] leading-[1.55]">
-            <p className="mb-2">Done. The study group is now planned for <b className="font-semibold">Wednesday, October 14 at 7 PM</b>.</p>
-            <div className="mt-1 grid grid-cols-[1fr_auto] items-center gap-x-[14px] rounded-lg border border-line border-l-[3px] border-l-[var(--course-indigo)] bg-surface px-3 py-[9px] text-[13px]">
-              <span className="font-medium">Study group, Project 2</span>
-              <span className="row-span-2 text-xs text-ink-3 underline underline-offset-2">Undo</span>
-              <span className="mt-px text-xs text-ink-3">Planned Thu Oct 15 to Wed Oct 14 · 7:00 PM</span>
-            </div>
-          </div>
-        </div>
-        <div className="mx-[22px] mt-4 mb-[22px] flex items-center justify-between rounded-lg border border-line-2 px-3 py-[11px] text-[13.5px] text-ink-3">
-          <span>Ask about your courses or plan your week</span>
-          <Send className="size-[15px]" strokeWidth={1.75} />
-        </div>
-      </div>
+    <div
+      aria-hidden="true"
+      data-on={active}
+      className="mx-auto flex w-full max-w-[420px] flex-col overflow-hidden rounded-[10px] border border-line bg-surface shadow-float"
+    >
+      <RecentFeed shown={step + 1} groups={2} />
     </div>
   );
 }
 
 /* ---------- first sync ---------- */
 
-export function FirstSyncCard({ go }: { go: boolean }) {
+/** The first-sync card from Home, running: courses land, assignments count up, the rest queues. */
+export function FirstSyncCard({ active }: { active: boolean }) {
+  const step = useSequence(active, [500, 1500]);
+  const assignments = useCountUp<HTMLSpanElement>(step >= 1, { from: 0, to: 128, duration: 1100 });
+  const rows = [
+    { label: "Courses", done: step >= 0, busy: active && step < 0, detail: <>4 active</> },
+    { label: "Assignments", done: step >= 1, busy: step === 0, detail: <span ref={assignments}>128</span> },
+    { label: "Announcements and modules", done: false, busy: step >= 1, detail: <>queued</> },
+  ];
   return (
-    <div aria-label="First sync from Canvas" className="rounded-lg border border-line bg-surface px-[18px] pt-[18px] pb-2 shadow-float">
-      <div className="text-sm font-semibold tracking-[-0.01em]">Setting up wiscourse</div>
-      <div className="mt-[3px] text-[12.5px] text-ink-3">First sync from Canvas. Items show up as they arrive.</div>
-      <div className="my-[14px] mb-[6px] h-[3px] overflow-hidden rounded-full bg-chip">
-        <i
-          className={cn("block h-full w-full origin-left bg-ink transition-transform duration-[2600ms] ease-[cubic-bezier(.2,.7,.2,1)]", go ? "scale-x-[.72]" : "scale-x-[.06]")}
+    <div aria-hidden="true" className="rounded-[10px] border border-line bg-surface p-4 text-left shadow-float">
+      <div className="text-[14px] font-semibold tracking-[-0.01em]">Setting up wiscourse</div>
+      <div className="mt-[3px] text-[12.5px] text-ink-3">First sync from Canvas. Start using the app now, items land as they arrive.</div>
+      <div className="my-[14px] h-1 overflow-hidden rounded-full bg-chip">
+        <div
+          className="h-full origin-left rounded-full bg-ink transition-transform duration-[900ms] ease-[var(--lp-ease)]"
+          style={{ transform: `scaleX(${step >= 1 ? 0.66 : step >= 0 ? 0.33 : 0.08})` }}
         />
       </div>
-      {FIRST_SYNC.map((s, i) => (
-        <div
-          key={s.label}
-          className={cn(
-            "flex items-center gap-[9px] border-t border-line py-[10px] text-[13px] first-of-type:border-t-0",
-            "transition-[opacity,transform] duration-[400ms] ease-[cubic-bezier(.16,1,.3,1)] [transition-delay:calc(var(--i)*260ms+300ms)]",
-            go ? "opacity-100" : "translate-y-1 opacity-0",
-            s.state === "wait" && "text-ink-3",
-          )}
-          style={vars({ "--i": i })}
-        >
-          {s.state === "done" && <Check className="size-[14px] shrink-0 text-ink" />}
-          {s.state === "busy" && <LoaderCircle className="size-[14px] shrink-0 animate-spin text-ink-3" />}
-          {s.state === "wait" && <Clock className="size-[14px] shrink-0 text-ink-3" />}
-          {s.label}
-          <span className={cn("ml-auto text-ink-3 tabular", s.state === "done" && "text-ink-2")}>
-            {s.strong && <b className="font-medium text-ink">{s.strong}</b>}
-            {s.value}
-          </span>
-        </div>
-      ))}
+      {rows.map((row) => {
+        const Icon = row.done ? Check : row.busy ? RefreshCw : Clock;
+        return (
+          <div
+            key={row.label}
+            className={cn("flex items-center gap-[9px] border-b border-line py-[7px] text-[13px] text-ink-2 transition-colors duration-300 last:border-b-0", !row.done && !row.busy && "text-ink-3")}
+          >
+            <Icon key={row.done ? "done" : row.busy ? "busy" : "wait"} className={cn("size-[14px]", row.busy ? "animate-spin" : POP)} />
+            {row.label}
+            <span className="ml-auto text-xs text-ink-3 tabular">{row.busy ? "syncing…" : row.done ? row.detail : "queued"}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
