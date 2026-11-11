@@ -199,24 +199,149 @@
   color: var(--ink);
 }
 
-/* Landing page (src/components/landing): row stagger, switcher progress bar,
-   caret blink. Referenced via Tailwind's animate-[name_…] arbitrary values. */
-@keyframes landing-in {
+/* Landing page (src/components/landing). Motion is transform and opacity
+   only; `lp-*` names are shared with landing-motion.tsx. */
+.landing {
+  --lp-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Headlines use Inter's display cut (one extra static face); the app keeps text Inter. */
+  --lp-display: "InterDisplay", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Scroll reveal: `Reveal` flips data-shown once the element is in view. */
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.8s var(--lp-ease) var(--d, 0ms), transform 0.8s var(--lp-ease) var(--d, 0ms);
+}
+.lp-reveal[data-shown="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered row entrance inside a preview; see `enter()`. Hidden only while
+   the preview is explicitly off, so a row stays visible if another animation
+   later takes over the element. */
+[data-on="false"] .lp-enter {
+  opacity: 0;
+}
+[data-on="true"] .lp-enter {
+  animation: lp-enter 0.55s var(--lp-ease) both;
+  animation-delay: calc(var(--i, 0) * 38ms + 90ms);
+}
+@keyframes lp-enter {
+  from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes landing-fill {
+/* A row that arrives after the rest: slides down into place. */
+@keyframes lp-arrive {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: none; }
+}
+/* A brief wash behind something that just changed. */
+@keyframes lp-flash {
+  from { background-color: color-mix(in oklab, var(--c, var(--ink)) 14%, transparent); }
+  to { background-color: transparent; }
+}
+@keyframes lp-pop {
+  0% { opacity: 0; transform: scale(0.9) translateY(4px); }
+  60% { opacity: 1; transform: scale(1.03); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes lp-blink {
+  50% { opacity: 0; }
+}
+@keyframes lp-fill-y {
   from { transform: scaleY(0); }
   to { transform: scaleY(1); }
 }
-@keyframes landing-blink {
-  50% { opacity: 0; }
+@keyframes lp-fill-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
-/* The hooks skip auto-advance and staggers; this catches the CSS-only
-   animations (carets, spinners, row entrance) in one place. */
+/* Stroke draw for SVG paths with pathLength="1". */
+@keyframes lp-draw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+/* Hero headline: each line rises out of its own clip. */
+@keyframes lp-rise {
+  from { transform: translateY(105%); }
+  to { transform: none; }
+}
+/* The hero's edge light: a doubled gradient slides one full period. */
+@keyframes lp-drift {
+  to { transform: translateX(-50%); }
+}
+@keyframes lp-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes lp-fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Hero window: rises in, tilted back, then lies flat as the page scrolls. The
+   tilt lives on a wrapper so the two animations do not share an element, and
+   it is progressive: without scroll timelines the window is simply flat. */
+.lp-window-in {
+  animation: lp-window-in 1.3s var(--lp-ease) 0.2s both;
+}
+@keyframes lp-window-in {
+  from { opacity: 0; transform: translateY(48px) scale(0.97); }
+}
+@supports (animation-timeline: scroll()) {
+  @media (min-width: 768px) {
+    .lp-tilt {
+      transform-origin: 50% 0;
+      animation: lp-flatten linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 480px;
+    }
+    @keyframes lp-flatten {
+      from { transform: perspective(2400px) rotateX(11deg) scale(0.98); }
+      to { transform: perspective(2400px) rotateX(0deg) scale(1); }
+    }
+  }
+  /* The nav's backdrop and hairline arrive with the first scroll. */
+  .lp-nav::before {
+    animation: lp-fade linear both;
+    animation-timeline: scroll(root block);
+    animation-range: 0px 72px;
+  }
+}
+
+/* Fine dot field behind the hero and the demo stages. */
+.lp-dots {
+  background-image: radial-gradient(circle at 1px 1px, color-mix(in oklab, var(--ink) 16%, transparent) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+/* Pointer spotlight on a demo stage: --mx/--my are set by the stage. */
+.lp-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 50%), color-mix(in oklab, var(--ink) 7%, transparent), transparent 70%);
+}
+.lp-spot:hover::after {
+  opacity: 1;
+}
+
+/* The hooks skip timers and staggers; this catches the CSS-only motion
+   (carets, spinners, entrances, the tilt) in one place. */
 @media (prefers-reduced-motion: reduce) {
   .landing *, .landing *::before, .landing *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
+  .lp-tilt { animation: none; transform: none; }
+  .lp-nav::before { animation: none; }
 }
